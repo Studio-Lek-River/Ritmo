@@ -826,25 +826,32 @@ function ModuleRenderer({ module: mod, data, onChecklistToggle, onChoiceToggle, 
   const colorClass = `text-${mod.color}-500`;
 
   if (mod.type === 'checklist') {
+    const items = mod.items || [];
     return (
       <div className={`${t.card} rounded-2xl p-5 shadow-sm mb-4`}>
         <div className="flex items-center gap-2 mb-4">
           <Icon className={`w-5 h-5 ${colorClass}`} />
           <h2 className={`font-semibold ${t.textSecondary}`}>{mod.name}</h2>
         </div>
-        <div className="space-y-2">
-          {mod.items.map(item => (
-            <ChecklistItem
-              key={item.id}
-              label={item.label}
-              icon={Icon}
-              color={mod.color}
-              checked={data[item.id] || false}
-              onToggle={() => onChecklistToggle(item.id)}
-              t={t}
-            />
-          ))}
-        </div>
+        {items.length === 0 ? (
+          <p className={`${t.textMuted} text-sm text-center py-4`}>
+            Voeg items toe via instellingen ⚙️
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {items.map(item => (
+              <ChecklistItem
+                key={item.id}
+                label={item.label}
+                icon={Icon}
+                color={mod.color}
+                checked={data[item.id] || false}
+                onToggle={() => onChecklistToggle(item.id)}
+                t={t}
+              />
+            ))}
+          </div>
+        )}
       </div>
     );
   }
