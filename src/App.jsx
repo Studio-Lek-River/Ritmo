@@ -17,11 +17,9 @@ const DEFAULT_MODULES = [
     icon: 'Sun',
     color: 'amber',
     enabled: true,
+    countInStreak: true,
     type: 'checklist',
-    items: [
-      { id: 'wakeUp', label: '8:00 — Opstaan' },
-      { id: 'teeth', label: 'Tandenpoetsen' },
-    ]
+    items: []
   },
   {
     id: 'physio',
@@ -29,13 +27,9 @@ const DEFAULT_MODULES = [
     icon: 'Activity',
     color: 'purple',
     enabled: true,
+    countInStreak: true,
     type: 'checklist',
-    items: [
-      { id: 'physio1', label: 'Wandelen met de billen' },
-      { id: 'physio2', label: 'Superman op de knieën en strekken' },
-      { id: 'physio3', label: 'Nek van links naar rechts' },
-      { id: 'physio4', label: 'Nek van oor naar oksel' },
-    ]
+    items: []
   },
   {
     id: 'walk',
@@ -43,19 +37,27 @@ const DEFAULT_MODULES = [
     icon: 'Footprints',
     color: 'green',
     enabled: true,
+    countInStreak: true,
     type: 'choice',
-    options: [
-      { id: 'walk', label: '🚶 Wandelen' },
-      { id: 'bike', label: '🚴 Fietsen (bij regen)' },
-    ],
-    completionLabel: 'Beweging buiten gedaan'
+    options: []
+  },
+  {
+    id: 'evening',
+    name: 'Avondroutine',
+    icon: 'Moon',
+    color: 'indigo',
+    enabled: true,
+    countInStreak: true,
+    type: 'checklist',
+    items: []
   },
   {
     id: 'work',
     name: 'Productief werk',
     icon: 'Briefcase',
-    color: 'indigo',
+    color: 'blue',
     enabled: true,
+    countInStreak: false,
     type: 'timer',
     dailyGoalMinutes: 120,
     weeklyMaxMinutes: 360,
@@ -66,6 +68,7 @@ const DEFAULT_MODULES = [
     icon: 'Check',
     color: 'pink',
     enabled: true,
+    countInStreak: false,
     type: 'tasks',
   }
 ];
@@ -284,10 +287,12 @@ export default function Ritmo() {
   };
 
   const setChoiceOption = (moduleId, optionId) => {
-    updateModuleData(moduleId, prev => ({
-      ...prev,
-      selectedOption: optionId
-    }));
+    updateModuleData(moduleId, prev => {
+      if (prev.selectedOption === optionId && prev.completed) {
+        return { ...prev, completed: false, selectedOption: null };
+      }
+      return { ...prev, selectedOption: optionId, completed: true };
+    });
   };
 
   const addWorkMinutes = (moduleId, mins) => {
@@ -537,15 +542,15 @@ export default function Ritmo() {
 
         {view === 'today' && (
           <div className="slide-in">
-            {/* Streaks - only for enabled trackable modules */}
-            {enabledModules.filter(m => m.type !== 'tasks').length > 0 && (
+            {/* Streaks - only for modules waar gebruiker streaks voor wil bijhouden (max 4) */}
+            {enabledModules.filter(m => m.countInStreak === true).length > 0 && (
               <div className={`${t.card} rounded-2xl p-4 shadow-sm mb-4`}>
                 <div className="flex items-center gap-2 mb-3">
                   <Flame className="w-4 h-4 text-orange-500" />
                   <h2 className={`font-semibold ${t.textSecondary} text-sm`}>Streaks</h2>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {enabledModules.filter(m => m.type !== 'tasks').slice(0, 4).map(mod => (
+                  {enabledModules.filter(m => m.countInStreak === true).slice(0, 4).map(mod => (
                     <StreakBadge 
                       key={mod.id}
                       label={mod.name} 
@@ -845,35 +850,46 @@ function ModuleRenderer({ module: mod, data, onChecklistToggle, onChoiceToggle, 
   }
 
   if (mod.type === 'choice') {
+    const options = mod.options || [];
+    const selectedLabel = options.find(o => o.id === data.selectedOption)?.label;
     return (
       <div className={`${t.card} rounded-2xl p-5 shadow-sm mb-4`}>
         <div className="flex items-center gap-2 mb-4">
           <Icon className={`w-5 h-5 ${colorClass}`} />
           <h2 className={`font-semibold ${t.textSecondary}`}>{mod.name}</h2>
         </div>
-        <div className="flex gap-2 mb-3">
-          {mod.options.map(opt => (
-            <button
-              key={opt.id}
-              onClick={() => onChoiceOptionSet(opt.id)}
-              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${
-                data.selectedOption === opt.id 
-                  ? `bg-${mod.color}-100 text-${mod.color}-700 ring-2 ring-${mod.color}-300` 
-                  : `${t.cardSecondary} ${t.textMuted}`
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-        <ChecklistItem
-          label={mod.completionLabel || `${mod.name} gedaan`}
-          icon={Icon}
-          color={mod.color}
-          checked={data.completed || false}
-          onToggle={onChoiceToggle}
-          t={t}
-        />
+        {options.length === 0 ? (
+          <p className={`${t.textMuted} text-sm text-center py-4`}>
+            Voeg opties toe via instellingen ⚙️
+          </p>
+        ) : (
+          <>
+            <div className="flex gap-2 flex-wrap">
+              {options.map(opt => {
+                const isActive = data.selectedOption === opt.id && data.completed;
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => onChoiceOptionSet(opt.id)}
+                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 ${
+                      isActive
+                        ? `bg-${mod.color}-500 text-white shadow-md`
+                        : `${t.cardSecondary} ${t.textMuted}`
+                    }`}
+                  >
+                    {isActive && <Check className="w-4 h-4" />}
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            {data.completed && data.selectedOption && (
+              <p className={`text-xs ${t.textMuted} mt-2 text-center`}>
+                ✓ {selectedLabel} gekozen — klik nogmaals om te resetten
+              </p>
+            )}
+          </>
+        )}
       </div>
     );
   }
@@ -1481,6 +1497,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                 icon: 'Star',
                 color: 'blue',
                 enabled: true,
+                countInStreak: false,
                 type: 'checklist',
                 items: []
               })}
@@ -1489,82 +1506,125 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
               <Plus className="w-4 h-4" />
               Nieuwe module toevoegen
             </button>
+
+            <button
+              onClick={() => {
+                if (window.confirm('Weet je zeker dat je alle modules wilt resetten? Je items en instellingen voor modules gaan verloren. Je dagelijkse data en geschiedenis blijven bewaard.')) {
+                  setModules(DEFAULT_MODULES);
+                  setStreakSettings({});
+                }
+              }}
+              className={`w-full mt-3 py-2 text-xs ${t.textMuted} hover:text-red-500 transition`}
+            >
+              Reset modules naar standaard
+            </button>
           </div>
         )}
 
-        {activeTab === 'streaks' && (
-          <div>
-            <h3 className={`font-semibold ${t.textSecondary} mb-3`}>Streak-criteria</h3>
-            <p className={`text-xs ${t.textMuted} mb-4`}>
-              Bepaal per module wanneer een dag meetelt voor je streak.
-            </p>
+        {activeTab === 'streaks' && (() => {
+          const activeCount = modules.filter(m => m.countInStreak === true).length;
+          return (
+            <div>
+              <h3 className={`font-semibold ${t.textSecondary} mb-3`}>Streaks beheren</h3>
+              <p className={`text-xs ${t.textMuted} mb-4`}>
+                Kies welke modules meetellen voor je streaks (max. 4) en bepaal per module de criteria.
+              </p>
 
-            <div className="space-y-4">
-              {modules.filter(m => m.enabled && m.type !== 'tasks').map(mod => {
-                const Icon = ICON_OPTIONS[mod.icon] || Sparkles;
-                const setting = streakSettings[mod.id] || {};
-                
-                return (
-                  <div key={mod.id} className={`p-3 ${t.cardSecondary} rounded-lg`}>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Icon className={`w-4 h-4 text-${mod.color}-500`} />
-                      <span className={`font-medium text-sm ${t.textSecondary}`}>{mod.name}</span>
-                    </div>
+              <div className={`${t.cardSecondary} rounded-lg p-3 mb-4 text-sm ${t.textSecondary}`}>
+                <span className="font-medium">{activeCount}</span> van max. <span className="font-medium">4</span> streaks actief
+              </div>
 
-                    {mod.type === 'checklist' && (
-                      <div className="flex gap-2">
+              <div className="space-y-4">
+                {modules.filter(m => m.enabled && m.type !== 'tasks').map(mod => {
+                  const Icon = ICON_OPTIONS[mod.icon] || Sparkles;
+                  const setting = streakSettings[mod.id] || {};
+                  const isActive = mod.countInStreak === true;
+                  const atMax = activeCount >= 4 && !isActive;
+
+                  return (
+                    <div
+                      key={mod.id}
+                      className={`p-3 ${t.cardSecondary} rounded-lg transition ${
+                        isActive ? `border-2 border-${mod.color}-400` : 'border-2 border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-3">
                         <button
-                          onClick={() => setStreakSettings(prev => ({ ...prev, [mod.id]: { ...prev[mod.id], requireAll: true } }))}
-                          className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition ${
-                            setting.requireAll !== false ? `bg-${mod.color}-500 text-white` : `${t.card} ${t.textMuted}`
-                          }`}
+                          onClick={() => {
+                            if (atMax) return;
+                            setModules(prev => prev.map(m =>
+                              m.id === mod.id ? { ...m, countInStreak: !isActive } : m
+                            ));
+                          }}
+                          disabled={atMax}
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition flex-shrink-0 ${
+                            isActive ? `bg-${mod.color}-500 border-${mod.color}-500` : 'border-slate-300'
+                          } ${atMax ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
                         >
-                          Alle items
+                          {isActive && <Check className="w-3 h-3 text-white" />}
                         </button>
-                        <button
-                          onClick={() => setStreakSettings(prev => ({ ...prev, [mod.id]: { ...prev[mod.id], requireAll: false } }))}
-                          className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition ${
-                            setting.requireAll === false ? `bg-${mod.color}-500 text-white` : `${t.card} ${t.textMuted}`
-                          }`}
-                        >
-                          Minstens 1
-                        </button>
+                        <Icon className={`w-4 h-4 text-${mod.color}-500`} />
+                        <span className={`font-medium text-sm ${t.textSecondary}`}>{mod.name}</span>
+                        {atMax && (
+                          <span className={`ml-auto text-xs ${t.textMuted}`}>max. bereikt</span>
+                        )}
                       </div>
-                    )}
 
-                    {mod.type === 'timer' && (
-                      <div>
-                        <label className={`text-xs ${t.textMuted} mb-2 block`}>Min. minuten per dag</label>
-                        <div className="flex gap-1">
-                          {[30, 60, 90, 120, 180, 240].map(min => {
-                            const current = setting.minutesGoal || mod.dailyGoalMinutes;
-                            return (
-                              <button
-                                key={min}
-                                onClick={() => setStreakSettings(prev => ({ ...prev, [mod.id]: { ...prev[mod.id], minutesGoal: min } }))}
-                                className={`flex-1 py-2 rounded-lg text-xs font-medium transition ${
-                                  current === min ? `bg-${mod.color}-500 text-white` : `${t.card} ${t.textMuted}`
-                                }`}
-                              >
-                                {min < 60 ? `${min}m` : `${min/60}u`}
-                              </button>
-                            );
-                          })}
+                      {isActive && mod.type === 'checklist' && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setStreakSettings(prev => ({ ...prev, [mod.id]: { ...prev[mod.id], requireAll: true } }))}
+                            className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition ${
+                              setting.requireAll !== false ? `bg-${mod.color}-500 text-white` : `${t.card} ${t.textMuted}`
+                            }`}
+                          >
+                            Alle items
+                          </button>
+                          <button
+                            onClick={() => setStreakSettings(prev => ({ ...prev, [mod.id]: { ...prev[mod.id], requireAll: false } }))}
+                            className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition ${
+                              setting.requireAll === false ? `bg-${mod.color}-500 text-white` : `${t.card} ${t.textMuted}`
+                            }`}
+                          >
+                            Minstens 1
+                          </button>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {mod.type === 'choice' && (
-                      <p className={`text-xs ${t.textMuted}`}>
-                        Streak telt zodra je het vakje "voltooid" aanvinkt.
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
+                      {isActive && mod.type === 'timer' && (
+                        <div>
+                          <label className={`text-xs ${t.textMuted} mb-2 block`}>Min. minuten per dag</label>
+                          <div className="flex gap-1">
+                            {[30, 60, 90, 120, 180, 240].map(min => {
+                              const current = setting.minutesGoal || mod.dailyGoalMinutes;
+                              return (
+                                <button
+                                  key={min}
+                                  onClick={() => setStreakSettings(prev => ({ ...prev, [mod.id]: { ...prev[mod.id], minutesGoal: min } }))}
+                                  className={`flex-1 py-2 rounded-lg text-xs font-medium transition ${
+                                    current === min ? `bg-${mod.color}-500 text-white` : `${t.card} ${t.textMuted}`
+                                  }`}
+                                >
+                                  {min < 60 ? `${min}m` : `${min/60}u`}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {isActive && mod.type === 'choice' && (
+                        <p className={`text-xs ${t.textMuted}`}>
+                          Streak telt zodra je een optie kiest.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {activeTab === 'reflect' && (
           <div>
@@ -1617,20 +1677,20 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
 
   const update = (key, value) => setEditing(prev => ({ ...prev, [key]: value }));
 
-  const addItem = () => {
+  const addEntry = (key) => {
     if (newItem.trim()) {
       setEditing(prev => ({
         ...prev,
-        items: [...(prev.items || []), { id: `item_${Date.now()}`, label: newItem.trim() }]
+        [key]: [...(prev[key] || []), { id: `${key}_${Date.now()}`, label: newItem.trim() }]
       }));
       setNewItem('');
     }
   };
 
-  const removeItem = (id) => {
+  const removeEntry = (key, id) => {
     setEditing(prev => ({
       ...prev,
-      items: prev.items.filter(i => i.id !== id)
+      [key]: (prev[key] || []).filter(i => i.id !== id)
     }));
   };
 
@@ -1729,7 +1789,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
                   <div key={item.id} className={`flex items-center gap-2 p-2 ${t.cardSecondary} rounded-lg`}>
                     <span className={`flex-1 text-sm ${t.textSecondary}`}>{item.label}</span>
                     <button
-                      onClick={() => removeItem(item.id)}
+                      onClick={() => removeEntry('items', item.id)}
                       className="text-slate-400 hover:text-red-500"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -1742,11 +1802,43 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
                   type="text"
                   value={newItem}
                   onChange={(e) => setNewItem(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addItem()}
+                  onKeyDown={(e) => e.key === 'Enter' && addEntry('items')}
                   placeholder="Nieuw item..."
                   className={`flex-1 px-3 py-2 ${t.input} rounded-lg text-sm`}
                 />
-                <button onClick={addItem} className={`px-3 py-2 bg-${editing.color}-500 text-white rounded-lg`}>
+                <button onClick={() => addEntry('items')} className={`px-3 py-2 bg-${editing.color}-500 text-white rounded-lg`}>
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {editing.type === 'choice' && (
+            <div>
+              <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>Opties</label>
+              <div className="space-y-2 mb-2">
+                {(editing.options || []).map(opt => (
+                  <div key={opt.id} className={`flex items-center gap-2 p-2 ${t.cardSecondary} rounded-lg`}>
+                    <span className={`flex-1 text-sm ${t.textSecondary}`}>{opt.label}</span>
+                    <button
+                      onClick={() => removeEntry('options', opt.id)}
+                      className="text-slate-400 hover:text-red-500"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newItem}
+                  onChange={(e) => setNewItem(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addEntry('options')}
+                  placeholder="Bijv. 🚶 Wandelen, 🏃 Hardlopen..."
+                  className={`flex-1 px-3 py-2 ${t.input} rounded-lg text-sm`}
+                />
+                <button onClick={() => addEntry('options')} className={`px-3 py-2 bg-${editing.color}-500 text-white rounded-lg`}>
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
