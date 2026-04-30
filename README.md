@@ -11,7 +11,3 @@
 - **Donker thema**: automatisch of handmatig
 - **Privacy-first**: alle data blijft lokaal op je apparaat
 - **PWA**: installeerbaar op iOS en Android, werkt offline
-
-## 📜 Licentie
-
-MIT — zie [LICENSE](./LICENSE)
