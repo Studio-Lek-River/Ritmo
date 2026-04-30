@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Check, Sun, Moon, Activity, Briefcase, Footprints, Plus, Trash2, TrendingUp, Calendar, AlertCircle, Sparkles, Flame, Settings, BookOpen, ChevronLeft, ChevronRight, X, Repeat, Trophy, GripVertical, Heart, Coffee, Book, Music, Dumbbell, Zap, Smile, Brain, Cloud, Star, Target, Edit3, Eye, EyeOff } from 'lucide-react';
+import { Check, Sun, Moon, Activity, Briefcase, Footprints, Plus, Trash2, TrendingUp, Calendar, AlertCircle, Sparkles, Flame, Settings, BookOpen, ChevronLeft, ChevronRight, X, Repeat, Trophy, GripVertical, Heart, Coffee, Book, Music, Dumbbell, Zap, Smile, Brain, Cloud, Star, Target, Edit3, Eye, EyeOff, GraduationCap, Clock } from 'lucide-react';
 import './storage';
+import ProjectsModule from './modules/ProjectsModule';
+import ProjectsView from './views/ProjectsView';
 
 // Available icons for modules
 const ICON_OPTIONS = {
-  Sun, Moon, Activity, Briefcase, Footprints, Sparkles, Heart, Coffee, Book, Music, Dumbbell, Zap, Smile, Brain, Cloud, Star, Target, Check, BookOpen
+  Sun, Moon, Activity, Briefcase, Footprints, Sparkles, Heart, Coffee, Book, Music, Dumbbell, Zap, Smile, Brain, Cloud, Star, Target, Check, BookOpen, GraduationCap
 };
 
 const COLOR_OPTIONS = ['amber', 'cyan', 'purple', 'green', 'indigo', 'pink', 'blue', 'orange', 'rose', 'teal'];
@@ -73,8 +75,20 @@ const DEFAULT_MODULES = [
   }
 ];
 
+const PROJECTS_MODULE_TEMPLATE = {
+  id: 'projects',
+  name: 'Projecten',
+  icon: 'GraduationCap',
+  color: 'cyan',
+  enabled: true,
+  countInStreak: false,
+  type: 'projects',
+  subjects: []
+};
+
 export default function Ritmo() {
   const [view, setView] = useState('today');
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [today] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
@@ -232,7 +246,7 @@ export default function Ritmo() {
   // Check overall completion
   useEffect(() => {
     if (loading) return;
-    const enabledModules = modules.filter(m => m.enabled && m.type !== 'tasks');
+    const enabledModules = modules.filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects');
     const totalItems = enabledModules.reduce((sum, m) => {
       if (m.type === 'checklist') return sum + m.items.length;
       if (m.type === 'choice') return sum + 1;
@@ -374,7 +388,11 @@ export default function Ritmo() {
       const goal = setting.minutesGoal || mod.dailyGoalMinutes;
       return calculateStreak(d => (d.moduleData?.[mod.id]?.minutes || 0) >= goal);
     }
-    
+
+    if (mod.type === 'projects') {
+      return calculateStreak(d => d.moduleData?.[mod.id]?.touchedToday === true);
+    }
+
     return 0;
   };
 
@@ -420,7 +438,7 @@ export default function Ritmo() {
   };
 
   // Overall completion
-  const enabledNonTaskModules = modules.filter(m => m.enabled && m.type !== 'tasks');
+  const enabledNonTaskModules = modules.filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects');
   const totalCompletionItems = enabledNonTaskModules.reduce((sum, m) => {
     if (m.type === 'checklist') return sum + m.items.length;
     if (m.type === 'choice') return sum + 1;
@@ -527,7 +545,15 @@ export default function Ritmo() {
         </div>
 
         <div className={`flex gap-1 mb-6 ${t.card} rounded-xl p-1 shadow-sm`}>
-          {['today', 'week', 'month', 'reflection'].map(v => (
+          {(() => {
+            const hasProjects = modules.some(m => m.enabled && m.type === 'projects');
+            const tabs = ['today', 'week', 'month', ...(hasProjects ? ['projects'] : []), 'reflection'];
+            const labelOf = (v) => v === 'today' ? 'Vandaag'
+              : v === 'week' ? 'Week'
+              : v === 'month' ? 'Maand'
+              : v === 'projects' ? 'Projecten'
+              : 'Reflectie';
+            return tabs.map(v => (
             <button
               key={v}
               onClick={() => setView(v)}
@@ -535,9 +561,10 @@ export default function Ritmo() {
                 view === v ? 'bg-blue-500 text-white shadow' : `${t.textMuted} ${t.hover}`
               }`}
             >
-              {v === 'today' ? 'Vandaag' : v === 'week' ? 'Week' : v === 'month' ? 'Maand' : 'Reflectie'}
+              {labelOf(v)}
             </button>
-          ))}
+            ));
+          })()}
         </div>
 
         {view === 'today' && (
@@ -584,26 +611,36 @@ export default function Ritmo() {
 
             {/* Render each enabled module */}
             {enabledModules.map(mod => (
-              <ModuleRenderer
-                key={mod.id}
-                module={mod}
-                data={moduleData[mod.id] || {}}
-                onChecklistToggle={(itemId) => toggleChecklistItem(mod.id, itemId)}
-                onChoiceToggle={() => toggleChoice(mod.id)}
-                onChoiceOptionSet={(optId) => setChoiceOption(mod.id, optId)}
-                onAddMinutes={(mins) => addWorkMinutes(mod.id, mins)}
-                onResetMinutes={() => resetWorkMinutes(mod.id)}
-                history={history}
-                weekDates={weekDates}
-                customTasks={customTasks}
-                newTask={newTask}
-                setNewTask={setNewTask}
-                addTask={addTask}
-                toggleTask={toggleTask}
-                deleteTask={deleteTask}
-                t={t}
-                darkMode={darkMode}
-              />
+              mod.type === 'projects' ? (
+                <ProjectsModule
+                  key={mod.id}
+                  module={mod}
+                  Icon={ICON_OPTIONS[mod.icon] || Sparkles}
+                  onOpen={(id) => { setSelectedProjectId(id); setView('projects'); }}
+                  t={t}
+                />
+              ) : (
+                <ModuleRenderer
+                  key={mod.id}
+                  module={mod}
+                  data={moduleData[mod.id] || {}}
+                  onChecklistToggle={(itemId) => toggleChecklistItem(mod.id, itemId)}
+                  onChoiceToggle={() => toggleChoice(mod.id)}
+                  onChoiceOptionSet={(optId) => setChoiceOption(mod.id, optId)}
+                  onAddMinutes={(mins) => addWorkMinutes(mod.id, mins)}
+                  onResetMinutes={() => resetWorkMinutes(mod.id)}
+                  history={history}
+                  weekDates={weekDates}
+                  customTasks={customTasks}
+                  newTask={newTask}
+                  setNewTask={setNewTask}
+                  addTask={addTask}
+                  toggleTask={toggleTask}
+                  deleteTask={deleteTask}
+                  t={t}
+                  darkMode={darkMode}
+                />
+              )
             ))}
 
             {enabledModules.length === 0 && (
@@ -652,7 +689,7 @@ export default function Ritmo() {
         )}
 
         {view === 'week' && (
-          <WeekView 
+          <WeekView
             modules={modules}
             history={history}
             today={today}
@@ -661,6 +698,18 @@ export default function Ritmo() {
             dayNames={dayNames}
             t={t}
             darkMode={darkMode}
+          />
+        )}
+
+        {view === 'projects' && (
+          <ProjectsView
+            modules={modules}
+            setModules={setModules}
+            iconOptions={ICON_OPTIONS}
+            selectedProjectId={selectedProjectId}
+            setSelectedProjectId={setSelectedProjectId}
+            markTouchedToday={(moduleId) => updateModuleData(moduleId, prev => ({ ...prev, touchedToday: true }))}
+            t={t}
           />
         )}
 
@@ -723,14 +772,21 @@ export default function Ritmo() {
 function Onboarding({ onComplete, t, darkMode, setDarkMode }) {
   const [step, setStep] = useState(0);
   const [selectedDefaults, setSelectedDefaults] = useState(
-    DEFAULT_MODULES.reduce((acc, m) => ({ ...acc, [m.id]: true }), {})
+    DEFAULT_MODULES.reduce((acc, m) => ({ ...acc, [m.id]: false }), {})
   );
+  const [projectsEnabled, setProjectsEnabled] = useState(false);
+
+  const moduleCount = Object.values(selectedDefaults).filter(Boolean).length;
+  const canProceed = moduleCount >= 1;
 
   const finish = () => {
     const finalModules = DEFAULT_MODULES.map(m => ({
       ...m,
-      enabled: selectedDefaults[m.id] !== false
+      enabled: selectedDefaults[m.id] === true
     }));
+    if (projectsEnabled) {
+      finalModules.push({ ...PROJECTS_MODULE_TEMPLATE, enabled: true });
+    }
     onComplete(finalModules);
   };
 
@@ -757,18 +813,18 @@ function Onboarding({ onComplete, t, darkMode, setDarkMode }) {
           <div>
             <h2 className={`text-2xl font-bold ${t.text} mb-2`}>Kies je modules</h2>
             <p className={`${t.textMuted} mb-4 text-sm`}>
-              Selecteer welke onderdelen je wilt gebruiken. Je kunt dit later altijd aanpassen.
+              Selecteer welke onderdelen je wilt gebruiken. Vink aan wat bij je past. Je kunt dit later altijd uitbreiden.
             </p>
-            <div className="space-y-2 mb-6">
+            <div className="space-y-2 mb-4">
               {DEFAULT_MODULES.map(m => {
                 const Icon = ICON_OPTIONS[m.icon] || Sparkles;
-                const enabled = selectedDefaults[m.id] !== false;
+                const enabled = selectedDefaults[m.id] === true;
                 return (
                   <button
                     key={m.id}
                     onClick={() => setSelectedDefaults(prev => ({ ...prev, [m.id]: !enabled }))}
                     className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition ${
-                      enabled 
+                      enabled
                         ? `border-${m.color}-400 bg-${m.color}-50 ${darkMode ? 'bg-opacity-10' : ''}`
                         : `${t.border} ${t.cardSecondary}`
                     }`}
@@ -794,12 +850,84 @@ function Onboarding({ onComplete, t, darkMode, setDarkMode }) {
                 );
               })}
             </div>
+            {!canProceed && (
+              <p className="text-xs text-rose-500 mb-3 text-center">
+                Activeer minstens één module om verder te gaan.
+              </p>
+            )}
             <p className={`text-xs ${t.textMuted} mb-4 text-center`}>
               💡 Je kunt later eigen modules toevoegen, items wijzigen, en alles personaliseren via instellingen.
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => setStep(0)}
+                className={`px-4 py-3 ${t.cardSecondary} ${t.textSecondary} rounded-xl font-medium transition`}
+              >
+                Terug
+              </button>
+              <button
+                onClick={() => setStep(2)}
+                disabled={!canProceed}
+                className={`flex-1 py-3 rounded-xl font-medium transition ${
+                  canProceed
+                    ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                    : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                }`}
+              >
+                Volgende
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className={`p-2 rounded-xl bg-cyan-100 ${darkMode ? 'bg-opacity-20' : ''}`}>
+                <GraduationCap className="w-6 h-6 text-cyan-500" />
+              </div>
+              <h2 className={`text-2xl font-bold ${t.text}`}>Projecten</h2>
+            </div>
+            <p className={`${t.textMuted} mb-3 text-sm`}>
+              Met projecten houd je grotere doelen bij. Denk aan studievakken, werkprojecten of leertrajecten.
+              Per project maak je <span className={t.textSecondary}>onderwerpen</span> aan met
+              <span className={t.textSecondary}> subdoelen</span>, optionele <span className={t.textSecondary}>deadlines</span> en <span className={t.textSecondary}>cijfers</span> (1 tot 10).
+            </p>
+            <p className={`${t.textMuted} mb-4 text-sm`}>
+              Voortgang en gemiddelden zie je terug op je dagoverzicht. Ideaal voor wie naast dagelijkse routines ook lange-termijndoelen wil tracken.
+            </p>
+
+            <button
+              onClick={() => setProjectsEnabled(v => !v)}
+              className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition mb-4 ${
+                projectsEnabled
+                  ? `border-cyan-400 bg-cyan-50 ${darkMode ? 'bg-opacity-10' : ''}`
+                  : `${t.border} ${t.cardSecondary}`
+              }`}
+            >
+              <GraduationCap className={`w-5 h-5 ${projectsEnabled ? 'text-cyan-500' : t.textMuted}`} />
+              <div className="flex-1 text-left">
+                <div className={`font-medium text-sm ${projectsEnabled ? t.textSecondary : t.textMuted}`}>
+                  Projecten activeren
+                </div>
+                <div className={`text-xs ${t.textMuted}`}>
+                  Beheer onderwerpen, subdoelen en cijfers
+                </div>
+              </div>
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                projectsEnabled ? 'bg-cyan-500 border-cyan-500' : 'border-slate-300'
+              }`}>
+                {projectsEnabled && <Check className="w-3 h-3 text-white" />}
+              </div>
+            </button>
+
+            <p className={`text-xs ${t.textMuted} mb-4 text-center`}>
+              Niet zeker? Sla over en activeer projecten later via Instellingen.
+            </p>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setStep(1)}
                 className={`px-4 py-3 ${t.cardSecondary} ${t.textSecondary} rounded-xl font-medium transition`}
               >
                 Terug
@@ -1085,7 +1213,7 @@ function StreakBadge({ label, days, color, t }) {
 // WEEK VIEW
 // =============================================
 function WeekView({ modules, history, today, moduleData, weekDates, dayNames, t, darkMode }) {
-  const enabledNonTaskModules = modules.filter(m => m.enabled && m.type !== 'tasks');
+  const enabledNonTaskModules = modules.filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects');
   
   const getDayCompletion = (date) => {
     const data = date === today 
@@ -1211,7 +1339,7 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, moduleData
     cells.push(dateStr);
   }
 
-  const enabledNonTaskModules = modules.filter(m => m.enabled && m.type !== 'tasks');
+  const enabledNonTaskModules = modules.filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects');
 
   const getCompletion = (dateStr) => {
     const data = dateStr === today ? { moduleData } : history[dateStr];
@@ -1736,10 +1864,15 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
                 { id: 'choice', label: 'Keuze', desc: 'Optie + voltooien' },
                 { id: 'timer', label: 'Timer', desc: 'Minuten bijhouden' },
                 { id: 'tasks', label: 'Taken', desc: 'Vrije takenlijst' },
+                { id: 'projects', label: 'Project', desc: 'Vakken & subdoelen' },
               ].map(typ => (
                 <button
                   key={typ.id}
-                  onClick={() => update('type', typ.id)}
+                  onClick={() => setEditing(prev => ({
+                    ...prev,
+                    type: typ.id,
+                    ...(typ.id === 'projects' && !prev.subjects ? { subjects: [] } : {}),
+                  }))}
                   className={`p-3 rounded-lg text-left transition ${
                     editing.type === typ.id ? 'bg-blue-500 text-white' : `${t.cardSecondary} ${t.textSecondary}`
                   }`}
