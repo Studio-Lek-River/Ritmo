@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Sparkles, AlertCircle, Trash2 } from 'lucide-react';
+import { Sparkles, AlertCircle, Trash2, Settings } from 'lucide-react';
 import { formatAmount } from '../utils/format';
 import ReminderBanner from '../components/ReminderBanner';
 
@@ -10,11 +10,13 @@ export default function CounterModule({
   weekDates,
   history,
   today,
+  editable = true,
   onIncrementCounter,
   onResetCounter,
   onAddEntry,
   onRemoveEntry,
   onDismissReminder,
+  onEdit,
   t,
   darkMode,
 }) {
@@ -47,6 +49,16 @@ export default function CounterModule({
         <div className="flex items-center gap-2 mb-4">
           <Glyph className={`w-5 h-5 ${colorClass}`} />
           <h2 className={`font-semibold ${t.textSecondary}`}>{mod.name}</h2>
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              className={`ml-auto p-1.5 ${t.hover} rounded-lg ${t.textMuted} transition`}
+              title="Module-instellingen"
+              aria-label={`Instellingen voor ${mod.name}`}
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         <div className={`${darkMode ? `bg-${mod.color}-900/30` : `bg-${mod.color}-50`} rounded-xl p-4 mb-3`}>
@@ -63,18 +75,21 @@ export default function CounterModule({
             <button
               key={min}
               onClick={() => onIncrementCounter(min)}
-              className={`py-2 ${darkMode ? `bg-${mod.color}-900/30 hover:bg-${mod.color}-900/50 text-${mod.color}-300` : `bg-${mod.color}-50 hover:bg-${mod.color}-100 text-${mod.color}-700`} rounded-lg text-sm font-medium transition`}
+              disabled={!editable}
+              className={`py-2 ${darkMode ? `bg-${mod.color}-900/30 hover:bg-${mod.color}-900/50 text-${mod.color}-300` : `bg-${mod.color}-50 hover:bg-${mod.color}-100 text-${mod.color}-700`} rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               +{min}m
             </button>
           ))}
         </div>
-        <button
-          onClick={onResetCounter}
-          className={`w-full py-2 ${t.cardSecondary} ${t.hover} ${t.textMuted} rounded-lg text-sm transition`}
-        >
-          Reset vandaag
-        </button>
+        {editable && (
+          <button
+            onClick={onResetCounter}
+            className={`w-full py-2 ${t.cardSecondary} ${t.hover} ${t.textMuted} rounded-lg text-sm transition`}
+          >
+            Reset vandaag
+          </button>
+        )}
 
         {weekMax && (
           <div className={`mt-4 pt-4 border-t ${t.border}`}>
@@ -120,10 +135,12 @@ export default function CounterModule({
       useEntries={useEntries}
       data={data}
       today={today}
+      editable={editable}
       onIncrementCounter={onIncrementCounter}
       onAddEntry={onAddEntry}
       onRemoveEntry={onRemoveEntry}
       onDismissReminder={onDismissReminder}
+      onEdit={onEdit}
       t={t}
       darkMode={darkMode}
     />
@@ -144,10 +161,12 @@ function CounterUI({
   useEntries,
   data,
   today,
+  editable = true,
   onIncrementCounter,
   onAddEntry,
   onRemoveEntry,
   onDismissReminder,
+  onEdit,
   t,
   darkMode,
 }) {
@@ -194,6 +213,16 @@ function CounterUI({
       <div className="flex items-center gap-2 mb-4">
         <Glyph className={`w-5 h-5 ${colorClass}`} />
         <h2 className={`font-semibold ${t.textSecondary}`}>{mod.name}</h2>
+        {onEdit && (
+          <button
+            onClick={onEdit}
+            className={`ml-auto p-1.5 ${t.hover} rounded-lg ${t.textMuted} transition`}
+            title="Module-instellingen"
+            aria-label={`Instellingen voor ${mod.name}`}
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       <div className={`${darkMode ? `bg-${mod.color}-900/30` : `bg-${mod.color}-50`} rounded-xl p-4 mb-3`}>
@@ -245,7 +274,8 @@ function CounterUI({
             <button
               key={`${amount}-${i}`}
               onClick={() => handleAdd(amount, activeCategory)}
-              className={`py-2 ${darkMode ? `bg-${mod.color}-900/30 hover:bg-${mod.color}-900/50 text-${mod.color}-300` : `bg-${mod.color}-50 hover:bg-${mod.color}-100 text-${mod.color}-700`} rounded-lg text-sm font-medium transition`}
+              disabled={!editable}
+              className={`py-2 ${darkMode ? `bg-${mod.color}-900/30 hover:bg-${mod.color}-900/50 text-${mod.color}-300` : `bg-${mod.color}-50 hover:bg-${mod.color}-100 text-${mod.color}-700`} rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               + {formatAmount(amount, unit)}
             </button>
@@ -253,35 +283,37 @@ function CounterUI({
         </div>
       )}
 
-      <div className="flex gap-2 mb-3">
-        <input
-          type="number"
-          inputMode="decimal"
-          value={manualAmount}
-          onChange={(e) => setManualAmount(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && submitManual()}
-          placeholder={`Aantal (${unit})`}
-          className={`flex-1 min-w-0 px-3 py-2 ${t.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
-        />
-        {categoriesEnabled && categories.length > 0 && (
-          <select
-            value={manualCategory ?? ''}
-            onChange={(e) => setManualCategory(e.target.value || null)}
-            className={`px-2 py-2 ${t.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
+      {editable && (
+        <div className="flex gap-2 mb-3">
+          <input
+            type="number"
+            inputMode="decimal"
+            value={manualAmount}
+            onChange={(e) => setManualAmount(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submitManual()}
+            placeholder={`Aantal (${unit})`}
+            className={`flex-1 min-w-0 px-3 py-2 ${t.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
+          />
+          {categoriesEnabled && categories.length > 0 && (
+            <select
+              value={manualCategory ?? ''}
+              onChange={(e) => setManualCategory(e.target.value || null)}
+              className={`px-2 py-2 ${t.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
+            >
+              <option value="">geen</option>
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          )}
+          <button
+            onClick={submitManual}
+            className={`px-3 py-2 bg-${mod.color}-500 hover:bg-${mod.color}-600 text-white rounded-lg text-sm font-medium transition`}
           >
-            <option value="">geen</option>
-            {categories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        )}
-        <button
-          onClick={submitManual}
-          className={`px-3 py-2 bg-${mod.color}-500 hover:bg-${mod.color}-600 text-white rounded-lg text-sm font-medium transition`}
-        >
-          Toevoegen
-        </button>
-      </div>
+            Toevoegen
+          </button>
+        </div>
+      )}
 
       {useEntries && entries.length > 0 && (
         <div className={`pt-3 mt-2 border-t ${t.border} space-y-1`}>
@@ -299,13 +331,15 @@ function CounterUI({
                 </span>
               )}
               <span className={`text-xs ${t.textMuted} ml-auto`}>{entry.time}</span>
-              <button
-                onClick={() => onRemoveEntry(entry.id)}
-                aria-label="Verwijderen"
-                className={`p-1 rounded ${t.hover} ${t.textMuted} hover:text-red-500 transition`}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              {editable && (
+                <button
+                  onClick={() => onRemoveEntry(entry.id)}
+                  aria-label="Verwijderen"
+                  className={`p-1 rounded ${t.hover} ${t.textMuted} hover:text-red-500 transition`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           ))}
         </div>

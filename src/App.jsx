@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Check, Sun, Moon, Activity, Briefcase, Footprints, Plus, Trash2, TrendingUp, Calendar, AlertCircle, Sparkles, Flame, Settings, BookOpen, ChevronLeft, ChevronRight, X, Repeat, Trophy, GripVertical, Heart, Coffee, Book, Music, Dumbbell, Zap, Smile, Brain, Cloud, Star, Target, Edit3, Eye, EyeOff, GraduationCap, Clock, GlassWater, Droplet,
   AlarmClock, BadgeEuro, BrushCleaning, Castle, CookingPot, Drill, Fuel, Hospital, Panda, Plane, Rabbit, ShoppingCart, Toilet, TrainFront, WashingMachine
@@ -7,8 +7,18 @@ import './storage';
 import ProjectsModule from './modules/ProjectsModule';
 import CounterModule from './modules/CounterModule';
 import ProjectsView from './views/ProjectsView';
+import DayNavigator from './components/DayNavigator';
+import ReadOnlyBanner from './components/ReadOnlyBanner';
 import { migrateModuleConfig, migrateDayModuleData } from './utils/migrate';
 import { formatAmount } from './utils/format';
+import { MODULE_PRESETS } from './utils/presets';
+import {
+  fmtDateKey, parseDateKey, addDays, sameDay, startOfWeek,
+  isEditable, isFuture, isToday as isTodayDate,
+  formatDayTitle, formatDaySubtitle, formatWeekTitle, formatWeekRange,
+} from './utils/dates';
+import { buildDayCellBackground, moduleStatusForDay } from './utils/dayProgress';
+import { playSound } from './utils/sound';
 
 // Available icons for modules
 const ICON_OPTIONS = {
@@ -20,7 +30,7 @@ const ICON_OPTIONS = {
   Plane, TrainFront, Fuel
 };
 
-const COLOR_OPTIONS = ['amber', 'cyan', 'purple', 'green', 'indigo', 'pink', 'blue', 'orange', 'rose', 'teal'];
+const COLOR_OPTIONS = ['red', 'orange', 'amber', 'yellow', 'green', 'teal', 'cyan', 'blue', 'indigo', 'purple', 'pink'];
 
 // Default modules for first-time users
 const DEFAULT_MODULES = [
@@ -71,7 +81,7 @@ const DEFAULT_MODULES = [
     color: 'blue',
     enabled: true,
     countInStreak: false,
-    type: 'timer',
+    type: 'counter',
     unit: 'minutes',
     dailyGoal: 120,
     weeklyMax: 360,
@@ -106,10 +116,17 @@ const PROJECTS_MODULE_TEMPLATE = {
 export default function Ritmo() {
   const [view, setView] = useState('today');
   const [selectedProjectId, setSelectedProjectId] = useState(null);
-  const [today] = useState(new Date().toISOString().split('T')[0]);
+  const [activeDate, setActiveDate] = useState(new Date());
+  const [activeWeekStart, setActiveWeekStart] = useState(() => startOfWeek(new Date()));
+  const todayKey = fmtDateKey(new Date());
+  const activeDateKey = fmtDateKey(activeDate);
+  const today = todayKey;
+  const editable = isEditable(activeDate);
+  const skipNextSaveRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [editingModule, setEditingModule] = useState(null);
   const [hasOnboarded, setHasOnboarded] = useState(true);
   
   const [modules, setModules] = useState(DEFAULT_MODULES);
@@ -125,11 +142,14 @@ export default function Ritmo() {
     'Waar ben ik dankbaar voor?'
   ]);
   const [streakSettings, setStreakSettings] = useState({});
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundVolume, setSoundVolume] = useState(80);
   const [confetti, setConfetti] = useState([]);
   const [celebrationMsg, setCelebrationMsg] = useState(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
-  
+
   const previousCompletionRef = useRef(null);
+  const prevModuleStatusRef = useRef({});
 
   useEffect(() => {
     const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -152,6 +172,8 @@ export default function Ritmo() {
           if (settings.reflectionQuestions) setReflectionQuestions(settings.reflectionQuestions);
           if (settings.recurringTasks) setRecurringTasks(settings.recurringTasks);
           if (settings.streakSettings) setStreakSettings(settings.streakSettings);
+          if (settings.soundEnabled !== undefined) setSoundEnabled(settings.soundEnabled);
+          if (settings.soundVolume !== undefined) setSoundVolume(settings.soundVolume);
           if (loadedModules) setModules(loadedModules);
           if (settings.hasOnboarded !== undefined) setHasOnboarded(settings.hasOnboarded);
         } else {
@@ -172,12 +194,15 @@ export default function Ritmo() {
       };
 
       try {
-        const result = await window.storage.get(`day:${today}`);
+        const result = await window.storage.get(`day:${todayKey}`);
         if (result?.value) {
           const data = migrateDayData(JSON.parse(result.value));
           setModuleData(data.moduleData || {});
           setCustomTasks(data.customTasks || []);
           setReflectionAnswers(data.reflectionAnswers || {});
+          // First state load comes from storage directly; suppress the
+          // first save that would otherwise round-trip the same data back.
+          skipNextSaveRef.current = true;
         }
       } catch (e) {}
 
@@ -201,11 +226,32 @@ export default function Ritmo() {
       setLoading(false);
     }
     loadData();
-  }, [today]);
+    // One-shot on mount; activeDate changes are handled by a separate effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // When the active date changes, swap in that day's data from history.
+  // Suppresses the immediately-following save effect to avoid writing the
+  // previous day's state to the new day's storage key.
+  useEffect(() => {
+    if (loading) return;
+    const data = history[activeDateKey] || {};
+    skipNextSaveRef.current = true;
+    setModuleData(data.moduleData || {});
+    setCustomTasks(data.customTasks || []);
+    setReflectionAnswers(data.reflectionAnswers || {});
+    prevModuleStatusRef.current = {};
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeDateKey, loading]);
 
   // Save day data
   useEffect(() => {
     if (loading) return;
+    if (!editable) return;
+    if (skipNextSaveRef.current) {
+      skipNextSaveRef.current = false;
+      return;
+    }
     const saveData = async () => {
       try {
         const dayData = {
@@ -213,14 +259,14 @@ export default function Ritmo() {
           customTasks,
           reflectionAnswers,
         };
-        await window.storage.set(`day:${today}`, JSON.stringify(dayData));
-        setHistory(prev => ({ ...prev, [today]: dayData }));
+        await window.storage.set(`day:${activeDateKey}`, JSON.stringify(dayData));
+        setHistory(prev => ({ ...prev, [activeDateKey]: dayData }));
       } catch (e) {
         console.error('Save failed', e);
       }
     };
     saveData();
-  }, [moduleData, customTasks, reflectionAnswers, loading, today]);
+  }, [moduleData, customTasks, reflectionAnswers, loading, activeDateKey, editable]);
 
   // Save settings
   useEffect(() => {
@@ -232,20 +278,24 @@ export default function Ritmo() {
           reflectionQuestions,
           recurringTasks,
           streakSettings,
+          soundEnabled,
+          soundVolume,
           modules,
           hasOnboarded,
         }));
       } catch {}
     };
     saveSettings();
-  }, [darkMode, reflectionQuestions, recurringTasks, streakSettings, modules, hasOnboarded, loading]);
+  }, [darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, modules, hasOnboarded, loading]);
 
-  // Recurring tasks
+  // Recurring tasks. Only inject into today's task list, never into a
+  // historical day the user is just viewing.
   useEffect(() => {
     if (loading) return;
+    if (activeDateKey !== todayKey) return;
     const dayOfWeek = new Date().getDay();
     const todayDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    
+
     recurringTasks.forEach(rt => {
       if (rt.days.includes(todayDay)) {
         const existsToday = customTasks.some(t => t.recurringId === rt.id);
@@ -259,7 +309,12 @@ export default function Ritmo() {
         }
       }
     });
-  }, [loading, recurringTasks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, recurringTasks, activeDateKey, todayKey]);
+
+  const sfx = useCallback((name) => {
+    playSound(name, { enabled: soundEnabled, volume: soundVolume });
+  }, [soundEnabled, soundVolume]);
 
   const triggerCelebration = (message) => {
     const newConfetti = Array.from({ length: 30 }, (_, i) => ({
@@ -282,7 +337,7 @@ export default function Ritmo() {
     const totalItems = enabledModules.reduce((sum, m) => {
       if (m.type === 'checklist') return sum + m.items.length;
       if (m.type === 'choice') return sum + 1;
-      if (m.type === 'timer') return sum + 1;
+      if (m.type === 'counter') return sum + 1;
       return sum;
     }, 0);
     
@@ -294,7 +349,7 @@ export default function Ritmo() {
       if (m.type === 'choice') {
         return sum + (data.completed ? 1 : 0);
       }
-      if (m.type === 'timer') {
+      if (m.type === 'counter') {
         const goal = m.dailyGoal ?? m.dailyGoalMinutes ?? 0;
         const tot = data.total ?? data.minutes ?? 0;
         return sum + (goal > 0 && tot >= goal ? 1 : 0);
@@ -310,6 +365,21 @@ export default function Ritmo() {
     previousCompletionRef.current = completed;
   }, [moduleData, modules, loading]);
 
+  useEffect(() => {
+    if (loading) return;
+    const dayData = { moduleData };
+    modules.forEach(mod => {
+      if (!mod.enabled) return;
+      if (mod.type === 'tasks' || mod.type === 'projects') return;
+      const newStatus = moduleStatusForDay(mod, dayData);
+      const prevStatus = prevModuleStatusRef.current[mod.id];
+      if (prevStatus !== undefined && prevStatus !== 'full' && newStatus === 'full') {
+        setTimeout(() => sfx('chime'), 80);
+      }
+      prevModuleStatusRef.current[mod.id] = newStatus;
+    });
+  }, [moduleData, modules, loading, sfx]);
+
   // Module helpers
   const updateModuleData = (moduleId, updater) => {
     setModuleData(prev => ({
@@ -321,26 +391,33 @@ export default function Ritmo() {
   };
 
   const toggleChecklistItem = (moduleId, itemId) => {
+    const willBeDone = !moduleData[moduleId]?.[itemId];
     updateModuleData(moduleId, prev => ({
       ...prev,
       [itemId]: !prev[itemId]
     }));
+    if (willBeDone) sfx('tick');
   };
 
   const toggleChoice = (moduleId) => {
+    const willBeCompleted = !moduleData[moduleId]?.completed;
     updateModuleData(moduleId, prev => ({
       ...prev,
       completed: !prev.completed
     }));
+    if (willBeCompleted) sfx('pop');
   };
 
   const setChoiceOption = (moduleId, optionId) => {
-    updateModuleData(moduleId, prev => {
-      if (prev.selectedOption === optionId && prev.completed) {
-        return { ...prev, completed: false, selectedOption: null };
+    const prev = moduleData[moduleId] || {};
+    const willDeselect = prev.selectedOption === optionId && prev.completed;
+    updateModuleData(moduleId, p => {
+      if (p.selectedOption === optionId && p.completed) {
+        return { ...p, completed: false, selectedOption: null };
       }
-      return { ...prev, selectedOption: optionId, completed: true };
+      return { ...p, selectedOption: optionId, completed: true };
     });
+    if (!willDeselect) sfx('pop');
   };
 
   const incrementCounter = (moduleId, amount) => {
@@ -354,6 +431,8 @@ export default function Ritmo() {
       total: newTotal,
       minutes: newTotal,
     }));
+
+    sfx('tick');
 
     if (mod && goal > 0 && currentTotal < goal && newTotal >= goal) {
       triggerCelebration(`💪 ${mod.name} doel gehaald!`);
@@ -395,6 +474,8 @@ export default function Ritmo() {
       };
     });
 
+    sfx('tick');
+
     if (crossedGoal && mod) {
       triggerCelebration(`💪 ${mod.name} doel gehaald!`);
     }
@@ -418,7 +499,7 @@ export default function Ritmo() {
   const dismissCounterReminder = (moduleId) => {
     updateModuleData(moduleId, prev => ({
       ...prev,
-      reminderShownDate: today,
+      reminderShownDate: todayKey,
     }));
   };
 
@@ -430,27 +511,31 @@ export default function Ritmo() {
   };
 
   const toggleTask = (id) => {
+    const task = customTasks.find(t => t.id === id);
+    const willBeDone = task && !task.done;
     setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
+    if (willBeDone) sfx('tick');
   };
 
   const deleteTask = (id) => {
     setCustomTasks(prev => prev.filter(t => t.id !== id));
   };
 
-  // Streak calculation
+  // Streak calculation. moduleData is the source of truth for the active
+  // date; for any other day, fall back to history (which is updated on save).
   const calculateStreak = (checkFn) => {
     let streak = 0;
-    const d = new Date();
+    let d = new Date();
     while (true) {
-      const dateStr = d.toISOString().split('T')[0];
-      const dayData = dateStr === today 
-        ? { moduleData } 
+      const dateStr = fmtDateKey(d);
+      const dayData = dateStr === activeDateKey
+        ? { moduleData }
         : history[dateStr];
-      
+
       if (!dayData) break;
       if (!checkFn(dayData)) break;
       streak++;
-      d.setDate(d.getDate() - 1);
+      d = addDays(d, -1);
       if (streak > 365) break;
     }
     return streak;
@@ -475,7 +560,7 @@ export default function Ritmo() {
       return calculateStreak(d => d.moduleData?.[mod.id]?.completed);
     }
     
-    if (mod.type === 'timer') {
+    if (mod.type === 'counter') {
       const goal = setting.minutesGoal ?? mod.dailyGoal ?? mod.dailyGoalMinutes ?? 0;
       return calculateStreak(d => {
         const md = d.moduleData?.[mod.id];
@@ -491,19 +576,17 @@ export default function Ritmo() {
     return 0;
   };
 
-  const getWeekStart = () => {
-    const d = new Date();
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    return new Date(d.setDate(diff)).toISOString().split('T')[0];
-  };
-
-  const weekStart = getWeekStart();
-  const weekDates = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() + i);
-    return d.toISOString().split('T')[0];
+  // Current calendar week (used by Today-side widgets like CounterModule's
+  // "deze week" totals — those should always reflect the real current week,
+  // never the user's nav position in WeekView).
+  const currentWeekDates = Array.from({ length: 7 }, (_, i) => {
+    return fmtDateKey(addDays(startOfWeek(new Date()), i));
   });
+  // Week shown in WeekView, follows the week-nav arrows.
+  const activeWeekDates = Array.from({ length: 7 }, (_, i) => {
+    return fmtDateKey(addDays(activeWeekStart, i));
+  });
+  const weekDates = currentWeekDates;
 
   const dayNames = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
   const monthNames = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
@@ -537,14 +620,14 @@ export default function Ritmo() {
   const totalCompletionItems = enabledNonTaskModules.reduce((sum, m) => {
     if (m.type === 'checklist') return sum + m.items.length;
     if (m.type === 'choice') return sum + 1;
-    if (m.type === 'timer') return sum + 1;
+    if (m.type === 'counter') return sum + 1;
     return sum;
   }, 0);
   const completedItems = enabledNonTaskModules.reduce((sum, m) => {
     const data = moduleData[m.id] || {};
     if (m.type === 'checklist') return sum + m.items.filter(i => data[i.id]).length;
     if (m.type === 'choice') return sum + (data.completed ? 1 : 0);
-    if (m.type === 'timer') {
+    if (m.type === 'counter') {
       const goal = m.dailyGoal ?? m.dailyGoalMinutes ?? 0;
       const tot = data.total ?? data.minutes ?? 0;
       return sum + (goal > 0 && tot >= goal ? 1 : 0);
@@ -668,8 +751,16 @@ export default function Ritmo() {
 
         {view === 'today' && (
           <div className="slide-in">
+            <DayNavigator
+              currentDate={activeDate}
+              onChange={(d) => setActiveDate(d)}
+              title={formatDayTitle(activeDate)}
+              subtitle={formatDaySubtitle(activeDate)}
+              t={t}
+            />
+            {!editable && <ReadOnlyBanner t={t} />}
             {/* Streaks - only for modules waar gebruiker streaks voor wil bijhouden (max 4) */}
-            {enabledModules.filter(m => m.countInStreak === true).length > 0 && (
+            {editable && enabledModules.filter(m => m.countInStreak === true).length > 0 && (
               <div className={`${t.card} rounded-2xl p-4 shadow-sm mb-4`}>
                 <div className="flex items-center gap-2 mb-3">
                   <Flame className="w-4 h-4 text-orange-500" />
@@ -708,62 +799,82 @@ export default function Ritmo() {
               </div>
             )}
 
-            {/* Render each enabled module */}
-            {enabledModules.map(mod => {
-              if (mod.type === 'projects') {
+            {/* Render each enabled module. On read-only days, hide modules
+                that had no activity that day (no point showing an empty
+                checklist for a day the user can't interact with). */}
+            {(() => {
+              const visibleModules = editable
+                ? enabledModules
+                : enabledModules.filter(m => moduleStatusForDay(m, { moduleData }) !== 'none');
+              if (!editable && visibleModules.length === 0) {
                 return (
-                  <ProjectsModule
-                    key={mod.id}
-                    module={mod}
-                    Icon={ICON_OPTIONS[mod.icon] || Sparkles}
-                    onOpen={(id) => { setSelectedProjectId(id); setView('projects'); }}
-                    t={t}
-                  />
+                  <div className={`${t.card} rounded-2xl p-8 shadow-sm text-center mb-4`}>
+                    <div className={`text-2xl mb-2 ${t.textMuted}`}>○</div>
+                    <p className={`text-sm ${t.textMuted}`}>Geen activiteit op deze dag</p>
+                  </div>
                 );
               }
-              if (mod.type === 'timer') {
+              return visibleModules.map(mod => {
+                if (mod.type === 'projects') {
+                  return (
+                    <ProjectsModule
+                      key={mod.id}
+                      module={mod}
+                      Icon={ICON_OPTIONS[mod.icon] || Sparkles}
+                      onOpen={(id) => { setSelectedProjectId(id); setView('projects'); }}
+                      onEdit={() => setEditingModule(mod)}
+                      t={t}
+                    />
+                  );
+                }
+                if (mod.type === 'counter') {
+                  return (
+                    <CounterModule
+                      key={mod.id}
+                      module={mod}
+                      Icon={ICON_OPTIONS[mod.icon] || Sparkles}
+                      data={moduleData[mod.id] || {}}
+                      weekDates={weekDates}
+                      history={history}
+                      today={todayKey}
+                      editable={editable}
+                      onIncrementCounter={(amount) => incrementCounter(mod.id, amount)}
+                      onResetCounter={() => resetCounter(mod.id)}
+                      onAddEntry={(amount, category) => addCounterEntry(mod.id, amount, category)}
+                      onRemoveEntry={(entryId) => removeCounterEntry(mod.id, entryId)}
+                      onDismissReminder={() => dismissCounterReminder(mod.id)}
+                      onEdit={() => setEditingModule(mod)}
+                      t={t}
+                      darkMode={darkMode}
+                    />
+                  );
+                }
                 return (
-                  <CounterModule
+                  <ModuleRenderer
                     key={mod.id}
                     module={mod}
-                    Icon={ICON_OPTIONS[mod.icon] || Sparkles}
                     data={moduleData[mod.id] || {}}
-                    weekDates={weekDates}
+                    editable={editable}
+                    onChecklistToggle={(itemId) => toggleChecklistItem(mod.id, itemId)}
+                    onChoiceToggle={() => toggleChoice(mod.id)}
+                    onChoiceOptionSet={(optId) => setChoiceOption(mod.id, optId)}
+                    onEdit={() => setEditingModule(mod)}
                     history={history}
-                    today={today}
-                    onIncrementCounter={(amount) => incrementCounter(mod.id, amount)}
-                    onResetCounter={() => resetCounter(mod.id)}
-                    onAddEntry={(amount, category) => addCounterEntry(mod.id, amount, category)}
-                    onRemoveEntry={(entryId) => removeCounterEntry(mod.id, entryId)}
-                    onDismissReminder={() => dismissCounterReminder(mod.id)}
+                    weekDates={weekDates}
+                    customTasks={customTasks}
+                    newTask={newTask}
+                    setNewTask={setNewTask}
+                    addTask={addTask}
+                    toggleTask={toggleTask}
+                    deleteTask={deleteTask}
                     t={t}
                     darkMode={darkMode}
                   />
                 );
-              }
-              return (
-                <ModuleRenderer
-                  key={mod.id}
-                  module={mod}
-                  data={moduleData[mod.id] || {}}
-                  onChecklistToggle={(itemId) => toggleChecklistItem(mod.id, itemId)}
-                  onChoiceToggle={() => toggleChoice(mod.id)}
-                  onChoiceOptionSet={(optId) => setChoiceOption(mod.id, optId)}
-                  history={history}
-                  weekDates={weekDates}
-                  customTasks={customTasks}
-                  newTask={newTask}
-                  setNewTask={setNewTask}
-                  addTask={addTask}
-                  toggleTask={toggleTask}
-                  deleteTask={deleteTask}
-                  t={t}
-                  darkMode={darkMode}
-                />
-              );
-            })}
+              });
+            })()}
 
-            {enabledModules.length === 0 && (
+            {editable && enabledModules.length === 0 && (
               <div className={`${t.card} rounded-2xl p-8 shadow-sm text-center`}>
                 <Sparkles className={`w-12 h-12 mx-auto mb-3 ${t.textMuted}`} />
                 <h3 className={`font-semibold ${t.textSecondary} mb-2`}>Geen modules actief</h3>
@@ -779,32 +890,41 @@ export default function Ritmo() {
               </div>
             )}
 
-            {/* Quick reflection */}
-            <div className={`${t.card} rounded-2xl p-5 shadow-sm mb-4`}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-blue-500" />
-                  <h2 className={`font-semibold ${t.textSecondary}`}>Reflectie</h2>
+            {/* Quick reflection. On read-only days, only show if there was
+                actually a reflection written. */}
+            {(() => {
+              const firstQ = reflectionQuestions[0];
+              const hasAnswer = !!firstQ && !!reflectionAnswers[firstQ];
+              if (!editable && !hasAnswer) return null;
+              return (
+                <div className={`${t.card} rounded-2xl p-5 shadow-sm mb-4`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="w-5 h-5 text-blue-500" />
+                      <h2 className={`font-semibold ${t.textSecondary}`}>Reflectie</h2>
+                    </div>
+                    <button
+                      onClick={() => setView('reflection')}
+                      className="text-xs text-blue-500 hover:underline"
+                    >
+                      Volledig bekijken
+                    </button>
+                  </div>
+                  {firstQ && (
+                    <div>
+                      <label className={`text-xs ${t.textMuted} mb-1 block`}>{firstQ}</label>
+                      <textarea
+                        value={reflectionAnswers[firstQ] || ''}
+                        onChange={(e) => setReflectionAnswers(prev => ({ ...prev, [firstQ]: e.target.value }))}
+                        disabled={!editable}
+                        placeholder={editable ? 'Schrijf hier...' : ''}
+                        className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm h-16 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-70 disabled:cursor-not-allowed`}
+                      />
+                    </div>
+                  )}
                 </div>
-                <button
-                  onClick={() => setView('reflection')}
-                  className="text-xs text-blue-500 hover:underline"
-                >
-                  Volledig bekijken →
-                </button>
-              </div>
-              {reflectionQuestions.slice(0, 1).map((q, i) => (
-                <div key={i}>
-                  <label className={`text-xs ${t.textMuted} mb-1 block`}>{q}</label>
-                  <textarea
-                    value={reflectionAnswers[q] || ''}
-                    onChange={(e) => setReflectionAnswers(prev => ({ ...prev, [q]: e.target.value }))}
-                    placeholder="Schrijf hier..."
-                    className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm h-16 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300`}
-                  />
-                </div>
-              ))}
-            </div>
+              );
+            })()}
           </div>
         )}
 
@@ -812,10 +932,14 @@ export default function Ritmo() {
           <WeekView
             modules={modules}
             history={history}
-            today={today}
+            today={todayKey}
+            activeDateKey={activeDateKey}
             moduleData={moduleData}
-            weekDates={weekDates}
+            activeWeekStart={activeWeekStart}
+            setActiveWeekStart={setActiveWeekStart}
+            weekDates={activeWeekDates}
             dayNames={dayNames}
+            onPickDay={(date) => { setActiveDate(date); setView('today'); }}
             t={t}
             darkMode={darkMode}
           />
@@ -834,13 +958,15 @@ export default function Ritmo() {
         )}
 
         {view === 'month' && (
-          <MonthView 
-            calendarMonth={calendarMonth} 
+          <MonthView
+            calendarMonth={calendarMonth}
             setCalendarMonth={setCalendarMonth}
             history={history}
-            today={today}
+            today={todayKey}
+            activeDateKey={activeDateKey}
             moduleData={moduleData}
             modules={modules}
+            onPickDay={(date) => { setActiveDate(date); setView('today'); }}
             t={t}
             darkMode={darkMode}
             monthNames={monthNames}
@@ -854,7 +980,7 @@ export default function Ritmo() {
             reflectionAnswers={reflectionAnswers}
             setReflectionAnswers={setReflectionAnswers}
             history={history}
-            today={today}
+            today={todayKey}
             t={t}
             darkMode={darkMode}
           />
@@ -878,8 +1004,33 @@ export default function Ritmo() {
           setStreakSettings={setStreakSettings}
           darkMode={darkMode}
           setDarkMode={setDarkMode}
+          soundEnabled={soundEnabled}
+          setSoundEnabled={setSoundEnabled}
+          soundVolume={soundVolume}
+          setSoundVolume={setSoundVolume}
           t={t}
           dayNames={dayNames}
+          setEditingModule={setEditingModule}
+        />
+      )}
+
+      {editingModule && (
+        <ModuleEditor
+          module={editingModule}
+          onSave={(updated) => {
+            setModules(prev => {
+              const exists = prev.find(m => m.id === updated.id);
+              if (exists) return prev.map(m => m.id === updated.id ? updated : m);
+              return [...prev, updated];
+            });
+            setEditingModule(null);
+          }}
+          onCancel={() => setEditingModule(null)}
+          onDelete={(id) => {
+            setModules(prev => prev.filter(m => m.id !== id));
+            setEditingModule(null);
+          }}
+          t={t}
         />
       )}
     </div>
@@ -957,7 +1108,7 @@ function Onboarding({ onComplete, t, darkMode, setDarkMode }) {
                       <div className={`text-xs ${t.textMuted}`}>
                         {m.type === 'checklist' && `${m.items.length} items`}
                         {m.type === 'choice' && 'Keuze + voltooien'}
-                        {m.type === 'timer' && 'Tijd bijhouden'}
+                        {m.type === 'counter' && 'Aantal bijhouden'}
                         {m.type === 'tasks' && 'Eigen takenlijst'}
                       </div>
                     </div>
@@ -1069,7 +1220,17 @@ function Onboarding({ onComplete, t, darkMode, setDarkMode }) {
 // =============================================
 // MODULE RENDERER
 // =============================================
-function ModuleRenderer({ module: mod, data, onChecklistToggle, onChoiceToggle, onChoiceOptionSet, weekDates, history, customTasks, newTask, setNewTask, addTask, toggleTask, deleteTask, t, darkMode }) {
+function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle, onChoiceToggle, onChoiceOptionSet, onEdit, weekDates, history, customTasks, newTask, setNewTask, addTask, toggleTask, deleteTask, t, darkMode }) {
+  const editButton = onEdit ? (
+    <button
+      onClick={onEdit}
+      className={`ml-auto p-1.5 ${t.hover} rounded-lg ${t.textMuted} transition`}
+      title="Module-instellingen"
+      aria-label={`Instellingen voor ${mod.name}`}
+    >
+      <Settings className="w-4 h-4" />
+    </button>
+  ) : null;
   const Icon = ICON_OPTIONS[mod.icon] || Sparkles;
   const colorClass = `text-${mod.color}-500`;
 
@@ -1080,6 +1241,7 @@ function ModuleRenderer({ module: mod, data, onChecklistToggle, onChoiceToggle, 
         <div className="flex items-center gap-2 mb-4">
           <Icon className={`w-5 h-5 ${colorClass}`} />
           <h2 className={`font-semibold ${t.textSecondary}`}>{mod.name}</h2>
+          {editButton}
         </div>
         {items.length === 0 ? (
           <p className={`${t.textMuted} text-sm text-center py-4`}>
@@ -1095,6 +1257,7 @@ function ModuleRenderer({ module: mod, data, onChecklistToggle, onChoiceToggle, 
                 color={mod.color}
                 checked={data[item.id] || false}
                 onToggle={() => onChecklistToggle(item.id)}
+                disabled={!editable}
                 t={t}
               />
             ))}
@@ -1112,6 +1275,7 @@ function ModuleRenderer({ module: mod, data, onChecklistToggle, onChoiceToggle, 
         <div className="flex items-center gap-2 mb-4">
           <Icon className={`w-5 h-5 ${colorClass}`} />
           <h2 className={`font-semibold ${t.textSecondary}`}>{mod.name}</h2>
+          {editButton}
         </div>
         {options.length === 0 ? (
           <p className={`${t.textMuted} text-sm text-center py-4`}>
@@ -1126,11 +1290,12 @@ function ModuleRenderer({ module: mod, data, onChecklistToggle, onChoiceToggle, 
                   <button
                     key={opt.id}
                     onClick={() => onChoiceOptionSet(opt.id)}
-                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 ${
+                    disabled={!editable}
+                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 disabled:cursor-not-allowed ${
                       isActive
                         ? `bg-${mod.color}-500 text-white shadow-md`
                         : `${t.cardSecondary} ${t.textMuted}`
-                    }`}
+                    } ${!editable && !isActive ? 'opacity-50' : ''}`}
                   >
                     {isActive && <Check className="w-4 h-4" />}
                     {opt.label}
@@ -1156,34 +1321,40 @@ function ModuleRenderer({ module: mod, data, onChecklistToggle, onChoiceToggle, 
         <div className="flex items-center gap-2 mb-4">
           <Icon className={`w-5 h-5 ${colorClass}`} />
           <h2 className={`font-semibold ${t.textSecondary}`}>{mod.name}</h2>
+          {editButton}
         </div>
         
-        <div className="flex gap-2 mb-3">
-          <input
-            type="text"
-            value={newTask}
-            onChange={(e) => setNewTask(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addTask()}
-            placeholder="Voeg een taak toe..."
-            className={`flex-1 px-3 py-2 ${t.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
-          />
-          <button
-            onClick={addTask}
-            className={`px-3 py-2 bg-${mod.color}-500 hover:bg-${mod.color}-600 text-white rounded-lg transition`}
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-        </div>
+        {editable && (
+          <div className="flex gap-2 mb-3">
+            <input
+              type="text"
+              value={newTask}
+              onChange={(e) => setNewTask(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addTask()}
+              placeholder="Voeg een taak toe..."
+              className={`flex-1 px-3 py-2 ${t.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
+            />
+            <button
+              onClick={addTask}
+              className={`px-3 py-2 bg-${mod.color}-500 hover:bg-${mod.color}-600 text-white rounded-lg transition`}
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         <div className="space-y-2">
           {customTasks.length === 0 ? (
-            <p className={`text-sm ${t.textMuted} text-center py-4`}>Nog geen taken toegevoegd</p>
+            <p className={`text-sm ${t.textMuted} text-center py-4`}>
+              {editable ? 'Nog geen taken toegevoegd' : 'Geen taken op deze dag'}
+            </p>
           ) : (
             customTasks.map(task => (
               <div key={task.id} className={`flex items-center gap-3 p-2 ${t.cardSecondary} rounded-lg group`}>
                 <button
                   onClick={() => toggleTask(task.id)}
-                  className={`w-5 h-5 rounded border-2 flex items-center justify-center transition flex-shrink-0 ${
+                  disabled={!editable}
+                  className={`w-5 h-5 rounded border-2 flex items-center justify-center transition flex-shrink-0 disabled:cursor-not-allowed ${
                     task.done ? `bg-${mod.color}-500 border-${mod.color}-500 check-pop` : 'border-slate-300'
                   }`}
                 >
@@ -1193,12 +1364,14 @@ function ModuleRenderer({ module: mod, data, onChecklistToggle, onChoiceToggle, 
                 <span className={`flex-1 text-sm ${task.done ? `line-through ${t.textMuted}` : t.textSecondary}`}>
                   {task.text}
                 </span>
-                <button
-                  onClick={() => deleteTask(task.id)}
-                  className="opacity-50 sm:opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {editable && (
+                  <button
+                    onClick={() => deleteTask(task.id)}
+                    className="opacity-50 sm:opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             ))
           )}
@@ -1210,11 +1383,12 @@ function ModuleRenderer({ module: mod, data, onChecklistToggle, onChoiceToggle, 
   return null;
 }
 
-function ChecklistItem({ label, icon: Icon, color, checked, onToggle, t }) {
+function ChecklistItem({ label, icon: Icon, color, checked, onToggle, disabled = false, t }) {
   return (
     <button
       onClick={onToggle}
-      className={`w-full flex items-center gap-3 p-3 rounded-lg transition ${
+      disabled={disabled}
+      className={`w-full flex items-center gap-3 p-3 rounded-lg transition disabled:cursor-not-allowed ${
         checked ? t.cardSecondary : t.hover
       }`}
     >
@@ -1261,64 +1435,69 @@ function StreakBadge({ label, days, color, t }) {
 // =============================================
 // WEEK VIEW
 // =============================================
-function WeekView({ modules, history, today, moduleData, weekDates, dayNames, t, darkMode }) {
+function WeekView({ modules, history, today, activeDateKey, moduleData, activeWeekStart, setActiveWeekStart, weekDates, dayNames, onPickDay, t, darkMode }) {
   const enabledNonTaskModules = modules.filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects');
-  
-  const getDayCompletion = (date) => {
-    const data = date === today 
-      ? { moduleData } 
-      : history[date];
-    if (!data?.moduleData) return 0;
-    
-    let total = 0, done = 0;
-    enabledNonTaskModules.forEach(m => {
-      const d = data.moduleData[m.id] || {};
-      if (m.type === 'checklist') {
-        total += m.items.length;
-        done += m.items.filter(i => d[i.id]).length;
-      } else if (m.type === 'choice') {
-        total += 1;
-        done += d.completed ? 1 : 0;
-      } else if (m.type === 'timer') {
-        const goal = m.dailyGoal ?? m.dailyGoalMinutes ?? 0;
-        const tot = d.total ?? d.minutes ?? 0;
-        total += 1;
-        done += goal > 0 && tot >= goal ? 1 : 0;
-      }
-    });
+  const atCurrentWeek = sameDay(activeWeekStart, startOfWeek(new Date()));
 
-    return total > 0 ? (done / total) * 100 : 0;
-  };
+  const dayDataFor = (dateStr) => (
+    dateStr === activeDateKey ? { moduleData } : history[dateStr]
+  );
 
   return (
     <div className={`${t.card} rounded-2xl p-5 shadow-sm slide-in`}>
-      <div className="flex items-center gap-2 mb-4">
-        <TrendingUp className="w-5 h-5 text-blue-500" />
-        <h2 className={`font-semibold ${t.textSecondary}`}>Week overzicht</h2>
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <button
+          onClick={() => setActiveWeekStart(addDays(activeWeekStart, -7))}
+          aria-label="Vorige week"
+          className={`w-9 h-9 rounded-lg flex items-center justify-center ${t.hover} ${t.textSecondary} transition`}
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <div className="flex-1 text-center">
+          <div className="flex items-center justify-center gap-2">
+            <TrendingUp className="w-4 h-4 text-blue-500" />
+            <h2 className={`font-semibold ${t.textSecondary}`}>{formatWeekTitle(activeWeekStart)}</h2>
+          </div>
+          <div className={`text-xs ${t.textMuted}`}>{formatWeekRange(activeWeekStart)}</div>
+        </div>
+        <button
+          onClick={() => setActiveWeekStart(addDays(activeWeekStart, 7))}
+          disabled={atCurrentWeek}
+          aria-label="Volgende week"
+          className={`w-9 h-9 rounded-lg flex items-center justify-center ${t.hover} ${t.textSecondary} transition disabled:opacity-30 disabled:cursor-not-allowed`}
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
       </div>
 
       <div className="grid grid-cols-7 gap-2 mb-6">
         {weekDates.map((date, i) => {
-          const isToday = date === today;
-          const pct = getDayCompletion(date);
-          
+          const isTodayCell = date === today;
+          const dateObj = parseDateKey(date);
+          const future = isFuture(dateObj);
+          const bg = buildDayCellBackground(modules, dayDataFor(date));
+          const dayNum = date.slice(8).replace(/^0/, '');
+
           return (
             <div key={date} className="text-center">
-              <div className={`text-xs font-medium mb-1 ${isToday ? 'text-blue-500' : t.textMuted}`}>
+              <div className={`text-xs font-medium mb-1 ${isTodayCell ? 'text-blue-500' : t.textMuted}`}>
                 {dayNames[i]}
               </div>
-              <div className={`relative h-20 rounded-lg overflow-hidden ${t.progressBg} ${isToday ? 'ring-2 ring-blue-400' : ''}`}>
-                <div 
-                  className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-500 to-blue-300 transition-all duration-700"
-                  style={{ height: `${pct}%` }}
-                />
-                <div className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${pct > 50 ? 'text-white' : t.textSecondary}`}>
-                  {Math.round(pct)}%
-                </div>
-              </div>
-              <div className={`text-xs ${t.textMuted} mt-1`}>
-                {date.slice(8)}
-              </div>
+              <button
+                onClick={() => !future && onPickDay?.(dateObj)}
+                disabled={future}
+                style={bg ? { background: bg } : undefined}
+                className={`relative w-full h-20 rounded-lg overflow-hidden flex items-center justify-center transition ${
+                  bg ? '' : t.progressBg
+                } ${isTodayCell ? 'ring-2 ring-blue-400' : ''} ${
+                  future ? 'opacity-30 cursor-not-allowed' : 'hover:opacity-90'
+                }`}
+                aria-label={`Open ${date}`}
+              >
+                <span className={`text-sm font-bold ${bg ? 'text-white drop-shadow' : t.textSecondary}`}>
+                  {dayNum}
+                </span>
+              </button>
             </div>
           );
         })}
@@ -1332,26 +1511,26 @@ function WeekView({ modules, history, today, moduleData, weekDates, dayNames, t,
           
           if (mod.type === 'checklist') {
             const fullDays = weekDates.filter(d => {
-              const data = d === today ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id];
+              const data = d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id];
               return data && mod.items.every(i => data[i.id]);
             }).length;
-            label = `${mod.name} deze week`;
+            label = mod.name;
             value = `${fullDays} / 7 dagen volledig`;
           } else if (mod.type === 'choice') {
             const days = weekDates.filter(d => {
-              const data = d === today ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id];
+              const data = d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id];
               return data?.completed;
             }).length;
-            label = `${mod.name} deze week`;
+            label = mod.name;
             value = `${days} / 7 dagen`;
-          } else if (mod.type === 'timer') {
+          } else if (mod.type === 'counter') {
             const unit = mod.unit || 'minutes';
             const total = weekDates.reduce((sum, d) => {
-              const data = d === today ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id];
+              const data = d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id];
               return sum + (data?.total ?? data?.minutes ?? 0);
             }, 0);
             const weekMax = mod.weeklyMax ?? mod.weeklyMaxMinutes;
-            label = `${mod.name} deze week`;
+            label = mod.name;
             value = weekMax
               ? `${formatAmount(total, unit)} / ${formatAmount(weekMax, unit)}`
               : formatAmount(total, unit);
@@ -1377,14 +1556,14 @@ function WeekView({ modules, history, today, moduleData, weekDates, dayNames, t,
 // =============================================
 // MONTH VIEW
 // =============================================
-function MonthView({ calendarMonth, setCalendarMonth, history, today, moduleData, modules, t, darkMode, monthNames, dayNames }) {
+function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDateKey, moduleData, modules, onPickDay, t, darkMode, monthNames, dayNames }) {
   const year = calendarMonth.getFullYear();
   const month = calendarMonth.getMonth();
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
   const daysInMonth = lastDay.getDate();
   const startWeekday = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
-  
+
   const cells = [];
   for (let i = 0; i < startWeekday; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) {
@@ -1392,45 +1571,19 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, moduleData
     cells.push(dateStr);
   }
 
-  const enabledNonTaskModules = modules.filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects');
-
-  const getCompletion = (dateStr) => {
-    const data = dateStr === today ? { moduleData } : history[dateStr];
-    if (!data?.moduleData) return 0;
-    
-    let total = 0, done = 0;
-    enabledNonTaskModules.forEach(m => {
-      const d = data.moduleData[m.id] || {};
-      if (m.type === 'checklist') {
-        total += m.items.length;
-        done += m.items.filter(i => d[i.id]).length;
-      } else if (m.type === 'choice') {
-        total += 1;
-        done += d.completed ? 1 : 0;
-      } else if (m.type === 'timer') {
-        const goal = m.dailyGoal ?? m.dailyGoalMinutes ?? 0;
-        const tot = d.total ?? d.minutes ?? 0;
-        total += 1;
-        done += goal > 0 && tot >= goal ? 1 : 0;
-      }
-    });
-
-    return total > 0 ? done / total : 0;
-  };
-
-  const getColor = (pct) => {
-    if (pct === 0) return darkMode ? 'bg-slate-700' : 'bg-slate-100';
-    if (pct < 0.4) return darkMode ? 'bg-blue-900/40' : 'bg-blue-100';
-    if (pct < 0.7) return darkMode ? 'bg-blue-700/60' : 'bg-blue-300';
-    if (pct < 1) return darkMode ? 'bg-blue-600' : 'bg-blue-400';
-    return 'bg-blue-500';
-  };
+  const dayDataFor = (dateStr) => (
+    dateStr === activeDateKey ? { moduleData } : history[dateStr]
+  );
 
   const monthDays = cells.filter(c => c !== null);
-  const completedDays = monthDays.filter(d => getCompletion(d) === 1).length;
+  const completedDays = monthDays.filter(d => buildDayCellBackground(modules, dayDataFor(d)) !== null).length;
   const partialDays = monthDays.filter(d => {
-    const c = getCompletion(d);
-    return c > 0 && c < 1;
+    const data = dayDataFor(d);
+    if (!data?.moduleData) return false;
+    if (buildDayCellBackground(modules, data) !== null) return false;
+    // any non-empty status counts as partial
+    return modules.some(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects' &&
+      moduleStatusForDay(m, data) !== 'none');
   }).length;
 
   return (
@@ -1454,32 +1607,34 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, moduleData
       <div className="grid grid-cols-7 gap-1 mb-4">
         {cells.map((dateStr, i) => {
           if (!dateStr) return <div key={i} />;
-          const pct = getCompletion(dateStr);
           const day = parseInt(dateStr.slice(8));
-          const isToday = dateStr === today;
-          
+          const isTodayCell = dateStr === today;
+          const dateObj = parseDateKey(dateStr);
+          const future = isFuture(dateObj);
+          const bg = buildDayCellBackground(modules, dayDataFor(dateStr));
+
           return (
-            <div
+            <button
               key={dateStr}
-              className={`aspect-square rounded-md ${getColor(pct)} flex items-center justify-center text-xs font-medium transition-all hover:scale-110 ${
-                isToday ? 'ring-2 ring-blue-500' : ''
-              } ${pct > 0.5 ? 'text-white' : t.textSecondary}`}
+              onClick={() => !future && onPickDay?.(dateObj)}
+              disabled={future}
+              style={bg ? { background: bg } : undefined}
+              className={`aspect-square rounded-md flex items-center justify-center text-xs font-medium transition-all ${
+                bg ? '' : (darkMode ? 'bg-slate-700' : 'bg-slate-100')
+              } ${isTodayCell ? 'ring-2 ring-blue-500' : ''} ${
+                future ? 'opacity-30 cursor-not-allowed' : 'hover:scale-110'
+              }`}
+              aria-label={`Open ${dateStr}`}
             >
-              {day}
-            </div>
+              <span className={bg ? 'text-white drop-shadow' : t.textSecondary}>{day}</span>
+            </button>
           );
         })}
       </div>
 
-      <div className={`flex items-center gap-2 text-xs ${t.textMuted} mb-4`}>
-        <span>Minder</span>
-        <div className={`w-4 h-4 rounded ${darkMode ? 'bg-slate-700' : 'bg-slate-100'}`} />
-        <div className={`w-4 h-4 rounded ${darkMode ? 'bg-blue-900/40' : 'bg-blue-100'}`} />
-        <div className={`w-4 h-4 rounded ${darkMode ? 'bg-blue-700/60' : 'bg-blue-300'}`} />
-        <div className={`w-4 h-4 rounded ${darkMode ? 'bg-blue-600' : 'bg-blue-400'}`} />
-        <div className="w-4 h-4 rounded bg-blue-500" />
-        <span>Meer</span>
-      </div>
+      <p className={`text-xs ${t.textMuted} mb-4 text-center`}>
+        Klik op een dag om te bekijken
+      </p>
 
       <div className={`grid grid-cols-2 gap-2 pt-4 border-t ${t.border}`}>
         <div className={`${darkMode ? 'bg-green-900/20' : 'bg-green-50'} p-3 rounded-lg text-center`}>
@@ -1583,31 +1738,8 @@ function ReflectionView({ reflectionQuestions, reflectionAnswers, setReflectionA
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, t, dayNames }) {
+function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, t, dayNames, setEditingModule }) {
   const [activeTab, setActiveTab] = useState('modules');
-  const [editingModule, setEditingModule] = useState(null);
-
-  if (editingModule) {
-    return (
-      <ModuleEditor
-        module={editingModule}
-        onSave={(updated) => {
-          setModules(prev => {
-            const exists = prev.find(m => m.id === updated.id);
-            if (exists) return prev.map(m => m.id === updated.id ? updated : m);
-            return [...prev, updated];
-          });
-          setEditingModule(null);
-        }}
-        onCancel={() => setEditingModule(null)}
-        onDelete={(id) => {
-          setModules(prev => prev.filter(m => m.id !== id));
-          setEditingModule(null);
-        }}
-        t={t}
-      />
-    );
-  }
 
   return (
     <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4 overflow-y-auto">
@@ -1665,7 +1797,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                       <div className={`text-xs ${t.textMuted}`}>
                         {mod.type === 'checklist' && `Checklist · ${mod.items.length} items`}
                         {mod.type === 'choice' && 'Keuze + voltooien'}
-                        {mod.type === 'timer' && `Counter · ${formatAmount(mod.dailyGoal ?? mod.dailyGoalMinutes ?? 0, mod.unit || 'minutes')} doel`}
+                        {mod.type === 'counter' && `Counter · ${formatAmount(mod.dailyGoal ?? mod.dailyGoalMinutes ?? 0, mod.unit || 'minutes')} doel`}
                         {mod.type === 'tasks' && 'Eigen takenlijst'}
                       </div>
                     </div>
@@ -1695,27 +1827,6 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
             >
               <Plus className="w-4 h-4" />
               Nieuwe module toevoegen
-            </button>
-
-            <button
-              onClick={() => setEditingModule({
-                id: `mod_${Date.now()}`,
-                name: 'Drinken',
-                icon: 'GlassWater',
-                color: 'blue',
-                enabled: true,
-                countInStreak: false,
-                type: 'timer',
-                unit: 'ml',
-                dailyGoal: 2000,
-                presets: [250, 500, 750],
-                categoriesEnabled: false,
-                categories: ['Water', 'Thee', 'Koffie', 'Frisdrank'],
-              })}
-              className="w-full mt-2 py-3 border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-sm font-medium text-slate-500 hover:text-blue-500 transition flex items-center justify-center gap-2"
-            >
-              <GlassWater className="w-4 h-4" />
-              Drink-tracker toevoegen
             </button>
 
             <button
@@ -1802,7 +1913,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                         </div>
                       )}
 
-                      {isActive && mod.type === 'timer' && (mod.unit || 'minutes') === 'minutes' && (
+                      {isActive && mod.type === 'counter' && (mod.unit || 'minutes') === 'minutes' && (
                         <div>
                           <label className={`text-xs ${t.textMuted} mb-2 block`}>Min. minuten per dag</label>
                           <div className="flex gap-1">
@@ -1824,7 +1935,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                         </div>
                       )}
 
-                      {isActive && mod.type === 'timer' && (mod.unit || 'minutes') !== 'minutes' && (
+                      {isActive && mod.type === 'counter' && (mod.unit || 'minutes') !== 'minutes' && (
                         <p className={`text-xs ${t.textMuted}`}>
                           Streak telt zodra je het dagdoel ({formatAmount(mod.dailyGoal ?? 0, mod.unit)}) haalt.
                         </p>
@@ -1878,6 +1989,59 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                 <Moon className="w-4 h-4" /> Donker
               </button>
             </div>
+
+            <div className={`mt-6 pt-6 border-t ${t.border}`}>
+              <h3 className={`font-semibold ${t.textSecondary} mb-3`}>Geluiden</h3>
+
+              <label className={`flex items-center justify-between p-3 ${t.cardSecondary} rounded-lg mb-3`}>
+                <span className={`text-sm font-medium ${t.textSecondary}`}>Geluidseffecten</span>
+                <input
+                  type="checkbox"
+                  checked={soundEnabled}
+                  onChange={(e) => setSoundEnabled(e.target.checked)}
+                  className="w-4 h-4 cursor-pointer"
+                />
+              </label>
+
+              <div className={`flex items-center gap-3 p-3 ${t.cardSecondary} rounded-lg mb-3 ${!soundEnabled ? 'opacity-40' : ''}`}>
+                <span className={`text-sm font-medium ${t.textSecondary} min-w-[60px]`}>Volume</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={soundVolume}
+                  onChange={(e) => setSoundVolume(parseInt(e.target.value, 10))}
+                  disabled={!soundEnabled}
+                  className="flex-1"
+                />
+                <span className={`text-sm ${t.textMuted} min-w-[40px] text-right`}>{soundVolume}%</span>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => playSound('tick', { enabled: true, volume: soundVolume })}
+                  className={`flex-1 py-2 ${t.cardSecondary} ${t.hover} ${t.textSecondary} rounded-lg text-xs font-medium transition`}
+                >
+                  Test tick
+                </button>
+                <button
+                  onClick={() => playSound('pop', { enabled: true, volume: soundVolume })}
+                  className={`flex-1 py-2 ${t.cardSecondary} ${t.hover} ${t.textSecondary} rounded-lg text-xs font-medium transition`}
+                >
+                  Test pop
+                </button>
+                <button
+                  onClick={() => playSound('chime', { enabled: true, volume: soundVolume })}
+                  className={`flex-1 py-2 ${t.cardSecondary} ${t.hover} ${t.textSecondary} rounded-lg text-xs font-medium transition`}
+                >
+                  Test chime
+                </button>
+              </div>
+
+              <p className={`text-xs ${t.textMuted} mt-3`}>
+                Korte tonen bij afvinken, voltooien van een module en counter-acties.
+              </p>
+            </div>
           </div>
         )}
       </div>
@@ -1888,9 +2052,24 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
 // =============================================
 // MODULE EDITOR
 // =============================================
+const TYPE_OPTIONS = [
+  { id: 'checklist', label: 'Checklist', desc: 'Lijst met items' },
+  { id: 'choice', label: 'Keuze', desc: 'Optie + voltooien' },
+  { id: 'counter', label: 'Teller', desc: 'Aantal bijhouden tegen een dagdoel' },
+  { id: 'tasks', label: 'Taken', desc: 'Vrije takenlijst' },
+  { id: 'projects', label: 'Project', desc: 'Vakken & subdoelen' },
+];
+
+function genId(prefix) {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
 function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
   const [editing, setEditing] = useState(mod);
   const [newItem, setNewItem] = useState('');
+  const isNew = !mod.name;
+  const [step, setStep] = useState(isNew ? 'type' : 'config');
+  const [presetTab, setPresetTab] = useState('suggestions');
 
   const update = (key, value) => setEditing(prev => ({ ...prev, [key]: value }));
 
@@ -1911,21 +2090,164 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
     }));
   };
 
-  const isNew = !mod.name;
+  const selectType = (typeId) => {
+    setEditing(prev => ({
+      ...prev,
+      type: typeId,
+      ...(typeId === 'projects' && !prev.subjects ? { subjects: [] } : {}),
+      ...(typeId === 'counter' && prev.unit === undefined ? {
+        unit: 'minutes',
+        dailyGoal: prev.dailyGoalMinutes ?? 30,
+        weeklyMax: prev.weeklyMaxMinutes,
+        presets: [],
+        categoriesEnabled: false,
+        categories: [],
+      } : {}),
+    }));
+    setStep('preset');
+    setPresetTab('suggestions');
+  };
+
+  const applyPreset = (preset) => {
+    setEditing(prev => {
+      const merged = { ...prev, ...preset };
+      if (preset.items) {
+        merged.items = preset.items.map(label => ({ id: genId('items'), label }));
+      }
+      if (preset.options) {
+        merged.options = preset.options.map(label => ({ id: genId('options'), label }));
+      }
+      return merged;
+    });
+    setStep('config');
+  };
+
+  const startBlank = () => setStep('config');
+
   const canSave = editing.name && editing.name.trim();
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className={`${t.card} rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto my-4`}>
         <div className="flex items-center justify-between mb-6">
-          <h2 className={`text-xl font-bold ${t.text}`}>
-            {isNew ? 'Nieuwe module' : 'Bewerk module'}
-          </h2>
+          <div className="flex items-center gap-2">
+            {isNew && step !== 'type' && (
+              <button
+                onClick={() => setStep(step === 'config' ? 'preset' : 'type')}
+                className={`p-1.5 ${t.hover} rounded-lg ${t.textMuted}`}
+                aria-label="Terug"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            )}
+            <h2 className={`text-xl font-bold ${t.text}`}>
+              {!isNew && 'Bewerk module'}
+              {isNew && step === 'type' && 'Nieuwe module — kies type'}
+              {isNew && step === 'preset' && 'Kies een suggestie'}
+              {isNew && step === 'config' && 'Module aanpassen'}
+            </h2>
+          </div>
           <button onClick={onCancel} className={`p-2 ${t.hover} rounded-lg`}>
             <X className={`w-5 h-5 ${t.textSecondary}`} />
           </button>
         </div>
 
+        {step === 'type' && (
+          <div className="space-y-4">
+            <p className={`text-sm ${t.textMuted}`}>
+              Wat voor module wil je toevoegen?
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {TYPE_OPTIONS.map(typ => (
+                <button
+                  key={typ.id}
+                  onClick={() => selectType(typ.id)}
+                  className={`p-3 rounded-lg text-left transition ${t.cardSecondary} ${t.textSecondary} hover:bg-blue-500 hover:text-white`}
+                >
+                  <div className="font-medium text-sm">{typ.label}</div>
+                  <div className={`text-xs ${t.textMuted}`}>{typ.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 'preset' && (
+          <div className="space-y-4">
+            <div className={`flex gap-1 p-1 ${t.cardSecondary} rounded-lg`}>
+              <button
+                onClick={() => setPresetTab('suggestions')}
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition ${
+                  presetTab === 'suggestions' ? `${t.card} ${t.textSecondary} shadow-sm` : t.textMuted
+                }`}
+              >
+                Suggesties
+              </button>
+              <button
+                onClick={() => setPresetTab('blank')}
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition ${
+                  presetTab === 'blank' ? `${t.card} ${t.textSecondary} shadow-sm` : t.textMuted
+                }`}
+              >
+                Zelf maken
+              </button>
+            </div>
+
+            {presetTab === 'suggestions' && (
+              <div className="space-y-2">
+                {(MODULE_PRESETS[editing.type] || []).map((preset, idx) => {
+                  const PresetIcon = ICON_OPTIONS[preset.icon] || Sparkles;
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => applyPreset(preset)}
+                      className={`w-full flex items-center gap-3 p-3 ${t.cardSecondary} rounded-lg text-left ${t.hover} transition`}
+                    >
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center bg-${preset.color}-100 dark:bg-${preset.color}-900/30 text-${preset.color}-500`}>
+                        <PresetIcon className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className={`text-sm font-medium ${t.textSecondary}`}>{preset.name}</div>
+                        {preset.unit && (
+                          <div className={`text-xs ${t.textMuted}`}>
+                            Doel: {formatAmount(preset.dailyGoal, preset.unit)}
+                          </div>
+                        )}
+                        {preset.items && (
+                          <div className={`text-xs ${t.textMuted}`}>{preset.items.length} items</div>
+                        )}
+                        {preset.options && (
+                          <div className={`text-xs ${t.textMuted}`}>{preset.options.length} opties</div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+                {(!MODULE_PRESETS[editing.type] || MODULE_PRESETS[editing.type].length === 0) && (
+                  <p className={`text-sm ${t.textMuted} text-center py-4`}>
+                    Geen suggesties beschikbaar voor dit type. Kies "Zelf maken".
+                  </p>
+                )}
+              </div>
+            )}
+
+            {presetTab === 'blank' && (
+              <div className={`p-4 ${t.cardSecondary} rounded-lg text-center space-y-3`}>
+                <p className={`text-sm ${t.textSecondary}`}>
+                  Begin met een lege module en vul alles zelf in.
+                </p>
+                <button
+                  onClick={startBlank}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition"
+                >
+                  Lege module maken
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {step === 'config' && (
         <div className="space-y-4">
           <div>
             <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>Naam</label>
@@ -1936,44 +2258,6 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
               placeholder="Bijv. Meditatie, Lezen, Water drinken..."
               className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300`}
             />
-          </div>
-
-          <div>
-            <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>Type</label>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { id: 'checklist', label: 'Checklist', desc: 'Lijst met items' },
-                { id: 'choice', label: 'Keuze', desc: 'Optie + voltooien' },
-                { id: 'timer', label: 'Timer', desc: 'Minuten bijhouden' },
-                { id: 'tasks', label: 'Taken', desc: 'Vrije takenlijst' },
-                { id: 'projects', label: 'Project', desc: 'Vakken & subdoelen' },
-              ].map(typ => (
-                <button
-                  key={typ.id}
-                  onClick={() => setEditing(prev => ({
-                    ...prev,
-                    type: typ.id,
-                    ...(typ.id === 'projects' && !prev.subjects ? { subjects: [] } : {}),
-                    ...(typ.id === 'timer' && prev.unit === undefined ? {
-                      unit: 'minutes',
-                      dailyGoal: prev.dailyGoalMinutes ?? 30,
-                      weeklyMax: prev.weeklyMaxMinutes,
-                      presets: [],
-                      categoriesEnabled: false,
-                      categories: [],
-                    } : {}),
-                  }))}
-                  className={`p-3 rounded-lg text-left transition ${
-                    editing.type === typ.id ? 'bg-blue-500 text-white' : `${t.cardSecondary} ${t.textSecondary}`
-                  }`}
-                >
-                  <div className="font-medium text-sm">{typ.label}</div>
-                  <div className={`text-xs ${editing.type === typ.id ? 'text-blue-100' : t.textMuted}`}>
-                    {typ.desc}
-                  </div>
-                </button>
-              ))}
-            </div>
           </div>
 
           <div>
@@ -2075,7 +2359,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
             </div>
           )}
 
-          {editing.type === 'timer' && (() => {
+          {editing.type === 'counter' && (() => {
             const unit = editing.unit || 'minutes';
             const isMinutes = unit === 'minutes';
             const dailyGoal = editing.dailyGoal ?? editing.dailyGoalMinutes ?? 0;
@@ -2236,30 +2520,33 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
             );
           })()}
         </div>
+        )}
 
-        <div className="flex gap-2 mt-6">
-          {!isNew && (
+        {step === 'config' && (
+          <div className="flex gap-2 mt-6">
+            {!isNew && (
+              <button
+                onClick={() => onDelete(editing.id)}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
             <button
-              onClick={() => onDelete(editing.id)}
-              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition"
+              onClick={onCancel}
+              className={`px-4 py-2 ${t.cardSecondary} ${t.textSecondary} rounded-lg text-sm font-medium transition`}
             >
-              <Trash2 className="w-4 h-4" />
+              Annuleren
             </button>
-          )}
-          <button
-            onClick={onCancel}
-            className={`px-4 py-2 ${t.cardSecondary} ${t.textSecondary} rounded-lg text-sm font-medium transition`}
-          >
-            Annuleren
-          </button>
-          <button
-            onClick={() => canSave && onSave(editing)}
-            disabled={!canSave}
-            className="flex-1 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-slate-300 text-white rounded-lg text-sm font-medium transition"
-          >
-            Opslaan
-          </button>
-        </div>
+            <button
+              onClick={() => canSave && onSave(editing)}
+              disabled={!canSave}
+              className="flex-1 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-slate-300 text-white rounded-lg text-sm font-medium transition"
+            >
+              Opslaan
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

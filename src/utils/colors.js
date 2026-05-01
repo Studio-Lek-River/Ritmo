@@ -8,9 +8,32 @@
 // Pass `undefined`/unknown key for a neutral zinc fallback.
 
 const KNOWN_COLORS = new Set([
-  'amber', 'cyan', 'purple', 'green', 'indigo',
-  'pink', 'blue', 'orange', 'rose', 'teal',
+  'red', 'orange', 'amber', 'yellow', 'green', 'teal', 'cyan',
+  'blue', 'indigo', 'purple', 'pink',
+  'rose',
 ]);
+
+// Tailwind 500-stop hex values, matched to the `bg-${key}-500` choice in
+// getColorClasses. Used for inline-style backgrounds (gradients) where
+// dynamic Tailwind classes can't be applied.
+const COLOR_HEX = {
+  red: '#ef4444',
+  orange: '#f97316',
+  amber: '#f59e0b',
+  yellow: '#eab308',
+  green: '#22c55e',
+  teal: '#14b8a6',
+  cyan: '#06b6d4',
+  blue: '#3b82f6',
+  indigo: '#6366f1',
+  purple: '#a855f7',
+  pink: '#ec4899',
+  rose: '#f43f5e',
+};
+
+export function getColorHex(colorKey) {
+  return COLOR_HEX[colorKey] || '#71717a';
+}
 
 export function getColorClasses(colorKey) {
   if (!colorKey || !KNOWN_COLORS.has(colorKey)) {
