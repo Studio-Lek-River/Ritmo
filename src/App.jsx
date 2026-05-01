@@ -1,12 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Check, Sun, Moon, Activity, Briefcase, Footprints, Plus, Trash2, TrendingUp, Calendar, AlertCircle, Sparkles, Flame, Settings, BookOpen, ChevronLeft, ChevronRight, X, Repeat, Trophy, GripVertical, Heart, Coffee, Book, Music, Dumbbell, Zap, Smile, Brain, Cloud, Star, Target, Edit3, Eye, EyeOff, GraduationCap, Clock } from 'lucide-react';
+import {
+  Check, Sun, Moon, Activity, Briefcase, Footprints, Plus, Trash2, TrendingUp, Calendar, AlertCircle, Sparkles, Flame, Settings, BookOpen, ChevronLeft, ChevronRight, X, Repeat, Trophy, GripVertical, Heart, Coffee, Book, Music, Dumbbell, Zap, Smile, Brain, Cloud, Star, Target, Edit3, Eye, EyeOff, GraduationCap, Clock, GlassWater, Droplet,
+  AlarmClock, BadgeEuro, BrushCleaning, Castle, CookingPot, Drill, Fuel, Hospital, Panda, Plane, Rabbit, ShoppingCart, Toilet, TrainFront, WashingMachine
+} from 'lucide-react';
 import './storage';
 import ProjectsModule from './modules/ProjectsModule';
+import CounterModule from './modules/CounterModule';
 import ProjectsView from './views/ProjectsView';
+import { migrateModuleConfig, migrateDayModuleData } from './utils/migrate';
+import { formatAmount } from './utils/format';
 
 // Available icons for modules
 const ICON_OPTIONS = {
-  Sun, Moon, Activity, Briefcase, Footprints, Sparkles, Heart, Coffee, Book, Music, Dumbbell, Zap, Smile, Brain, Cloud, Star, Target, Check, BookOpen, GraduationCap
+  Sun, Moon, Activity, Briefcase, Footprints, Sparkles, Heart, Coffee, Book, Music, Dumbbell, Zap, Smile, Brain, Cloud, Star, Target, Check, BookOpen, GraduationCap, GlassWater, Droplet,
+  Panda, Rabbit, Castle,
+  Hospital, AlarmClock,
+  WashingMachine, CookingPot, BrushCleaning, Toilet,
+  Drill, BadgeEuro, ShoppingCart,
+  Plane, TrainFront, Fuel
 };
 
 const COLOR_OPTIONS = ['amber', 'cyan', 'purple', 'green', 'indigo', 'pink', 'blue', 'orange', 'rose', 'teal'];
@@ -61,6 +72,12 @@ const DEFAULT_MODULES = [
     enabled: true,
     countInStreak: false,
     type: 'timer',
+    unit: 'minutes',
+    dailyGoal: 120,
+    weeklyMax: 360,
+    presets: [],
+    categoriesEnabled: false,
+    categories: [],
     dailyGoalMinutes: 120,
     weeklyMaxMinutes: 360,
   },
@@ -122,25 +139,20 @@ export default function Ritmo() {
   // Load all data
   useEffect(() => {
     async function loadData() {
-      try {
-        const result = await window.storage.get(`day:${today}`);
-        if (result?.value) {
-          const data = JSON.parse(result.value);
-          setModuleData(data.moduleData || {});
-          setCustomTasks(data.customTasks || []);
-          setReflectionAnswers(data.reflectionAnswers || {});
-        }
-      } catch (e) {}
-      
+      let loadedModules = null;
+
       try {
         const settingsResult = await window.storage.get('settings');
         if (settingsResult?.value) {
           const settings = JSON.parse(settingsResult.value);
+          if (settings.modules) {
+            loadedModules = settings.modules.map(migrateModuleConfig);
+          }
           if (settings.darkMode !== undefined) setDarkMode(settings.darkMode);
           if (settings.reflectionQuestions) setReflectionQuestions(settings.reflectionQuestions);
           if (settings.recurringTasks) setRecurringTasks(settings.recurringTasks);
           if (settings.streakSettings) setStreakSettings(settings.streakSettings);
-          if (settings.modules) setModules(settings.modules);
+          if (loadedModules) setModules(loadedModules);
           if (settings.hasOnboarded !== undefined) setHasOnboarded(settings.hasOnboarded);
         } else {
           setHasOnboarded(false);
@@ -148,7 +160,27 @@ export default function Ritmo() {
       } catch {
         setHasOnboarded(false);
       }
-      
+
+      const migrateDayData = (raw) => {
+        if (!raw?.moduleData || !loadedModules) return raw;
+        const migrated = {};
+        for (const [id, md] of Object.entries(raw.moduleData)) {
+          const cfg = loadedModules.find(m => m.id === id);
+          migrated[id] = migrateDayModuleData(md, cfg);
+        }
+        return { ...raw, moduleData: migrated };
+      };
+
+      try {
+        const result = await window.storage.get(`day:${today}`);
+        if (result?.value) {
+          const data = migrateDayData(JSON.parse(result.value));
+          setModuleData(data.moduleData || {});
+          setCustomTasks(data.customTasks || []);
+          setReflectionAnswers(data.reflectionAnswers || {});
+        }
+      } catch (e) {}
+
       try {
         const keys = await window.storage.list('day:');
         if (keys?.keys) {
@@ -158,14 +190,14 @@ export default function Ritmo() {
               const r = await window.storage.get(key);
               if (r?.value) {
                 const date = key.replace('day:', '');
-                allHistory[date] = JSON.parse(r.value);
+                allHistory[date] = migrateDayData(JSON.parse(r.value));
               }
             } catch {}
           }
           setHistory(allHistory);
         }
       } catch {}
-      
+
       setLoading(false);
     }
     loadData();
@@ -263,11 +295,13 @@ export default function Ritmo() {
         return sum + (data.completed ? 1 : 0);
       }
       if (m.type === 'timer') {
-        return sum + ((data.minutes || 0) >= m.dailyGoalMinutes ? 1 : 0);
+        const goal = m.dailyGoal ?? m.dailyGoalMinutes ?? 0;
+        const tot = data.total ?? data.minutes ?? 0;
+        return sum + (goal > 0 && tot >= goal ? 1 : 0);
       }
       return sum;
     }, 0);
-    
+
     if (previousCompletionRef.current !== null && totalItems > 0) {
       if (completed === totalItems && previousCompletionRef.current < totalItems) {
         triggerCelebration('🎉 Alle modules voltooid!');
@@ -309,25 +343,82 @@ export default function Ritmo() {
     });
   };
 
-  const addWorkMinutes = (moduleId, mins) => {
-    const currentMinutes = moduleData[moduleId]?.minutes || 0;
-    const newMinutes = currentMinutes + mins;
+  const incrementCounter = (moduleId, amount) => {
     const mod = modules.find(m => m.id === moduleId);
-    
+    const currentTotal = moduleData[moduleId]?.total ?? moduleData[moduleId]?.minutes ?? 0;
+    const newTotal = currentTotal + amount;
+    const goal = mod?.dailyGoal ?? mod?.dailyGoalMinutes ?? 0;
+
     updateModuleData(moduleId, prev => ({
       ...prev,
-      minutes: newMinutes
+      total: newTotal,
+      minutes: newTotal,
     }));
-    
-    if (mod && currentMinutes < mod.dailyGoalMinutes && newMinutes >= mod.dailyGoalMinutes) {
+
+    if (mod && goal > 0 && currentTotal < goal && newTotal >= goal) {
       triggerCelebration(`💪 ${mod.name} doel gehaald!`);
     }
   };
 
-  const resetWorkMinutes = (moduleId) => {
+  const resetCounter = (moduleId) => {
     updateModuleData(moduleId, prev => ({
       ...prev,
-      minutes: 0
+      total: 0,
+      minutes: 0,
+      entries: [],
+    }));
+  };
+
+  const addCounterEntry = (moduleId, amount, category) => {
+    if (!amount || amount <= 0) return;
+    const mod = modules.find(m => m.id === moduleId);
+    const goal = mod?.dailyGoal ?? 0;
+    const now = new Date();
+    const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const entry = {
+      id: `e_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      amount,
+      category: category ?? null,
+      time,
+    };
+
+    let crossedGoal = false;
+    updateModuleData(moduleId, prev => {
+      const prevTotal = prev.total ?? prev.minutes ?? 0;
+      const newTotal = prevTotal + amount;
+      if (goal > 0 && prevTotal < goal && newTotal >= goal) crossedGoal = true;
+      return {
+        ...prev,
+        total: newTotal,
+        minutes: newTotal,
+        entries: [...(prev.entries || []), entry],
+      };
+    });
+
+    if (crossedGoal && mod) {
+      triggerCelebration(`💪 ${mod.name} doel gehaald!`);
+    }
+  };
+
+  const removeCounterEntry = (moduleId, entryId) => {
+    updateModuleData(moduleId, prev => {
+      const entries = prev.entries || [];
+      const entry = entries.find(e => e.id === entryId);
+      if (!entry) return prev;
+      const newTotal = Math.max(0, (prev.total ?? 0) - entry.amount);
+      return {
+        ...prev,
+        total: newTotal,
+        minutes: newTotal,
+        entries: entries.filter(e => e.id !== entryId),
+      };
+    });
+  };
+
+  const dismissCounterReminder = (moduleId) => {
+    updateModuleData(moduleId, prev => ({
+      ...prev,
+      reminderShownDate: today,
     }));
   };
 
@@ -385,8 +476,12 @@ export default function Ritmo() {
     }
     
     if (mod.type === 'timer') {
-      const goal = setting.minutesGoal || mod.dailyGoalMinutes;
-      return calculateStreak(d => (d.moduleData?.[mod.id]?.minutes || 0) >= goal);
+      const goal = setting.minutesGoal ?? mod.dailyGoal ?? mod.dailyGoalMinutes ?? 0;
+      return calculateStreak(d => {
+        const md = d.moduleData?.[mod.id];
+        const tot = md?.total ?? md?.minutes ?? 0;
+        return goal > 0 && tot >= goal;
+      });
     }
 
     if (mod.type === 'projects') {
@@ -449,7 +544,11 @@ export default function Ritmo() {
     const data = moduleData[m.id] || {};
     if (m.type === 'checklist') return sum + m.items.filter(i => data[i.id]).length;
     if (m.type === 'choice') return sum + (data.completed ? 1 : 0);
-    if (m.type === 'timer') return sum + ((data.minutes || 0) >= m.dailyGoalMinutes ? 1 : 0);
+    if (m.type === 'timer') {
+      const goal = m.dailyGoal ?? m.dailyGoalMinutes ?? 0;
+      const tot = data.total ?? data.minutes ?? 0;
+      return sum + (goal > 0 && tot >= goal ? 1 : 0);
+    }
     return sum;
   }, 0);
   const overallPercentage = totalCompletionItems > 0 ? (completedItems / totalCompletionItems) * 100 : 0;
@@ -610,16 +709,39 @@ export default function Ritmo() {
             )}
 
             {/* Render each enabled module */}
-            {enabledModules.map(mod => (
-              mod.type === 'projects' ? (
-                <ProjectsModule
-                  key={mod.id}
-                  module={mod}
-                  Icon={ICON_OPTIONS[mod.icon] || Sparkles}
-                  onOpen={(id) => { setSelectedProjectId(id); setView('projects'); }}
-                  t={t}
-                />
-              ) : (
+            {enabledModules.map(mod => {
+              if (mod.type === 'projects') {
+                return (
+                  <ProjectsModule
+                    key={mod.id}
+                    module={mod}
+                    Icon={ICON_OPTIONS[mod.icon] || Sparkles}
+                    onOpen={(id) => { setSelectedProjectId(id); setView('projects'); }}
+                    t={t}
+                  />
+                );
+              }
+              if (mod.type === 'timer') {
+                return (
+                  <CounterModule
+                    key={mod.id}
+                    module={mod}
+                    Icon={ICON_OPTIONS[mod.icon] || Sparkles}
+                    data={moduleData[mod.id] || {}}
+                    weekDates={weekDates}
+                    history={history}
+                    today={today}
+                    onIncrementCounter={(amount) => incrementCounter(mod.id, amount)}
+                    onResetCounter={() => resetCounter(mod.id)}
+                    onAddEntry={(amount, category) => addCounterEntry(mod.id, amount, category)}
+                    onRemoveEntry={(entryId) => removeCounterEntry(mod.id, entryId)}
+                    onDismissReminder={() => dismissCounterReminder(mod.id)}
+                    t={t}
+                    darkMode={darkMode}
+                  />
+                );
+              }
+              return (
                 <ModuleRenderer
                   key={mod.id}
                   module={mod}
@@ -627,8 +749,6 @@ export default function Ritmo() {
                   onChecklistToggle={(itemId) => toggleChecklistItem(mod.id, itemId)}
                   onChoiceToggle={() => toggleChoice(mod.id)}
                   onChoiceOptionSet={(optId) => setChoiceOption(mod.id, optId)}
-                  onAddMinutes={(mins) => addWorkMinutes(mod.id, mins)}
-                  onResetMinutes={() => resetWorkMinutes(mod.id)}
                   history={history}
                   weekDates={weekDates}
                   customTasks={customTasks}
@@ -640,8 +760,8 @@ export default function Ritmo() {
                   t={t}
                   darkMode={darkMode}
                 />
-              )
-            ))}
+              );
+            })}
 
             {enabledModules.length === 0 && (
               <div className={`${t.card} rounded-2xl p-8 shadow-sm text-center`}>
@@ -949,7 +1069,7 @@ function Onboarding({ onComplete, t, darkMode, setDarkMode }) {
 // =============================================
 // MODULE RENDERER
 // =============================================
-function ModuleRenderer({ module: mod, data, onChecklistToggle, onChoiceToggle, onChoiceOptionSet, onAddMinutes, onResetMinutes, weekDates, history, customTasks, newTask, setNewTask, addTask, toggleTask, deleteTask, t, darkMode }) {
+function ModuleRenderer({ module: mod, data, onChecklistToggle, onChoiceToggle, onChoiceOptionSet, weekDates, history, customTasks, newTask, setNewTask, addTask, toggleTask, deleteTask, t, darkMode }) {
   const Icon = ICON_OPTIONS[mod.icon] || Sparkles;
   const colorClass = `text-${mod.color}-500`;
 
@@ -1029,77 +1149,6 @@ function ModuleRenderer({ module: mod, data, onChecklistToggle, onChoiceToggle, 
     );
   }
 
-  if (mod.type === 'timer') {
-    const minutes = data.minutes || 0;
-    const goal = mod.dailyGoalMinutes || 120;
-    const weekMinutes = weekDates.reduce((sum, date) => {
-      return sum + (history[date]?.moduleData?.[mod.id]?.minutes || 0);
-    }, 0);
-    const weekMax = mod.weeklyMaxMinutes;
-    const weekHours = (weekMinutes / 60).toFixed(1);
-    const weekPct = weekMax ? Math.min((weekMinutes / weekMax) * 100, 100) : 0;
-
-    return (
-      <div className={`${t.card} rounded-2xl p-5 shadow-sm mb-4`}>
-        <div className="flex items-center gap-2 mb-4">
-          <Icon className={`w-5 h-5 ${colorClass}`} />
-          <h2 className={`font-semibold ${t.textSecondary}`}>{mod.name}</h2>
-        </div>
-        
-        <div className={`${darkMode ? `bg-${mod.color}-900/30` : `bg-${mod.color}-50`} rounded-xl p-4 mb-3`}>
-          <div className={`text-3xl font-bold ${darkMode ? `text-${mod.color}-300` : `text-${mod.color}-600`} mb-1`}>
-            {(minutes / 60).toFixed(1)} uur
-          </div>
-          <p className={`text-xs ${darkMode ? `text-${mod.color}-400` : `text-${mod.color}-500`}`}>
-            vandaag (doel: {(goal/60).toFixed(1)} uur)
-          </p>
-        </div>
-
-        <div className="grid grid-cols-4 gap-2 mb-3">
-          {[15, 30, 45, 60].map(min => (
-            <button
-              key={min}
-              onClick={() => onAddMinutes(min)}
-              className={`py-2 ${darkMode ? `bg-${mod.color}-900/30 hover:bg-${mod.color}-900/50 text-${mod.color}-300` : `bg-${mod.color}-50 hover:bg-${mod.color}-100 text-${mod.color}-700`} rounded-lg text-sm font-medium transition`}
-            >
-              +{min}m
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={onResetMinutes}
-          className={`w-full py-2 ${t.cardSecondary} ${t.hover} ${t.textMuted} rounded-lg text-sm transition`}
-        >
-          Reset vandaag
-        </button>
-
-        {weekMax && (
-          <div className={`mt-4 pt-4 border-t ${t.border}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className={`text-sm font-medium ${t.textSecondary}`}>Deze week</span>
-              <span className={`text-sm font-bold ${weekMinutes >= weekMax ? 'text-red-500' : weekMinutes >= weekMax * 0.83 ? 'text-amber-500' : 'text-green-600'}`}>
-                {weekHours} / {(weekMax/60).toFixed(0)} uur
-              </span>
-            </div>
-            <div className={`w-full ${t.progressBg} rounded-full h-2`}>
-              <div 
-                className={`h-2 rounded-full transition-all duration-700 ${
-                  weekPct >= 100 ? 'bg-red-500' : weekPct >= 83 ? 'bg-amber-500' : 'bg-green-500'
-                }`}
-                style={{ width: `${weekPct}%` }}
-              />
-            </div>
-            {weekMinutes >= weekMax && (
-              <div className={`flex items-start gap-2 mt-3 p-2 ${darkMode ? 'bg-red-900/30' : 'bg-red-50'} rounded-lg`}>
-                <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-                <p className={`text-xs ${darkMode ? 'text-red-300' : 'text-red-700'}`}>Weeklimiet bereikt!</p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }
 
   if (mod.type === 'tasks') {
     return (
@@ -1231,11 +1280,13 @@ function WeekView({ modules, history, today, moduleData, weekDates, dayNames, t,
         total += 1;
         done += d.completed ? 1 : 0;
       } else if (m.type === 'timer') {
+        const goal = m.dailyGoal ?? m.dailyGoalMinutes ?? 0;
+        const tot = d.total ?? d.minutes ?? 0;
         total += 1;
-        done += (d.minutes || 0) >= m.dailyGoalMinutes ? 1 : 0;
+        done += goal > 0 && tot >= goal ? 1 : 0;
       }
     });
-    
+
     return total > 0 ? (done / total) * 100 : 0;
   };
 
@@ -1294,14 +1345,16 @@ function WeekView({ modules, history, today, moduleData, weekDates, dayNames, t,
             label = `${mod.name} deze week`;
             value = `${days} / 7 dagen`;
           } else if (mod.type === 'timer') {
+            const unit = mod.unit || 'minutes';
             const total = weekDates.reduce((sum, d) => {
               const data = d === today ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id];
-              return sum + (data?.minutes || 0);
+              return sum + (data?.total ?? data?.minutes ?? 0);
             }, 0);
+            const weekMax = mod.weeklyMax ?? mod.weeklyMaxMinutes;
             label = `${mod.name} deze week`;
-            value = mod.weeklyMaxMinutes 
-              ? `${(total/60).toFixed(1)} / ${(mod.weeklyMaxMinutes/60).toFixed(0)} uur`
-              : `${(total/60).toFixed(1)} uur`;
+            value = weekMax
+              ? `${formatAmount(total, unit)} / ${formatAmount(weekMax, unit)}`
+              : formatAmount(total, unit);
           }
           
           return (
@@ -1355,11 +1408,13 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, moduleData
         total += 1;
         done += d.completed ? 1 : 0;
       } else if (m.type === 'timer') {
+        const goal = m.dailyGoal ?? m.dailyGoalMinutes ?? 0;
+        const tot = d.total ?? d.minutes ?? 0;
         total += 1;
-        done += (d.minutes || 0) >= m.dailyGoalMinutes ? 1 : 0;
+        done += goal > 0 && tot >= goal ? 1 : 0;
       }
     });
-    
+
     return total > 0 ? done / total : 0;
   };
 
@@ -1610,7 +1665,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                       <div className={`text-xs ${t.textMuted}`}>
                         {mod.type === 'checklist' && `Checklist · ${mod.items.length} items`}
                         {mod.type === 'choice' && 'Keuze + voltooien'}
-                        {mod.type === 'timer' && `Timer · ${(mod.dailyGoalMinutes/60).toFixed(1)}u doel`}
+                        {mod.type === 'timer' && `Counter · ${formatAmount(mod.dailyGoal ?? mod.dailyGoalMinutes ?? 0, mod.unit || 'minutes')} doel`}
                         {mod.type === 'tasks' && 'Eigen takenlijst'}
                       </div>
                     </div>
@@ -1640,6 +1695,27 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
             >
               <Plus className="w-4 h-4" />
               Nieuwe module toevoegen
+            </button>
+
+            <button
+              onClick={() => setEditingModule({
+                id: `mod_${Date.now()}`,
+                name: 'Drinken',
+                icon: 'GlassWater',
+                color: 'blue',
+                enabled: true,
+                countInStreak: false,
+                type: 'timer',
+                unit: 'ml',
+                dailyGoal: 2000,
+                presets: [250, 500, 750],
+                categoriesEnabled: false,
+                categories: ['Water', 'Thee', 'Koffie', 'Frisdrank'],
+              })}
+              className="w-full mt-2 py-3 border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-sm font-medium text-slate-500 hover:text-blue-500 transition flex items-center justify-center gap-2"
+            >
+              <GlassWater className="w-4 h-4" />
+              Drink-tracker toevoegen
             </button>
 
             <button
@@ -1726,12 +1802,12 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                         </div>
                       )}
 
-                      {isActive && mod.type === 'timer' && (
+                      {isActive && mod.type === 'timer' && (mod.unit || 'minutes') === 'minutes' && (
                         <div>
                           <label className={`text-xs ${t.textMuted} mb-2 block`}>Min. minuten per dag</label>
                           <div className="flex gap-1">
                             {[30, 60, 90, 120, 180, 240].map(min => {
-                              const current = setting.minutesGoal || mod.dailyGoalMinutes;
+                              const current = setting.minutesGoal ?? mod.dailyGoal ?? mod.dailyGoalMinutes;
                               return (
                                 <button
                                   key={min}
@@ -1746,6 +1822,12 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                             })}
                           </div>
                         </div>
+                      )}
+
+                      {isActive && mod.type === 'timer' && (mod.unit || 'minutes') !== 'minutes' && (
+                        <p className={`text-xs ${t.textMuted}`}>
+                          Streak telt zodra je het dagdoel ({formatAmount(mod.dailyGoal ?? 0, mod.unit)}) haalt.
+                        </p>
                       )}
 
                       {isActive && mod.type === 'choice' && (
@@ -1872,6 +1954,14 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
                     ...prev,
                     type: typ.id,
                     ...(typ.id === 'projects' && !prev.subjects ? { subjects: [] } : {}),
+                    ...(typ.id === 'timer' && prev.unit === undefined ? {
+                      unit: 'minutes',
+                      dailyGoal: prev.dailyGoalMinutes ?? 30,
+                      weeklyMax: prev.weeklyMaxMinutes,
+                      presets: [],
+                      categoriesEnabled: false,
+                      categories: [],
+                    } : {}),
                   }))}
                   className={`p-3 rounded-lg text-left transition ${
                     editing.type === typ.id ? 'bg-blue-500 text-white' : `${t.cardSecondary} ${t.textSecondary}`
@@ -1985,33 +2075,166 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
             </div>
           )}
 
-          {editing.type === 'timer' && (
-            <>
-              <div>
-                <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
-                  Dagdoel (minuten)
-                </label>
-                <input
-                  type="number"
-                  value={editing.dailyGoalMinutes || 60}
-                  onChange={(e) => update('dailyGoalMinutes', parseInt(e.target.value) || 0)}
-                  className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
-                />
-              </div>
-              <div>
-                <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
-                  Weekmaximum (minuten, optioneel)
-                </label>
-                <input
-                  type="number"
-                  value={editing.weeklyMaxMinutes || ''}
-                  onChange={(e) => update('weeklyMaxMinutes', e.target.value ? parseInt(e.target.value) : null)}
-                  placeholder="Geen limiet"
-                  className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
-                />
-              </div>
-            </>
-          )}
+          {editing.type === 'timer' && (() => {
+            const unit = editing.unit || 'minutes';
+            const isMinutes = unit === 'minutes';
+            const dailyGoal = editing.dailyGoal ?? editing.dailyGoalMinutes ?? 0;
+            const weeklyMax = editing.weeklyMax ?? editing.weeklyMaxMinutes ?? '';
+            const presetsString = (editing.presets || []).join(', ');
+            const categoriesString = (editing.categories || []).join(', ');
+            const setBoth = (goalKey, legacyKey, parsed) => {
+              setEditing(prev => ({ ...prev, [goalKey]: parsed, [legacyKey]: parsed }));
+            };
+            const updateUnit = (newUnit) => {
+              setEditing(prev => ({ ...prev, unit: newUnit }));
+            };
+            const updatePresets = (str) => {
+              const parsed = str
+                .split(',')
+                .map(s => parseFloat(s.trim()))
+                .filter(n => !isNaN(n) && n > 0);
+              update('presets', parsed);
+            };
+            const updateCategories = (str) => {
+              const parsed = str.split(',').map(s => s.trim()).filter(Boolean);
+              update('categories', parsed);
+            };
+
+            return (
+              <>
+                <div>
+                  <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>Eenheid</label>
+                  <select
+                    value={unit}
+                    onChange={(e) => updateUnit(e.target.value)}
+                    className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+                  >
+                    <option value="minutes">minuten</option>
+                    <option value="ml">ml</option>
+                    <option value="l">l</option>
+                    <option value="glas">glas</option>
+                    <option value="pages">pagina's</option>
+                    <option value="km">km</option>
+                    <option value="kcal">kcal</option>
+                    <option value="reps">reps</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
+                    {isMinutes ? 'Dagdoel (minuten)' : `Dagdoel (in ${unit})`}
+                  </label>
+                  <input
+                    type="number"
+                    value={dailyGoal || ''}
+                    onChange={(e) => setBoth('dailyGoal', 'dailyGoalMinutes', parseFloat(e.target.value) || 0)}
+                    className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+                  />
+                </div>
+
+                <div>
+                  <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
+                    {isMinutes ? 'Weekmaximum (minuten, optioneel)' : `Weekmaximum (in ${unit}, optioneel)`}
+                  </label>
+                  <input
+                    type="number"
+                    value={weeklyMax === null ? '' : weeklyMax}
+                    onChange={(e) => {
+                      const v = e.target.value ? parseFloat(e.target.value) : null;
+                      setBoth('weeklyMax', 'weeklyMaxMinutes', v);
+                    }}
+                    placeholder="Geen limiet"
+                    className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+                  />
+                </div>
+
+                {isMinutes ? (
+                  <details className={`${t.cardSecondary} rounded-lg p-3`}>
+                    <summary className={`text-sm font-medium ${t.textSecondary} cursor-pointer`}>
+                      Geavanceerd
+                    </summary>
+                    <div className="mt-3 space-y-3">
+                      <div>
+                        <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
+                          Snelknop-presets
+                        </label>
+                        <input
+                          type="text"
+                          defaultValue={presetsString}
+                          onBlur={(e) => updatePresets(e.target.value)}
+                          placeholder="Bijv. 15, 30, 60 — laat leeg voor de standaard"
+                          className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+                        />
+                      </div>
+
+                      <label className={`flex items-center gap-2 text-sm ${t.textSecondary}`}>
+                        <input
+                          type="checkbox"
+                          checked={!!editing.categoriesEnabled}
+                          onChange={(e) => update('categoriesEnabled', e.target.checked)}
+                        />
+                        Categorieën gebruiken
+                      </label>
+
+                      {editing.categoriesEnabled && (
+                        <div>
+                          <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
+                            Categorieën
+                          </label>
+                          <input
+                            type="text"
+                            defaultValue={categoriesString}
+                            onBlur={(e) => updateCategories(e.target.value)}
+                            placeholder="Komma-gescheiden, bv. Werk, Studie, Hobby"
+                            className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </details>
+                ) : (
+                  <>
+                    <div>
+                      <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
+                        Snelknop-presets
+                      </label>
+                      <input
+                        type="text"
+                        defaultValue={presetsString}
+                        onBlur={(e) => updatePresets(e.target.value)}
+                        placeholder={`Bijv. 250, 500, 750 — laat leeg voor geen snelknoppen`}
+                        className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+                      />
+                    </div>
+
+                    <label className={`flex items-center gap-2 text-sm ${t.textSecondary}`}>
+                      <input
+                        type="checkbox"
+                        checked={!!editing.categoriesEnabled}
+                        onChange={(e) => update('categoriesEnabled', e.target.checked)}
+                      />
+                      Categorieën gebruiken
+                    </label>
+
+                    {editing.categoriesEnabled && (
+                      <div>
+                        <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
+                          Categorieën
+                        </label>
+                        <input
+                          type="text"
+                          defaultValue={categoriesString}
+                          onBlur={(e) => updateCategories(e.target.value)}
+                          placeholder="Komma-gescheiden, bv. Water, Thee, Koffie"
+                          className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         <div className="flex gap-2 mt-6">
