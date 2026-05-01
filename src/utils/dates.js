@@ -12,8 +12,23 @@ export const MONTHS_NL_SHORT = [
   'jul', 'aug', 'sep', 'okt', 'nov', 'dec',
 ];
 
-const DAYS_NL = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
+export const DAYS_NL = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
 export const DAYS_SHORT_NL = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
+
+// Weekday keys with maandag-eerste volgorde voor module-config (goals per weekdag).
+export const WEEKDAY_KEYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+
+// JS getDay: 0=zondag..6=zaterdag. Map naar onze maandag-eerste keys.
+export function weekdayKeyForDate(date) {
+  const idx = date.getDay();
+  return idx === 0 ? 'sunday' : WEEKDAY_KEYS[idx - 1];
+}
+
+export function previousWeekdayKey(weekdayKey) {
+  const idx = WEEKDAY_KEYS.indexOf(weekdayKey);
+  if (idx < 0) return weekdayKey;
+  return WEEKDAY_KEYS[(idx + 6) % 7];
+}
 
 export function fmtDateKey(date) {
   const y = date.getFullYear();

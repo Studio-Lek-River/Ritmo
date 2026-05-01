@@ -1,23 +1,28 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Check, Sun, Moon, Activity, Briefcase, Footprints, Plus, Trash2, TrendingUp, Calendar, AlertCircle, Sparkles, Flame, Settings, BookOpen, ChevronLeft, ChevronRight, X, Repeat, Trophy, GripVertical, Heart, Coffee, Book, Music, Dumbbell, Zap, Smile, Brain, Cloud, Star, Target, Edit3, Eye, EyeOff, GraduationCap, Clock, GlassWater, Droplet,
-  AlarmClock, BadgeEuro, BrushCleaning, Castle, CookingPot, Drill, Fuel, Hospital, Panda, Plane, Rabbit, ShoppingCart, Toilet, TrainFront, WashingMachine
+  Check, Sun, Moon, Activity, Briefcase, Footprints, Plus, Trash2, TrendingUp, Calendar, AlertCircle, Sparkles, Flame, Settings, BookOpen, ChevronLeft, ChevronRight, X, Repeat, Trophy, GripVertical, Heart, Coffee, Book, Music, Dumbbell, Zap, Smile, Brain, Cloud, Star, Target, Edit3, Eye, EyeOff, GraduationCap, Clock, GlassWater, Droplet, HelpCircle,
+  AlarmClock, BadgeEuro, BedDouble, BrushCleaning, Castle, CookingPot, Drill, Fuel, Hospital, Panda, Plane, Rabbit, ShoppingCart, Toilet, TrainFront, WashingMachine
 } from 'lucide-react';
 import './storage';
 import ProjectsModule from './modules/ProjectsModule';
 import CounterModule from './modules/CounterModule';
+import SleepModule from './modules/SleepModule';
 import ProjectsView from './views/ProjectsView';
 import DayNavigator from './components/DayNavigator';
 import ReadOnlyBanner from './components/ReadOnlyBanner';
-import FeedbackModal from './components/FeedbackModal';
+import HelpOverlay from './components/help/HelpOverlay';
+import InstallGuide from './components/help/InstallGuide';
+import FeedbackForm from './components/help/FeedbackForm';
 import { migrateModuleConfig, migrateDayModuleData } from './utils/migrate';
-import { formatAmount } from './utils/format';
+import { formatAmount, formatDuration } from './utils/format';
 import { MODULE_PRESETS } from './utils/presets';
 import {
   fmtDateKey, parseDateKey, addDays, sameDay, startOfWeek,
   isEditable, isFuture, isToday as isTodayDate,
   formatDayTitle, formatDaySubtitle, formatWeekTitle, formatWeekRange,
+  DAYS_NL, WEEKDAY_KEYS,
 } from './utils/dates';
+import { summarizeSleep } from './utils/sleep';
 import { buildDayCellBackground, moduleStatusForDay } from './utils/dayProgress';
 import { playSound } from './utils/sound';
 
@@ -25,7 +30,7 @@ import { playSound } from './utils/sound';
 const ICON_OPTIONS = {
   Sun, Moon, Activity, Briefcase, Footprints, Sparkles, Heart, Coffee, Book, Music, Dumbbell, Zap, Smile, Brain, Cloud, Star, Target, Check, BookOpen, GraduationCap, GlassWater, Droplet,
   Panda, Rabbit, Castle,
-  Hospital, AlarmClock,
+  Hospital, AlarmClock, BedDouble,
   WashingMachine, CookingPot, BrushCleaning, Toilet,
   Drill, BadgeEuro, ShoppingCart,
   Plane, TrainFront, Fuel
@@ -127,7 +132,6 @@ export default function Ritmo() {
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showFeedback, setShowFeedback] = useState(false);
   const [editingModule, setEditingModule] = useState(null);
   const [hasOnboarded, setHasOnboarded] = useState(true);
   
@@ -373,14 +377,14 @@ export default function Ritmo() {
     modules.forEach(mod => {
       if (!mod.enabled) return;
       if (mod.type === 'tasks' || mod.type === 'projects') return;
-      const newStatus = moduleStatusForDay(mod, dayData);
+      const newStatus = moduleStatusForDay(mod, dayData, activeDate);
       const prevStatus = prevModuleStatusRef.current[mod.id];
       if (prevStatus !== undefined && prevStatus !== 'full' && newStatus === 'full') {
         setTimeout(() => sfx('chime'), 80);
       }
       prevModuleStatusRef.current[mod.id] = newStatus;
     });
-  }, [moduleData, modules, loading, sfx]);
+  }, [moduleData, modules, loading, sfx, activeDate]);
 
   // Module helpers
   const updateModuleData = (moduleId, updater) => {
@@ -807,7 +811,7 @@ export default function Ritmo() {
             {(() => {
               const visibleModules = editable
                 ? enabledModules
-                : enabledModules.filter(m => moduleStatusForDay(m, { moduleData }) !== 'none');
+                : enabledModules.filter(m => moduleStatusForDay(m, { moduleData }, activeDate) !== 'none');
               if (!editable && visibleModules.length === 0) {
                 return (
                   <div className={`${t.card} rounded-2xl p-8 shadow-sm text-center mb-4`}>
@@ -845,6 +849,22 @@ export default function Ritmo() {
                       onAddEntry={(amount, category) => addCounterEntry(mod.id, amount, category)}
                       onRemoveEntry={(entryId) => removeCounterEntry(mod.id, entryId)}
                       onDismissReminder={() => dismissCounterReminder(mod.id)}
+                      onEdit={() => setEditingModule(mod)}
+                      t={t}
+                      darkMode={darkMode}
+                    />
+                  );
+                }
+                if (mod.type === 'sleep') {
+                  return (
+                    <SleepModule
+                      key={mod.id}
+                      module={mod}
+                      Icon={ICON_OPTIONS[mod.icon] || BedDouble}
+                      data={moduleData[mod.id] || {}}
+                      editable={editable}
+                      date={parseDateKey(activeDateKey)}
+                      onUpdate={(updater) => updateModuleData(mod.id, updater)}
                       onEdit={() => setEditingModule(mod)}
                       t={t}
                       darkMode={darkMode}
@@ -1013,12 +1033,7 @@ export default function Ritmo() {
           t={t}
           dayNames={dayNames}
           setEditingModule={setEditingModule}
-          setShowFeedback={setShowFeedback}
         />
-      )}
-
-      {showFeedback && (
-        <FeedbackModal onClose={() => setShowFeedback(false)} t={t} />
       )}
 
       {editingModule && (
@@ -1482,7 +1497,7 @@ function WeekView({ modules, history, today, activeDateKey, moduleData, activeWe
           const isTodayCell = date === today;
           const dateObj = parseDateKey(date);
           const future = isFuture(dateObj);
-          const bg = buildDayCellBackground(modules, dayDataFor(date));
+          const bg = buildDayCellBackground(modules, dayDataFor(date), dateObj);
           const dayNum = date.slice(8).replace(/^0/, '');
 
           return (
@@ -1515,7 +1530,7 @@ function WeekView({ modules, history, today, activeDateKey, moduleData, activeWe
           const Icon = ICON_OPTIONS[mod.icon] || Sparkles;
           let label = '';
           let value = '';
-          
+
           if (mod.type === 'checklist') {
             const fullDays = weekDates.filter(d => {
               const data = d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id];
@@ -1541,8 +1556,19 @@ function WeekView({ modules, history, today, activeDateKey, moduleData, activeWe
             value = weekMax
               ? `${formatAmount(total, unit)} / ${formatAmount(weekMax, unit)}`
               : formatAmount(total, unit);
+          } else if (mod.type === 'sleep') {
+            if (!mod.countInStreak) return null;
+            const days = weekDates.map(d => ({
+              date: parseDateKey(d),
+              dayData: (d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id]) || null,
+            }));
+            const summary = summarizeSleep(days, mod);
+            label = mod.name;
+            value = summary.nightsLogged === 0
+              ? 'Nog geen data'
+              : `${formatDuration(summary.averageDurationMinutes)} · ${summary.nightsOnTarget} / 7 op ritme`;
           }
-          
+
           return (
             <div key={mod.id} className={`flex items-center justify-between p-3 ${darkMode ? `bg-${mod.color}-900/20` : `bg-${mod.color}-50`} rounded-lg`}>
               <div className="flex items-center gap-2">
@@ -1583,14 +1609,15 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDate
   );
 
   const monthDays = cells.filter(c => c !== null);
-  const completedDays = monthDays.filter(d => buildDayCellBackground(modules, dayDataFor(d)) !== null).length;
+  const completedDays = monthDays.filter(d => buildDayCellBackground(modules, dayDataFor(d), parseDateKey(d)) !== null).length;
   const partialDays = monthDays.filter(d => {
     const data = dayDataFor(d);
     if (!data?.moduleData) return false;
-    if (buildDayCellBackground(modules, data) !== null) return false;
+    const dateObj = parseDateKey(d);
+    if (buildDayCellBackground(modules, data, dateObj) !== null) return false;
     // any non-empty status counts as partial
-    return modules.some(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects' &&
-      moduleStatusForDay(m, data) !== 'none');
+    return modules.some(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects' && m.type !== 'sleep' &&
+      moduleStatusForDay(m, data, dateObj) !== 'none');
   }).length;
 
   return (
@@ -1618,7 +1645,7 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDate
           const isTodayCell = dateStr === today;
           const dateObj = parseDateKey(dateStr);
           const future = isFuture(dateObj);
-          const bg = buildDayCellBackground(modules, dayDataFor(dateStr));
+          const bg = buildDayCellBackground(modules, dayDataFor(dateStr), dateObj);
 
           return (
             <button
@@ -1655,6 +1682,29 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDate
           <div className={`text-xs ${t.textMuted}`}>gedeeltelijk</div>
         </div>
       </div>
+
+      {modules.filter(m => m.enabled && m.type === 'sleep' && m.countInStreak === true).map(mod => {
+        const Icon = ICON_OPTIONS[mod.icon] || BedDouble;
+        const days = monthDays.map(d => ({
+          date: parseDateKey(d),
+          dayData: (d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id]) || null,
+        }));
+        const summary = summarizeSleep(days, mod);
+        const value = summary.nightsLogged === 0
+          ? 'Nog geen slaapdata in deze maand'
+          : `${formatDuration(summary.averageDurationMinutes)} · ${summary.nightsOnTarget} / ${monthDays.length} op ritme`;
+        return (
+          <div key={mod.id} className={`mt-3 flex items-center justify-between p-3 ${darkMode ? `bg-${mod.color}-900/20` : `bg-${mod.color}-50`} rounded-lg`}>
+            <div className="flex items-center gap-2">
+              <Icon className={`w-4 h-4 text-${mod.color}-500`} />
+              <span className={`text-sm font-medium ${t.textSecondary}`}>{mod.name}</span>
+            </div>
+            <span className={`font-bold text-sm ${darkMode ? `text-${mod.color}-300` : `text-${mod.color}-600`}`}>
+              {value}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1745,19 +1795,72 @@ function ReflectionView({ reflectionQuestions, reflectionAnswers, setReflectionA
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, t, dayNames, setEditingModule, setShowFeedback }) {
+function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, t, dayNames, setEditingModule }) {
   const [activeTab, setActiveTab] = useState('modules');
+  const [helpView, setHelpView] = useState(null); // null | 'list' | 'install' | 'feedback'
+
+  const helpTitles = {
+    list: 'Help',
+    install: 'App op beginscherm zetten',
+    feedback: 'Feedback geven',
+  };
+
+  const handleBack = () => {
+    if (helpView === 'install' || helpView === 'feedback') {
+      setHelpView('list');
+    } else {
+      setHelpView(null);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4 overflow-y-auto">
       <div className={`${t.card} rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto my-4`}>
         <div className="flex items-center justify-between mb-6">
-          <h2 className={`text-xl font-bold ${t.text}`}>Instellingen</h2>
-          <button onClick={onClose} className={`p-2 ${t.hover} rounded-lg`}>
-            <X className={`w-5 h-5 ${t.textSecondary}`} />
-          </button>
+          <div className="flex items-center gap-2 min-w-0">
+            {helpView !== null && (
+              <button
+                onClick={handleBack}
+                className={`p-2 ${t.hover} rounded-lg`}
+                aria-label="Terug"
+              >
+                <ChevronLeft className={`w-5 h-5 ${t.textSecondary}`} />
+              </button>
+            )}
+            <h2 className={`text-xl font-bold ${t.text} truncate`}>
+              {helpView === null ? 'Instellingen' : helpTitles[helpView]}
+            </h2>
+          </div>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {helpView === null && (
+              <button
+                onClick={() => setHelpView('list')}
+                className={`p-2 ${t.hover} rounded-lg`}
+                aria-label="Help"
+              >
+                <HelpCircle className={`w-5 h-5 ${t.textSecondary}`} />
+              </button>
+            )}
+            <button onClick={onClose} className={`p-2 ${t.hover} rounded-lg`} aria-label="Sluiten">
+              <X className={`w-5 h-5 ${t.textSecondary}`} />
+            </button>
+          </div>
         </div>
 
+        {helpView === 'list' && (
+          <HelpOverlay t={t} onSelect={setHelpView} />
+        )}
+
+        {helpView === 'install' && (
+          <InstallGuide t={t} />
+        )}
+
+        {helpView === 'feedback' && (
+          <FeedbackForm t={t} onBack={() => setHelpView('list')} />
+        )}
+
+        {helpView === null && (
+        <>
         <div className={`flex gap-1 mb-6 ${t.cardSecondary} rounded-xl p-1`}>
           {[
             { id: 'modules', label: 'Modules' },
@@ -2052,22 +2155,8 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
           </div>
         )}
 
-        <div className={`mt-6 pt-6 border-t ${t.border}`}>
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className={`text-sm font-medium ${t.text}`}>Feedback geven</p>
-              <p className={`text-xs ${t.textMuted} mt-0.5`}>
-                Iets niet werkend? Idee voor verbetering?
-              </p>
-            </div>
-            <button
-              onClick={() => { onClose(); setShowFeedback(true); }}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap ${t.cardSecondary} ${t.hover} ${t.textSecondary}`}
-            >
-              Open
-            </button>
-          </div>
-        </div>
+        </>
+        )}
       </div>
     </div>
   );
@@ -2076,12 +2165,23 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
 // =============================================
 // MODULE EDITOR
 // =============================================
+const DEFAULT_SLEEP_GOALS = {
+  monday:    { bed: '23:00', wake: '07:00' },
+  tuesday:   { bed: '23:00', wake: '07:00' },
+  wednesday: { bed: '23:00', wake: '07:00' },
+  thursday:  { bed: '23:00', wake: '07:00' },
+  friday:    { bed: '00:00', wake: '08:30' },
+  saturday:  { bed: '00:00', wake: '09:00' },
+  sunday:    { bed: '23:00', wake: '07:30' },
+};
+
 const TYPE_OPTIONS = [
   { id: 'checklist', label: 'Checklist', desc: 'Lijst met items' },
   { id: 'choice', label: 'Keuze', desc: 'Optie + voltooien' },
   { id: 'counter', label: 'Teller', desc: 'Aantal bijhouden tegen een dagdoel' },
   { id: 'tasks', label: 'Taken', desc: 'Vrije takenlijst' },
   { id: 'projects', label: 'Project', desc: 'Vakken & subdoelen' },
+  { id: 'sleep', label: 'Slaap', desc: 'Bedtijd, opstaan, ochtendscore' },
 ];
 
 function genId(prefix) {
@@ -2126,6 +2226,11 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
         presets: [],
         categoriesEnabled: false,
         categories: [],
+      } : {}),
+      ...(typeId === 'sleep' ? {
+        goals: prev.goals || DEFAULT_SLEEP_GOALS,
+        toleranceMinutes: prev.toleranceMinutes ?? 15,
+        showMorningScore: typeof prev.showMorningScore === 'boolean' ? prev.showMorningScore : true,
       } : {}),
     }));
     setStep('preset');
@@ -2540,6 +2645,85 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
                     )}
                   </>
                 )}
+              </>
+            );
+          })()}
+
+          {editing.type === 'sleep' && (() => {
+            const goals = editing.goals || DEFAULT_SLEEP_GOALS;
+            const tol = editing.toleranceMinutes ?? 15;
+            const showScore = typeof editing.showMorningScore === 'boolean' ? editing.showMorningScore : true;
+            const setGoal = (weekdayKey, field, value) => {
+              setEditing(prev => ({
+                ...prev,
+                goals: {
+                  ...(prev.goals || DEFAULT_SLEEP_GOALS),
+                  [weekdayKey]: {
+                    ...((prev.goals || DEFAULT_SLEEP_GOALS)[weekdayKey] || {}),
+                    [field]: value,
+                  },
+                },
+              }));
+            };
+            return (
+              <>
+                <div>
+                  <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
+                    Doel-tijden per weekdag
+                  </label>
+                  <div className="space-y-1">
+                    {WEEKDAY_KEYS.map((wk, i) => {
+                      const dayLabel = DAYS_NL[(i + 1) % 7];
+                      const g = goals[wk] || { bed: '', wake: '' };
+                      return (
+                        <div key={wk} className="flex items-center gap-2">
+                          <span className={`text-xs ${t.textMuted} w-20 capitalize`}>{dayLabel}</span>
+                          <input
+                            type="time"
+                            value={g.bed || ''}
+                            onChange={(e) => setGoal(wk, 'bed', e.target.value)}
+                            className={`flex-1 min-w-0 px-2 py-1 ${t.input} rounded text-sm`}
+                          />
+                          <span className={`text-xs ${t.textMuted}`}>naar</span>
+                          <input
+                            type="time"
+                            value={g.wake || ''}
+                            onChange={(e) => setGoal(wk, 'wake', e.target.value)}
+                            className={`flex-1 min-w-0 px-2 py-1 ${t.input} rounded text-sm`}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
+                    Tolerance (minuten)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={tol}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      update('toleranceMinutes', isNaN(v) || v < 1 ? 15 : v);
+                    }}
+                    className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+                  />
+                  <p className={`text-xs ${t.textMuted} mt-1`}>
+                    Een nacht telt als 'op ritme' als beide tijden binnen deze marge van het doel liggen.
+                  </p>
+                </div>
+
+                <label className={`flex items-center gap-2 text-sm ${t.textSecondary}`}>
+                  <input
+                    type="checkbox"
+                    checked={showScore}
+                    onChange={(e) => update('showMorningScore', e.target.checked)}
+                  />
+                  Vraag ochtendscore
+                </label>
               </>
             );
           })()}

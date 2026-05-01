@@ -16,3 +16,12 @@ export function formatAmount(value, unit) {
 export function unitLabel(unit) {
   return unit === 'glas' ? 'glas' : unit;
 }
+
+export function formatDuration(minutes) {
+  if (minutes == null || isNaN(minutes) || minutes <= 0) return '';
+  const m = Math.round(minutes);
+  const h = Math.floor(m / 60);
+  const rest = m % 60;
+  if (h === 0) return `${rest}min`;
+  return rest === 0 ? `${h}u` : `${h}u ${rest}min`;
+}

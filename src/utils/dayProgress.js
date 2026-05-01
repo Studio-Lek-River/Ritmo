@@ -1,9 +1,10 @@
 import { getColorHex } from './colors';
+import { goalsForNight, isOnTarget } from './sleep';
 
 // Returns 'full' | 'partial' | 'none' for a single module on a given day.
 // Storage shapes match what App.jsx already writes (see WeekView/MonthView
 // completion logic for the canonical reads).
-export function moduleStatusForDay(module, dayData) {
+export function moduleStatusForDay(module, dayData, date) {
   if (!dayData?.moduleData) return 'none';
   const d = dayData.moduleData[module.id] || {};
 
@@ -26,6 +27,13 @@ export function moduleStatusForDay(module, dayData) {
       if (value > 0) return 'partial';
       return 'none';
     }
+    case 'sleep': {
+      const goals = goalsForNight(module.goals, date);
+      const tol = module.toleranceMinutes ?? 15;
+      if (isOnTarget(d, goals, tol)) return 'full';
+      if (d.bedTime || d.wakeTime || d.morningScore != null) return 'partial';
+      return 'none';
+    }
     case 'tasks':
     case 'projects':
       return 'none';
@@ -37,10 +45,10 @@ export function moduleStatusForDay(module, dayData) {
 // Builds a CSS background value (string) for a day cell, or null when no
 // modules are fully completed. Variant B: only 'full' modules contribute,
 // split into equal segments left-to-right in module order.
-export function buildDayCellBackground(modules, dayData) {
+export function buildDayCellBackground(modules, dayData, date) {
   const completed = modules
-    .filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects')
-    .filter(m => moduleStatusForDay(m, dayData) === 'full');
+    .filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects' && m.type !== 'sleep')
+    .filter(m => moduleStatusForDay(m, dayData, date) === 'full');
 
   if (completed.length === 0) return null;
   if (completed.length === 1) return getColorHex(completed[0].color);

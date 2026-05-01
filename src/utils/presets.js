@@ -87,4 +87,22 @@ export const MODULE_PRESETS = {
     { name: 'Studie', icon: 'GraduationCap', color: 'indigo' },
     { name: "Hobby's", icon: 'Heart', color: 'pink' },
   ],
+  sleep: [
+    {
+      name: 'Slaap',
+      icon: 'BedDouble',
+      color: 'indigo',
+      goals: {
+        monday:    { bed: '23:00', wake: '07:00' },
+        tuesday:   { bed: '23:00', wake: '07:00' },
+        wednesday: { bed: '23:00', wake: '07:00' },
+        thursday:  { bed: '23:00', wake: '07:00' },
+        friday:    { bed: '00:00', wake: '08:30' },
+        saturday:  { bed: '00:00', wake: '09:00' },
+        sunday:    { bed: '23:00', wake: '07:30' },
+      },
+      showMorningScore: true,
+      toleranceMinutes: 15,
+    },
+  ],
 };
