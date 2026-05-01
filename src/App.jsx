@@ -9,6 +9,7 @@ import CounterModule from './modules/CounterModule';
 import ProjectsView from './views/ProjectsView';
 import DayNavigator from './components/DayNavigator';
 import ReadOnlyBanner from './components/ReadOnlyBanner';
+import FeedbackModal from './components/FeedbackModal';
 import { migrateModuleConfig, migrateDayModuleData } from './utils/migrate';
 import { formatAmount } from './utils/format';
 import { MODULE_PRESETS } from './utils/presets';
@@ -126,6 +127,7 @@ export default function Ritmo() {
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [editingModule, setEditingModule] = useState(null);
   const [hasOnboarded, setHasOnboarded] = useState(true);
   
@@ -1011,7 +1013,12 @@ export default function Ritmo() {
           t={t}
           dayNames={dayNames}
           setEditingModule={setEditingModule}
+          setShowFeedback={setShowFeedback}
         />
+      )}
+
+      {showFeedback && (
+        <FeedbackModal onClose={() => setShowFeedback(false)} t={t} />
       )}
 
       {editingModule && (
@@ -1738,7 +1745,7 @@ function ReflectionView({ reflectionQuestions, reflectionAnswers, setReflectionA
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, t, dayNames, setEditingModule }) {
+function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, t, dayNames, setEditingModule, setShowFeedback }) {
   const [activeTab, setActiveTab] = useState('modules');
 
   return (
@@ -2044,6 +2051,23 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
             </div>
           </div>
         )}
+
+        <div className={`mt-6 pt-6 border-t ${t.border}`}>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className={`text-sm font-medium ${t.text}`}>Feedback geven</p>
+              <p className={`text-xs ${t.textMuted} mt-0.5`}>
+                Iets niet werkend? Idee voor verbetering?
+              </p>
+            </div>
+            <button
+              onClick={() => { onClose(); setShowFeedback(true); }}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap ${t.cardSecondary} ${t.hover} ${t.textSecondary}`}
+            >
+              Open
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
