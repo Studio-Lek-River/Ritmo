@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Search, Sparkles, ArrowUpDown } from 'lucide-react';
+import { Plus, Search, Sparkles, ArrowUpDown, Library } from 'lucide-react';
 import { getColorClasses } from '../utils/colors';
 import { aggregateStats, getItemTrackingMode } from '../utils/collections';
 import StarRating from '../components/StarRating';
 import TagPill from '../components/TagPill';
 import ItemDetail from '../components/ItemDetail';
+import EmptyState from '../components/EmptyState';
 
 const SORT_OPTIONS = [
   { id: 'recent', label: 'Recent' },
@@ -41,6 +42,7 @@ export default function CollectionsView({
   onDeleteItem,
   onLogEvent,
   onRemoveEvent,
+  onCreate,
   editable = true,
   t,
 }) {
@@ -77,13 +79,14 @@ export default function CollectionsView({
 
   if (collections.length === 0) {
     return (
-      <div className={`${t.card} rounded-2xl p-8 shadow-sm text-center slide-in`}>
-        <Sparkles className={`w-12 h-12 mx-auto mb-3 ${t.textMuted}`} />
-        <h3 className={`font-semibold ${t.textSecondary} mb-2`}>Geen collecties</h3>
-        <p className={`text-sm ${t.textMuted}`}>
-          Maak eerst een collectie-module aan via instellingen.
-        </p>
-      </div>
+      <EmptyState
+        icon={Library}
+        title="Nog geen collecties"
+        description="Maak een collectie-module aan om bijvoorbeeld boeken, films of recepten te catalogiseren."
+        buttonLabel={onCreate ? 'Collectie-module aanmaken' : null}
+        onClick={onCreate}
+        t={t}
+      />
     );
   }
 

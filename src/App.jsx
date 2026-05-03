@@ -616,6 +616,25 @@ export default function Ritmo() {
     }));
   };
 
+  const openModuleEditor = (type) => {
+    setEditingModule({
+      id: `mod_${Date.now()}`,
+      name: '',
+      icon: type === 'projects' ? 'GraduationCap' : 'Star',
+      color: 'blue',
+      enabled: true,
+      countInStreak: false,
+      type,
+      ...(type === 'projects' ? { subjects: [] } : {}),
+      ...(type === 'collection' ? {
+        trackingMode: 'completion',
+        itemFields: { rating: true, notes: true, tags: true },
+        tags: [],
+        items: [],
+      } : {}),
+    });
+  };
+
   const addCollectionTag = (moduleId, label, color = 'blue') => {
     const trimmed = (label || '').trim();
     if (!trimmed) return;
@@ -1214,6 +1233,7 @@ export default function Ritmo() {
             selectedProjectId={selectedProjectId}
             setSelectedProjectId={setSelectedProjectId}
             markTouchedToday={(moduleId) => updateModuleData(moduleId, prev => ({ ...prev, touchedToday: true }))}
+            onCreate={() => openModuleEditor('projects')}
             t={t}
           />
         )}
@@ -1229,6 +1249,7 @@ export default function Ritmo() {
             onDeleteItem={deleteCollectionItem}
             onLogEvent={logCollectionEvent}
             onRemoveEvent={removeCollectionEvent}
+            onCreate={() => openModuleEditor('collection')}
             t={t}
           />
         )}
@@ -2624,7 +2645,9 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
   const [newItem, setNewItem] = useState('');
   const [expandedItemId, setExpandedItemId] = useState(null);
   const isNew = !mod.name;
-  const [step, setStep] = useState(isNew ? 'type' : 'config');
+  const [step, setStep] = useState(
+    isNew ? (mod.type ? 'preset' : 'type') : 'config'
+  );
   const [presetTab, setPresetTab] = useState('suggestions');
 
   const update = (key, value) => setEditing(prev => ({ ...prev, [key]: value }));

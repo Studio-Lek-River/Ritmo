@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Home, ChevronDown, ChevronUp,
   Plus, Trash2, Check, Star, AlertCircle, ChevronLeft, ChevronRight, Edit3, X,
@@ -7,6 +7,7 @@ import {
 import useStoredState from '../hooks/useStoredState';
 import {
   toMonthly, isOverdue, daysUntilDue, formatRelativeDate, formatEuro, parseEuroInput,
+  reconcileUtilitiesAuto, totalActualOf, autoSumOf,
 } from '../utils/household';
 
 const newId = () => (typeof crypto !== 'undefined' && crypto.randomUUID
@@ -38,6 +39,15 @@ export default function HouseholdView({ t, darkMode }) {
   const [groceries, setGroceries] = useStoredState('household:groceries', { items: [], shopDay: null });
   const [budget, setBudget] = useStoredState('household:budget', { income: [], expenses: [] });
   const [utilities, setUtilities] = useStoredState('household:utilities', {});
+  const [config, setConfig] = useStoredState('household:config', { energyCombined: false });
+
+  // Reconcile auto-projection of utility-tagged budget items into the
+  // utilities storage. reconcileUtilitiesAuto returns the same reference
+  // when nothing changed, so listing utilities as a dep is safe — needed
+  // to handle the case where utilities loads from storage after expenses.
+  useEffect(() => {
+    setUtilities(prev => reconcileUtilitiesAuto(prev, budget.expenses || []));
+  }, [budget.expenses, utilities, setUtilities]);
 
   const overdueCount = chores.filter(isOverdue).length;
   const groceriesCount = (groceries.items || []).filter(i => !i.checked).length;
@@ -47,7 +57,7 @@ export default function HouseholdView({ t, darkMode }) {
   const utilitiesYearKey = String(new Date().getFullYear());
   const utilitiesYearActual = Object.entries(utilities)
     .filter(([k]) => k.startsWith(utilitiesYearKey + '-'))
-    .reduce((s, [, m]) => s + UTILITY_KEYS.reduce((ms, uk) => ms + (m?.[uk]?.actual || 0), 0), 0);
+    .reduce((s, [, m]) => s + UTILITY_KEYS.reduce((ms, uk) => ms + totalActualOf(m?.[uk]), 0), 0);
 
   return (
     <div className="slide-in space-y-3">
@@ -81,7 +91,7 @@ export default function HouseholdView({ t, darkMode }) {
         expanded={expanded.budget}
         onToggle={() => toggle('budget')}
       >
-        <BudgetSection budget={budget} setBudget={setBudget} t={t} darkMode={darkMode} />
+        <BudgetSection budget={budget} setBudget={setBudget} config={config} t={t} darkMode={darkMode} />
       </Section>
 
       <Section
@@ -92,7 +102,15 @@ export default function HouseholdView({ t, darkMode }) {
         expanded={expanded.utilities}
         onToggle={() => toggle('utilities')}
       >
-        <UtilitiesSection utilities={utilities} setUtilities={setUtilities} t={t} darkMode={darkMode} />
+        <UtilitiesSection
+          utilities={utilities}
+          setUtilities={setUtilities}
+          budget={budget}
+          config={config}
+          setConfig={setConfig}
+          t={t}
+          darkMode={darkMode}
+        />
       </Section>
     </div>
   );
@@ -415,12 +433,16 @@ function GroceriesSection({ groceries, setGroceries, t }) {
 // Budget
 // ============================================================================
 
-function BudgetSection({ budget, setBudget, t, darkMode }) {
+function BudgetSection({ budget, setBudget, config, t, darkMode }) {
   const [editing, setEditing] = useState(null); // { kind: 'income'|'expenses', item: { ... } }
   const [adding, setAdding] = useState(null); // 'income' | 'expenses' | null
+  const [energyExpanded, setEnergyExpanded] = useState(false);
 
   const income = budget.income || [];
   const expenses = budget.expenses || [];
+  const hasGas = expenses.some(x => x.isUtility === 'gas');
+  const hasElectric = expenses.some(x => x.isUtility === 'electric');
+  const energyCombined = !!config?.energyCombined && hasGas && hasElectric;
 
   const monthlyIncome = income.reduce((s, i) => s + toMonthly(i.amount, i.frequency), 0);
   const monthlyExpenses = expenses.reduce((s, i) => s + toMonthly(i.amount, i.frequency), 0);
@@ -470,6 +492,9 @@ function BudgetSection({ budget, setBudget, t, darkMode }) {
         onEdit={(item) => setEditing({ kind: 'expenses', item })}
         onAdd={() => setAdding('expenses')}
         onDelete={(id) => remove('expenses', id)}
+        energyCombined={energyCombined}
+        energyExpanded={energyExpanded}
+        onToggleEnergy={() => setEnergyExpanded(v => !v)}
       />
 
       {(editing || adding) && (
@@ -500,7 +525,56 @@ function Stat({ t, label, value, accent }) {
   );
 }
 
-function BudgetList({ title, items, t, onEdit, onAdd, onDelete }) {
+function BudgetList({
+  title, items, t, onEdit, onAdd, onDelete,
+  energyCombined = false, energyExpanded = false, onToggleEnergy,
+}) {
+  const energyItems = energyCombined
+    ? items.filter(i => i.isUtility === 'gas' || i.isUtility === 'electric')
+    : [];
+  const otherItems = energyCombined
+    ? items.filter(i => i.isUtility !== 'gas' && i.isUtility !== 'electric')
+    : items;
+  const energyMonthlyTotal = energyItems.reduce(
+    (s, i) => s + toMonthly(i.amount, i.frequency), 0
+  );
+
+  const renderItem = (item, opts = {}) => {
+    const Icon = BUDGET_ICONS[item.icon] || BadgeEuro;
+    const monthly = toMonthly(item.amount, item.frequency);
+    return (
+      <li
+        key={item.id}
+        className={`flex items-center gap-3 p-3 rounded-xl ${opts.nested ? t.card : t.cardSecondary}`}
+      >
+        <Icon className={`w-5 h-5 ${t.textSecondary} shrink-0`} />
+        <div className="flex-1 min-w-0">
+          <div className={`text-sm font-medium ${t.text} truncate`}>{item.name}</div>
+          <div className={`text-xs ${t.textMuted}`}>
+            {formatEuro(item.amount)} {freqLabel(item.frequency)}
+            {item.frequency !== 'monthly' && (
+              <> &middot; reserveer {formatEuro(monthly)}/mnd</>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={() => onEdit(item)}
+          className={`p-1.5 rounded-lg ${t.textMuted} ${t.hover} transition`}
+          aria-label="Bewerk"
+        >
+          <Edit3 className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => onDelete(item.id)}
+          className={`p-1.5 rounded-lg ${t.textMuted} ${t.hover} transition`}
+          aria-label="Verwijder"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </li>
+    );
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
@@ -516,41 +590,32 @@ function BudgetList({ title, items, t, onEdit, onAdd, onDelete }) {
         <p className={`text-xs ${t.textMuted} text-center py-3`}>Nog niets toegevoegd</p>
       ) : (
         <ul className="space-y-1">
-          {items.map(item => {
-            const Icon = BUDGET_ICONS[item.icon] || BadgeEuro;
-            const monthly = toMonthly(item.amount, item.frequency);
-            return (
-              <li
-                key={item.id}
-                className={`flex items-center gap-3 p-3 rounded-xl ${t.cardSecondary}`}
+          {energyCombined && energyItems.length > 0 && (
+            <li className={`rounded-xl ${t.cardSecondary}`}>
+              <button
+                onClick={onToggleEnergy}
+                className="w-full flex items-center gap-3 p-3 text-left"
+                aria-expanded={energyExpanded}
               >
-                <Icon className={`w-5 h-5 ${t.textSecondary} shrink-0`} />
+                <Zap className={`w-5 h-5 text-orange-500 shrink-0`} />
                 <div className="flex-1 min-w-0">
-                  <div className={`text-sm font-medium ${t.text} truncate`}>{item.name}</div>
+                  <div className={`text-sm font-medium ${t.text}`}>Energie</div>
                   <div className={`text-xs ${t.textMuted}`}>
-                    {formatEuro(item.amount)} {freqLabel(item.frequency)}
-                    {item.frequency !== 'monthly' && (
-                      <> &middot; reserveer {formatEuro(monthly)}/mnd</>
-                    )}
+                    {formatEuro(energyMonthlyTotal)} per maand &middot; gas + licht
                   </div>
                 </div>
-                <button
-                  onClick={() => onEdit(item)}
-                  className={`p-1.5 rounded-lg ${t.textMuted} ${t.hover} transition`}
-                  aria-label="Bewerk"
-                >
-                  <Edit3 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => onDelete(item.id)}
-                  className={`p-1.5 rounded-lg ${t.textMuted} ${t.hover} transition`}
-                  aria-label="Verwijder"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </li>
-            );
-          })}
+                {energyExpanded
+                  ? <ChevronUp className={`w-4 h-4 ${t.textMuted}`} />
+                  : <ChevronDown className={`w-4 h-4 ${t.textMuted}`} />}
+              </button>
+              {energyExpanded && (
+                <ul className="px-2 pb-2 space-y-1">
+                  {energyItems.map(item => renderItem(item, { nested: true }))}
+                </ul>
+              )}
+            </li>
+          )}
+          {otherItems.map(item => renderItem(item))}
         </ul>
       )}
     </div>
@@ -566,17 +631,36 @@ function BudgetEditor({ t, darkMode, kind, initial, onCancel, onSave }) {
   const [amount, setAmount] = useState(initial ? String(initial.amount).replace('.', ',') : '');
   const [frequency, setFrequency] = useState(initial?.frequency || 'monthly');
   const [icon, setIcon] = useState(initial?.icon || (kind === 'income' ? 'BadgeEuro' : 'ShoppingCart'));
+  const [isUtility, setIsUtility] = useState(initial?.isUtility || '');
+  const [dueDay, setDueDay] = useState(
+    initial?.dueDay != null ? String(initial.dueDay) : ''
+  );
+  const [dueMonth, setDueMonth] = useState(
+    initial?.dueMonth != null ? String(initial.dueMonth) : ''
+  );
+
+  const isExpense = kind === 'expenses';
+  const supportsAuto = isExpense && (frequency === 'monthly' || frequency === 'yearly');
 
   const save = () => {
     const trimmed = name.trim();
     if (!trimmed) return;
     const parsedAmount = parseEuroInput(amount);
+    const parsedDay = supportsAuto && dueDay !== ''
+      ? Math.min(28, Math.max(1, parseInt(dueDay, 10) || 1))
+      : null;
+    const parsedMonth = supportsAuto && frequency === 'yearly' && dueMonth !== ''
+      ? Math.min(12, Math.max(1, parseInt(dueMonth, 10) || 1))
+      : null;
     onSave({
       id: initial?.id || newId(),
       name: trimmed,
       amount: parsedAmount,
       frequency,
       icon,
+      ...(isExpense && isUtility ? { isUtility } : {}),
+      ...(parsedDay != null ? { dueDay: parsedDay } : {}),
+      ...(parsedMonth != null ? { dueMonth: parsedMonth } : {}),
     });
   };
 
@@ -650,6 +734,58 @@ function BudgetEditor({ t, darkMode, kind, initial, onCancel, onSave }) {
               })}
             </div>
           </div>
+          {isExpense && (
+            <div>
+              <label className={`text-xs ${t.textMuted} block mb-1`}>Categorie duurzaamheid</label>
+              <select
+                value={isUtility}
+                onChange={e => setIsUtility(e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg ${t.input} outline-none text-sm`}
+              >
+                <option value="">Geen</option>
+                <option value="gas">Gas</option>
+                <option value="electric">Licht</option>
+                <option value="water">Water</option>
+              </select>
+              <p className={`text-[11px] ${t.textMuted} mt-1`}>
+                Gas/Licht/Water-posten worden automatisch in duurzaamheid geboekt op de vervaldag.
+              </p>
+            </div>
+          )}
+          {supportsAuto && (
+            <div className={frequency === 'yearly' ? 'grid grid-cols-2 gap-2' : ''}>
+              <div>
+                <label className={`text-xs ${t.textMuted} block mb-1`}>
+                  {frequency === 'yearly' ? 'Vervaldag' : 'Boekdag van de maand'}
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={28}
+                  value={dueDay}
+                  onChange={e => setDueDay(e.target.value)}
+                  placeholder="1-28"
+                  className={`w-full px-3 py-2 rounded-lg ${t.input} outline-none text-sm`}
+                />
+              </div>
+              {frequency === 'yearly' && (
+                <div>
+                  <label className={`text-xs ${t.textMuted} block mb-1`}>Vervalmaand</label>
+                  <select
+                    value={dueMonth}
+                    onChange={e => setDueMonth(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-lg ${t.input} outline-none text-sm`}
+                  >
+                    <option value="">Kies maand</option>
+                    {NL_MONTHS.map((m, i) => (
+                      <option key={i} value={i + 1}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <div className={`flex gap-2 p-4 border-t ${t.border}`}>
           <button
@@ -675,12 +811,18 @@ function BudgetEditor({ t, darkMode, kind, initial, onCancel, onSave }) {
 // Duurzaamheid
 // ============================================================================
 
-function UtilitiesSection({ utilities, setUtilities, t, darkMode }) {
+function UtilitiesSection({ utilities, setUtilities, budget, config, setConfig, t, darkMode }) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [editingMonth, setEditingMonth] = useState(null); // 0-11 or null
 
   const isFutureMonth = (m) => year > now.getFullYear() || (year === now.getFullYear() && m > now.getMonth());
+
+  const expenses = budget?.expenses || [];
+  const hasGasBudget = expenses.some(x => x.isUtility === 'gas');
+  const hasElectricBudget = expenses.some(x => x.isUtility === 'electric');
+  const canCombine = hasGasBudget && hasElectricBudget;
+  const energyCombined = !!config?.energyCombined && canCombine;
 
   const yearTotals = UTILITY_KEYS.reduce((acc, k) => {
     acc[k] = { actual: 0, budget: 0 };
@@ -689,12 +831,23 @@ function UtilitiesSection({ utilities, setUtilities, t, darkMode }) {
   for (let m = 0; m < 12; m++) {
     const data = utilities[monthKey(year, m)] || {};
     UTILITY_KEYS.forEach(k => {
-      yearTotals[k].actual += data[k]?.actual || 0;
+      yearTotals[k].actual += totalActualOf(data[k]);
       yearTotals[k].budget += data[k]?.budget || 0;
     });
   }
   const totalActual = UTILITY_KEYS.reduce((s, k) => s + yearTotals[k].actual, 0);
   const totalBudget = UTILITY_KEYS.reduce((s, k) => s + yearTotals[k].budget, 0);
+
+  const displayKeys = energyCombined ? ['water', 'energy'] : UTILITY_KEYS;
+  const totalsFor = (k) => k === 'energy'
+    ? {
+        actual: yearTotals.gas.actual + yearTotals.electricity.actual,
+        budget: yearTotals.gas.budget + yearTotals.electricity.budget,
+      }
+    : yearTotals[k];
+  const labelFor = (k) => k === 'energy' ? 'Energie' : UTILITY_LABEL[k];
+  const iconFor = (k) => k === 'energy' ? Zap : UTILITY_ICON[k];
+  const colorFor = (k) => k === 'energy' ? 'text-orange-500' : UTILITY_COLOR[k];
 
   const saveMonth = (m, data) => {
     const key = monthKey(year, m);
@@ -734,17 +887,33 @@ function UtilitiesSection({ utilities, setUtilities, t, darkMode }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
-        {UTILITY_KEYS.map(k => {
-          const Icon = UTILITY_ICON[k];
-          const a = yearTotals[k].actual;
-          const b = yearTotals[k].budget;
+      {canCombine && (
+        <div className="flex justify-center">
+          <button
+            onClick={() => setConfig(prev => ({ ...(prev || {}), energyCombined: !energyCombined }))}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition ${
+              energyCombined ? 'bg-orange-500 text-white' : `${t.cardSecondary} ${t.textSecondary} ${t.hover}`
+            }`}
+            aria-pressed={energyCombined}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            {energyCombined ? 'Gas + licht samen' : 'Gas + licht apart'}
+          </button>
+        </div>
+      )}
+
+      <div className={`grid ${displayKeys.length === 2 ? 'grid-cols-2' : 'grid-cols-3'} gap-2`}>
+        {displayKeys.map(k => {
+          const Icon = iconFor(k);
+          const totals = totalsFor(k);
+          const a = totals.actual;
+          const b = totals.budget;
           const diff = a - b;
           return (
             <div key={k} className={`${t.cardSecondary} rounded-xl p-3`}>
               <div className="flex items-center gap-1.5 mb-1">
-                <Icon className={`w-4 h-4 ${UTILITY_COLOR[k]}`} />
-                <span className={`text-xs font-medium ${t.textSecondary}`}>{UTILITY_LABEL[k]}</span>
+                <Icon className={`w-4 h-4 ${colorFor(k)}`} />
+                <span className={`text-xs font-medium ${t.textSecondary}`}>{labelFor(k)}</span>
               </div>
               <div className={`text-sm font-semibold ${t.text}`}>{formatEuro(a)}</div>
               <div className={`text-xs ${diff > 0 ? 'text-red-500' : t.textMuted}`}>
@@ -760,7 +929,7 @@ function UtilitiesSection({ utilities, setUtilities, t, darkMode }) {
           const data = utilities[monthKey(year, idx)];
           const future = isFutureMonth(idx);
           const hasData = !!data;
-          const monthActual = data ? UTILITY_KEYS.reduce((s, k) => s + (data[k]?.actual || 0), 0) : 0;
+          const monthActual = data ? UTILITY_KEYS.reduce((s, k) => s + totalActualOf(data[k]), 0) : 0;
           const monthBudget = data ? UTILITY_KEYS.reduce((s, k) => s + (data[k]?.budget || 0), 0) : 0;
           const over = hasData && monthActual > monthBudget && monthBudget > 0;
           const disabled = future && !hasData;
@@ -834,7 +1003,11 @@ function UtilityMonthEditor({ t, year, month, data, onCancel, onSave }) {
     UTILITY_KEYS.forEach(k => {
       const b = parseEuroInput(draft[k].budget);
       const a = parseEuroInput(draft[k].actual);
-      if (b > 0 || a > 0) out[k] = { budget: b, actual: a };
+      const auto = data[k]?.autoFromBudget;
+      const hasAuto = auto && Object.keys(auto).length > 0;
+      if (b > 0 || a > 0 || hasAuto) {
+        out[k] = { budget: b, actual: a, ...(hasAuto ? { autoFromBudget: auto } : {}) };
+      }
     });
     onSave(out);
   };
@@ -855,7 +1028,9 @@ function UtilityMonthEditor({ t, year, month, data, onCancel, onSave }) {
             const Icon = UTILITY_ICON[k];
             const b = parseEuroInput(draft[k].budget);
             const a = parseEuroInput(draft[k].actual);
-            const over = a > b && b > 0;
+            const auto = autoSumOf(data[k]);
+            const total = a + auto;
+            const over = total > b && b > 0;
             return (
               <div key={k} className={`${t.cardSecondary} rounded-xl p-3 ${over ? 'ring-2 ring-red-400' : ''}`}>
                 <div className="flex items-center gap-2 mb-2">
@@ -863,6 +1038,11 @@ function UtilityMonthEditor({ t, year, month, data, onCancel, onSave }) {
                   <span className={`text-sm font-medium ${t.textSecondary}`}>{UTILITY_LABEL[k]}</span>
                   {over && <span className="ml-auto text-xs text-red-500 font-medium">over budget</span>}
                 </div>
+                {auto > 0 && (
+                  <div className={`text-xs ${t.textMuted} mb-2`}>
+                    Automatisch uit begroting: <span className={`font-semibold ${t.textSecondary}`}>{formatEuro(auto)}</span>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className={`text-xs ${t.textMuted} block mb-1`}>Begroot</label>
@@ -876,7 +1056,9 @@ function UtilityMonthEditor({ t, year, month, data, onCancel, onSave }) {
                     />
                   </div>
                   <div>
-                    <label className={`text-xs ${t.textMuted} block mb-1`}>Werkelijk</label>
+                    <label className={`text-xs ${t.textMuted} block mb-1`}>
+                      {auto > 0 ? 'Extra werkelijk' : 'Werkelijk'}
+                    </label>
                     <input
                       type="text"
                       inputMode="decimal"
@@ -887,6 +1069,11 @@ function UtilityMonthEditor({ t, year, month, data, onCancel, onSave }) {
                     />
                   </div>
                 </div>
+                {auto > 0 && (
+                  <div className={`text-xs ${t.textMuted} mt-2`}>
+                    Totaal werkelijk: <span className={`font-semibold ${over ? 'text-red-500' : t.textSecondary}`}>{formatEuro(total)}</span>
+                  </div>
+                )}
               </div>
             );
           })}

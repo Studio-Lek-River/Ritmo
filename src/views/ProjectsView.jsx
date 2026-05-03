@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Clock, Sparkles } from 'lucide-react';
+import { Plus, Clock, Sparkles, GraduationCap } from 'lucide-react';
 import ProgressBar from '../components/ProgressBar';
+import EmptyState from '../components/EmptyState';
 import { getColorClasses } from '../utils/colors';
 import {
   projectProgress,
@@ -18,6 +19,7 @@ export default function ProjectsView({
   selectedProjectId,
   setSelectedProjectId,
   markTouchedToday,
+  onCreate,
   t,
 }) {
   const projects = useMemo(
@@ -51,13 +53,14 @@ export default function ProjectsView({
 
   if (!activeProject) {
     return (
-      <div className={`${t.card} rounded-2xl p-8 shadow-sm text-center slide-in`}>
-        <Sparkles className={`w-12 h-12 mx-auto mb-3 ${t.textMuted}`} />
-        <h3 className={`font-semibold ${t.textSecondary} mb-2`}>Geen projecten actief</h3>
-        <p className={`text-sm ${t.textMuted}`}>
-          Maak een project-module aan via instellingen.
-        </p>
-      </div>
+      <EmptyState
+        icon={GraduationCap}
+        title="Nog geen projecten"
+        description="Maak een project-module aan om losse projecten met vakken en subdoelen bij te houden."
+        buttonLabel={onCreate ? 'Project-module aanmaken' : null}
+        onClick={onCreate}
+        t={t}
+      />
     );
   }
 
