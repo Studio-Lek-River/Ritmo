@@ -37,6 +37,10 @@ export function fmtDateKey(date) {
   return `${y}-${m}-${d}`;
 }
 
+export function todayKey() {
+  return fmtDateKey(new Date());
+}
+
 export function parseDateKey(key) {
   const [y, m, d] = key.split('-').map(Number);
   return new Date(y, m - 1, d);

@@ -53,6 +53,25 @@ export function migrateModuleConfig(module) {
     };
   }
 
+  if (m.type === 'collection') {
+    m = {
+      ...m,
+      countInStreak: false,
+      trackingMode: m.trackingMode || 'completion',
+      itemFields: { rating: true, notes: true, tags: true, ...(m.itemFields || {}) },
+      tags: Array.isArray(m.tags) ? m.tags : [],
+      items: Array.isArray(m.items)
+        ? m.items.map((it) => ({
+            tags: [],
+            rating: 0,
+            notes: '',
+            events: [],
+            ...it,
+          }))
+        : [],
+    };
+  }
+
   if (m.color && COLOR_FALLBACK[m.color]) {
     m = { ...m, color: COLOR_FALLBACK[m.color] };
   }

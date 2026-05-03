@@ -12,8 +12,8 @@ export default defineConfig({
         name: 'Ritmo',
         short_name: 'Ritmo',
         description: 'Jouw dag, jouw ritme.',
-        theme_color: '#3b82f6',
-        background_color: '#f8fafc',
+        theme_color: '#0d9488',
+        background_color: '#fafaf9',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
@@ -21,19 +21,23 @@ export default defineConfig({
         lang: 'nl',
         icons: [
           {
-            src: '/icons/icon-192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'any'
+            src: 'pwa-64x64.png',
+            sizes: '64x64',
+            type: 'image/png'
           },
           {
-            src: '/icons/icon-512.png',
+            src: 'pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: 'pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any'
           },
           {
-            src: '/icons/icon-512-maskable.png',
+            src: 'maskable-icon-512x512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable'

@@ -1,19 +1,26 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Check, Sun, Moon, Activity, Briefcase, Footprints, Plus, Trash2, TrendingUp, Calendar, AlertCircle, Sparkles, Flame, Settings, BookOpen, ChevronLeft, ChevronRight, X, Repeat, Trophy, GripVertical, Heart, Coffee, Book, Music, Dumbbell, Zap, Smile, Brain, Cloud, Star, Target, Edit3, Eye, EyeOff, GraduationCap, Clock, GlassWater, Droplet, HelpCircle,
-  AlarmClock, BadgeEuro, BedDouble, BrushCleaning, Castle, CookingPot, Drill, Fuel, Hospital, Panda, Plane, Rabbit, ShoppingCart, Toilet, TrainFront, WashingMachine
+  Check, Sun, Moon, Activity, Briefcase, Footprints, Plus, Trash2, TrendingUp, Calendar, AlertCircle, Sparkles, Flame, Settings, BookOpen, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Repeat, Trophy, GripVertical, Heart, Coffee, Book, Music, Dumbbell, Zap, Smile, Brain, Cloud, Star, Target, Edit3, Eye, EyeOff, GraduationCap, Clock, GlassWater, Droplet, HelpCircle, ArrowUpDown, SlidersHorizontal,
+  AlarmClock, BadgeEuro, BedDouble, BrushCleaning, Castle, CookingPot, Drill, Fuel, Hospital, Panda, Plane, Rabbit, ShoppingCart, Toilet, TrainFront, WashingMachine, UtensilsCrossed
 } from 'lucide-react';
 import './storage';
 import ProjectsModule from './modules/ProjectsModule';
 import CounterModule from './modules/CounterModule';
 import SleepModule from './modules/SleepModule';
+import CollectionModule from './modules/CollectionModule';
 import ProjectsView from './views/ProjectsView';
+import CollectionsView from './views/CollectionsView';
+import HouseholdView from './views/HouseholdView';
 import DayNavigator from './components/DayNavigator';
 import ReadOnlyBanner from './components/ReadOnlyBanner';
+import SplashScreen from './components/SplashScreen';
+import RitmoLogo from './components/RitmoLogo';
 import HelpOverlay from './components/help/HelpOverlay';
 import InstallGuide from './components/help/InstallGuide';
 import FeedbackForm from './components/help/FeedbackForm';
+import ChecklistModule from './modules/ChecklistModule';
 import { migrateModuleConfig, migrateDayModuleData } from './utils/migrate';
+import { createItem, logEvent, removeEvent, createTag } from './utils/collections';
 import { formatAmount, formatDuration } from './utils/format';
 import { MODULE_PRESETS } from './utils/presets';
 import {
@@ -23,7 +30,10 @@ import {
   DAYS_NL, WEEKDAY_KEYS,
 } from './utils/dates';
 import { summarizeSleep } from './utils/sleep';
-import { buildDayCellBackground, moduleStatusForDay } from './utils/dayProgress';
+import {
+  buildDayCellBackground, moduleStatusForDay, isDayFullyComplete,
+  normalizeChecklistItemData, isChecklistItemComplete,
+} from './utils/dayProgress';
 import { playSound } from './utils/sound';
 
 // Available icons for modules
@@ -33,7 +43,8 @@ const ICON_OPTIONS = {
   Hospital, AlarmClock, BedDouble,
   WashingMachine, CookingPot, BrushCleaning, Toilet,
   Drill, BadgeEuro, ShoppingCart,
-  Plane, TrainFront, Fuel
+  Plane, TrainFront, Fuel,
+  UtensilsCrossed,
 };
 
 const COLOR_OPTIONS = ['red', 'orange', 'amber', 'yellow', 'green', 'teal', 'cyan', 'blue', 'indigo', 'purple', 'pink'];
@@ -122,6 +133,7 @@ const PROJECTS_MODULE_TEMPLATE = {
 export default function Ritmo() {
   const [view, setView] = useState('today');
   const [selectedProjectId, setSelectedProjectId] = useState(null);
+  const [selectedCollectionId, setSelectedCollectionId] = useState(null);
   const [activeDate, setActiveDate] = useState(new Date());
   const [activeWeekStart, setActiveWeekStart] = useState(() => startOfWeek(new Date()));
   const todayKey = fmtDateKey(new Date());
@@ -130,6 +142,7 @@ export default function Ritmo() {
   const editable = isEditable(activeDate);
   const skipNextSaveRef = useRef(false);
   const [loading, setLoading] = useState(true);
+  const [splashDone, setSplashDone] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [editingModule, setEditingModule] = useState(null);
@@ -150,6 +163,8 @@ export default function Ritmo() {
   const [streakSettings, setStreakSettings] = useState({});
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [soundVolume, setSoundVolume] = useState(80);
+  const [goldenBorderEnabled, setGoldenBorderEnabled] = useState(true);
+  const [showReflectionOnToday, setShowReflectionOnToday] = useState(true);
   const [confetti, setConfetti] = useState([]);
   const [celebrationMsg, setCelebrationMsg] = useState(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
@@ -180,6 +195,8 @@ export default function Ritmo() {
           if (settings.streakSettings) setStreakSettings(settings.streakSettings);
           if (settings.soundEnabled !== undefined) setSoundEnabled(settings.soundEnabled);
           if (settings.soundVolume !== undefined) setSoundVolume(settings.soundVolume);
+          if (settings.goldenBorderEnabled !== undefined) setGoldenBorderEnabled(settings.goldenBorderEnabled);
+          if (settings.showReflectionOnToday !== undefined) setShowReflectionOnToday(settings.showReflectionOnToday);
           if (loadedModules) setModules(loadedModules);
           if (settings.hasOnboarded !== undefined) setHasOnboarded(settings.hasOnboarded);
         } else {
@@ -286,13 +303,15 @@ export default function Ritmo() {
           streakSettings,
           soundEnabled,
           soundVolume,
+          goldenBorderEnabled,
+          showReflectionOnToday,
           modules,
           hasOnboarded,
         }));
       } catch {}
     };
     saveSettings();
-  }, [darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, modules, hasOnboarded, loading]);
+  }, [darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, showReflectionOnToday, modules, hasOnboarded, loading]);
 
   // Recurring tasks. Only inject into today's task list, never into a
   // historical day the user is just viewing.
@@ -339,7 +358,7 @@ export default function Ritmo() {
   // Check overall completion
   useEffect(() => {
     if (loading) return;
-    const enabledModules = modules.filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects');
+    const enabledModules = modules.filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects' && m.type !== 'collection');
     const totalItems = enabledModules.reduce((sum, m) => {
       if (m.type === 'checklist') return sum + m.items.length;
       if (m.type === 'choice') return sum + 1;
@@ -350,7 +369,7 @@ export default function Ritmo() {
     const completed = enabledModules.reduce((sum, m) => {
       const data = moduleData[m.id] || {};
       if (m.type === 'checklist') {
-        return sum + m.items.filter(i => data[i.id]).length;
+        return sum + m.items.filter(i => isChecklistItemComplete(i, data[i.id])).length;
       }
       if (m.type === 'choice') {
         return sum + (data.completed ? 1 : 0);
@@ -397,12 +416,36 @@ export default function Ritmo() {
   };
 
   const toggleChecklistItem = (moduleId, itemId) => {
-    const willBeDone = !moduleData[moduleId]?.[itemId];
-    updateModuleData(moduleId, prev => ({
-      ...prev,
-      [itemId]: !prev[itemId]
-    }));
-    if (willBeDone) sfx('tick');
+    const mod = modules.find(m => m.id === moduleId);
+    const item = mod?.items?.find(i => i.id === itemId);
+    const wasComplete = isChecklistItemComplete(item || { id: itemId }, moduleData[moduleId]?.[itemId]);
+    updateModuleData(moduleId, prev => {
+      const data = normalizeChecklistItemData(prev[itemId]);
+      return { ...prev, [itemId]: { ...data, checked: !data.checked } };
+    });
+    if (!wasComplete) sfx('tick');
+  };
+
+  const incrementChecklistProgress = (moduleId, itemId, delta) => {
+    const mod = modules.find(m => m.id === moduleId);
+    const item = mod?.items?.find(i => i.id === itemId);
+    const wasComplete = isChecklistItemComplete(item || { id: itemId }, moduleData[moduleId]?.[itemId]);
+    let nowComplete = wasComplete;
+    updateModuleData(moduleId, prev => {
+      const data = normalizeChecklistItemData(prev[itemId]);
+      const next = Math.max(0, (data.progress || 0) + delta);
+      const merged = { ...data, progress: next };
+      nowComplete = item?.target ? next >= item.target : !!data.checked;
+      return { ...prev, [itemId]: merged };
+    });
+    if (!wasComplete && nowComplete) sfx('tick');
+  };
+
+  const setChecklistItemNote = (moduleId, itemId, note) => {
+    updateModuleData(moduleId, prev => {
+      const data = normalizeChecklistItemData(prev[itemId]);
+      return { ...prev, [itemId]: { ...data, note } };
+    });
   };
 
   const toggleChoice = (moduleId) => {
@@ -509,6 +552,84 @@ export default function Ritmo() {
     }));
   };
 
+  // ---- collection handlers ----------------------------------------------
+
+  const updateCollectionModule = (moduleId, mutator) => {
+    setModules(prev => prev.map(m => {
+      if (m.id !== moduleId || m.type !== 'collection') return m;
+      return mutator(m);
+    }));
+  };
+
+  const addCollectionItem = (moduleId, name) => {
+    const trimmed = (name || '').trim();
+    if (!trimmed) return;
+    const newItem = logEvent(createItem(trimmed));
+    updateCollectionModule(moduleId, (m) => ({
+      ...m,
+      items: [...(m.items || []), newItem],
+    }));
+  };
+
+  const updateCollectionItem = (moduleId, item) => {
+    updateCollectionModule(moduleId, (m) => ({
+      ...m,
+      items: (m.items || []).map((it) => (it.id === item.id ? item : it)),
+    }));
+  };
+
+  const deleteCollectionItem = (moduleId, itemId) => {
+    updateCollectionModule(moduleId, (m) => ({
+      ...m,
+      items: (m.items || []).filter((it) => it.id !== itemId),
+    }));
+  };
+
+  const logCollectionEvent = (moduleId, itemId, eventData) => {
+    updateCollectionModule(moduleId, (m) => ({
+      ...m,
+      items: (m.items || []).map((it) =>
+        it.id === itemId ? logEvent(it, eventData || {}) : it
+      ),
+    }));
+  };
+
+  const removeCollectionEvent = (moduleId, itemId, eventIndex) => {
+    updateCollectionModule(moduleId, (m) => ({
+      ...m,
+      items: (m.items || []).map((it) =>
+        it.id === itemId ? removeEvent(it, eventIndex) : it
+      ),
+    }));
+  };
+
+  const addCollectionTag = (moduleId, label, color = 'blue') => {
+    const trimmed = (label || '').trim();
+    if (!trimmed) return;
+    updateCollectionModule(moduleId, (m) => ({
+      ...m,
+      tags: [...(m.tags || []), createTag(trimmed, color)],
+    }));
+  };
+
+  const updateCollectionTag = (moduleId, tag) => {
+    updateCollectionModule(moduleId, (m) => ({
+      ...m,
+      tags: (m.tags || []).map((tg) => (tg.id === tag.id ? tag : tg)),
+    }));
+  };
+
+  const deleteCollectionTag = (moduleId, tagId) => {
+    updateCollectionModule(moduleId, (m) => ({
+      ...m,
+      tags: (m.tags || []).filter((tg) => tg.id !== tagId),
+      items: (m.items || []).map((it) => ({
+        ...it,
+        tags: (it.tags || []).filter((id) => id !== tagId),
+      })),
+    }));
+  };
+
   const addTask = () => {
     if (newTask.trim()) {
       setCustomTasks(prev => [...prev, { id: Date.now(), text: newTask.trim(), done: false }]);
@@ -556,9 +677,9 @@ export default function Ritmo() {
         const data = d.moduleData?.[mod.id];
         if (!data) return false;
         if (requireAll) {
-          return mod.items.every(i => data[i.id]);
+          return mod.items.every(i => isChecklistItemComplete(i, data[i.id]));
         }
-        return mod.items.some(i => data[i.id]);
+        return mod.items.some(i => isChecklistItemComplete(i, data[i.id]));
       });
     }
     
@@ -622,7 +743,7 @@ export default function Ritmo() {
   };
 
   // Overall completion
-  const enabledNonTaskModules = modules.filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects');
+  const enabledNonTaskModules = modules.filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects' && m.type !== 'collection');
   const totalCompletionItems = enabledNonTaskModules.reduce((sum, m) => {
     if (m.type === 'checklist') return sum + m.items.length;
     if (m.type === 'choice') return sum + 1;
@@ -631,7 +752,7 @@ export default function Ritmo() {
   }, 0);
   const completedItems = enabledNonTaskModules.reduce((sum, m) => {
     const data = moduleData[m.id] || {};
-    if (m.type === 'checklist') return sum + m.items.filter(i => data[i.id]).length;
+    if (m.type === 'checklist') return sum + m.items.filter(i => isChecklistItemComplete(i, data[i.id])).length;
     if (m.type === 'choice') return sum + (data.completed ? 1 : 0);
     if (m.type === 'counter') {
       const goal = m.dailyGoal ?? m.dailyGoalMinutes ?? 0;
@@ -641,12 +762,15 @@ export default function Ritmo() {
     return sum;
   }, 0);
   const overallPercentage = totalCompletionItems > 0 ? (completedItems / totalCompletionItems) * 100 : 0;
+  const todayFullyComplete = isDayFullyComplete(modules, { moduleData }, activeDate);
 
-  if (loading) {
+  if (!splashDone) {
     return (
-      <div className={`min-h-screen ${t.bg} flex items-center justify-center`}>
-        <div className={t.textMuted}>Laden...</div>
-      </div>
+      <SplashScreen
+        ready={!loading}
+        onDone={() => setSplashDone(true)}
+        darkMode={darkMode}
+      />
     );
   }
 
@@ -734,12 +858,19 @@ export default function Ritmo() {
 
         <div className={`flex gap-1 mb-6 ${t.card} rounded-xl p-1 shadow-sm`}>
           {(() => {
-            const hasProjects = modules.some(m => m.enabled && m.type === 'projects');
-            const tabs = ['today', 'week', 'month', ...(hasProjects ? ['projects'] : []), 'reflection'];
+            const tabs = [
+              'today', 'week', 'month',
+              'household',
+              'projects',
+              'collections',
+              'reflection',
+            ];
             const labelOf = (v) => v === 'today' ? 'Vandaag'
               : v === 'week' ? 'Week'
               : v === 'month' ? 'Maand'
+              : v === 'household' ? 'Huishouden'
               : v === 'projects' ? 'Projecten'
+              : v === 'collections' ? 'Collecties'
               : 'Reflectie';
             return tabs.map(v => (
             <button
@@ -756,7 +887,7 @@ export default function Ritmo() {
         </div>
 
         {view === 'today' && (
-          <div className="slide-in">
+          <div className={`slide-in ${(goldenBorderEnabled && todayFullyComplete) ? 'ritmo-golden-border rounded-2xl' : ''}`}>
             <DayNavigator
               currentDate={activeDate}
               onChange={(d) => setActiveDate(d)}
@@ -871,6 +1002,22 @@ export default function Ritmo() {
                     />
                   );
                 }
+                if (mod.type === 'collection') {
+                  return (
+                    <CollectionModule
+                      key={mod.id}
+                      module={mod}
+                      Icon={ICON_OPTIONS[mod.icon] || Sparkles}
+                      editable={editable}
+                      onAddItem={(name) => addCollectionItem(mod.id, name)}
+                      onLogEvent={(itemId, eventData) => logCollectionEvent(mod.id, itemId, eventData)}
+                      onOpenView={() => { setSelectedCollectionId(mod.id); setView('collections'); }}
+                      onEdit={() => setEditingModule(mod)}
+                      t={t}
+                      darkMode={darkMode}
+                    />
+                  );
+                }
                 return (
                   <ModuleRenderer
                     key={mod.id}
@@ -878,6 +1025,8 @@ export default function Ritmo() {
                     data={moduleData[mod.id] || {}}
                     editable={editable}
                     onChecklistToggle={(itemId) => toggleChecklistItem(mod.id, itemId)}
+                    onChecklistIncrement={(itemId, delta) => incrementChecklistProgress(mod.id, itemId, delta)}
+                    onChecklistNote={(itemId, note) => setChecklistItemNote(mod.id, itemId, note)}
                     onChoiceToggle={() => toggleChoice(mod.id)}
                     onChoiceOptionSet={(optId) => setChoiceOption(mod.id, optId)}
                     onEdit={() => setEditingModule(mod)}
@@ -914,7 +1063,7 @@ export default function Ritmo() {
 
             {/* Quick reflection. On read-only days, only show if there was
                 actually a reflection written. */}
-            {(() => {
+            {showReflectionOnToday && (() => {
               const firstQ = reflectionQuestions[0];
               const hasAnswer = !!firstQ && !!reflectionAnswers[firstQ];
               if (!editable && !hasAnswer) return null;
@@ -964,6 +1113,7 @@ export default function Ritmo() {
             onPickDay={(date) => { setActiveDate(date); setView('today'); }}
             t={t}
             darkMode={darkMode}
+            goldenBorderEnabled={goldenBorderEnabled}
           />
         )}
 
@@ -975,6 +1125,21 @@ export default function Ritmo() {
             selectedProjectId={selectedProjectId}
             setSelectedProjectId={setSelectedProjectId}
             markTouchedToday={(moduleId) => updateModuleData(moduleId, prev => ({ ...prev, touchedToday: true }))}
+            t={t}
+          />
+        )}
+
+        {view === 'collections' && (
+          <CollectionsView
+            modules={modules}
+            iconOptions={ICON_OPTIONS}
+            initialFilterModuleId={selectedCollectionId}
+            editable={editable}
+            onAddItem={addCollectionItem}
+            onUpdateItem={updateCollectionItem}
+            onDeleteItem={deleteCollectionItem}
+            onLogEvent={logCollectionEvent}
+            onRemoveEvent={removeCollectionEvent}
             t={t}
           />
         )}
@@ -993,7 +1158,12 @@ export default function Ritmo() {
             darkMode={darkMode}
             monthNames={monthNames}
             dayNames={dayNames}
+            goldenBorderEnabled={goldenBorderEnabled}
           />
+        )}
+
+        {view === 'household' && (
+          <HouseholdView t={t} darkMode={darkMode} />
         )}
 
         {view === 'reflection' && (
@@ -1030,6 +1200,10 @@ export default function Ritmo() {
           setSoundEnabled={setSoundEnabled}
           soundVolume={soundVolume}
           setSoundVolume={setSoundVolume}
+          goldenBorderEnabled={goldenBorderEnabled}
+          setGoldenBorderEnabled={setGoldenBorderEnabled}
+          showReflectionOnToday={showReflectionOnToday}
+          setShowReflectionOnToday={setShowReflectionOnToday}
           t={t}
           dayNames={dayNames}
           setEditingModule={setEditingModule}
@@ -1088,7 +1262,13 @@ function Onboarding({ onComplete, t, darkMode, setDarkMode }) {
       <div className={`${t.card} rounded-2xl p-6 shadow-lg max-w-lg w-full`}>
         {step === 0 && (
           <div className="text-center">
-            <div className="text-6xl mb-4">🎵</div>
+            <div className="flex justify-center mb-4">
+              <RitmoLogo
+                size={96}
+                variant={darkMode ? 'light' : 'dark'}
+                animated="splash"
+              />
+            </div>
             <h1 className={`text-3xl font-bold ${t.text} mb-2`}>Welkom bij Ritmo</h1>
             <p className={`${t.textMuted} mb-6`}>
               Jouw persoonlijke dag-app. Volledig modulair: kies wat je wilt bijhouden, voeg toe wat je nodig hebt, verberg wat niet relevant is.
@@ -1242,7 +1422,7 @@ function Onboarding({ onComplete, t, darkMode, setDarkMode }) {
 // =============================================
 // MODULE RENDERER
 // =============================================
-function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle, onChoiceToggle, onChoiceOptionSet, onEdit, weekDates, history, customTasks, newTask, setNewTask, addTask, toggleTask, deleteTask, t, darkMode }) {
+function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle, onChecklistIncrement, onChecklistNote, onChoiceToggle, onChoiceOptionSet, onEdit, weekDates, history, customTasks, newTask, setNewTask, addTask, toggleTask, deleteTask, t, darkMode }) {
   const editButton = onEdit ? (
     <button
       onClick={onEdit}
@@ -1257,35 +1437,18 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
   const colorClass = `text-${mod.color}-500`;
 
   if (mod.type === 'checklist') {
-    const items = mod.items || [];
     return (
-      <div className={`${t.card} rounded-2xl p-5 shadow-sm mb-4`}>
-        <div className="flex items-center gap-2 mb-4">
-          <Icon className={`w-5 h-5 ${colorClass}`} />
-          <h2 className={`font-semibold ${t.textSecondary}`}>{mod.name}</h2>
-          {editButton}
-        </div>
-        {items.length === 0 ? (
-          <p className={`${t.textMuted} text-sm text-center py-4`}>
-            Voeg items toe via instellingen ⚙️
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {items.map(item => (
-              <ChecklistItem
-                key={item.id}
-                label={item.label}
-                icon={Icon}
-                color={mod.color}
-                checked={data[item.id] || false}
-                onToggle={() => onChecklistToggle(item.id)}
-                disabled={!editable}
-                t={t}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      <ChecklistModule
+        module={mod}
+        Icon={Icon}
+        data={data}
+        editable={editable}
+        onToggle={onChecklistToggle}
+        onIncrement={onChecklistIncrement}
+        onSetNote={onChecklistNote}
+        onEdit={onEdit}
+        t={t}
+      />
     );
   }
 
@@ -1405,27 +1568,6 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
   return null;
 }
 
-function ChecklistItem({ label, icon: Icon, color, checked, onToggle, disabled = false, t }) {
-  return (
-    <button
-      onClick={onToggle}
-      disabled={disabled}
-      className={`w-full flex items-center gap-3 p-3 rounded-lg transition disabled:cursor-not-allowed ${
-        checked ? t.cardSecondary : t.hover
-      }`}
-    >
-      <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition flex-shrink-0 ${
-        checked ? `bg-${color}-500 border-${color}-500 check-pop` : 'border-slate-300'
-      }`}>
-        {checked && <Check className="w-4 h-4 text-white" />}
-      </div>
-      <span className={`text-sm text-left flex-1 ${checked ? `line-through ${t.textMuted}` : t.textSecondary}`}>
-        {label}
-      </span>
-    </button>
-  );
-}
-
 // =============================================
 // STREAK BADGE
 // =============================================
@@ -1457,8 +1599,8 @@ function StreakBadge({ label, days, color, t }) {
 // =============================================
 // WEEK VIEW
 // =============================================
-function WeekView({ modules, history, today, activeDateKey, moduleData, activeWeekStart, setActiveWeekStart, weekDates, dayNames, onPickDay, t, darkMode }) {
-  const enabledNonTaskModules = modules.filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects');
+function WeekView({ modules, history, today, activeDateKey, moduleData, activeWeekStart, setActiveWeekStart, weekDates, dayNames, onPickDay, t, darkMode, goldenBorderEnabled }) {
+  const enabledNonTaskModules = modules.filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects' && m.type !== 'collection');
   const atCurrentWeek = sameDay(activeWeekStart, startOfWeek(new Date()));
 
   const dayDataFor = (dateStr) => (
@@ -1498,6 +1640,7 @@ function WeekView({ modules, history, today, activeDateKey, moduleData, activeWe
           const dateObj = parseDateKey(date);
           const future = isFuture(dateObj);
           const bg = buildDayCellBackground(modules, dayDataFor(date), dateObj);
+          const fullyComplete = isDayFullyComplete(modules, dayDataFor(date), dateObj);
           const dayNum = date.slice(8).replace(/^0/, '');
 
           return (
@@ -1513,7 +1656,7 @@ function WeekView({ modules, history, today, activeDateKey, moduleData, activeWe
                   bg ? '' : t.progressBg
                 } ${isTodayCell ? 'ring-2 ring-blue-400' : ''} ${
                   future ? 'opacity-30 cursor-not-allowed' : 'hover:opacity-90'
-                }`}
+                } ${(goldenBorderEnabled && fullyComplete) ? 'ritmo-golden-border' : ''}`}
                 aria-label={`Open ${date}`}
               >
                 <span className={`text-sm font-bold ${bg ? 'text-white drop-shadow' : t.textSecondary}`}>
@@ -1589,7 +1732,7 @@ function WeekView({ modules, history, today, activeDateKey, moduleData, activeWe
 // =============================================
 // MONTH VIEW
 // =============================================
-function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDateKey, moduleData, modules, onPickDay, t, darkMode, monthNames, dayNames }) {
+function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDateKey, moduleData, modules, onPickDay, t, darkMode, monthNames, dayNames, goldenBorderEnabled }) {
   const year = calendarMonth.getFullYear();
   const month = calendarMonth.getMonth();
   const firstDay = new Date(year, month, 1);
@@ -1616,7 +1759,7 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDate
     const dateObj = parseDateKey(d);
     if (buildDayCellBackground(modules, data, dateObj) !== null) return false;
     // any non-empty status counts as partial
-    return modules.some(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects' && m.type !== 'sleep' &&
+    return modules.some(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects' && m.type !== 'sleep' && m.type !== 'collection' &&
       moduleStatusForDay(m, data, dateObj) !== 'none');
   }).length;
 
@@ -1646,6 +1789,7 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDate
           const dateObj = parseDateKey(dateStr);
           const future = isFuture(dateObj);
           const bg = buildDayCellBackground(modules, dayDataFor(dateStr), dateObj);
+          const fullyComplete = isDayFullyComplete(modules, dayDataFor(dateStr), dateObj);
 
           return (
             <button
@@ -1657,7 +1801,7 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDate
                 bg ? '' : (darkMode ? 'bg-slate-700' : 'bg-slate-100')
               } ${isTodayCell ? 'ring-2 ring-blue-500' : ''} ${
                 future ? 'opacity-30 cursor-not-allowed' : 'hover:scale-110'
-              }`}
+              } ${(goldenBorderEnabled && fullyComplete) ? 'ritmo-golden-border' : ''}`}
               aria-label={`Open ${dateStr}`}
             >
               <span className={bg ? 'text-white drop-shadow' : t.textSecondary}>{day}</span>
@@ -1795,9 +1939,35 @@ function ReflectionView({ reflectionQuestions, reflectionAnswers, setReflectionA
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, t, dayNames, setEditingModule }) {
+function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, showReflectionOnToday, setShowReflectionOnToday, t, dayNames, setEditingModule }) {
   const [activeTab, setActiveTab] = useState('modules');
   const [helpView, setHelpView] = useState(null); // null | 'list' | 'install' | 'feedback'
+  const [reorderMode, setReorderMode] = useState(false);
+  const [draggingId, setDraggingId] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
+
+  const moveModule = (id, dir) => {
+    setModules(prev => {
+      const i = prev.findIndex(m => m.id === id);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+  };
+
+  const reorderModules = (fromId, toId) => {
+    setModules(prev => {
+      const from = prev.findIndex(m => m.id === fromId);
+      const to = prev.findIndex(m => m.id === toId);
+      if (from < 0 || to < 0 || from === to) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
 
   const helpTitles = {
     list: 'Help',
@@ -1882,62 +2052,124 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
 
         {activeTab === 'modules' && (
           <div>
-            <h3 className={`font-semibold ${t.textSecondary} mb-3`}>Beheer modules</h3>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <h3 className={`font-semibold ${t.textSecondary}`}>Beheer modules</h3>
+              <button
+                onClick={() => setReorderMode(v => !v)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                  reorderMode
+                    ? 'bg-slate-700 text-white'
+                    : `border ${t.border} ${t.textSecondary} ${t.hover}`
+                }`}
+              >
+                <ArrowUpDown className="w-3.5 h-3.5" />
+                {reorderMode ? 'Klaar' : 'Volgorde'}
+              </button>
+            </div>
             <p className={`text-xs ${t.textMuted} mb-4`}>
-              Activeer, verberg, bewerk of verwijder modules. Voeg eigen modules toe voor wat jij belangrijk vindt.
+              {reorderMode
+                ? 'Versleep of gebruik de pijltjes om de volgorde aan te passen.'
+                : 'Activeer, verberg, bewerk of verwijder modules. Voeg eigen modules toe voor wat jij belangrijk vindt.'}
             </p>
-            
+
             <div className="space-y-2 mb-4">
-              {modules.map(mod => {
+              {modules.map((mod, index) => {
                 const Icon = ICON_OPTIONS[mod.icon] || Sparkles;
+                const isFirst = index === 0;
+                const isLast = index === modules.length - 1;
+                const isDragging = draggingId === mod.id;
+                const isDragOver = dragOverId === mod.id && draggingId && draggingId !== mod.id;
                 return (
-                  <div key={mod.id} className={`flex items-center gap-2 p-3 ${t.cardSecondary} rounded-lg`}>
-                    <button
-                      onClick={() => setModules(prev => prev.map(m => m.id === mod.id ? { ...m, enabled: !m.enabled } : m))}
-                      className={`p-1.5 rounded transition ${mod.enabled ? `text-${mod.color}-500` : t.textMuted}`}
-                      title={mod.enabled ? 'Verbergen' : 'Tonen'}
-                    >
-                      {mod.enabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                    </button>
+                  <div
+                    key={mod.id}
+                    draggable={reorderMode}
+                    onDragStart={() => setDraggingId(mod.id)}
+                    onDragEnd={() => { setDraggingId(null); setDragOverId(null); }}
+                    onDragOver={(e) => { if (reorderMode) { e.preventDefault(); setDragOverId(mod.id); } }}
+                    onDrop={(e) => {
+                      if (!reorderMode) return;
+                      e.preventDefault();
+                      if (draggingId && draggingId !== mod.id) reorderModules(draggingId, mod.id);
+                      setDraggingId(null);
+                      setDragOverId(null);
+                    }}
+                    onClick={() => { if (!reorderMode) setEditingModule(mod); }}
+                    className={`flex items-center gap-2 p-3 ${t.cardSecondary} rounded-lg transition ${
+                      reorderMode ? 'cursor-default' : 'cursor-pointer'
+                    } ${isDragging ? 'opacity-40' : ''} ${isDragOver ? `ring-2 ring-${mod.color}-400` : ''}`}
+                  >
+                    {reorderMode && (
+                      <span className={`${t.textMuted} touch-none cursor-grab active:cursor-grabbing`} aria-hidden>
+                        <GripVertical className="w-4 h-4" />
+                      </span>
+                    )}
+                    {!reorderMode && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setModules(prev => prev.map(m => m.id === mod.id ? { ...m, enabled: !m.enabled } : m));
+                        }}
+                        className={`p-1.5 rounded transition ${mod.enabled ? `text-${mod.color}-500` : t.textMuted}`}
+                        title={mod.enabled ? 'Verbergen' : 'Tonen'}
+                      >
+                        {mod.enabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                      </button>
+                    )}
                     <Icon className={`w-4 h-4 ${mod.enabled ? `text-${mod.color}-500` : t.textMuted}`} />
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className={`text-sm font-medium ${mod.enabled ? t.textSecondary : t.textMuted}`}>
                         {mod.name}
                       </div>
                       <div className={`text-xs ${t.textMuted}`}>
-                        {mod.type === 'checklist' && `Checklist · ${mod.items.length} items`}
+                        {mod.type === 'checklist' && `Checklist · ${(mod.items || []).length} items`}
                         {mod.type === 'choice' && 'Keuze + voltooien'}
                         {mod.type === 'counter' && `Counter · ${formatAmount(mod.dailyGoal ?? mod.dailyGoalMinutes ?? 0, mod.unit || 'minutes')} doel`}
                         {mod.type === 'tasks' && 'Eigen takenlijst'}
                       </div>
                     </div>
-                    <button
-                      onClick={() => setEditingModule(mod)}
-                      className={`p-1.5 ${t.hover} rounded transition ${t.textMuted}`}
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </button>
+                    {reorderMode && (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); moveModule(mod.id, -1); }}
+                          disabled={isFirst}
+                          aria-label="Naar boven"
+                          className={`p-1.5 rounded transition ${t.hover} ${t.textSecondary} disabled:opacity-30 disabled:cursor-not-allowed`}
+                        >
+                          <ChevronUp className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); moveModule(mod.id, 1); }}
+                          disabled={isLast}
+                          aria-label="Naar beneden"
+                          className={`p-1.5 rounded transition ${t.hover} ${t.textSecondary} disabled:opacity-30 disabled:cursor-not-allowed`}
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
 
-            <button
-              onClick={() => setEditingModule({
-                id: `mod_${Date.now()}`,
-                name: '',
-                icon: 'Star',
-                color: 'blue',
-                enabled: true,
-                countInStreak: false,
-                type: 'checklist',
-                items: []
-              })}
-              className="w-full py-3 border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-sm font-medium text-slate-500 hover:text-blue-500 transition flex items-center justify-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Nieuwe module toevoegen
-            </button>
+            {!reorderMode && (
+              <button
+                onClick={() => setEditingModule({
+                  id: `mod_${Date.now()}`,
+                  name: '',
+                  icon: 'Star',
+                  color: 'blue',
+                  enabled: true,
+                  countInStreak: false,
+                  type: 'checklist',
+                  items: []
+                })}
+                className="w-full py-3 border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-sm font-medium text-slate-500 hover:text-blue-500 transition flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Nieuwe module toevoegen
+              </button>
+            )}
 
             <button
               onClick={() => {
@@ -1967,7 +2199,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
               </div>
 
               <div className="space-y-4">
-                {modules.filter(m => m.enabled && m.type !== 'tasks').map(mod => {
+                {modules.filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'collection').map(mod => {
                   const Icon = ICON_OPTIONS[mod.icon] || Sparkles;
                   const setting = streakSettings[mod.id] || {};
                   const isActive = mod.countInStreak === true;
@@ -2101,6 +2333,36 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
             </div>
 
             <div className={`mt-6 pt-6 border-t ${t.border}`}>
+              <h3 className={`font-semibold ${t.textSecondary} mb-3`}>Effecten</h3>
+
+              <label className={`flex items-center justify-between gap-3 p-3 ${t.cardSecondary} rounded-lg mb-3`}>
+                <div className="min-w-0">
+                  <span className={`text-sm font-medium ${t.textSecondary}`}>Gouden rand bij voltooide dagen</span>
+                  <p className={`text-xs ${t.textMuted} mt-0.5`}>Animatie rond dagen waarop alles afgevinkt is.</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={goldenBorderEnabled}
+                  onChange={(e) => setGoldenBorderEnabled(e.target.checked)}
+                  className="w-4 h-4 cursor-pointer flex-shrink-0"
+                />
+              </label>
+
+              <label className={`flex items-center justify-between gap-3 p-3 ${t.cardSecondary} rounded-lg mb-3`}>
+                <div className="min-w-0">
+                  <span className={`text-sm font-medium ${t.textSecondary}`}>Reflectie tonen op Vandaag</span>
+                  <p className={`text-xs ${t.textMuted} mt-0.5`}>Verberg de Reflectie-kaart op het Vandaag-scherm. De Reflectie-tab blijft bereikbaar.</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={showReflectionOnToday}
+                  onChange={(e) => setShowReflectionOnToday(e.target.checked)}
+                  className="w-4 h-4 cursor-pointer flex-shrink-0"
+                />
+              </label>
+            </div>
+
+            <div className={`mt-6 pt-6 border-t ${t.border}`}>
               <h3 className={`font-semibold ${t.textSecondary} mb-3`}>Geluiden</h3>
 
               <label className={`flex items-center justify-between p-3 ${t.cardSecondary} rounded-lg mb-3`}>
@@ -2182,7 +2444,87 @@ const TYPE_OPTIONS = [
   { id: 'tasks', label: 'Taken', desc: 'Vrije takenlijst' },
   { id: 'projects', label: 'Project', desc: 'Vakken & subdoelen' },
   { id: 'sleep', label: 'Slaap', desc: 'Bedtijd, opstaan, ochtendscore' },
+  { id: 'collection', label: 'Collectie', desc: 'Catalogus van items met events' },
 ];
+
+function CollectionTagsEditor({ tags, onAdd, onUpdate, onRemove, t }) {
+  const [label, setLabel] = useState('');
+  const [color, setColor] = useState('blue');
+  const submit = () => {
+    if (!label.trim()) return;
+    onAdd(label, color);
+    setLabel('');
+  };
+  return (
+    <div>
+      <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
+        Tags
+      </label>
+      {tags.length === 0 ? (
+        <p className={`text-xs ${t.textMuted} mb-2`}>Nog geen tags.</p>
+      ) : (
+        <ul className="space-y-1 mb-2">
+          {tags.map((tg) => (
+            <li key={tg.id} className={`flex items-center gap-2 p-2 ${t.cardSecondary} rounded-lg`}>
+              <select
+                value={tg.color}
+                onChange={(e) => onUpdate(tg.id, { color: e.target.value })}
+                className={`px-2 py-1 ${t.input} rounded text-xs`}
+                aria-label="Kleur"
+              >
+                {COLOR_OPTIONS.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <input
+                type="text"
+                value={tg.label}
+                onChange={(e) => onUpdate(tg.id, { label: e.target.value })}
+                className={`flex-1 px-2 py-1 ${t.input} rounded text-sm`}
+              />
+              <button
+                type="button"
+                onClick={() => onRemove(tg.id)}
+                className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition"
+                aria-label="Tag verwijderen"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex gap-2">
+        <select
+          value={color}
+          onChange={(e) => setColor(e.target.value)}
+          className={`px-2 py-2 ${t.input} rounded-lg text-sm`}
+          aria-label="Kleur nieuwe tag"
+        >
+          {COLOR_OPTIONS.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+        <input
+          type="text"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } }}
+          placeholder="Tag-naam..."
+          className={`flex-1 px-3 py-2 ${t.input} rounded-lg text-sm`}
+        />
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!label.trim()}
+          className="px-3 py-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-lg text-sm transition"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function genId(prefix) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -2191,6 +2533,7 @@ function genId(prefix) {
 function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
   const [editing, setEditing] = useState(mod);
   const [newItem, setNewItem] = useState('');
+  const [expandedItemId, setExpandedItemId] = useState(null);
   const isNew = !mod.name;
   const [step, setStep] = useState(isNew ? 'type' : 'config');
   const [presetTab, setPresetTab] = useState('suggestions');
@@ -2214,6 +2557,13 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
     }));
   };
 
+  const updateItem = (itemId, patch) => {
+    setEditing(prev => ({
+      ...prev,
+      items: (prev.items || []).map(i => i.id === itemId ? { ...i, ...patch } : i),
+    }));
+  };
+
   const selectType = (typeId) => {
     setEditing(prev => ({
       ...prev,
@@ -2232,6 +2582,13 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
         toleranceMinutes: prev.toleranceMinutes ?? 15,
         showMorningScore: typeof prev.showMorningScore === 'boolean' ? prev.showMorningScore : true,
       } : {}),
+      ...(typeId === 'collection' ? {
+        trackingMode: prev.trackingMode || 'completion',
+        itemFields: prev.itemFields || { rating: true, notes: true, tags: true },
+        tags: prev.tags || [],
+        items: prev.items || [],
+        countInStreak: false,
+      } : {}),
     }));
     setStep('preset');
     setPresetTab('suggestions');
@@ -2240,7 +2597,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
   const applyPreset = (preset) => {
     setEditing(prev => {
       const merged = { ...prev, ...preset };
-      if (preset.items) {
+      if (preset.items && merged.type !== 'collection') {
         merged.items = preset.items.map(label => ({ id: genId('items'), label }));
       }
       if (preset.options) {
@@ -2425,35 +2782,121 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
           </div>
 
           {editing.type === 'checklist' && (
-            <div>
-              <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>Items</label>
-              <div className="space-y-2 mb-2">
-                {(editing.items || []).map(item => (
-                  <div key={item.id} className={`flex items-center gap-2 p-2 ${t.cardSecondary} rounded-lg`}>
-                    <span className={`flex-1 text-sm ${t.textSecondary}`}>{item.label}</span>
-                    <button
-                      onClick={() => removeEntry('items', item.id)}
-                      className="text-slate-400 hover:text-red-500"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+            <>
+              <div className={`pt-4 border-t ${t.border}`}>
+                <label className={`text-sm font-medium ${t.textSecondary} mb-3 block`}>Opties</label>
+                <div className="space-y-3">
+                  {[
+                    { key: 'allowNotes', title: 'Dagelijkse notities', desc: 'Voeg per dag een korte notitie toe aan een item.' },
+                    { key: 'allowDescriptions', title: 'Instructies per item', desc: 'Geef een item een vaste geheugensteun, bijv. "3 sets van 10".' },
+                    { key: 'allowTargets', title: 'Sets per item', desc: 'Vervang het vinkje door een teller (bijv. 0/3 sets).' },
+                  ].map(opt => {
+                    const isOn = !!editing[opt.key];
+                    return (
+                      <button
+                        key={opt.key}
+                        onClick={() => update(opt.key, !isOn)}
+                        className={`w-full flex items-start gap-3 p-3 rounded-lg text-left transition ${t.cardSecondary} ${t.hover}`}
+                      >
+                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition flex-shrink-0 mt-0.5 ${
+                          isOn ? `bg-${editing.color}-500 border-${editing.color}-500` : 'border-slate-300'
+                        }`}>
+                          {isOn && <Check className="w-3 h-3 text-white" />}
+                        </div>
+                        <div className="flex-1">
+                          <div className={`text-sm font-medium ${t.textSecondary}`}>{opt.title}</div>
+                          <div className={`text-xs ${t.textMuted} mt-0.5`}>{opt.desc}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newItem}
-                  onChange={(e) => setNewItem(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addEntry('items')}
-                  placeholder="Nieuw item..."
-                  className={`flex-1 px-3 py-2 ${t.input} rounded-lg text-sm`}
-                />
-                <button onClick={() => addEntry('items')} className={`px-3 py-2 bg-${editing.color}-500 text-white rounded-lg`}>
-                  <Plus className="w-4 h-4" />
-                </button>
+
+              <div>
+                <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>Items</label>
+                <div className="space-y-2 mb-2">
+                  {(editing.items || []).map(item => {
+                    const isExpanded = expandedItemId === item.id;
+                    const showSettingsBtn = editing.allowDescriptions || editing.allowTargets;
+                    return (
+                      <div key={item.id} className={`${t.cardSecondary} rounded-lg`}>
+                        <div className="flex items-center gap-2 p-2">
+                          <input
+                            type="text"
+                            value={item.label}
+                            onChange={(e) => updateItem(item.id, { label: e.target.value })}
+                            className={`flex-1 px-2 py-1 ${t.input} rounded text-sm focus:outline-none focus:ring-2 focus:ring-${editing.color}-300`}
+                          />
+                          {showSettingsBtn && (
+                            <button
+                              onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
+                              className={`p-1.5 rounded transition ${
+                                isExpanded ? `bg-${editing.color}-500 text-white` : `${t.textMuted} ${t.hover}`
+                              }`}
+                              title="Item-instellingen"
+                            >
+                              <SlidersHorizontal className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => removeEntry('items', item.id)}
+                            className="text-slate-400 hover:text-red-500 p-1.5"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        {isExpanded && showSettingsBtn && (
+                          <div className="px-2 pb-2 space-y-2">
+                            {editing.allowDescriptions && (
+                              <div>
+                                <label className={`text-xs font-medium ${t.textMuted} mb-1 block`}>Instructie</label>
+                                <textarea
+                                  value={item.description || ''}
+                                  onChange={(e) => updateItem(item.id, { description: e.target.value })}
+                                  rows={2}
+                                  placeholder='Bijv. "3 sets van 10"'
+                                  className={`w-full px-2 py-1.5 ${t.input} rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-300`}
+                                />
+                              </div>
+                            )}
+                            {editing.allowTargets && (
+                              <div>
+                                <label className={`text-xs font-medium ${t.textMuted} mb-1 block`}>Aantal sets (leeg = vinkje)</label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={item.target ?? ''}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    updateItem(item.id, { target: v === '' ? undefined : Math.max(1, parseInt(v, 10) || 1) });
+                                  }}
+                                  placeholder="bijv. 3"
+                                  className={`w-24 px-2 py-1.5 ${t.input} rounded text-sm focus:outline-none focus:ring-2 focus:ring-rose-300`}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newItem}
+                    onChange={(e) => setNewItem(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addEntry('items')}
+                    placeholder="Nieuw item..."
+                    className={`flex-1 px-3 py-2 ${t.input} rounded-lg text-sm`}
+                  />
+                  <button onClick={() => addEntry('items')} className={`px-3 py-2 bg-${editing.color}-500 text-white rounded-lg`}>
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </div>
+            </>
           )}
 
           {editing.type === 'choice' && (
@@ -2724,6 +3167,122 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
                   />
                   Vraag ochtendscore
                 </label>
+              </>
+            );
+          })()}
+
+          {editing.type === 'collection' && (() => {
+            const trackingMode = editing.trackingMode || 'completion';
+            const fields = editing.itemFields || { rating: true, notes: true, tags: true };
+            const tags = editing.tags || [];
+            const showUnit = trackingMode === 'amount' || trackingMode === 'flexible';
+            const setField = (key, value) => {
+              setEditing(prev => ({
+                ...prev,
+                itemFields: { ...(prev.itemFields || { rating: true, notes: true, tags: true }), [key]: value },
+              }));
+            };
+            const addTag = (label, color) => {
+              const trimmed = (label || '').trim();
+              if (!trimmed) return;
+              setEditing(prev => ({
+                ...prev,
+                tags: [...(prev.tags || []), {
+                  id: genId('tag'),
+                  label: trimmed,
+                  color: color || 'blue',
+                }],
+              }));
+            };
+            const updateTag = (id, patch) => {
+              setEditing(prev => ({
+                ...prev,
+                tags: (prev.tags || []).map(tg => tg.id === id ? { ...tg, ...patch } : tg),
+              }));
+            };
+            const removeTag = (id) => {
+              setEditing(prev => ({
+                ...prev,
+                tags: (prev.tags || []).filter(tg => tg.id !== id),
+                items: (prev.items || []).map(it => ({
+                  ...it,
+                  tags: (it.tags || []).filter(tid => tid !== id),
+                })),
+              }));
+            };
+            return (
+              <>
+                <div>
+                  <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
+                    Bijhouden als
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { id: 'completion', label: 'Voltooien' },
+                      { id: 'count', label: 'Tellen' },
+                      { id: 'amount', label: 'Hoeveelheid' },
+                      { id: 'flexible', label: 'Per item' },
+                    ].map(opt => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => update('trackingMode', opt.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                          trackingMode === opt.id ? 'bg-blue-500 text-white' : `${t.cardSecondary} ${t.textMuted}`
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {showUnit && (
+                  <div>
+                    <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
+                      Eenheid
+                    </label>
+                    <input
+                      type="text"
+                      value={editing.amountUnit || ''}
+                      onChange={(e) => update('amountUnit', e.target.value)}
+                      placeholder="bv. ml, pagina"
+                      className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
+                    Velden per item
+                  </label>
+                  <div className="space-y-1">
+                    {[
+                      { id: 'rating', label: 'Beoordeling (sterren)' },
+                      { id: 'notes', label: 'Notities' },
+                      { id: 'tags', label: 'Tags' },
+                    ].map(f => (
+                      <label key={f.id} className={`flex items-center gap-2 text-sm ${t.textSecondary}`}>
+                        <input
+                          type="checkbox"
+                          checked={!!fields[f.id]}
+                          onChange={(e) => setField(f.id, e.target.checked)}
+                        />
+                        {f.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {fields.tags && (
+                  <CollectionTagsEditor
+                    tags={tags}
+                    onAdd={addTag}
+                    onUpdate={updateTag}
+                    onRemove={removeTag}
+                    t={t}
+                  />
+                )}
               </>
             );
           })()}

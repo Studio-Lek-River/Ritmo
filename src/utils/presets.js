@@ -22,6 +22,13 @@ export const MODULE_PRESETS = {
       color: 'purple',
       items: ['Oefening 1', 'Oefening 2'],
     },
+    {
+      name: 'Maaltijden',
+      icon: 'UtensilsCrossed',
+      color: 'orange',
+      allowNotes: true,
+      items: ['Ontbijt', 'Lunch', 'Diner'],
+    },
   ],
   choice: [
     {
@@ -86,6 +93,35 @@ export const MODULE_PRESETS = {
   projects: [
     { name: 'Studie', icon: 'GraduationCap', color: 'indigo' },
     { name: "Hobby's", icon: 'Heart', color: 'pink' },
+  ],
+  collection: [
+    {
+      name: 'Boeken',
+      icon: 'Book',
+      color: 'amber',
+      trackingMode: 'completion',
+      itemFields: { rating: true, notes: true, tags: true },
+      tags: [],
+      items: [],
+    },
+    {
+      name: 'Films',
+      icon: 'Star',
+      color: 'purple',
+      trackingMode: 'completion',
+      itemFields: { rating: true, notes: true, tags: true },
+      tags: [],
+      items: [],
+    },
+    {
+      name: 'Restaurants',
+      icon: 'Coffee',
+      color: 'orange',
+      trackingMode: 'count',
+      itemFields: { rating: true, notes: true, tags: true },
+      tags: [],
+      items: [],
+    },
   ],
   sleep: [
     {

@@ -1,6 +1,21 @@
 import { getColorHex } from './colors';
 import { goalsForNight, isOnTarget } from './sleep';
 
+// Lazily normalises legacy boolean checklist-item data to the new object form
+// `{ checked?, progress?, note? }`. Reads only — writes always use the new shape.
+export function normalizeChecklistItemData(value) {
+  if (value === true) return { checked: true };
+  if (value === false || value == null) return {};
+  if (typeof value === 'object') return value;
+  return {};
+}
+
+export function isChecklistItemComplete(item, raw) {
+  const data = normalizeChecklistItemData(raw);
+  if (item.target) return (data.progress || 0) >= item.target;
+  return !!data.checked;
+}
+
 // Returns 'full' | 'partial' | 'none' for a single module on a given day.
 // Storage shapes match what App.jsx already writes (see WeekView/MonthView
 // completion logic for the canonical reads).
@@ -12,7 +27,7 @@ export function moduleStatusForDay(module, dayData, date) {
     case 'checklist': {
       const items = module.items || [];
       if (items.length === 0) return 'none';
-      const done = items.filter(i => d[i.id]).length;
+      const done = items.filter(i => isChecklistItemComplete(i, d[i.id])).length;
       if (done === items.length) return 'full';
       if (done > 0) return 'partial';
       return 'none';
@@ -61,4 +76,16 @@ export function buildDayCellBackground(modules, dayData, date) {
     return `${c} ${from}%, ${c} ${to}%`;
   }).join(', ');
   return `linear-gradient(to right, ${stops})`;
+}
+
+const GLOW_TRACKABLE_TYPES = new Set(['checklist', 'choice', 'counter', 'sleep']);
+
+export function isDayFullyComplete(modules, dayData, date) {
+  const trackable = modules.filter(
+    m => m.enabled && GLOW_TRACKABLE_TYPES.has(m.type)
+  );
+  if (trackable.length === 0) return false;
+  return trackable.every(
+    m => moduleStatusForDay(m, dayData, date) === 'full'
+  );
 }

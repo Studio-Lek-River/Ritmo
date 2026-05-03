@@ -16,3 +16,49 @@ body {
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+@property --ritmo-border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes ritmo-border-spin {
+  to { --ritmo-border-angle: 360deg; }
+}
+
+.ritmo-golden-border {
+  position: relative;
+  isolation: isolate;
+}
+
+.ritmo-golden-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--ritmo-border-angle),
+    transparent 0deg,
+    rgba(252, 211, 77, 0.95) 60deg,
+    rgba(251, 191, 36, 0.6) 120deg,
+    transparent 180deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  animation: ritmo-border-spin 3s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ritmo-golden-border::before {
+    animation: none;
+    background: rgba(251, 191, 36, 0.85);
+  }
+}
