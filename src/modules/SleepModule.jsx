@@ -1,7 +1,8 @@
 import React from 'react';
-import { Sparkles, Settings, Star } from 'lucide-react';
+import { Sparkles, Settings } from 'lucide-react';
 import { goalsForNight, timeDiffMinutes, sleepDurationMinutes, isOnTarget } from '../utils/sleep';
 import { formatDuration } from '../utils/format';
+import StarRating from '../components/StarRating';
 
 const SCORE_LABELS = ['Slecht geslapen', 'Matig', 'Oké', 'Goed', 'Heerlijk uitgerust'];
 
@@ -122,26 +123,14 @@ export default function SleepModule({
       {mod.showMorningScore && (
         <div className="mb-3">
           <div className={`text-xs font-medium ${t.textMuted} mb-1`}>Hoe sliep je?</div>
-          <div className="flex gap-1">
-            {[1, 2, 3, 4, 5].map(n => {
-              const filled = morningScore != null && n <= morningScore;
-              return (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => editable && setScore(n)}
-                  disabled={!editable}
-                  aria-label={`${n} ster: ${SCORE_LABELS[n - 1]}`}
-                  title={SCORE_LABELS[n - 1]}
-                  className={`p-1 rounded transition disabled:cursor-not-allowed ${editable ? 'hover:scale-110' : ''}`}
-                >
-                  <Star
-                    className={`w-6 h-6 ${filled ? `fill-${mod.color}-500 text-${mod.color}-500` : t.textMuted}`}
-                  />
-                </button>
-              );
-            })}
-          </div>
+          <StarRating
+            value={morningScore ?? 0}
+            onChange={setScore}
+            readonly={!editable}
+            size="lg"
+            color={mod.color}
+            labels={SCORE_LABELS}
+          />
         </div>
       )}
 

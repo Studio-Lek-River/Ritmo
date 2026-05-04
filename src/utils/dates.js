@@ -15,6 +15,10 @@ export const MONTHS_NL_SHORT = [
 export const DAYS_NL = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
 export const DAYS_SHORT_NL = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
 
+// Maandag-eerste, capitalized, voor week/maand-grids die op WEEKDAY_KEYS-volgorde indexeren.
+export const DAYS_SHORT_NL_MON_CAPS = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
+export const MONTHS_NL_CAPS = MONTHS_NL.map(m => m.charAt(0).toUpperCase() + m.slice(1));
+
 // Weekday keys with maandag-eerste volgorde voor module-config (goals per weekdag).
 export const WEEKDAY_KEYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 

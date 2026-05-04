@@ -208,6 +208,13 @@ function CounterUI({
     ? 'bg-green-500'
     : darkMode ? `bg-${mod.color}-400` : `bg-${mod.color}-500`;
 
+  let goalTextClass;
+  if (reachedGoal) {
+    goalTextClass = darkMode ? 'text-green-300' : 'text-green-600';
+  } else {
+    goalTextClass = darkMode ? `text-${mod.color}-300` : `text-${mod.color}-600`;
+  }
+
   return (
     <div className={`${t.card} rounded-2xl p-5 shadow-sm mb-4`}>
       <div className="flex items-center gap-2 mb-4">
@@ -226,7 +233,7 @@ function CounterUI({
       </div>
 
       <div className={`${darkMode ? `bg-${mod.color}-900/30` : `bg-${mod.color}-50`} rounded-xl p-4 mb-3`}>
-        <div className={`text-2xl font-bold ${reachedGoal ? (darkMode ? 'text-green-300' : 'text-green-600') : (darkMode ? `text-${mod.color}-300` : `text-${mod.color}-600`)} mb-2`}>
+        <div className={`text-2xl font-bold ${goalTextClass} mb-2`}>
           {goalLabel}
         </div>
         <div className={`w-full ${t.progressBg} rounded-full h-2 overflow-hidden`}>

@@ -10,7 +10,7 @@ export default {
   safelist: [
     // All color utility patterns used dynamically by modules
     {
-      pattern: /(bg|text|border|ring|from|to)-(amber|cyan|purple|green|indigo|pink|blue|orange|rose|teal|red|yellow|slate)-(50|100|200|300|400|500|600|700|800|900)/,
+      pattern: /(bg|text|border|ring|from|to|fill)-(amber|cyan|purple|green|indigo|pink|blue|orange|rose|teal|red|yellow|slate)-(50|100|200|300|400|500|600|700|800|900)/,
     },
     {
       pattern: /(bg|text|border|ring)-(amber|cyan|purple|green|indigo|pink|blue|orange|rose|teal|red|yellow)-(900)\/(20|30|40|50)/,

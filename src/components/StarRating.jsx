@@ -8,7 +8,14 @@ const SIZE_CLASS = {
   lg: 'w-6 h-6',
 };
 
-export default function StarRating({ value = 0, onChange, readonly = false, size = 'sm' }) {
+export default function StarRating({
+  value = 0,
+  onChange,
+  readonly = false,
+  size = 'sm',
+  color = 'amber',
+  labels,
+}) {
   const cls = SIZE_CLASS[size] || SIZE_CLASS.sm;
   const handle = (n) => {
     if (readonly || !onChange) return;
@@ -18,6 +25,10 @@ export default function StarRating({ value = 0, onChange, readonly = false, size
     <div className="flex items-center gap-0.5" role="radiogroup" aria-label="Beoordeling">
       {[1, 2, 3, 4, 5].map((n) => {
         const active = n <= value;
+        const label = labels?.[n - 1];
+        const ariaLabel = label
+          ? `${n} ster${n === 1 ? '' : 'ren'}: ${label}`
+          : `${n} ster${n === 1 ? '' : 'ren'}`;
         return (
           <button
             key={n}
@@ -25,11 +36,12 @@ export default function StarRating({ value = 0, onChange, readonly = false, size
             disabled={readonly}
             onClick={() => handle(n)}
             className={`${readonly ? 'cursor-default' : 'cursor-pointer hover:scale-110'} transition-transform`}
-            aria-label={`${n} ster${n === 1 ? '' : 'ren'}`}
+            aria-label={ariaLabel}
             aria-pressed={active}
+            title={label}
           >
             <Star
-              className={`${cls} ${active ? 'fill-amber-400 text-amber-400' : 'text-zinc-300 dark:text-zinc-600'}`}
+              className={`${cls} ${active ? `fill-${color}-400 text-${color}-400` : 'text-zinc-300 dark:text-zinc-600'}`}
             />
           </button>
         );

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Check, Sun, Moon, Activity, Briefcase, Footprints, Plus, Trash2, TrendingUp, Calendar, AlertCircle, Sparkles, Flame, Settings, BookOpen, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Repeat, Trophy, GripVertical, Heart, Coffee, Book, Music, Dumbbell, Zap, Smile, Brain, Cloud, Star, Target, Edit3, Eye, EyeOff, GraduationCap, Clock, GlassWater, Droplet, HelpCircle, ArrowUpDown, SlidersHorizontal, MoreHorizontal,
-  AlarmClock, BadgeEuro, BedDouble, BrushCleaning, Castle, CookingPot, Drill, Fuel, Hospital, Panda, Plane, Rabbit, ShoppingCart, Toilet, TrainFront, WashingMachine, UtensilsCrossed
+  Sun, Moon, Plus, Trash2, TrendingUp, Calendar, Sparkles, Flame, Settings, BookOpen, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Repeat, Trophy, GripVertical, Eye, EyeOff, GraduationCap, HelpCircle, ArrowUpDown, SlidersHorizontal, BedDouble, Check,
 } from 'lucide-react';
 import './storage';
 import ProjectsModule from './modules/ProjectsModule';
@@ -15,6 +14,7 @@ import DayNavigator from './components/DayNavigator';
 import ReadOnlyBanner from './components/ReadOnlyBanner';
 import SplashScreen from './components/SplashScreen';
 import RitmoLogo from './components/RitmoLogo';
+import TabBar from './components/TabBar';
 import HelpOverlay from './components/help/HelpOverlay';
 import InstallGuide from './components/help/InstallGuide';
 import FeedbackForm from './components/help/FeedbackForm';
@@ -23,11 +23,12 @@ import { migrateModuleConfig, migrateDayModuleData } from './utils/migrate';
 import { createItem, logEvent, removeEvent, createTag } from './utils/collections';
 import { formatAmount, formatDuration } from './utils/format';
 import { MODULE_PRESETS } from './utils/presets';
+import { ICON_OPTIONS } from './utils/icons';
 import {
   fmtDateKey, parseDateKey, addDays, sameDay, startOfWeek,
   isEditable, isFuture, isToday as isTodayDate,
   formatDayTitle, formatDaySubtitle, formatWeekTitle, formatWeekRange,
-  DAYS_NL, WEEKDAY_KEYS,
+  DAYS_NL, WEEKDAY_KEYS, DAYS_SHORT_NL_MON_CAPS, MONTHS_NL_CAPS,
 } from './utils/dates';
 import { summarizeSleep } from './utils/sleep';
 import {
@@ -35,17 +36,6 @@ import {
   normalizeChecklistItemData, isChecklistItemComplete,
 } from './utils/dayProgress';
 import { playSound } from './utils/sound';
-
-// Available icons for modules
-const ICON_OPTIONS = {
-  Sun, Moon, Activity, Briefcase, Footprints, Sparkles, Heart, Coffee, Book, Music, Dumbbell, Zap, Smile, Brain, Cloud, Star, Target, Check, BookOpen, GraduationCap, GlassWater, Droplet,
-  Panda, Rabbit, Castle,
-  Hospital, AlarmClock, BedDouble,
-  WashingMachine, CookingPot, BrushCleaning, Toilet,
-  Drill, BadgeEuro, ShoppingCart,
-  Plane, TrainFront, Fuel,
-  UtensilsCrossed,
-};
 
 const COLOR_OPTIONS = ['red', 'orange', 'amber', 'yellow', 'green', 'teal', 'cyan', 'blue', 'indigo', 'purple', 'pink'];
 
@@ -57,7 +47,7 @@ const DEFAULT_MODULES = [
     icon: 'Sun',
     color: 'amber',
     enabled: true,
-    countInStreak: true,
+    countInStreak: false,
     type: 'checklist',
     items: []
   },
@@ -67,7 +57,7 @@ const DEFAULT_MODULES = [
     icon: 'Activity',
     color: 'purple',
     enabled: true,
-    countInStreak: true,
+    countInStreak: false,
     type: 'checklist',
     items: []
   },
@@ -77,7 +67,7 @@ const DEFAULT_MODULES = [
     icon: 'Footprints',
     color: 'green',
     enabled: true,
-    countInStreak: true,
+    countInStreak: false,
     type: 'choice',
     options: []
   },
@@ -87,7 +77,7 @@ const DEFAULT_MODULES = [
     icon: 'Moon',
     color: 'indigo',
     enabled: true,
-    countInStreak: true,
+    countInStreak: false,
     type: 'checklist',
     items: []
   },
@@ -157,16 +147,12 @@ export default function Ritmo() {
   const [recurringTasks, setRecurringTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
   const [reflectionAnswers, setReflectionAnswers] = useState({});
-  const [reflectionQuestions, setReflectionQuestions] = useState([
-    'Wat ging er vandaag goed?',
-    'Wat kan morgen beter?',
-    'Waar ben ik dankbaar voor?'
-  ]);
+  const [reflectionQuestions, setReflectionQuestions] = useState([]);
   const [streakSettings, setStreakSettings] = useState({});
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [soundVolume, setSoundVolume] = useState(80);
   const [goldenBorderEnabled, setGoldenBorderEnabled] = useState(true);
-  const [showReflectionOnToday, setShowReflectionOnToday] = useState(true);
+  const [showReflectionOnToday, setShowReflectionOnToday] = useState(false);
   const [confetti, setConfetti] = useState([]);
   const [celebrationMsg, setCelebrationMsg] = useState(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
@@ -747,8 +733,8 @@ export default function Ritmo() {
   });
   const weekDates = currentWeekDates;
 
-  const dayNames = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
-  const monthNames = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
+  const dayNames = DAYS_SHORT_NL_MON_CAPS;
+  const monthNames = MONTHS_NL_CAPS;
 
   const t = darkMode ? {
     bg: 'bg-gradient-to-br from-slate-900 to-slate-800',
@@ -814,6 +800,103 @@ export default function Ritmo() {
   }
 
   const enabledModules = modules.filter(m => m.enabled);
+
+  const todayVisibleModules = editable
+    ? enabledModules
+    : enabledModules.filter(m => moduleStatusForDay(m, { moduleData }, activeDate) !== 'none');
+
+  const renderTodayModule = (mod) => {
+    if (mod.type === 'projects') {
+      return (
+        <ProjectsModule
+          key={mod.id}
+          module={mod}
+          Icon={ICON_OPTIONS[mod.icon] || Sparkles}
+          onOpen={(id) => { setSelectedProjectId(id); setView('projects'); }}
+          onEdit={() => setEditingModule(mod)}
+          t={t}
+        />
+      );
+    }
+    if (mod.type === 'counter') {
+      return (
+        <CounterModule
+          key={mod.id}
+          module={mod}
+          Icon={ICON_OPTIONS[mod.icon] || Sparkles}
+          data={moduleData[mod.id] || {}}
+          weekDates={weekDates}
+          history={history}
+          today={todayKey}
+          editable={editable}
+          onIncrementCounter={(amount) => incrementCounter(mod.id, amount)}
+          onResetCounter={() => resetCounter(mod.id)}
+          onAddEntry={(amount, category) => addCounterEntry(mod.id, amount, category)}
+          onRemoveEntry={(entryId) => removeCounterEntry(mod.id, entryId)}
+          onDismissReminder={() => dismissCounterReminder(mod.id)}
+          onEdit={() => setEditingModule(mod)}
+          t={t}
+          darkMode={darkMode}
+        />
+      );
+    }
+    if (mod.type === 'sleep') {
+      return (
+        <SleepModule
+          key={mod.id}
+          module={mod}
+          Icon={ICON_OPTIONS[mod.icon] || BedDouble}
+          data={moduleData[mod.id] || {}}
+          editable={editable}
+          date={parseDateKey(activeDateKey)}
+          onUpdate={(updater) => updateModuleData(mod.id, updater)}
+          onEdit={() => setEditingModule(mod)}
+          t={t}
+          darkMode={darkMode}
+        />
+      );
+    }
+    if (mod.type === 'collection') {
+      return (
+        <CollectionModule
+          key={mod.id}
+          module={mod}
+          Icon={ICON_OPTIONS[mod.icon] || Sparkles}
+          editable={editable}
+          onAddItem={(name) => addCollectionItem(mod.id, name)}
+          onLogEvent={(itemId, eventData) => logCollectionEvent(mod.id, itemId, eventData)}
+          onOpenView={() => { setSelectedCollectionId(mod.id); setView('collections'); }}
+          onEdit={() => setEditingModule(mod)}
+          t={t}
+          darkMode={darkMode}
+        />
+      );
+    }
+    return (
+      <ModuleRenderer
+        key={mod.id}
+        module={mod}
+        data={moduleData[mod.id] || {}}
+        editable={editable}
+        onChecklistToggle={(itemId) => toggleChecklistItem(mod.id, itemId)}
+        onChecklistIncrement={(itemId, delta) => incrementChecklistProgress(mod.id, itemId, delta)}
+        onChecklistNote={(itemId, note) => setChecklistItemNote(mod.id, itemId, note)}
+        onChoiceToggle={() => toggleChoice(mod.id)}
+        onChoiceOptionSet={(optId) => setChoiceOption(mod.id, optId)}
+        onEdit={() => setEditingModule(mod)}
+        history={history}
+        weekDates={weekDates}
+        customTasks={customTasks}
+        newTask={newTask}
+        setNewTask={setNewTask}
+        addTask={addTask}
+        toggleTask={toggleTask}
+        deleteTask={deleteTask}
+        t={t}
+        darkMode={darkMode}
+      />
+    );
+  };
 
   return (
     <div className={`min-h-screen ${t.bg} p-4 transition-colors duration-300 relative overflow-hidden`}>
@@ -888,111 +971,15 @@ export default function Ritmo() {
           </div>
         </div>
 
-        {(() => {
-          const allTabs = [
-            { id: 'today', label: 'Vandaag', always: true },
-            { id: 'week', label: 'Week', always: true },
-            { id: 'month', label: 'Maand', always: true },
-            { id: 'household', label: 'Huishouden', always: true },
-            {
-              id: 'projects',
-              label: 'Projecten',
-              emptyAddable: true,
-              visible: modules.some(m => m.enabled && m.type === 'projects'),
-            },
-            {
-              id: 'collections',
-              label: 'Collecties',
-              emptyAddable: true,
-              visible: modules.some(m => m.enabled && m.type === 'collection'),
-            },
-            { id: 'reflection', label: 'Reflectie', always: true },
-          ];
-          const visibleTabs = allTabs.filter(tab => tab.always || tab.visible);
-          const MAX_VISIBLE = 5;
-          const overflows = visibleTabs.length > MAX_VISIBLE;
-          const inBar = overflows ? visibleTabs.slice(0, MAX_VISIBLE - 1) : visibleTabs;
-          const inOverflow = overflows ? visibleTabs.slice(MAX_VISIBLE - 1) : [];
-          const discoverable = allTabs.filter(tab => !tab.always && !tab.visible && tab.emptyAddable);
-          const showMore = inOverflow.length > 0 || discoverable.length > 0;
-          const activeInOverflow = inOverflow.some(tab => tab.id === view);
-
-          const tabBtnClass = (active) =>
-            `flex-1 py-2 px-2 rounded-lg text-xs sm:text-sm font-medium transition ${
-              active ? 'bg-blue-500 text-white shadow' : `${t.textMuted} ${t.hover}`
-            }`;
-
-          return (
-            <div className="relative mb-6" ref={moreMenuRef}>
-              <div className={`flex gap-1 ${t.card} rounded-xl p-1 shadow-sm`}>
-                {inBar.map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => { setView(tab.id); setMoreOpen(false); }}
-                    className={tabBtnClass(view === tab.id)}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-                {showMore && (
-                  <button
-                    onClick={() => setMoreOpen(o => !o)}
-                    className={tabBtnClass(activeInOverflow)}
-                    aria-label="Meer tabs"
-                    aria-expanded={moreOpen}
-                  >
-                    <span className="inline-flex items-center justify-center gap-1">
-                      <MoreHorizontal className="w-4 h-4" />
-                      <span>Meer</span>
-                    </span>
-                  </button>
-                )}
-              </div>
-              {showMore && moreOpen && (
-                <div
-                  className={`absolute right-0 mt-2 z-30 ${t.card} rounded-xl shadow-lg border ${t.border} overflow-hidden min-w-[12rem]`}
-                >
-                  {inOverflow.length > 0 && (
-                    <ul className="py-1">
-                      {inOverflow.map(tab => (
-                        <li key={tab.id}>
-                          <button
-                            onClick={() => { setView(tab.id); setMoreOpen(false); }}
-                            className={`w-full text-left px-3 py-2 text-sm ${
-                              view === tab.id ? `${t.text} font-semibold` : t.textSecondary
-                            } ${t.hover}`}
-                          >
-                            {tab.label}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {discoverable.length > 0 && (
-                    <div className={`${inOverflow.length > 0 ? `border-t ${t.border}` : ''}`}>
-                      <div className={`px-3 pt-2 pb-1 text-[11px] uppercase tracking-wide ${t.textMuted}`}>
-                        Nog niet aangemaakt
-                      </div>
-                      <ul className="pb-1">
-                        {discoverable.map(tab => (
-                          <li key={tab.id}>
-                            <button
-                              onClick={() => { setView(tab.id); setMoreOpen(false); }}
-                              className={`w-full flex items-center justify-between px-3 py-2 text-sm ${t.textSecondary} ${t.hover}`}
-                            >
-                              <span>{tab.label}</span>
-                              <Plus className={`w-4 h-4 ${t.textMuted}`} />
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })()}
+        <TabBar
+          modules={modules}
+          view={view}
+          setView={setView}
+          t={t}
+          moreOpen={moreOpen}
+          setMoreOpen={setMoreOpen}
+          moreMenuRef={moreMenuRef}
+        />
 
         {view === 'today' && (
           <div className={`slide-in ${(goldenBorderEnabled && todayFullyComplete) ? 'ritmo-golden-border rounded-2xl' : ''}`}>
@@ -1044,114 +1031,13 @@ export default function Ritmo() {
               </div>
             )}
 
-            {/* Render each enabled module. On read-only days, hide modules
-                that had no activity that day (no point showing an empty
-                checklist for a day the user can't interact with). */}
-            {(() => {
-              const visibleModules = editable
-                ? enabledModules
-                : enabledModules.filter(m => moduleStatusForDay(m, { moduleData }, activeDate) !== 'none');
-              if (!editable && visibleModules.length === 0) {
-                return (
-                  <div className={`${t.card} rounded-2xl p-8 shadow-sm text-center mb-4`}>
-                    <div className={`text-2xl mb-2 ${t.textMuted}`}>○</div>
-                    <p className={`text-sm ${t.textMuted}`}>Geen activiteit op deze dag</p>
-                  </div>
-                );
-              }
-              return visibleModules.map(mod => {
-                if (mod.type === 'projects') {
-                  return (
-                    <ProjectsModule
-                      key={mod.id}
-                      module={mod}
-                      Icon={ICON_OPTIONS[mod.icon] || Sparkles}
-                      onOpen={(id) => { setSelectedProjectId(id); setView('projects'); }}
-                      onEdit={() => setEditingModule(mod)}
-                      t={t}
-                    />
-                  );
-                }
-                if (mod.type === 'counter') {
-                  return (
-                    <CounterModule
-                      key={mod.id}
-                      module={mod}
-                      Icon={ICON_OPTIONS[mod.icon] || Sparkles}
-                      data={moduleData[mod.id] || {}}
-                      weekDates={weekDates}
-                      history={history}
-                      today={todayKey}
-                      editable={editable}
-                      onIncrementCounter={(amount) => incrementCounter(mod.id, amount)}
-                      onResetCounter={() => resetCounter(mod.id)}
-                      onAddEntry={(amount, category) => addCounterEntry(mod.id, amount, category)}
-                      onRemoveEntry={(entryId) => removeCounterEntry(mod.id, entryId)}
-                      onDismissReminder={() => dismissCounterReminder(mod.id)}
-                      onEdit={() => setEditingModule(mod)}
-                      t={t}
-                      darkMode={darkMode}
-                    />
-                  );
-                }
-                if (mod.type === 'sleep') {
-                  return (
-                    <SleepModule
-                      key={mod.id}
-                      module={mod}
-                      Icon={ICON_OPTIONS[mod.icon] || BedDouble}
-                      data={moduleData[mod.id] || {}}
-                      editable={editable}
-                      date={parseDateKey(activeDateKey)}
-                      onUpdate={(updater) => updateModuleData(mod.id, updater)}
-                      onEdit={() => setEditingModule(mod)}
-                      t={t}
-                      darkMode={darkMode}
-                    />
-                  );
-                }
-                if (mod.type === 'collection') {
-                  return (
-                    <CollectionModule
-                      key={mod.id}
-                      module={mod}
-                      Icon={ICON_OPTIONS[mod.icon] || Sparkles}
-                      editable={editable}
-                      onAddItem={(name) => addCollectionItem(mod.id, name)}
-                      onLogEvent={(itemId, eventData) => logCollectionEvent(mod.id, itemId, eventData)}
-                      onOpenView={() => { setSelectedCollectionId(mod.id); setView('collections'); }}
-                      onEdit={() => setEditingModule(mod)}
-                      t={t}
-                      darkMode={darkMode}
-                    />
-                  );
-                }
-                return (
-                  <ModuleRenderer
-                    key={mod.id}
-                    module={mod}
-                    data={moduleData[mod.id] || {}}
-                    editable={editable}
-                    onChecklistToggle={(itemId) => toggleChecklistItem(mod.id, itemId)}
-                    onChecklistIncrement={(itemId, delta) => incrementChecklistProgress(mod.id, itemId, delta)}
-                    onChecklistNote={(itemId, note) => setChecklistItemNote(mod.id, itemId, note)}
-                    onChoiceToggle={() => toggleChoice(mod.id)}
-                    onChoiceOptionSet={(optId) => setChoiceOption(mod.id, optId)}
-                    onEdit={() => setEditingModule(mod)}
-                    history={history}
-                    weekDates={weekDates}
-                    customTasks={customTasks}
-                    newTask={newTask}
-                    setNewTask={setNewTask}
-                    addTask={addTask}
-                    toggleTask={toggleTask}
-                    deleteTask={deleteTask}
-                    t={t}
-                    darkMode={darkMode}
-                  />
-                );
-              });
-            })()}
+            {!editable && todayVisibleModules.length === 0 && (
+              <div className={`${t.card} rounded-2xl p-8 shadow-sm text-center mb-4`}>
+                <div className={`text-2xl mb-2 ${t.textMuted}`}>○</div>
+                <p className={`text-sm ${t.textMuted}`}>Geen activiteit op deze dag</p>
+              </div>
+            )}
+            {todayVisibleModules.map(renderTodayModule)}
 
             {editable && enabledModules.length === 0 && (
               <div className={`${t.card} rounded-2xl p-8 shadow-sm text-center`}>
