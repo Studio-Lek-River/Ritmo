@@ -81,22 +81,7 @@ export default function SleepModule({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 mb-3">
-        <div>
-          <label className={`text-xs font-medium ${t.textMuted} mb-1 block`}>Naar bed</label>
-          <input
-            type="time"
-            value={bedTime}
-            disabled={!editable}
-            onChange={(e) => setBedTime(e.target.value)}
-            className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300 disabled:opacity-60`}
-          />
-          {bedDiff != null && (
-            <div className={`text-xs mt-1 ${diffClass(bedDiff)}`}>
-              {formatDiff(bedDiff)}
-            </div>
-          )}
-        </div>
+      <div className="grid grid-cols-2 gap-6 mb-3">
         <div>
           <label className={`text-xs font-medium ${t.textMuted} mb-1 block`}>Opgestaan</label>
           <input
@@ -109,6 +94,21 @@ export default function SleepModule({
           {wakeDiff != null && (
             <div className={`text-xs mt-1 ${diffClass(wakeDiff)}`}>
               {formatDiff(wakeDiff)}
+            </div>
+          )}
+        </div>
+        <div>
+          <label className={`text-xs font-medium ${t.textMuted} mb-1 block`}>Naar bed</label>
+          <input
+            type="time"
+            value={bedTime}
+            disabled={!editable}
+            onChange={(e) => setBedTime(e.target.value)}
+            className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300 disabled:opacity-60`}
+          />
+          {bedDiff != null && (
+            <div className={`text-xs mt-1 ${diffClass(bedDiff)}`}>
+              {formatDiff(bedDiff)}
             </div>
           )}
         </div>
