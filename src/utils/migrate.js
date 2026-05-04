@@ -1,4 +1,13 @@
 import { WEEKDAY_KEYS } from './dates';
+import en from '../i18n/en';
+import nl from '../i18n/nl';
+
+function lookupKey(dict, key) {
+  return key.split('.').reduce(
+    (acc, part) => (acc && typeof acc === 'object') ? acc[part] : undefined,
+    dict,
+  );
+}
 
 const COLOR_FALLBACK = { rose: 'pink' };
 
@@ -77,6 +86,19 @@ export function migrateModuleConfig(module) {
   }
   if (m.color && !VALID_COLORS.has(m.color)) {
     m = { ...m, color: 'blue' };
+  }
+
+  // Vroege builds bakten `name` bij instantiatie — daardoor bleven defaults in
+  // de oude taal staan na een language switch. Als `name` exact matcht met de
+  // EN- of NL-vertaling van `nameKey` is het auto-gebakken; we strippen het
+  // zodat resolveModuleName voortaan live `t(nameKey)` gebruikt.
+  if (m.nameKey && m.name) {
+    const enName = lookupKey(en, m.nameKey);
+    const nlName = lookupKey(nl, m.nameKey);
+    if (m.name === enName || m.name === nlName) {
+      const { name: _drop, ...rest } = m;
+      m = rest;
+    }
   }
 
   return m;

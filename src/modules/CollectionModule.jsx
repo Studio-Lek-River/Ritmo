@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Settings, Plus, Search, Check, X } from 'lucide-react';
 import { getColorClasses } from '../utils/colors';
-import { useTranslation } from '../i18n/useTranslation';
+import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 
 function lastEventDate(item) {
   return item.events && item.events.length > 0 ? item.events[0].date : null;
@@ -29,6 +29,7 @@ export default function CollectionModule({
   theme,
 }) {
   const { t } = useTranslation();
+  const moduleName = resolveModuleName(mod, t);
   const c = getColorClasses(mod.color);
   const items = mod.items || [];
   const [adding, setAdding] = useState(false);
@@ -75,7 +76,7 @@ export default function CollectionModule({
             {Icon ? <Icon className="w-5 h-5" /> : null}
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className={`font-semibold ${theme.textSecondary} truncate`}>{mod.name}</h2>
+            <h2 className={`font-semibold ${theme.textSecondary} truncate`}>{moduleName}</h2>
             <p className={`text-xs ${theme.textMuted}`}>{t('common.item_count', { n: items.length })}</p>
           </div>
         </div>
@@ -96,7 +97,7 @@ export default function CollectionModule({
             onClick={onEdit}
             className={`p-1.5 ${theme.hover} rounded-lg ${theme.textMuted} transition`}
             title={t('modules.settingsTitle')}
-            aria-label={t('modules.settingsAria', { name: mod.name })}
+            aria-label={t('modules.settingsAria', { name: moduleName })}
           >
             <Settings className="w-4 h-4" />
           </button>

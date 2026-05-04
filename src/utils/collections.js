@@ -58,3 +58,11 @@ export function createTag(label, color = 'blue') {
     color,
   };
 }
+
+export function deleteItemConfirmationDescription(item, t) {
+  const eventCount = (item.events || []).length;
+  if (eventCount > 0) {
+    return t('collectionList.deleteItemDescWithEvents', { count: eventCount });
+  }
+  return t('collectionList.deleteItemDesc');
+}

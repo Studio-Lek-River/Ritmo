@@ -23,6 +23,7 @@ export default {
     ok: 'OK',
     done: 'Klaar',
     confirm: 'Bevestigen',
+    undo: 'Ongedaan maken',
     remove: 'Verwijderen',
     rename: 'Hernoemen',
     settings: 'Instellingen',
@@ -70,6 +71,20 @@ export default {
     noItems: 'Nog geen items.',
     search: 'Zoeken',
     pickMonth: 'Kies maand',
+  },
+
+  colors: {
+    red: 'Rood',
+    orange: 'Oranje',
+    amber: 'Amber',
+    yellow: 'Geel',
+    green: 'Groen',
+    teal: 'Turquoise',
+    cyan: 'Cyaan',
+    blue: 'Blauw',
+    indigo: 'Indigo',
+    purple: 'Paars',
+    pink: 'Roze',
   },
 
   nav: {
@@ -349,6 +364,58 @@ export default {
     submitAdd: 'Toevoegen',
     noItemsYet: 'Nog geen items.',
     lastEventSuffix: 'laatst {date}',
+  },
+
+  collectionsView: {
+    emptyTitle: 'Nog geen collecties',
+    emptyDesc: 'Verzamel boeken, films, restaurants, biertjes, alles waarvan je een lijst wilt bijhouden.',
+    emptyButton: 'Maak je eerste collectie',
+    newCollectionLabel: 'Nieuwe collectie',
+    newCollectionAria: 'Nieuwe collectie aanmaken',
+    deleteCollectionAction: 'Collectie verwijderen',
+    deleteCollectionTitle: '"{name}" verwijderen?',
+    deleteCollectionDesc: 'Dit verwijdert de hele collectie, inclusief alle items en events. Deze actie kan niet ongedaan worden gemaakt.',
+    hiddenSuffix: 'verborgen',
+  },
+
+  collectionList: {
+    addPlaceholder: 'Naam van het item',
+    addHint: 'Vul eerst de naam in, druk dan op +.',
+    addWithDetailsTooltip: 'Met details toevoegen',
+    emptyItemsText: 'Nog geen items. Vul hieronder een naam in en druk op +.',
+    swipeHint: 'Veeg een item naar links om te verwijderen, of tik om te bewerken.',
+    pickCollection: 'Kies collectie',
+    itemsInCollection: '{count} items',
+    noItemsInCollection: 'Nog geen items in deze collectie.',
+    deleteItemAction: 'Item verwijderen',
+    deleteItemAria: 'Item verwijderen',
+    deleteItemTitle: '"{name}" verwijderen?',
+    deleteItemDesc: 'Deze actie kan niet ongedaan worden gemaakt.',
+    deleteItemDescWithEvents: 'Dit verwijdert het item en {count} bijbehorende events. Deze actie kan niet ongedaan worden gemaakt.',
+  },
+
+  collectionCreate: {
+    title: 'Nieuwe collectie',
+  },
+
+  projectsView: {
+    deleteSubjectTitle: '"{name}" verwijderen?',
+    deleteSubjectDesc: 'Dit verwijdert het onderwerp en alle subdoelen. Deze actie kan niet ongedaan worden gemaakt.',
+    deleteSubjectAria: 'Onderwerp verwijderen',
+    deleteSubgoalTitle: '"{label}" verwijderen?',
+    deleteSubgoalDesc: 'Dit verwijdert het subdoel. Deze actie kan niet ongedaan worden gemaakt.',
+    deleteSubgoalAria: 'Subdoel verwijderen',
+    deleteProjectAction: 'Project verwijderen',
+    deleteProjectTitle: '"{name}" verwijderen?',
+    deleteProjectDesc: 'Dit verwijdert het project en alle voortgang. Deze actie kan niet ongedaan worden gemaakt.',
+  },
+
+  toast: {
+    itemDeleted: 'Item verwijderd',
+    subjectDeleted: 'Onderwerp verwijderd',
+    subgoalDeleted: 'Subdoel verwijderd',
+    projectDeleted: 'Project verwijderd',
+    collectionDeleted: 'Collectie verwijderd',
   },
 
   modules: {

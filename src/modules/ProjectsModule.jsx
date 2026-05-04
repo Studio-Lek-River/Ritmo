@@ -3,10 +3,11 @@ import { Settings } from 'lucide-react';
 import ProgressBar from '../components/ProgressBar';
 import { getColorClasses } from '../utils/colors';
 import { projectProgress } from '../utils/projects';
-import { useTranslation } from '../i18n/useTranslation';
+import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 
 export default function ProjectsModule({ module: mod, Icon, onOpen, onEdit, theme }) {
   const { t } = useTranslation();
+  const name = resolveModuleName(mod, t);
   const { done, total, pct } = projectProgress(mod);
   const c = getColorClasses(mod.color);
   const meta = total === 0
@@ -26,7 +27,7 @@ export default function ProjectsModule({ module: mod, Icon, onOpen, onEdit, them
           {Icon ? <Icon className="w-5 h-5" /> : null}
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className={`font-semibold ${theme.textSecondary} truncate`}>{mod.name}</h2>
+          <h2 className={`font-semibold ${theme.textSecondary} truncate`}>{name}</h2>
           <p className={`text-xs ${theme.textMuted}`}>{meta}</p>
         </div>
         {onEdit && (
@@ -35,7 +36,7 @@ export default function ProjectsModule({ module: mod, Icon, onOpen, onEdit, them
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
             className={`p-1.5 ${theme.hover} rounded-lg ${theme.textMuted} transition`}
             title={t('modules.settingsTitle')}
-            aria-label={t('modules.settingsAria', { name: mod.name })}
+            aria-label={t('modules.settingsAria', { name })}
           >
             <Settings className="w-4 h-4" />
           </button>

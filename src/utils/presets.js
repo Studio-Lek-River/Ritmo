@@ -2,8 +2,10 @@
 // aanmaken van een nieuwe module. Iconen verwijzen naar keys in ICON_OPTIONS
 // in App.jsx — case-sensitive en moeten exact matchen.
 //
-// Tweetalig: namen, items, opties en categorieën worden vertaald via i18n.
-// `getModulePresets(t)` resolved alle keys naar de huidige taal en geeft
+// Tweetalig: items, opties en categorieën worden bij gebruik vertaald via i18n.
+// De preset-naam zelf wordt NIET als `name` gebakken — alleen `nameKey` staat
+// op de preset, zodat een module die uit zo'n preset komt taal-reactief blijft.
+// `getModulePresets(t)` resolved alle inhoud naar de huidige taal en geeft
 // dezelfde shape terug als de oude statische export, zodat call-sites
 // minimaal hoeven te wijzigen.
 
@@ -14,28 +16,24 @@ function buildPresets(t) {
     checklist: [
       {
         nameKey: 'presets.morningRoutine.name',
-        name: t('presets.morningRoutine.name'),
         icon: 'Sun',
         color: 'amber',
         items: t('presets.morningRoutine.items'),
       },
       {
         nameKey: 'presets.eveningRoutine.name',
-        name: t('presets.eveningRoutine.name'),
         icon: 'Moon',
         color: 'indigo',
         items: t('presets.eveningRoutine.items'),
       },
       {
         nameKey: 'presets.physio.name',
-        name: t('presets.physio.name'),
         icon: 'Activity',
         color: 'purple',
         items: t('presets.physio.items'),
       },
       {
         nameKey: 'presets.meals.name',
-        name: t('presets.meals.name'),
         icon: 'UtensilsCrossed',
         color: 'orange',
         allowNotes: true,
@@ -45,14 +43,12 @@ function buildPresets(t) {
     choice: [
       {
         nameKey: 'presets.outdoorMovement.name',
-        name: t('presets.outdoorMovement.name'),
         icon: 'Footprints',
         color: 'green',
         options: t('presets.outdoorMovement.options'),
       },
       {
         nameKey: 'presets.mood.name',
-        name: t('presets.mood.name'),
         icon: 'Smile',
         color: 'yellow',
         options: t('presets.mood.options'),
@@ -61,7 +57,6 @@ function buildPresets(t) {
     counter: [
       {
         nameKey: 'presets.productiveWork.name',
-        name: t('presets.productiveWork.name'),
         icon: 'Briefcase',
         color: 'blue',
         unit: 'minutes',
@@ -72,7 +67,6 @@ function buildPresets(t) {
       },
       {
         nameKey: 'presets.drinking.name',
-        name: t('presets.drinking.name'),
         icon: 'GlassWater',
         color: 'cyan',
         unit: 'ml',
@@ -83,7 +77,6 @@ function buildPresets(t) {
       },
       {
         nameKey: 'presets.reading.name',
-        name: t('presets.reading.name'),
         icon: 'Book',
         color: 'purple',
         unit: 'minutes',
@@ -94,7 +87,6 @@ function buildPresets(t) {
       },
       {
         nameKey: 'presets.steps.name',
-        name: t('presets.steps.name'),
         icon: 'Footprints',
         color: 'green',
         unit: 'stappen',
@@ -105,17 +97,16 @@ function buildPresets(t) {
       },
     ],
     tasks: [
-      { nameKey: 'presets.workTasks.name', name: t('presets.workTasks.name'), icon: 'Briefcase', color: 'blue' },
-      { nameKey: 'presets.groceries.name', name: t('presets.groceries.name'), icon: 'ShoppingCart', color: 'orange' },
+      { nameKey: 'presets.workTasks.name', icon: 'Briefcase', color: 'blue' },
+      { nameKey: 'presets.groceries.name', icon: 'ShoppingCart', color: 'orange' },
     ],
     projects: [
-      { nameKey: 'presets.studyProjects.name', name: t('presets.studyProjects.name'), icon: 'GraduationCap', color: 'indigo' },
-      { nameKey: 'presets.hobbyProjects.name', name: t('presets.hobbyProjects.name'), icon: 'Heart', color: 'pink' },
+      { nameKey: 'presets.studyProjects.name', icon: 'GraduationCap', color: 'indigo' },
+      { nameKey: 'presets.hobbyProjects.name', icon: 'Heart', color: 'pink' },
     ],
     collection: [
       {
         nameKey: 'presets.books.name',
-        name: t('presets.books.name'),
         icon: 'Book',
         color: 'amber',
         trackingMode: 'completion',
@@ -125,7 +116,6 @@ function buildPresets(t) {
       },
       {
         nameKey: 'presets.films.name',
-        name: t('presets.films.name'),
         icon: 'Star',
         color: 'purple',
         trackingMode: 'completion',
@@ -135,7 +125,6 @@ function buildPresets(t) {
       },
       {
         nameKey: 'presets.restaurants.name',
-        name: t('presets.restaurants.name'),
         icon: 'Coffee',
         color: 'orange',
         trackingMode: 'count',
@@ -147,7 +136,6 @@ function buildPresets(t) {
     sleep: [
       {
         nameKey: 'presets.sleep.name',
-        name: t('presets.sleep.name'),
         icon: 'BedDouble',
         color: 'indigo',
         goals: {

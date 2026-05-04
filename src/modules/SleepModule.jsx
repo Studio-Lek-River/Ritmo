@@ -3,7 +3,7 @@ import { Sparkles, Settings } from 'lucide-react';
 import { goalsForNight, timeDiffMinutes, sleepDurationMinutes, isOnTarget } from '../utils/sleep';
 import { formatDuration } from '../utils/format';
 import StarRating from '../components/StarRating';
-import { useTranslation } from '../i18n/useTranslation';
+import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 
 export default function SleepModule({
   module: mod,
@@ -17,6 +17,7 @@ export default function SleepModule({
   darkMode,
 }) {
   const { t } = useTranslation();
+  const name = resolveModuleName(mod, t);
   const Glyph = Icon || Sparkles;
   const colorClass = `text-${mod.color}-500`;
 
@@ -65,13 +66,13 @@ export default function SleepModule({
     <div className={`${theme.card} rounded-2xl p-5 shadow-sm mb-4`}>
       <div className="flex items-center gap-2 mb-3">
         <Glyph className={`w-5 h-5 ${colorClass}`} />
-        <h2 className={`font-semibold ${theme.textSecondary}`}>{mod.name}</h2>
+        <h2 className={`font-semibold ${theme.textSecondary}`}>{name}</h2>
         {onEdit && (
           <button
             onClick={onEdit}
             className={`ml-auto p-1.5 ${theme.hover} rounded-lg ${theme.textMuted} transition`}
             title={t('modules.settingsTitle')}
-            aria-label={t('modules.settingsAria', { name: mod.name })}
+            aria-label={t('modules.settingsAria', { name })}
           >
             <Settings className="w-4 h-4" />
           </button>

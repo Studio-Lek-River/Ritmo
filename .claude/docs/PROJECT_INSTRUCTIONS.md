@@ -147,7 +147,7 @@ Het oude `timer`-type is gegeneraliseerd naar `counter` en gemerged in `main`. B
 
 Alle data wordt lokaal opgeslagen via een storage-laag die de `window.storage`-API mimicked. Alle keys hebben prefix `ritmo:` in localStorage:
 
-- `ritmo:settings` — gebruikersinstellingen: `{ modules, darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, showReflectionOnToday, hasOnboarded, language }`. `language` is `'auto' | 'nl' | 'en'` (default `'auto'` — volgt browser).
+- `ritmo:settings` — gebruikersinstellingen: `{ modules, darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, showReflectionOnToday, hasUsedSwipe, hasOnboarded, language }`. `language` is `'auto' | 'nl' | 'en'` (default `'auto'` — volgt browser). `hasUsedSwipe` is een one-shot flag die de eerste swipe-gesture in lijsten registreert; zodra true, verdwijnt de "veeg om te verwijderen"-hint.
 - `ritmo:day:YYYY-MM-DD` — dagdata: `{ moduleData, customTasks, reflectionAnswers }`
 
 De `ritmo:`-prefix wordt door `storage.js` automatisch toegevoegd. In de UI roep je dus `window.storage.get('settings')` aan, niet `'ritmo:settings'`. De prefix bestaat alleen op localStorage-niveau.
@@ -177,7 +177,8 @@ src/
 │   ├── CollectionsView.jsx
 │   └── HouseholdView.jsx      # Huishouden-tab (klusjes, boodschappen, budget, utilities)
 ├── hooks/                     # gedeelde React hooks
-│   └── useStoredState.js      # state ↔ window.storage sync (JSON, async load)
+│   ├── useStoredState.js      # state ↔ window.storage sync (JSON, async load)
+│   └── useToast.jsx           # ToastProvider + useToast() voor transient feedback met undo
 ├── components/                # herbruikbare UI-componenten
 │   ├── ProgressBar.jsx
 │   ├── ReminderBanner.jsx
@@ -186,6 +187,10 @@ src/
 │   ├── StarRating.jsx         # herbruikbare 1-5 sterren-rating (color + labels props)
 │   ├── TagPill.jsx            # gekleurde tag-pill (klikbaar of statisch)
 │   ├── ItemDetail.jsx         # detailweergave van een collection-item
+│   ├── ConfirmDialog.jsx      # generieke bevestigingsdialoog (variant: default | danger)
+│   ├── Toast.jsx              # toast-render-component (gebruikt useToast onder de motorkap)
+│   ├── SwipeRow.jsx           # swipe-to-delete primitive (touch + muis), reveal rode prullenbak
+│   ├── EmptyState.jsx         # generieke lege-staat (icoon + titel + omschrijving + optionele CTA)
 │   ├── RitmoLogo.jsx          # R-Loop merk-logo (variant + animation props)
 │   ├── SplashScreen.jsx       # app-start scherm met geanimeerd logo + tagline
 │   └── TabBar.jsx             # tabbalk met overflow-menu ("Meer") en discoverable tabs

@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { ArrowLeft, Edit3, Trash2, Plus, X, Check } from 'lucide-react';
 import StarRating from './StarRating';
 import TagPill from './TagPill';
+import ConfirmDialog from './ConfirmDialog';
+import { deleteItemConfirmationDescription, getItemTrackingMode } from '../utils/collections';
 import { getColorClasses } from '../utils/colors';
-import { getItemTrackingMode } from '../utils/collections';
 import { useTranslation } from '../i18n/useTranslation';
 
 function summary(item, mode, t) {
@@ -26,6 +27,7 @@ export default function ItemDetail({
   collection,
   Icon,
   editable = true,
+  initialEditMode = false,
   onBack,
   onUpdate,
   onDelete,
@@ -34,8 +36,9 @@ export default function ItemDetail({
   theme,
 }) {
   const { t } = useTranslation();
-  const [editMode, setEditMode] = useState(false);
+  const [editMode, setEditMode] = useState(initialEditMode);
   const [draft, setDraft] = useState(item);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const c = getColorClasses(collection.color);
   const fields = collection.itemFields || { rating: true, notes: true, tags: true };
   const mode = getItemTrackingMode(item, collection);
@@ -70,9 +73,12 @@ export default function ItemDetail({
 
   const handleDelete = () => {
     if (!editable) return;
-    if (window.confirm(t('collections.deleteItemConfirm', { name: item.name }))) {
-      onDelete?.();
-    }
+    setConfirmDelete(true);
+  };
+
+  const confirmDeleteAction = () => {
+    setConfirmDelete(false);
+    onDelete?.();
   };
 
   return (
@@ -264,6 +270,28 @@ export default function ItemDetail({
           </button>
         </div>
       )}
+
+      {editable && !editMode && (
+        <button
+          type="button"
+          onClick={handleDelete}
+          className="mt-5 w-full px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition inline-flex items-center justify-center gap-2"
+        >
+          <Trash2 className="w-4 h-4" />
+          {t('collectionList.deleteItemAction')}
+        </button>
+      )}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title={t('collectionList.deleteItemTitle', { name: item.name })}
+        description={deleteItemConfirmationDescription(item, t)}
+        confirmLabel={t('common.delete')}
+        variant="danger"
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmDelete(false)}
+        theme={theme}
+      />
     </div>
   );
 }

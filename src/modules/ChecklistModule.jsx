@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Check, Plus, Minus, Info, StickyNote, Sparkles, Settings } from 'lucide-react';
 import { normalizeChecklistItemData, isChecklistItemComplete } from '../utils/dayProgress';
-import { useTranslation } from '../i18n/useTranslation';
+import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 
 function CheckboxControl({ color, checked, onClick, disabled }) {
   const { t } = useTranslation();
@@ -63,6 +63,7 @@ export default function ChecklistModule({
   const [expandedNoteId, setExpandedNoteId] = useState(null);
   const [expandedInfoId, setExpandedInfoId] = useState(null);
 
+  const name = resolveModuleName(mod, t);
   const Glyph = Icon || Sparkles;
   const colorClass = `text-${mod.color}-500`;
   const items = mod.items || [];
@@ -80,13 +81,13 @@ export default function ChecklistModule({
     <div className={`${theme.card} rounded-2xl p-5 shadow-sm mb-4`}>
       <div className="flex items-center gap-2 mb-4">
         <Glyph className={`w-5 h-5 ${colorClass}`} />
-        <h2 className={`font-semibold ${theme.textSecondary}`}>{mod.name}</h2>
+        <h2 className={`font-semibold ${theme.textSecondary}`}>{name}</h2>
         {onEdit && (
           <button
             onClick={onEdit}
             className={`ml-auto p-1.5 ${theme.hover} rounded-lg ${theme.textMuted} transition`}
             title={t('modules.settingsTitle')}
-            aria-label={t('modules.settingsAria', { name: mod.name })}
+            aria-label={t('modules.settingsAria', { name })}
           >
             <Settings className="w-4 h-4" />
           </button>

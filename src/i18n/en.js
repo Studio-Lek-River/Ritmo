@@ -22,6 +22,7 @@ export default {
     ok: 'OK',
     done: 'Done',
     confirm: 'Confirm',
+    undo: 'Undo',
     remove: 'Remove',
     rename: 'Rename',
     settings: 'Settings',
@@ -69,6 +70,20 @@ export default {
     noItems: 'No items yet.',
     search: 'Search',
     pickMonth: 'Pick a month',
+  },
+
+  colors: {
+    red: 'Red',
+    orange: 'Orange',
+    amber: 'Amber',
+    yellow: 'Yellow',
+    green: 'Green',
+    teal: 'Teal',
+    cyan: 'Cyan',
+    blue: 'Blue',
+    indigo: 'Indigo',
+    purple: 'Purple',
+    pink: 'Pink',
   },
 
   nav: {
@@ -348,6 +363,58 @@ export default {
     submitAdd: 'Add',
     noItemsYet: 'No items yet.',
     lastEventSuffix: 'last {date}',
+  },
+
+  collectionsView: {
+    emptyTitle: 'No collections yet',
+    emptyDesc: 'Collect books, films, restaurants, beers, anything you want to keep a list of.',
+    emptyButton: 'Create your first collection',
+    newCollectionLabel: 'New collection',
+    newCollectionAria: 'Create new collection',
+    deleteCollectionAction: 'Delete collection',
+    deleteCollectionTitle: 'Delete "{name}"?',
+    deleteCollectionDesc: 'This deletes the entire collection, including all items and events. This action cannot be undone.',
+    hiddenSuffix: 'hidden',
+  },
+
+  collectionList: {
+    addPlaceholder: 'Item name',
+    addHint: 'Type a name first, then press +.',
+    addWithDetailsTooltip: 'Add with details',
+    emptyItemsText: 'No items yet. Type a name below and press +.',
+    swipeHint: 'Swipe an item left to delete, or tap to edit.',
+    pickCollection: 'Pick collection',
+    itemsInCollection: '{count} items',
+    noItemsInCollection: 'No items in this collection yet.',
+    deleteItemAction: 'Delete item',
+    deleteItemAria: 'Delete item',
+    deleteItemTitle: 'Delete "{name}"?',
+    deleteItemDesc: 'This action cannot be undone.',
+    deleteItemDescWithEvents: 'This will delete the item and {count} associated events. This action cannot be undone.',
+  },
+
+  collectionCreate: {
+    title: 'New collection',
+  },
+
+  projectsView: {
+    deleteSubjectTitle: 'Delete "{name}"?',
+    deleteSubjectDesc: 'This deletes the subject and all its subgoals. This action cannot be undone.',
+    deleteSubjectAria: 'Delete subject',
+    deleteSubgoalTitle: 'Delete "{label}"?',
+    deleteSubgoalDesc: 'This deletes the subgoal. This action cannot be undone.',
+    deleteSubgoalAria: 'Delete subgoal',
+    deleteProjectAction: 'Delete project',
+    deleteProjectTitle: 'Delete "{name}"?',
+    deleteProjectDesc: 'This deletes the project and all progress. This action cannot be undone.',
+  },
+
+  toast: {
+    itemDeleted: 'Item deleted',
+    subjectDeleted: 'Subject deleted',
+    subgoalDeleted: 'Subgoal deleted',
+    projectDeleted: 'Project deleted',
+    collectionDeleted: 'Collection deleted',
   },
 
   modules: {

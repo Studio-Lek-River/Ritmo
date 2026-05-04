@@ -20,8 +20,10 @@ import InstallGuide from './components/help/InstallGuide';
 import FeedbackForm from './components/help/FeedbackForm';
 import ChecklistModule from './modules/ChecklistModule';
 import { migrateModuleConfig, migrateDayModuleData, migrateSettings } from './utils/migrate';
-import { useTranslation } from './i18n/useTranslation';
+import { useTranslation, resolveModuleName } from './i18n/useTranslation';
 import { createItem, logEvent, removeEvent, createTag } from './utils/collections';
+import { ToastProvider } from './hooks/useToast';
+import Toast from './components/Toast';
 import { formatAmount, formatDuration } from './utils/format';
 import { MODULE_PRESETS } from './utils/presets';
 import { ICON_OPTIONS } from './utils/icons';
@@ -40,9 +42,9 @@ import { playSound } from './utils/sound';
 
 const COLOR_OPTIONS = ['red', 'orange', 'amber', 'yellow', 'green', 'teal', 'cyan', 'blue', 'indigo', 'purple', 'pink'];
 
-// Default modules voor nieuwe gebruikers. `nameKey` wordt bij instantiatie
-// (onboarding finish, reset) door instantiateDefaults() naar de huidige taal
-// gerendered en als `name` weggeschreven, waarna het user-data is.
+// Default modules voor nieuwe gebruikers. `nameKey` blijft op het module-object
+// staan zodat de titel live met `t(nameKey)` wordt gerenderd; pas wanneer de
+// gebruiker de module hernoemt schrijven we `name` (en wordt het user-data).
 const DEFAULT_MODULES = [
   { id: 'morning', nameKey: 'presets.defaultMorning', icon: 'Sun', color: 'amber', enabled: true, countInStreak: false, type: 'checklist', items: [] },
   { id: 'physio', nameKey: 'presets.defaultPhysio', icon: 'Activity', color: 'purple', enabled: true, countInStreak: false, type: 'checklist', items: [] },
@@ -79,17 +81,8 @@ const PROJECTS_MODULE_TEMPLATE = {
   subjects: []
 };
 
-function instantiateDefaults(mods, t) {
-  return mods.map(m => ({
-    ...m,
-    name: m.nameKey ? t(m.nameKey) : (m.name || ''),
-  }));
-}
-
-function resolveModuleName(mod, t) {
-  if (mod?.name) return mod.name;
-  if (mod?.nameKey) return t(mod.nameKey);
-  return '';
+function instantiateDefaults(mods) {
+  return mods.map(m => ({ ...m }));
 }
 
 export default function Ritmo() {
@@ -113,7 +106,7 @@ export default function Ritmo() {
   const [moreOpen, setMoreOpen] = useState(false);
   const moreMenuRef = useRef(null);
   
-  const [modules, setModules] = useState(() => instantiateDefaults(DEFAULT_MODULES, t));
+  const [modules, setModules] = useState(() => instantiateDefaults(DEFAULT_MODULES));
   const [moduleData, setModuleData] = useState({}); // per-module daily state
   const [history, setHistory] = useState({});
   const [customTasks, setCustomTasks] = useState([]);
@@ -126,6 +119,7 @@ export default function Ritmo() {
   const [soundVolume, setSoundVolume] = useState(80);
   const [goldenBorderEnabled, setGoldenBorderEnabled] = useState(true);
   const [showReflectionOnToday, setShowReflectionOnToday] = useState(false);
+  const [hasUsedSwipe, setHasUsedSwipe] = useState(false);
   const [confetti, setConfetti] = useState([]);
   const [celebrationMsg, setCelebrationMsg] = useState(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
@@ -169,6 +163,7 @@ export default function Ritmo() {
           if (settings.soundVolume !== undefined) setSoundVolume(settings.soundVolume);
           if (settings.goldenBorderEnabled !== undefined) setGoldenBorderEnabled(settings.goldenBorderEnabled);
           if (settings.showReflectionOnToday !== undefined) setShowReflectionOnToday(settings.showReflectionOnToday);
+          if (settings.hasUsedSwipe !== undefined) setHasUsedSwipe(settings.hasUsedSwipe);
           if (loadedModules) setModules(loadedModules);
           if (settings.hasOnboarded !== undefined) setHasOnboarded(settings.hasOnboarded);
         } else {
@@ -277,6 +272,7 @@ export default function Ritmo() {
           soundVolume,
           goldenBorderEnabled,
           showReflectionOnToday,
+          hasUsedSwipe,
           modules,
           hasOnboarded,
           language: languageSetting,
@@ -284,7 +280,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, showReflectionOnToday, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, showReflectionOnToday, hasUsedSwipe, modules, hasOnboarded, languageSetting, loading]);
 
   // Recurring tasks. Only inject into today's task list, never into a
   // historical day the user is just viewing.
@@ -534,14 +530,16 @@ export default function Ritmo() {
     }));
   };
 
-  const addCollectionItem = (moduleId, name) => {
+  const addCollectionItem = (moduleId, name, options = {}) => {
     const trimmed = (name || '').trim();
-    if (!trimmed) return;
-    const newItem = logEvent(createItem(trimmed));
+    if (!trimmed) return null;
+    const base = createItem(trimmed);
+    const newItem = options.skipInitialEvent ? base : logEvent(base);
     updateCollectionModule(moduleId, (m) => ({
       ...m,
       items: [...(m.items || []), newItem],
     }));
+    return newItem;
   };
 
   const updateCollectionItem = (moduleId, item) => {
@@ -592,6 +590,23 @@ export default function Ritmo() {
         tags: [],
         items: [],
       } : {}),
+    });
+  };
+
+  const openCollectionCreator = () => {
+    setEditingModule({
+      id: `mod_${Date.now()}`,
+      name: '',
+      icon: 'Star',
+      color: 'blue',
+      enabled: false,
+      countInStreak: false,
+      type: 'collection',
+      trackingMode: 'completion',
+      itemFields: { rating: true, notes: true, tags: true },
+      tags: [],
+      items: [],
+      _createMode: 'collection',
     });
   };
 
@@ -873,7 +888,9 @@ export default function Ritmo() {
   };
 
   return (
+    <ToastProvider>
     <div className={`min-h-screen ${theme.bg} p-4 transition-colors duration-300 relative overflow-hidden`}>
+      <Toast theme={theme} />
       {confetti.map(c => (
         <div
           key={c.id}
@@ -1094,6 +1111,12 @@ export default function Ritmo() {
             setSelectedProjectId={setSelectedProjectId}
             markTouchedToday={(moduleId) => updateModuleData(moduleId, prev => ({ ...prev, touchedToday: true }))}
             onCreate={() => openModuleEditor('projects')}
+            onDeleteProjectModule={(projectId) => {
+              setModules(prev => prev.filter(m => m.id !== projectId));
+              if (selectedProjectId === projectId) setSelectedProjectId(null);
+            }}
+            hasUsedSwipe={hasUsedSwipe}
+            onFirstSwipe={() => setHasUsedSwipe(true)}
             theme={theme}
           />
         )}
@@ -1109,7 +1132,12 @@ export default function Ritmo() {
             onDeleteItem={deleteCollectionItem}
             onLogEvent={logCollectionEvent}
             onRemoveEvent={removeCollectionEvent}
-            onCreate={() => openModuleEditor('collection')}
+            onDeleteCollection={(collectionId) => {
+              setModules(prev => prev.filter(m => m.id !== collectionId));
+            }}
+            onCreate={openCollectionCreator}
+            hasUsedSwipe={hasUsedSwipe}
+            onFirstSwipe={() => setHasUsedSwipe(true)}
             theme={theme}
           />
         )}
@@ -1200,6 +1228,7 @@ export default function Ritmo() {
         />
       )}
     </div>
+    </ToastProvider>
   );
 }
 
@@ -1217,12 +1246,12 @@ function Onboarding({ onComplete, t, theme, darkMode, setDarkMode }) {
   const canProceed = moduleCount >= 1;
 
   const finish = () => {
-    const seeded = instantiateDefaults(DEFAULT_MODULES, t).map(m => ({
+    const seeded = instantiateDefaults(DEFAULT_MODULES).map(m => ({
       ...m,
       enabled: selectedDefaults[m.id] === true,
     }));
     if (projectsEnabled) {
-      seeded.push({ ...instantiateDefaults([PROJECTS_MODULE_TEMPLATE], t)[0], enabled: true });
+      seeded.push({ ...instantiateDefaults([PROJECTS_MODULE_TEMPLATE])[0], enabled: true });
     }
     onComplete(seeded);
   };
@@ -2148,7 +2177,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
             <button
               onClick={() => {
                 if (window.confirm(t('settings.resetConfirm'))) {
-                  setModules(instantiateDefaults(DEFAULT_MODULES, t));
+                  setModules(instantiateDefaults(DEFAULT_MODULES));
                   setStreakSettings({});
                 }
               }}
@@ -2476,7 +2505,7 @@ function CollectionTagsEditor({ tags, onAdd, onUpdate, onRemove, theme }) {
                 aria-label={t('collections.tagColorAria')}
               >
                 {COLOR_OPTIONS.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c} value={c}>{t(`colors.${c}`)}</option>
                 ))}
               </select>
               <input
@@ -2505,7 +2534,7 @@ function CollectionTagsEditor({ tags, onAdd, onUpdate, onRemove, theme }) {
           aria-label={t('collections.newTagColorAria')}
         >
           {COLOR_OPTIONS.map((c) => (
-            <option key={c} value={c}>{c}</option>
+            <option key={c} value={c}>{t(`colors.${c}`)}</option>
           ))}
         </select>
         <input
@@ -2539,9 +2568,10 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
   const [editing, setEditing] = useState(mod);
   const [newItem, setNewItem] = useState('');
   const [expandedItemId, setExpandedItemId] = useState(null);
-  const isNew = !mod.name;
+  const skipPresets = mod._createMode === 'collection';
+  const isNew = !mod.name && !mod.nameKey;
   const [step, setStep] = useState(
-    isNew ? (mod.type ? 'preset' : 'type') : 'config'
+    isNew && !skipPresets ? (mod.type ? 'preset' : 'type') : 'config'
   );
   const [presetTab, setPresetTab] = useState('suggestions');
 
@@ -2617,14 +2647,27 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
 
   const startBlank = () => setStep('config');
 
-  const canSave = editing.name && editing.name.trim();
+  const displayName = editing.name ?? (editing.nameKey ? t(editing.nameKey) : '');
+  const canSave = !!displayName.trim();
+
+  const buildSavePayload = () => {
+    const trimmed = displayName.trim();
+    // Default-/preset-module ongewijzigd: behoud nameKey, dump `name`. Zo blijft
+    // de titel taal-reactief. User-rename: schrijf `name`, dump `nameKey`.
+    if (editing.nameKey && trimmed === t(editing.nameKey)) {
+      const { name: _drop, _createMode: _drop2, ...rest } = editing;
+      return rest;
+    }
+    const { nameKey: _dropKey, _createMode: _drop2, ...rest } = editing;
+    return { ...rest, name: trimmed };
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className={`${theme.card} rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto my-4`}>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            {isNew && step !== 'type' && (
+            {isNew && !skipPresets && step !== 'type' && (
               <button
                 onClick={() => setStep(step === 'config' ? 'preset' : 'type')}
                 className={`p-1.5 ${theme.hover} rounded-lg ${theme.textMuted}`}
@@ -2635,9 +2678,10 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
             )}
             <h2 className={`text-xl font-bold ${theme.text}`}>
               {!isNew && t('modules.editTitle')}
-              {isNew && step === 'type' && t('modules.newPickType')}
-              {isNew && step === 'preset' && t('modules.pickPreset')}
-              {isNew && step === 'config' && t('modules.configure')}
+              {isNew && skipPresets && t('collectionCreate.title')}
+              {isNew && !skipPresets && step === 'type' && t('modules.newPickType')}
+              {isNew && !skipPresets && step === 'preset' && t('modules.pickPreset')}
+              {isNew && !skipPresets && step === 'config' && t('modules.configure')}
             </h2>
           </div>
           <button onClick={onCancel} className={`p-2 ${theme.hover} rounded-lg`}>
@@ -2700,7 +2744,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
                         <PresetIcon className="w-5 h-5" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className={`text-sm font-medium ${theme.textSecondary}`}>{preset.name}</div>
+                        <div className={`text-sm font-medium ${theme.textSecondary}`}>{t(preset.nameKey)}</div>
                         {preset.unit && (
                           <div className={`text-xs ${theme.textMuted}`}>
                             {t('modules.presetGoal', { amount: formatAmount(preset.dailyGoal, preset.unit) })}
@@ -2746,7 +2790,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
             <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('common.name')}</label>
             <input
               type="text"
-              value={editing.name || ''}
+              value={editing.name ?? (editing.nameKey ? t(editing.nameKey) : '')}
               onChange={(e) => update('name', e.target.value)}
               placeholder={t('modules.namePlaceholder')}
               className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300`}
@@ -3313,7 +3357,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
               {t('common.cancel')}
             </button>
             <button
-              onClick={() => canSave && onSave(editing)}
+              onClick={() => canSave && onSave(buildSavePayload())}
               disabled={!canSave}
               className="flex-1 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-slate-300 text-white rounded-lg text-sm font-medium transition"
             >

@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Clock, Sparkles, GraduationCap } from 'lucide-react';
+import { Plus, Clock, Sparkles, GraduationCap, MoreHorizontal } from 'lucide-react';
 import ProgressBar from '../components/ProgressBar';
 import EmptyState from '../components/EmptyState';
+import SwipeRow from '../components/SwipeRow';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { getColorClasses } from '../utils/colors';
 import {
   projectProgress,
@@ -11,6 +13,7 @@ import {
   clampGrade,
   formatDeadline,
 } from '../utils/projects';
+import { useToast } from '../hooks/useToast';
 import { useTranslation } from '../i18n/useTranslation';
 
 export default function ProjectsView({
@@ -21,9 +24,13 @@ export default function ProjectsView({
   setSelectedProjectId,
   markTouchedToday,
   onCreate,
+  onDeleteProjectModule,
+  hasUsedSwipe,
+  onFirstSwipe,
   theme,
 }) {
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const projects = useMemo(
     () => modules.filter(m => m.enabled && m.type === 'projects'),
     [modules]
@@ -41,6 +48,10 @@ export default function ProjectsView({
   const [newSubjectName, setNewSubjectName] = useState('');
   const [newSubgoalLabel, setNewSubgoalLabel] = useState('');
   const [newSubgoalDeadline, setNewSubgoalDeadline] = useState('');
+  const [confirmDeleteSubject, setConfirmDeleteSubject] = useState(null);
+  const [confirmDeleteSubgoal, setConfirmDeleteSubgoal] = useState(null);
+  const [confirmDeleteProject, setConfirmDeleteProject] = useState(null);
+  const [projectMenuOpen, setProjectMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!activeProject) {
@@ -52,6 +63,15 @@ export default function ProjectsView({
       setSelectedSubjectId(subjects[0]?.id || null);
     }
   }, [activeProject, selectedSubjectId]);
+
+  useEffect(() => {
+    if (!projectMenuOpen) return;
+    const handler = (e) => {
+      if (!e.target.closest('[data-project-menu]')) setProjectMenuOpen(false);
+    };
+    window.addEventListener('mousedown', handler);
+    return () => window.removeEventListener('mousedown', handler);
+  }, [projectMenuOpen]);
 
   if (!activeProject) {
     return (
@@ -71,8 +91,6 @@ export default function ProjectsView({
   const { done, total, pct } = projectProgress(activeProject);
   const subjects = activeProject.subjects || [];
   const activeSubject = subjects.find(s => s.id === selectedSubjectId) || null;
-
-  // ---- mutations ----------------------------------------------------------
 
   const updateProject = (mutator) => {
     setModules(prev => prev.map(m => {
@@ -138,7 +156,73 @@ export default function ProjectsView({
     }));
   };
 
-  // ---- render -------------------------------------------------------------
+  const handleConfirmDeleteSubject = () => {
+    if (!confirmDeleteSubject) return;
+    const snapshot = confirmDeleteSubject;
+    updateProject(p => ({
+      ...p,
+      subjects: p.subjects.filter(s => s.id !== snapshot.id),
+    }));
+    setConfirmDeleteSubject(null);
+    if (selectedSubjectId === snapshot.id) setSelectedSubjectId(null);
+    showToast({
+      message: t('toast.subjectDeleted'),
+      actionLabel: t('common.undo'),
+      onAction: () => {
+        setModules(prev => prev.map(m => {
+          if (m.id !== activeProject.id) return m;
+          return { ...m, subjects: [...(m.subjects || []), snapshot] };
+        }));
+      },
+    });
+  };
+
+  const handleConfirmDeleteSubgoal = () => {
+    if (!confirmDeleteSubgoal) return;
+    const { subjectId, goal } = confirmDeleteSubgoal;
+    updateProject(p => ({
+      ...p,
+      subjects: p.subjects.map(s => s.id !== subjectId ? s : {
+        ...s,
+        subgoals: s.subgoals.filter(g => g.id !== goal.id),
+      }),
+    }));
+    setConfirmDeleteSubgoal(null);
+    showToast({
+      message: t('toast.subgoalDeleted'),
+      actionLabel: t('common.undo'),
+      onAction: () => {
+        setModules(prev => prev.map(m => {
+          if (m.id !== activeProject.id) return m;
+          return {
+            ...m,
+            subjects: (m.subjects || []).map(s => s.id !== subjectId ? s : {
+              ...s,
+              subgoals: [...(s.subgoals || []), goal],
+            }),
+          };
+        }));
+      },
+    });
+  };
+
+  const handleConfirmDeleteProject = () => {
+    if (!confirmDeleteProject) return;
+    const snapshot = confirmDeleteProject;
+    onDeleteProjectModule?.(snapshot.id);
+    setConfirmDeleteProject(null);
+    showToast({
+      message: t('toast.projectDeleted'),
+      actionLabel: t('common.undo'),
+      onAction: () => {
+        setModules(prev => prev.find(m => m.id === snapshot.id)
+          ? prev
+          : [...prev, snapshot]);
+      },
+    });
+  };
+
+  const showSwipeHint = !hasUsedSwipe && (subjects.length > 0 || (activeSubject && (activeSubject.subgoals || []).length > 0));
 
   return (
     <div className="slide-in space-y-4">
@@ -165,7 +249,7 @@ export default function ProjectsView({
       )}
 
       <div className={`${theme.card} rounded-2xl p-5 shadow-sm`}>
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-3 mb-3 relative" data-project-menu>
           <div className={`${c.iconBg} ${c.iconText} w-9 h-9 rounded-xl flex items-center justify-center`}>
             <Icon className="w-5 h-5" />
           </div>
@@ -175,12 +259,37 @@ export default function ProjectsView({
               {total === 0 ? t('projects.subgoalsCount', { done: 0, total: 0 }) : t('projects.subgoalsCount', { done, total })}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => setProjectMenuOpen(v => !v)}
+            className={`p-1.5 ${theme.hover} rounded-lg ${theme.textMuted} transition`}
+            aria-label={t('common.options')}
+          >
+            <MoreHorizontal className="w-4 h-4" />
+          </button>
+          {projectMenuOpen && (
+            <div className={`absolute right-0 top-full mt-1 z-20 ${theme.card} rounded-xl shadow-lg border ${theme.border} overflow-hidden min-w-[10rem]`}>
+              <button
+                type="button"
+                onClick={() => {
+                  setProjectMenuOpen(false);
+                  setConfirmDeleteProject(activeProject);
+                }}
+                className={`w-full text-left px-3 py-2 text-sm text-red-500 ${theme.hover} transition`}
+              >
+                {t('projectsView.deleteProjectAction')}
+              </button>
+            </div>
+          )}
         </div>
         <ProgressBar value={pct} colorKey={activeProject.color} label={`${pct}%`} />
       </div>
 
+      {showSwipeHint && (
+        <p className={`text-xs ${theme.textMuted} px-1`}>{t('collectionList.swipeHint')}</p>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] gap-4">
-        {/* Subjects column */}
         <div className={`${theme.card} rounded-2xl p-4 shadow-sm`}>
           <h3 className={`font-semibold ${theme.textSecondary} mb-3`}>{t('projects.boxes')}</h3>
           {subjects.length === 0 ? (
@@ -194,33 +303,40 @@ export default function ProjectsView({
                 const avg = subjectAverage(s);
                 const isSel = s.id === selectedSubjectId;
                 return (
-                  <button
+                  <SwipeRow
                     key={s.id}
-                    type="button"
-                    onClick={() => setSelectedSubjectId(s.id)}
-                    className={`w-full text-left p-3 rounded-lg border transition ${
-                      isSel
-                        ? `${c.ringBorder} ${theme.cardSecondary}`
-                        : `border-transparent ${theme.cardSecondary}`
-                    }`}
+                    onDelete={() => setConfirmDeleteSubject(s)}
+                    onFirstSwipe={onFirstSwipe}
+                    ariaLabel={t('projectsView.deleteSubjectAria')}
+                    className="rounded-lg"
                   >
-                    <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <span className={`font-medium text-sm ${theme.textSecondary} truncate`}>
-                        {s.name}
-                      </span>
-                      {avg !== null && (
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${c.pillBg} ${c.pillText} shrink-0`}>
-                          {avg}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSubjectId(s.id)}
+                      className={`w-full text-left p-3 rounded-lg border transition ${
+                        isSel
+                          ? `${c.ringBorder} ${theme.cardSecondary}`
+                          : `border-transparent ${theme.cardSecondary}`
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className={`font-medium text-sm ${theme.textSecondary} truncate`}>
+                          {s.name}
                         </span>
-                      )}
-                    </div>
-                    <ProgressBar
-                      size="sm"
-                      value={sp.pct}
-                      colorKey={activeProject.color}
-                      label={`${sp.done}/${sp.total}`}
-                    />
-                  </button>
+                        {avg !== null && (
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${c.pillBg} ${c.pillText} shrink-0`}>
+                            {avg}
+                          </span>
+                        )}
+                      </div>
+                      <ProgressBar
+                        size="sm"
+                        value={sp.pct}
+                        colorKey={activeProject.color}
+                        label={`${sp.done}/${sp.total}`}
+                      />
+                    </button>
+                  </SwipeRow>
                 );
               })}
             </div>
@@ -245,7 +361,6 @@ export default function ProjectsView({
           </div>
         </div>
 
-        {/* Subgoals column */}
         <div className={`${theme.card} rounded-2xl p-4 shadow-sm`}>
           {activeSubject ? (
             <>
@@ -255,7 +370,7 @@ export default function ProjectsView({
                 </h3>
                 <span className={`text-xs ${theme.textMuted} shrink-0`}>
                   {t('projects.avgGrade')} <strong className={theme.textSecondary}>
-                    {subjectAverage(activeSubject) ?? '—'}
+                    {subjectAverage(activeSubject) ?? '-'}
                   </strong>
                 </span>
               </div>
@@ -266,6 +381,8 @@ export default function ProjectsView({
                 theme={theme}
                 onToggle={(goalId) => toggleSubgoal(activeSubject.id, goalId)}
                 onGrade={(goalId, raw) => setGrade(activeSubject.id, goalId, raw)}
+                onRequestDelete={(goal) => setConfirmDeleteSubgoal({ subjectId: activeSubject.id, goal })}
+                onFirstSwipe={onFirstSwipe}
               />
 
               <div className="mt-3 space-y-2">
@@ -302,11 +419,44 @@ export default function ProjectsView({
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!confirmDeleteSubject}
+        title={confirmDeleteSubject ? t('projectsView.deleteSubjectTitle', { name: confirmDeleteSubject.name }) : ''}
+        description={t('projectsView.deleteSubjectDesc')}
+        confirmLabel={t('common.delete')}
+        variant="danger"
+        onConfirm={handleConfirmDeleteSubject}
+        onCancel={() => setConfirmDeleteSubject(null)}
+        theme={theme}
+      />
+
+      <ConfirmDialog
+        open={!!confirmDeleteSubgoal}
+        title={confirmDeleteSubgoal ? t('projectsView.deleteSubgoalTitle', { label: confirmDeleteSubgoal.goal.label }) : ''}
+        description={t('projectsView.deleteSubgoalDesc')}
+        confirmLabel={t('common.delete')}
+        variant="danger"
+        onConfirm={handleConfirmDeleteSubgoal}
+        onCancel={() => setConfirmDeleteSubgoal(null)}
+        theme={theme}
+      />
+
+      <ConfirmDialog
+        open={!!confirmDeleteProject}
+        title={confirmDeleteProject ? t('projectsView.deleteProjectTitle', { name: confirmDeleteProject.name }) : ''}
+        description={t('projectsView.deleteProjectDesc')}
+        confirmLabel={t('common.delete')}
+        variant="danger"
+        onConfirm={handleConfirmDeleteProject}
+        onCancel={() => setConfirmDeleteProject(null)}
+        theme={theme}
+      />
     </div>
   );
 }
 
-function SubgoalList({ subject, color, theme, onToggle, onGrade }) {
+function SubgoalList({ subject, color, theme, onToggle, onGrade, onRequestDelete, onFirstSwipe }) {
   const { t } = useTranslation();
   const c = getColorClasses(color);
   const sorted = useMemo(() => {
@@ -328,42 +478,50 @@ function SubgoalList({ subject, color, theme, onToggle, onGrade }) {
       {sorted.map(g => {
         const overdue = isOverdue(g.deadline, g.completed);
         return (
-          <li
-            key={g.id}
-            className={`flex items-center gap-2 p-2 ${theme.cardSecondary} rounded-lg ${
-              g.completed ? 'opacity-60' : ''
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={!!g.completed}
-              onChange={() => onToggle(g.id)}
-              className={`w-4 h-4 accent-${color}-500 cursor-pointer`}
-            />
-            <span className={`flex-1 text-sm ${theme.textSecondary} ${
-              g.completed ? 'line-through' : ''
-            } truncate`}>
-              {g.label}
-            </span>
-            {g.deadline && (
-              <span className={`text-xs flex items-center gap-1 shrink-0 ${
-                overdue ? 'text-red-500' : theme.textMuted
-              }`}>
-                {overdue && <Clock className="w-3 h-3" />}
-                {formatDeadline(g.deadline)}
-              </span>
-            )}
-            <input
-              type="number"
-              min="1"
-              max="10"
-              step="0.1"
-              value={g.grade ?? ''}
-              onChange={(e) => onGrade(g.id, e.target.value)}
-              placeholder="—"
-              className={`w-14 px-2 py-1 text-xs text-right ${theme.input} rounded-md`}
-              aria-label={t('projects.grade')}
-            />
+          <li key={g.id}>
+            <SwipeRow
+              onDelete={() => onRequestDelete(g)}
+              onFirstSwipe={onFirstSwipe}
+              ariaLabel={t('projectsView.deleteSubgoalAria')}
+              className="rounded-lg"
+            >
+              <div
+                className={`flex items-center gap-2 p-2 ${theme.cardSecondary} rounded-lg ${
+                  g.completed ? 'opacity-60' : ''
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={!!g.completed}
+                  onChange={() => onToggle(g.id)}
+                  className={`w-4 h-4 accent-${color}-500 cursor-pointer`}
+                />
+                <span className={`flex-1 text-sm ${theme.textSecondary} ${
+                  g.completed ? 'line-through' : ''
+                } truncate`}>
+                  {g.label}
+                </span>
+                {g.deadline && (
+                  <span className={`text-xs flex items-center gap-1 shrink-0 ${
+                    overdue ? 'text-red-500' : theme.textMuted
+                  }`}>
+                    {overdue && <Clock className="w-3 h-3" />}
+                    {formatDeadline(g.deadline)}
+                  </span>
+                )}
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  step="0.1"
+                  value={g.grade ?? ''}
+                  onChange={(e) => onGrade(g.id, e.target.value)}
+                  placeholder="-"
+                  className={`w-14 px-2 py-1 text-xs text-right ${theme.input} rounded-md`}
+                  aria-label={t('projects.grade')}
+                />
+              </div>
+            </SwipeRow>
           </li>
         );
       })}

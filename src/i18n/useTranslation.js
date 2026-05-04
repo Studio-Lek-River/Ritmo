@@ -103,6 +103,15 @@ export function getLocale() {
   return getCurrentLanguage() === 'nl' ? 'nl-NL' : 'en-GB';
 }
 
+// Resolved module-naam: user-rename (`name`) wint, anders live `t(nameKey)`.
+// Default-modules en presets dragen alleen `nameKey` zodat ze taal-reactief
+// blijven; pas zodra de gebruiker de naam aanpast schrijven we `name`.
+export function resolveModuleName(mod, t) {
+  if (mod?.name) return mod.name;
+  if (mod?.nameKey) return t(mod.nameKey);
+  return '';
+}
+
 // Synchrone t() voor utils. Volgt dezelfde fallback-keten als de hook.
 export function t(key, vars) {
   const lang = getCurrentLanguage();
