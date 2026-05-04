@@ -11,6 +11,7 @@ import {
   clampGrade,
   formatDeadline,
 } from '../utils/projects';
+import { useTranslation } from '../i18n/useTranslation';
 
 export default function ProjectsView({
   modules,
@@ -20,8 +21,9 @@ export default function ProjectsView({
   setSelectedProjectId,
   markTouchedToday,
   onCreate,
-  t,
+  theme,
 }) {
+  const { t } = useTranslation();
   const projects = useMemo(
     () => modules.filter(m => m.enabled && m.type === 'projects'),
     [modules]
@@ -55,11 +57,11 @@ export default function ProjectsView({
     return (
       <EmptyState
         icon={GraduationCap}
-        title="Nog geen projecten"
-        description="Maak een project-module aan om losse projecten met vakken en subdoelen bij te houden."
-        buttonLabel={onCreate ? 'Project-module aanmaken' : null}
+        title={t('projects.empty')}
+        description={t('projects.emptyDesc')}
+        buttonLabel={onCreate ? t('projects.emptyButton') : null}
         onClick={onCreate}
-        t={t}
+        theme={theme}
       />
     );
   }
@@ -152,7 +154,7 @@ export default function ProjectsView({
                 className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
                   isActive
                     ? `${pc.bar} text-white shadow`
-                    : `${t.cardSecondary} ${t.textSecondary}`
+                    : `${theme.cardSecondary} ${theme.textSecondary}`
                 }`}
               >
                 {p.name}
@@ -162,15 +164,15 @@ export default function ProjectsView({
         </div>
       )}
 
-      <div className={`${t.card} rounded-2xl p-5 shadow-sm`}>
+      <div className={`${theme.card} rounded-2xl p-5 shadow-sm`}>
         <div className="flex items-center gap-3 mb-3">
           <div className={`${c.iconBg} ${c.iconText} w-9 h-9 rounded-xl flex items-center justify-center`}>
             <Icon className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className={`font-semibold ${t.textSecondary} truncate`}>{activeProject.name}</h2>
-            <p className={`text-xs ${t.textMuted}`}>
-              {total === 0 ? '0 / 0 subdoelen' : `${done} / ${total} subdoelen`}
+            <h2 className={`font-semibold ${theme.textSecondary} truncate`}>{activeProject.name}</h2>
+            <p className={`text-xs ${theme.textMuted}`}>
+              {total === 0 ? t('projects.subgoalsCount', { done: 0, total: 0 }) : t('projects.subgoalsCount', { done, total })}
             </p>
           </div>
         </div>
@@ -179,11 +181,11 @@ export default function ProjectsView({
 
       <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] gap-4">
         {/* Subjects column */}
-        <div className={`${t.card} rounded-2xl p-4 shadow-sm`}>
-          <h3 className={`font-semibold ${t.textSecondary} mb-3`}>Vakken</h3>
+        <div className={`${theme.card} rounded-2xl p-4 shadow-sm`}>
+          <h3 className={`font-semibold ${theme.textSecondary} mb-3`}>{t('projects.boxes')}</h3>
           {subjects.length === 0 ? (
-            <p className={`${t.textMuted} text-sm py-2`}>
-              Nog geen vakken — voeg er een toe hieronder.
+            <p className={`${theme.textMuted} text-sm py-2`}>
+              {t('projects.noBoxes')}
             </p>
           ) : (
             <div className="space-y-2 mb-3">
@@ -198,12 +200,12 @@ export default function ProjectsView({
                     onClick={() => setSelectedSubjectId(s.id)}
                     className={`w-full text-left p-3 rounded-lg border transition ${
                       isSel
-                        ? `${c.ringBorder} ${t.cardSecondary}`
-                        : `border-transparent ${t.cardSecondary}`
+                        ? `${c.ringBorder} ${theme.cardSecondary}`
+                        : `border-transparent ${theme.cardSecondary}`
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <span className={`font-medium text-sm ${t.textSecondary} truncate`}>
+                      <span className={`font-medium text-sm ${theme.textSecondary} truncate`}>
                         {s.name}
                       </span>
                       {avg !== null && (
@@ -229,14 +231,14 @@ export default function ProjectsView({
               value={newSubjectName}
               onChange={(e) => setNewSubjectName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addSubject()}
-              placeholder="Nieuw vak..."
-              className={`flex-1 px-3 py-2 ${t.input} rounded-lg text-sm`}
+              placeholder={t('projects.newBoxPlaceholder')}
+              className={`flex-1 px-3 py-2 ${theme.input} rounded-lg text-sm`}
             />
             <button
               type="button"
               onClick={addSubject}
               className={`px-3 py-2 ${c.bar} text-white rounded-lg`}
-              aria-label="Vak toevoegen"
+              aria-label={t('projects.addBoxAria')}
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -244,15 +246,15 @@ export default function ProjectsView({
         </div>
 
         {/* Subgoals column */}
-        <div className={`${t.card} rounded-2xl p-4 shadow-sm`}>
+        <div className={`${theme.card} rounded-2xl p-4 shadow-sm`}>
           {activeSubject ? (
             <>
               <div className="flex items-center justify-between mb-3 gap-2">
-                <h3 className={`font-semibold ${t.textSecondary} truncate`}>
+                <h3 className={`font-semibold ${theme.textSecondary} truncate`}>
                   {activeSubject.name}
                 </h3>
-                <span className={`text-xs ${t.textMuted} shrink-0`}>
-                  Gemiddeld cijfer: <strong className={t.textSecondary}>
+                <span className={`text-xs ${theme.textMuted} shrink-0`}>
+                  {t('projects.avgGrade')} <strong className={theme.textSecondary}>
                     {subjectAverage(activeSubject) ?? '—'}
                   </strong>
                 </span>
@@ -261,7 +263,7 @@ export default function ProjectsView({
               <SubgoalList
                 subject={activeSubject}
                 color={activeProject.color}
-                t={t}
+                theme={theme}
                 onToggle={(goalId) => toggleSubgoal(activeSubject.id, goalId)}
                 onGrade={(goalId, raw) => setGrade(activeSubject.id, goalId, raw)}
               />
@@ -272,21 +274,21 @@ export default function ProjectsView({
                   value={newSubgoalLabel}
                   onChange={(e) => setNewSubgoalLabel(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && addSubgoal()}
-                  placeholder="Nieuw subdoel..."
-                  className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+                  placeholder={t('projects.newSubgoalPlaceholder')}
+                  className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm`}
                 />
                 <div className="flex gap-2">
                   <input
                     type="date"
                     value={newSubgoalDeadline}
                     onChange={(e) => setNewSubgoalDeadline(e.target.value)}
-                    className={`flex-1 min-w-0 px-2 py-2 ${t.input} rounded-lg text-sm`}
+                    className={`flex-1 min-w-0 px-2 py-2 ${theme.input} rounded-lg text-sm`}
                   />
                   <button
                     type="button"
                     onClick={addSubgoal}
                     className={`px-3 py-2 ${c.bar} text-white rounded-lg shrink-0`}
-                    aria-label="Subdoel toevoegen"
+                    aria-label={t('projects.addSubgoalAria')}
                   >
                     <Plus className="w-4 h-4" />
                   </button>
@@ -294,8 +296,8 @@ export default function ProjectsView({
               </div>
             </>
           ) : (
-            <p className={`${t.textMuted} text-sm`}>
-              Selecteer of maak eerst een vak.
+            <p className={`${theme.textMuted} text-sm`}>
+              {t('projects.selectBoxFirst')}
             </p>
           )}
         </div>
@@ -304,7 +306,8 @@ export default function ProjectsView({
   );
 }
 
-function SubgoalList({ subject, color, t, onToggle, onGrade }) {
+function SubgoalList({ subject, color, theme, onToggle, onGrade }) {
+  const { t } = useTranslation();
   const c = getColorClasses(color);
   const sorted = useMemo(() => {
     const arr = [...(subject.subgoals || [])];
@@ -314,8 +317,8 @@ function SubgoalList({ subject, color, t, onToggle, onGrade }) {
 
   if (sorted.length === 0) {
     return (
-      <p className={`${t.textMuted} text-sm py-2`}>
-        Nog geen subdoelen — voeg er een toe hieronder.
+      <p className={`${theme.textMuted} text-sm py-2`}>
+        {t('projects.noSubgoals')}
       </p>
     );
   }
@@ -327,7 +330,7 @@ function SubgoalList({ subject, color, t, onToggle, onGrade }) {
         return (
           <li
             key={g.id}
-            className={`flex items-center gap-2 p-2 ${t.cardSecondary} rounded-lg ${
+            className={`flex items-center gap-2 p-2 ${theme.cardSecondary} rounded-lg ${
               g.completed ? 'opacity-60' : ''
             }`}
           >
@@ -337,14 +340,14 @@ function SubgoalList({ subject, color, t, onToggle, onGrade }) {
               onChange={() => onToggle(g.id)}
               className={`w-4 h-4 accent-${color}-500 cursor-pointer`}
             />
-            <span className={`flex-1 text-sm ${t.textSecondary} ${
+            <span className={`flex-1 text-sm ${theme.textSecondary} ${
               g.completed ? 'line-through' : ''
             } truncate`}>
               {g.label}
             </span>
             {g.deadline && (
               <span className={`text-xs flex items-center gap-1 shrink-0 ${
-                overdue ? 'text-red-500' : t.textMuted
+                overdue ? 'text-red-500' : theme.textMuted
               }`}>
                 {overdue && <Clock className="w-3 h-3" />}
                 {formatDeadline(g.deadline)}
@@ -358,8 +361,8 @@ function SubgoalList({ subject, color, t, onToggle, onGrade }) {
               value={g.grade ?? ''}
               onChange={(e) => onGrade(g.id, e.target.value)}
               placeholder="—"
-              className={`w-14 px-2 py-1 text-xs text-right ${t.input} rounded-md`}
-              aria-label="Cijfer"
+              className={`w-14 px-2 py-1 text-xs text-right ${theme.input} rounded-md`}
+              aria-label={t('projects.grade')}
             />
           </li>
         );

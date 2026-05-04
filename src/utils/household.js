@@ -1,4 +1,5 @@
 // Pure helpers for the Household feature. No React, no storage.
+import { t, getLocale } from '../i18n/useTranslation';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -48,18 +49,19 @@ export function daysUntilDue(chore) {
   return interval - elapsed;
 }
 
-const NL_MONTHS_SHORT = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
-
 export function formatRelativeDate(date) {
   if (!date) return '';
   const d = new Date(date);
   const today = new Date();
   const diff = daysBetween(d, today);
-  if (diff === 0) return 'vandaag';
-  if (diff === 1) return 'gisteren';
-  if (diff > 1 && diff < 7) return `${diff} dagen geleden`;
-  if (diff < 0 && diff > -7) return `over ${Math.abs(diff)} dagen`;
-  return `${d.getDate()} ${NL_MONTHS_SHORT[d.getMonth()]}`;
+  if (diff === 0) return t('dates.relative.today');
+  if (diff === 1) return t('dates.relative.yesterday');
+  if (diff > 1 && diff < 7) return t('dates.relative.daysAgo', { n: diff });
+  if (diff < 0 && diff > -7) return t('dates.relative.inDays', { n: Math.abs(diff) });
+  const monthShort = new Intl.DateTimeFormat(getLocale(), { month: 'short' })
+    .format(d)
+    .replace('.', '');
+  return `${d.getDate()} ${monthShort}`;
 }
 
 export function formatEuro(n) {

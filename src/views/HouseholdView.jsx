@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Home, ChevronDown, ChevronUp,
   Plus, Trash2, Check, Star, AlertCircle, ChevronLeft, ChevronRight, Edit3, X,
@@ -9,6 +9,7 @@ import {
   toMonthly, isOverdue, daysUntilDue, formatRelativeDate, formatEuro, parseEuroInput,
   reconcileUtilitiesAuto, totalActualOf, autoSumOf,
 } from '../utils/household';
+import { useTranslation, getLocale } from '../i18n/useTranslation';
 
 const newId = () => (typeof crypto !== 'undefined' && crypto.randomUUID
   ? crypto.randomUUID()
@@ -21,15 +22,34 @@ const BUDGET_ICONS = {
 const BUDGET_ICON_KEYS = Object.keys(BUDGET_ICONS);
 
 const UTILITY_KEYS = ['water', 'electricity', 'gas'];
-const UTILITY_LABEL = { water: 'Water', electricity: 'Elektra', gas: 'Gas' };
 const UTILITY_ICON = { water: Droplet, electricity: Zap, gas: Flame };
 const UTILITY_COLOR = { water: 'text-sky-500', electricity: 'text-amber-500', gas: 'text-orange-500' };
 
-const NL_MONTHS = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
-const NL_MONTHS_SHORT = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
-const DAY_LABELS = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
+function buildLocalizedNames(language) {
+  // Re-runs whenever language changes; uses Intl with the resolved locale.
+  const locale = getLocale();
+  const monthsLong = [...Array(12)].map((_, i) =>
+    new Intl.DateTimeFormat(locale, { month: 'long' }).format(new Date(2024, i, 1))
+  );
+  const monthsShort = [...Array(12)].map((_, i) =>
+    new Intl.DateTimeFormat(locale, { month: 'short' }).format(new Date(2024, i, 1)).replace('.', '')
+  );
+  // Sunday-first weekday labels: index 0 = Sunday, ..., 6 = Saturday
+  const dayLabels = [...Array(7)].map((_, i) =>
+    new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(new Date(2024, 0, 7 + i))
+  );
+  return { monthsLong, monthsShort, dayLabels };
+}
 
-export default function HouseholdView({ t, darkMode }) {
+export default function HouseholdView({ theme, darkMode }) {
+  const { t, language } = useTranslation();
+  const names = useMemo(() => buildLocalizedNames(language), [language]);
+  const utilityLabel = (k) => k === 'water'
+    ? t('household.utilities.water')
+    : k === 'electricity'
+      ? t('household.utilities.electricity')
+      : t('household.utilities.gas');
+
   const [expanded, setExpanded] = useState({
     chores: true, groceries: false, budget: false, utilities: false,
   });
@@ -62,43 +82,45 @@ export default function HouseholdView({ t, darkMode }) {
   return (
     <div className="slide-in space-y-3">
       <Section
-        t={t}
+        theme={theme}
         icon={<Home className="w-4 h-4 text-blue-500" />}
-        title="Klusjes"
-        meta={overdueCount > 0 ? `${overdueCount} achterstallig` : `${chores.length} totaal`}
+        title={t('household.chores.title')}
+        meta={overdueCount > 0
+          ? t('household.chores.overdueMeta', { n: overdueCount })
+          : t('household.chores.totalMeta', { n: chores.length })}
         expanded={expanded.chores}
         onToggle={() => toggle('chores')}
       >
-        <ChoresSection chores={chores} setChores={setChores} t={t} />
+        <ChoresSection chores={chores} setChores={setChores} theme={theme} />
       </Section>
 
       <Section
-        t={t}
+        theme={theme}
         icon={<ShoppingCart className="w-4 h-4 text-emerald-500" />}
-        title="Boodschappen"
-        meta={`${groceriesCount} open`}
+        title={t('household.groceries.title')}
+        meta={t('household.groceries.openMeta', { n: groceriesCount })}
         expanded={expanded.groceries}
         onToggle={() => toggle('groceries')}
       >
-        <GroceriesSection groceries={groceries} setGroceries={setGroceries} t={t} />
+        <GroceriesSection groceries={groceries} setGroceries={setGroceries} theme={theme} dayLabels={names.dayLabels} />
       </Section>
 
       <Section
-        t={t}
+        theme={theme}
         icon={<BadgeEuro className="w-4 h-4 text-violet-500" />}
-        title="Budget"
-        meta={`netto ${formatEuro(monthlyNet)}/mnd`}
+        title={t('household.budget.title')}
+        meta={t('household.budget.meta', { value: formatEuro(monthlyNet) })}
         expanded={expanded.budget}
         onToggle={() => toggle('budget')}
       >
-        <BudgetSection budget={budget} setBudget={setBudget} config={config} t={t} darkMode={darkMode} />
+        <BudgetSection budget={budget} setBudget={setBudget} config={config} theme={theme} darkMode={darkMode} monthsLong={names.monthsLong} />
       </Section>
 
       <Section
-        t={t}
+        theme={theme}
         icon={<Zap className="w-4 h-4 text-amber-500" />}
-        title="Duurzaamheid"
-        meta={`${formatEuro(utilitiesYearActual)} dit jaar`}
+        title={t('household.utilities.title')}
+        meta={t('household.utilities.yearMeta', { value: formatEuro(utilitiesYearActual) })}
         expanded={expanded.utilities}
         onToggle={() => toggle('utilities')}
       >
@@ -108,32 +130,35 @@ export default function HouseholdView({ t, darkMode }) {
           budget={budget}
           config={config}
           setConfig={setConfig}
-          t={t}
+          theme={theme}
           darkMode={darkMode}
+          monthsLong={names.monthsLong}
+          monthsShort={names.monthsShort}
+          utilityLabel={utilityLabel}
         />
       </Section>
     </div>
   );
 }
 
-function Section({ t, icon, title, meta, expanded, onToggle, children }) {
+function Section({ theme, icon, title, meta, expanded, onToggle, children }) {
   return (
-    <div className={`${t.card} rounded-2xl shadow-sm overflow-hidden`}>
+    <div className={`${theme.card} rounded-2xl shadow-sm overflow-hidden`}>
       <button
         onClick={onToggle}
-        className={`w-full flex items-center gap-3 p-4 ${t.hover} transition`}
+        className={`w-full flex items-center gap-3 p-4 ${theme.hover} transition`}
       >
         <span className="flex items-center gap-2">
           {icon}
-          <span className={`font-semibold ${t.text}`}>{title}</span>
+          <span className={`font-semibold ${theme.text}`}>{title}</span>
         </span>
-        <span className={`text-xs ${t.textMuted} ml-auto`}>{meta}</span>
+        <span className={`text-xs ${theme.textMuted} ml-auto`}>{meta}</span>
         {expanded
-          ? <ChevronUp className={`w-4 h-4 ${t.textMuted}`} />
-          : <ChevronDown className={`w-4 h-4 ${t.textMuted}`} />}
+          ? <ChevronUp className={`w-4 h-4 ${theme.textMuted}`} />
+          : <ChevronDown className={`w-4 h-4 ${theme.textMuted}`} />}
       </button>
       {expanded && (
-        <div className={`p-4 pt-0 border-t ${t.border}`}>
+        <div className={`p-4 pt-0 border-t ${theme.border}`}>
           <div className="pt-4">{children}</div>
         </div>
       )}
@@ -145,7 +170,8 @@ function Section({ t, icon, title, meta, expanded, onToggle, children }) {
 // Klusjes
 // ============================================================================
 
-function ChoresSection({ chores, setChores, t }) {
+function ChoresSection({ chores, setChores, theme }) {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [recurrence, setRecurrence] = useState('weekly');
   const [customDays, setCustomDays] = useState(14);
@@ -188,25 +214,25 @@ function ChoresSection({ chores, setChores, t }) {
 
   return (
     <div className="space-y-3">
-      <div className={`${t.cardSecondary} rounded-xl p-3 space-y-2`}>
+      <div className={`${theme.cardSecondary} rounded-xl p-3 space-y-2`}>
         <input
           type="text"
           value={name}
           onChange={e => setName(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && add()}
-          placeholder="Nieuwe klus"
-          className={`w-full px-3 py-2 rounded-lg ${t.input} outline-none focus:ring-2 focus:ring-blue-300 text-sm`}
+          placeholder={t('household.chores.newPlaceholder')}
+          className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none focus:ring-2 focus:ring-blue-300 text-sm`}
         />
         <div className="flex gap-2">
           <select
             value={recurrence}
             onChange={e => setRecurrence(e.target.value)}
-            className={`px-2 py-2 rounded-lg ${t.input} text-sm flex-1 outline-none`}
+            className={`px-2 py-2 rounded-lg ${theme.input} text-sm flex-1 outline-none`}
           >
-            <option value="once">Eenmalig</option>
-            <option value="weekly">Wekelijks</option>
-            <option value="monthly">Maandelijks</option>
-            <option value="custom">Elke X dagen</option>
+            <option value="once">{t('household.chores.freq.once')}</option>
+            <option value="weekly">{t('household.chores.freq.weekly')}</option>
+            <option value="monthly">{t('household.chores.freq.monthly')}</option>
+            <option value="custom">{t('household.chores.freq.custom')}</option>
           </select>
           {recurrence === 'custom' && (
             <input
@@ -214,7 +240,7 @@ function ChoresSection({ chores, setChores, t }) {
               min="1"
               value={customDays}
               onChange={e => setCustomDays(e.target.value)}
-              className={`w-20 px-2 py-2 rounded-lg ${t.input} text-sm outline-none`}
+              className={`w-20 px-2 py-2 rounded-lg ${theme.input} text-sm outline-none`}
             />
           )}
           <button
@@ -228,7 +254,7 @@ function ChoresSection({ chores, setChores, t }) {
       </div>
 
       {sorted.length === 0 && (
-        <p className={`text-sm ${t.textMuted} text-center py-4`}>Nog geen klusjes</p>
+        <p className={`text-sm ${theme.textMuted} text-center py-4`}>{t('household.chores.empty')}</p>
       )}
 
       <ul className="space-y-2">
@@ -238,7 +264,7 @@ function ChoresSection({ chores, setChores, t }) {
           return (
             <li
               key={chore.id}
-              className={`flex items-center gap-3 p-3 rounded-xl ${t.cardSecondary} ${overdue ? 'ring-1 ring-red-300' : ''}`}
+              className={`flex items-center gap-3 p-3 rounded-xl ${theme.cardSecondary} ${overdue ? 'ring-1 ring-red-300' : ''}`}
             >
               <button
                 onClick={() => complete(chore.id)}
@@ -247,20 +273,20 @@ function ChoresSection({ chores, setChores, t }) {
                     ? 'bg-red-500 text-white hover:bg-red-600'
                     : 'bg-blue-500 text-white hover:bg-blue-600'
                 }`}
-                aria-label="Markeer als gedaan"
+                aria-label={t('household.chores.markDoneAria')}
               >
                 <Check className="w-4 h-4" />
               </button>
               <div className="flex-1 min-w-0">
-                <div className={`text-sm font-medium ${t.text} truncate`}>{chore.name}</div>
-                <div className={`text-xs ${overdue ? 'text-red-500 font-medium' : t.textMuted}`}>
-                  {choreStatus(chore, overdue, due)}
+                <div className={`text-sm font-medium ${theme.text} truncate`}>{chore.name}</div>
+                <div className={`text-xs ${overdue ? 'text-red-500 font-medium' : theme.textMuted}`}>
+                  {choreStatus(chore, overdue, due, t)}
                 </div>
               </div>
               <button
                 onClick={() => remove(chore.id)}
-                className={`p-1.5 rounded-lg ${t.textMuted} ${t.hover} transition`}
-                aria-label="Verwijder"
+                className={`p-1.5 rounded-lg ${theme.textMuted} ${theme.hover} transition`}
+                aria-label={t('household.chores.removeAria')}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -272,25 +298,30 @@ function ChoresSection({ chores, setChores, t }) {
   );
 }
 
-function choreStatus(chore, overdue, due) {
+function choreStatus(chore, overdue, due, t) {
   if (chore.recurrence === 'once') {
-    return chore.lastCompletedAt ? `Gedaan ${formatRelativeDate(chore.lastCompletedAt)}` : 'Nog te doen';
+    return chore.lastCompletedAt
+      ? t('household.chores.status.doneRelative', { when: formatRelativeDate(chore.lastCompletedAt) })
+      : t('household.chores.status.todo');
   }
-  if (!chore.lastCompletedAt) return 'Nog niet gedaan';
+  if (!chore.lastCompletedAt) return t('household.chores.status.notDoneYet');
   if (overdue) {
     const elapsed = Math.abs(due);
-    return elapsed === 0 ? 'Vandaag achterstallig' : `${elapsed} dagen achterstallig`;
+    return elapsed === 0
+      ? t('household.chores.status.overdueToday')
+      : t('household.chores.status.overdueDays', { n: elapsed });
   }
-  if (due === 0) return 'Vandaag aan de beurt';
-  if (due === 1) return 'Morgen aan de beurt';
-  return `Over ${due} dagen`;
+  if (due === 0) return t('household.chores.status.dueToday');
+  if (due === 1) return t('household.chores.status.dueTomorrow');
+  return t('household.chores.status.dueInDays', { n: due });
 }
 
 // ============================================================================
 // Boodschappen
 // ============================================================================
 
-function GroceriesSection({ groceries, setGroceries, t }) {
+function GroceriesSection({ groceries, setGroceries, theme, dayLabels }) {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const items = groceries.items || [];
 
@@ -339,15 +370,15 @@ function GroceriesSection({ groceries, setGroceries, t }) {
 
   return (
     <div className="space-y-3">
-      <div className={`${t.cardSecondary} rounded-xl p-3 space-y-2`}>
+      <div className={`${theme.cardSecondary} rounded-xl p-3 space-y-2`}>
         <div className="flex gap-2">
           <input
             type="text"
             value={name}
             onChange={e => setName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && add()}
-            placeholder="Nieuw item"
-            className={`flex-1 px-3 py-2 rounded-lg ${t.input} outline-none focus:ring-2 focus:ring-blue-300 text-sm`}
+            placeholder={t('household.groceries.newItemPlaceholder')}
+            className={`flex-1 px-3 py-2 rounded-lg ${theme.input} outline-none focus:ring-2 focus:ring-blue-300 text-sm`}
           />
           <button
             onClick={add}
@@ -358,15 +389,15 @@ function GroceriesSection({ groceries, setGroceries, t }) {
           </button>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <span className={`text-xs ${t.textMuted}`}>Boodschapdag:</span>
-          {DAY_LABELS.map((label, idx) => (
+          <span className={`text-xs ${theme.textMuted}`}>{t('household.groceries.shopDay')}</span>
+          {dayLabels.map((label, idx) => (
             <button
               key={idx}
               onClick={() => setShopDay(groceries.shopDay === idx ? null : idx)}
               className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
                 groceries.shopDay === idx
                   ? 'bg-blue-500 text-white'
-                  : `${t.textMuted} ${t.hover}`
+                  : `${theme.textMuted} ${theme.hover}`
               }`}
             >
               {label.slice(0, 2)}
@@ -376,40 +407,40 @@ function GroceriesSection({ groceries, setGroceries, t }) {
       </div>
 
       {items.length === 0 && (
-        <p className={`text-sm ${t.textMuted} text-center py-4`}>Lijst is leeg</p>
+        <p className={`text-sm ${theme.textMuted} text-center py-4`}>{t('household.groceries.empty')}</p>
       )}
 
       <ul className="space-y-1">
         {sorted.map(item => (
           <li
             key={item.id}
-            className={`flex items-center gap-2 p-2 rounded-lg ${t.cardSecondary}`}
+            className={`flex items-center gap-2 p-2 rounded-lg ${theme.cardSecondary}`}
           >
             <button
               onClick={() => toggle(item.id)}
               className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition shrink-0 ${
                 item.checked
                   ? 'bg-blue-500 border-blue-500 text-white'
-                  : `border-slate-300 ${t.hover}`
+                  : `border-slate-300 ${theme.hover}`
               }`}
-              aria-label="Vink af"
+              aria-label={t('household.groceries.checkAria')}
             >
               {item.checked && <Check className="w-3.5 h-3.5" />}
             </button>
-            <span className={`flex-1 text-sm ${t.text} ${item.checked ? 'line-through opacity-50' : ''}`}>
+            <span className={`flex-1 text-sm ${theme.text} ${item.checked ? 'line-through opacity-50' : ''}`}>
               {item.name}
             </span>
             <button
               onClick={() => toggleStaple(item.id)}
-              className={`p-1 rounded transition ${item.isStaple ? 'text-amber-500' : t.textMuted}`}
-              aria-label="Markeer als vast"
+              className={`p-1 rounded transition ${item.isStaple ? 'text-amber-500' : theme.textMuted}`}
+              aria-label={t('household.groceries.stapleAria')}
             >
               <Star className={`w-4 h-4 ${item.isStaple ? 'fill-amber-500' : ''}`} />
             </button>
             <button
               onClick={() => remove(item.id)}
-              className={`p-1 rounded ${t.textMuted} ${t.hover} transition`}
-              aria-label="Verwijder"
+              className={`p-1 rounded ${theme.textMuted} ${theme.hover} transition`}
+              aria-label={t('household.groceries.removeAria')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -420,9 +451,9 @@ function GroceriesSection({ groceries, setGroceries, t }) {
       {items.some(i => i.checked || i.isStaple) && (
         <button
           onClick={cleanup}
-          className={`w-full py-2 rounded-lg text-sm font-medium ${t.cardSecondary} ${t.textSecondary} ${t.hover} transition`}
+          className={`w-full py-2 rounded-lg text-sm font-medium ${theme.cardSecondary} ${theme.textSecondary} ${theme.hover} transition`}
         >
-          Opruimen
+          {t('household.groceries.cleanup')}
         </button>
       )}
     </div>
@@ -433,7 +464,8 @@ function GroceriesSection({ groceries, setGroceries, t }) {
 // Budget
 // ============================================================================
 
-function BudgetSection({ budget, setBudget, config, t, darkMode }) {
+function BudgetSection({ budget, setBudget, config, theme, darkMode, monthsLong }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(null); // { kind: 'income'|'expenses', item: { ... } }
   const [adding, setAdding] = useState(null); // 'income' | 'expenses' | null
   const [energyExpanded, setEnergyExpanded] = useState(false);
@@ -469,26 +501,26 @@ function BudgetSection({ budget, setBudget, config, t, darkMode }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-2">
-        <Stat t={t} label="Inkomsten" value={formatEuro(monthlyIncome)} accent="text-emerald-500" />
-        <Stat t={t} label="Uitgaven" value={formatEuro(monthlyExpenses)} accent="text-rose-500" />
-        <Stat t={t} label="Netto" value={formatEuro(monthlyNet)} accent={monthlyNet < 0 ? 'text-amber-500' : 'text-blue-500'} />
+        <Stat theme={theme} label={t('household.budget.income')} value={formatEuro(monthlyIncome)} accent="text-emerald-500" />
+        <Stat theme={theme} label={t('household.budget.expenses')} value={formatEuro(monthlyExpenses)} accent="text-rose-500" />
+        <Stat theme={theme} label={t('household.budget.net')} value={formatEuro(monthlyNet)} accent={monthlyNet < 0 ? 'text-amber-500' : 'text-blue-500'} />
       </div>
 
       <BudgetList
-        title="Inkomsten"
+        title={t('household.budget.income')}
         items={income}
         kind="income"
-        t={t}
+        theme={theme}
         onEdit={(item) => setEditing({ kind: 'income', item })}
         onAdd={() => setAdding('income')}
         onDelete={(id) => remove('income', id)}
       />
 
       <BudgetList
-        title="Uitgaven"
+        title={t('household.budget.expenses')}
         items={expenses}
         kind="expenses"
-        t={t}
+        theme={theme}
         onEdit={(item) => setEditing({ kind: 'expenses', item })}
         onAdd={() => setAdding('expenses')}
         onDelete={(id) => remove('expenses', id)}
@@ -499,10 +531,11 @@ function BudgetSection({ budget, setBudget, config, t, darkMode }) {
 
       {(editing || adding) && (
         <BudgetEditor
-          t={t}
+          theme={theme}
           darkMode={darkMode}
           kind={editing?.kind || adding}
           initial={editing?.item}
+          monthsLong={monthsLong}
           onCancel={() => { setEditing(null); setAdding(null); }}
           onSave={(item) => {
             const kind = editing?.kind || adding;
@@ -516,19 +549,20 @@ function BudgetSection({ budget, setBudget, config, t, darkMode }) {
   );
 }
 
-function Stat({ t, label, value, accent }) {
+function Stat({ theme, label, value, accent }) {
   return (
-    <div className={`${t.cardSecondary} rounded-xl p-3 text-center`}>
-      <div className={`text-xs ${t.textMuted} mb-1`}>{label}</div>
+    <div className={`${theme.cardSecondary} rounded-xl p-3 text-center`}>
+      <div className={`text-xs ${theme.textMuted} mb-1`}>{label}</div>
       <div className={`text-sm font-semibold ${accent}`}>{value}</div>
     </div>
   );
 }
 
 function BudgetList({
-  title, items, t, onEdit, onAdd, onDelete,
+  title, items, theme, onEdit, onAdd, onDelete,
   energyCombined = false, energyExpanded = false, onToggleEnergy,
 }) {
+  const { t } = useTranslation();
   const energyItems = energyCombined
     ? items.filter(i => i.isUtility === 'gas' || i.isUtility === 'electric')
     : [];
@@ -545,29 +579,29 @@ function BudgetList({
     return (
       <li
         key={item.id}
-        className={`flex items-center gap-3 p-3 rounded-xl ${opts.nested ? t.card : t.cardSecondary}`}
+        className={`flex items-center gap-3 p-3 rounded-xl ${opts.nested ? theme.card : theme.cardSecondary}`}
       >
-        <Icon className={`w-5 h-5 ${t.textSecondary} shrink-0`} />
+        <Icon className={`w-5 h-5 ${theme.textSecondary} shrink-0`} />
         <div className="flex-1 min-w-0">
-          <div className={`text-sm font-medium ${t.text} truncate`}>{item.name}</div>
-          <div className={`text-xs ${t.textMuted}`}>
-            {formatEuro(item.amount)} {freqLabel(item.frequency)}
+          <div className={`text-sm font-medium ${theme.text} truncate`}>{item.name}</div>
+          <div className={`text-xs ${theme.textMuted}`}>
+            {formatEuro(item.amount)} {freqLabel(item.frequency, t)}
             {item.frequency !== 'monthly' && (
-              <> &middot; reserveer {formatEuro(monthly)}/mnd</>
+              <> &middot; {t('household.budget.reserveSuffix', { value: formatEuro(monthly) })}</>
             )}
           </div>
         </div>
         <button
           onClick={() => onEdit(item)}
-          className={`p-1.5 rounded-lg ${t.textMuted} ${t.hover} transition`}
-          aria-label="Bewerk"
+          className={`p-1.5 rounded-lg ${theme.textMuted} ${theme.hover} transition`}
+          aria-label={t('household.budget.editAria')}
         >
           <Edit3 className="w-4 h-4" />
         </button>
         <button
           onClick={() => onDelete(item.id)}
-          className={`p-1.5 rounded-lg ${t.textMuted} ${t.hover} transition`}
-          aria-label="Verwijder"
+          className={`p-1.5 rounded-lg ${theme.textMuted} ${theme.hover} transition`}
+          aria-label={t('household.budget.removeAria')}
         >
           <Trash2 className="w-4 h-4" />
         </button>
@@ -578,20 +612,20 @@ function BudgetList({
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <h3 className={`text-sm font-semibold ${t.textSecondary}`}>{title}</h3>
+        <h3 className={`text-sm font-semibold ${theme.textSecondary}`}>{title}</h3>
         <button
           onClick={onAdd}
           className="px-2 py-1 rounded-lg bg-blue-500 text-white text-xs font-medium hover:bg-blue-600 transition flex items-center gap-1"
         >
-          <Plus className="w-3.5 h-3.5" /> Toevoegen
+          <Plus className="w-3.5 h-3.5" /> {t('common.add')}
         </button>
       </div>
       {items.length === 0 ? (
-        <p className={`text-xs ${t.textMuted} text-center py-3`}>Nog niets toegevoegd</p>
+        <p className={`text-xs ${theme.textMuted} text-center py-3`}>{t('household.budget.empty')}</p>
       ) : (
         <ul className="space-y-1">
           {energyCombined && energyItems.length > 0 && (
-            <li className={`rounded-xl ${t.cardSecondary}`}>
+            <li className={`rounded-xl ${theme.cardSecondary}`}>
               <button
                 onClick={onToggleEnergy}
                 className="w-full flex items-center gap-3 p-3 text-left"
@@ -599,14 +633,14 @@ function BudgetList({
               >
                 <Zap className={`w-5 h-5 text-orange-500 shrink-0`} />
                 <div className="flex-1 min-w-0">
-                  <div className={`text-sm font-medium ${t.text}`}>Energie</div>
-                  <div className={`text-xs ${t.textMuted}`}>
-                    {formatEuro(energyMonthlyTotal)} per maand &middot; gas + licht
+                  <div className={`text-sm font-medium ${theme.text}`}>{t('household.budget.energy')}</div>
+                  <div className={`text-xs ${theme.textMuted}`}>
+                    {t('household.budget.energyMonthlyDesc', { value: formatEuro(energyMonthlyTotal) })}
                   </div>
                 </div>
                 {energyExpanded
-                  ? <ChevronUp className={`w-4 h-4 ${t.textMuted}`} />
-                  : <ChevronDown className={`w-4 h-4 ${t.textMuted}`} />}
+                  ? <ChevronUp className={`w-4 h-4 ${theme.textMuted}`} />
+                  : <ChevronDown className={`w-4 h-4 ${theme.textMuted}`} />}
               </button>
               {energyExpanded && (
                 <ul className="px-2 pb-2 space-y-1">
@@ -622,11 +656,16 @@ function BudgetList({
   );
 }
 
-function freqLabel(f) {
-  return f === 'weekly' ? 'per week' : f === 'yearly' ? 'per jaar' : 'per maand';
+function freqLabel(f, t) {
+  return f === 'weekly'
+    ? t('household.budget.perWeek')
+    : f === 'yearly'
+      ? t('household.budget.perYear')
+      : t('household.budget.perMonth');
 }
 
-function BudgetEditor({ t, darkMode, kind, initial, onCancel, onSave }) {
+function BudgetEditor({ theme, darkMode, kind, initial, monthsLong, onCancel, onSave }) {
+  const { t } = useTranslation();
   const [name, setName] = useState(initial?.name || '');
   const [amount, setAmount] = useState(initial ? String(initial.amount).replace('.', ',') : '');
   const [frequency, setFrequency] = useState(initial?.frequency || 'monthly');
@@ -666,54 +705,54 @@ function BudgetEditor({ t, darkMode, kind, initial, onCancel, onSave }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40">
-      <div className={`${t.card} rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-xl`}>
-        <div className={`flex items-center justify-between p-4 border-b ${t.border}`}>
-          <h3 className={`font-semibold ${t.text}`}>
-            {initial ? 'Bewerken' : 'Toevoegen'} &middot; {kind === 'income' ? 'Inkomst' : 'Uitgave'}
+      <div className={`${theme.card} rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-xl`}>
+        <div className={`flex items-center justify-between p-4 border-b ${theme.border}`}>
+          <h3 className={`font-semibold ${theme.text}`}>
+            {initial ? t('household.budget.editor.editTitle') : t('household.budget.editor.addTitle')} &middot; {kind === 'income' ? t('household.budget.editor.incomeLabel') : t('household.budget.editor.expenseLabel')}
           </h3>
-          <button onClick={onCancel} className={`p-1 rounded ${t.hover}`}>
-            <X className={`w-5 h-5 ${t.textMuted}`} />
+          <button onClick={onCancel} className={`p-1 rounded ${theme.hover}`}>
+            <X className={`w-5 h-5 ${theme.textMuted}`} />
           </button>
         </div>
         <div className="p-4 space-y-3">
           <div>
-            <label className={`text-xs ${t.textMuted} block mb-1`}>Naam</label>
+            <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('common.name')}</label>
             <input
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              className={`w-full px-3 py-2 rounded-lg ${t.input} outline-none focus:ring-2 focus:ring-blue-300 text-sm`}
+              className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none focus:ring-2 focus:ring-blue-300 text-sm`}
               autoFocus
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className={`text-xs ${t.textMuted} block mb-1`}>Bedrag</label>
+              <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.budget.editor.amount')}</label>
               <input
                 type="text"
                 inputMode="decimal"
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
                 placeholder="0,00"
-                className={`w-full px-3 py-2 rounded-lg ${t.input} outline-none focus:ring-2 focus:ring-blue-300 text-sm`}
+                className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none focus:ring-2 focus:ring-blue-300 text-sm`}
               />
             </div>
             <div>
-              <label className={`text-xs ${t.textMuted} block mb-1`}>Frequentie</label>
+              <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.budget.editor.frequency')}</label>
               <select
                 value={frequency}
                 onChange={e => setFrequency(e.target.value)}
-                className={`w-full px-3 py-2 rounded-lg ${t.input} outline-none text-sm`}
+                className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm`}
               >
-                <option value="weekly">Per week</option>
-                <option value="monthly">Per maand</option>
-                <option value="yearly">Per jaar</option>
+                <option value="weekly">{t('household.budget.editor.freqWeekly')}</option>
+                <option value="monthly">{t('household.budget.editor.freqMonthly')}</option>
+                <option value="yearly">{t('household.budget.editor.freqYearly')}</option>
               </select>
             </div>
           </div>
           <div>
-            <label className={`text-xs ${t.textMuted} block mb-1`}>Icoon</label>
-            <div className={`grid grid-cols-7 gap-1 max-h-36 overflow-y-auto p-2 rounded-lg ${t.cardSecondary}`}>
+            <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('common.icon')}</label>
+            <div className={`grid grid-cols-7 gap-1 max-h-36 overflow-y-auto p-2 rounded-lg ${theme.cardSecondary}`}>
               {BUDGET_ICON_KEYS.map(key => {
                 const Icon = BUDGET_ICONS[key];
                 const selected = icon === key;
@@ -724,7 +763,7 @@ function BudgetEditor({ t, darkMode, kind, initial, onCancel, onSave }) {
                     className={`aspect-square flex items-center justify-center rounded-lg transition ${
                       selected
                         ? 'bg-blue-500 text-white'
-                        : `${t.textSecondary} ${t.hover}`
+                        : `${theme.textSecondary} ${theme.hover}`
                     }`}
                     aria-label={key}
                   >
@@ -736,27 +775,27 @@ function BudgetEditor({ t, darkMode, kind, initial, onCancel, onSave }) {
           </div>
           {isExpense && (
             <div>
-              <label className={`text-xs ${t.textMuted} block mb-1`}>Categorie duurzaamheid</label>
+              <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.budget.editor.utilityCategory')}</label>
               <select
                 value={isUtility}
                 onChange={e => setIsUtility(e.target.value)}
-                className={`w-full px-3 py-2 rounded-lg ${t.input} outline-none text-sm`}
+                className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm`}
               >
-                <option value="">Geen</option>
-                <option value="gas">Gas</option>
-                <option value="electric">Licht</option>
-                <option value="water">Water</option>
+                <option value="">{t('household.budget.editor.utilityNone')}</option>
+                <option value="gas">{t('household.budget.editor.utilityGas')}</option>
+                <option value="electric">{t('household.budget.editor.utilityElectric')}</option>
+                <option value="water">{t('household.budget.editor.utilityWater')}</option>
               </select>
-              <p className={`text-[11px] ${t.textMuted} mt-1`}>
-                Gas/Licht/Water-posten worden automatisch in duurzaamheid geboekt op de vervaldag.
+              <p className={`text-[11px] ${theme.textMuted} mt-1`}>
+                {t('household.budget.editor.utilityHint')}
               </p>
             </div>
           )}
           {supportsAuto && (
             <div className={frequency === 'yearly' ? 'grid grid-cols-2 gap-2' : ''}>
               <div>
-                <label className={`text-xs ${t.textMuted} block mb-1`}>
-                  {frequency === 'yearly' ? 'Vervaldag' : 'Boekdag van de maand'}
+                <label className={`text-xs ${theme.textMuted} block mb-1`}>
+                  {frequency === 'yearly' ? t('household.budget.editor.dueDayYearly') : t('household.budget.editor.dueDayMonthly')}
                 </label>
                 <input
                   type="number"
@@ -766,19 +805,19 @@ function BudgetEditor({ t, darkMode, kind, initial, onCancel, onSave }) {
                   value={dueDay}
                   onChange={e => setDueDay(e.target.value)}
                   placeholder="1-28"
-                  className={`w-full px-3 py-2 rounded-lg ${t.input} outline-none text-sm`}
+                  className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm`}
                 />
               </div>
               {frequency === 'yearly' && (
                 <div>
-                  <label className={`text-xs ${t.textMuted} block mb-1`}>Vervalmaand</label>
+                  <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.budget.editor.dueMonth')}</label>
                   <select
                     value={dueMonth}
                     onChange={e => setDueMonth(e.target.value)}
-                    className={`w-full px-3 py-2 rounded-lg ${t.input} outline-none text-sm`}
+                    className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm`}
                   >
-                    <option value="">Kies maand</option>
-                    {NL_MONTHS.map((m, i) => (
+                    <option value="">{t('common.pickMonth')}</option>
+                    {monthsLong.map((m, i) => (
                       <option key={i} value={i + 1}>{m}</option>
                     ))}
                   </select>
@@ -787,19 +826,19 @@ function BudgetEditor({ t, darkMode, kind, initial, onCancel, onSave }) {
             </div>
           )}
         </div>
-        <div className={`flex gap-2 p-4 border-t ${t.border}`}>
+        <div className={`flex gap-2 p-4 border-t ${theme.border}`}>
           <button
             onClick={onCancel}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium ${t.cardSecondary} ${t.textSecondary} ${t.hover} transition`}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium ${theme.cardSecondary} ${theme.textSecondary} ${theme.hover} transition`}
           >
-            Annuleer
+            {t('household.budget.editor.cancel')}
           </button>
           <button
             onClick={save}
             disabled={!name.trim()}
             className="flex-1 py-2 rounded-lg bg-blue-500 text-white text-sm font-medium disabled:opacity-40 hover:bg-blue-600 transition"
           >
-            Opslaan
+            {t('common.save')}
           </button>
         </div>
       </div>
@@ -811,7 +850,8 @@ function BudgetEditor({ t, darkMode, kind, initial, onCancel, onSave }) {
 // Duurzaamheid
 // ============================================================================
 
-function UtilitiesSection({ utilities, setUtilities, budget, config, setConfig, t, darkMode }) {
+function UtilitiesSection({ utilities, setUtilities, budget, config, setConfig, theme, darkMode, monthsLong, monthsShort, utilityLabel }) {
+  const { t } = useTranslation();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [editingMonth, setEditingMonth] = useState(null); // 0-11 or null
@@ -845,7 +885,7 @@ function UtilitiesSection({ utilities, setUtilities, budget, config, setConfig, 
         budget: yearTotals.gas.budget + yearTotals.electricity.budget,
       }
     : yearTotals[k];
-  const labelFor = (k) => k === 'energy' ? 'Energie' : UTILITY_LABEL[k];
+  const labelFor = (k) => k === 'energy' ? t('household.utilities.energyLabel') : utilityLabel(k);
   const iconFor = (k) => k === 'energy' ? Zap : UTILITY_ICON[k];
   const colorFor = (k) => k === 'energy' ? 'text-orange-500' : UTILITY_COLOR[k];
 
@@ -871,19 +911,19 @@ function UtilitiesSection({ utilities, setUtilities, budget, config, setConfig, 
       <div className="flex items-center justify-between">
         <button
           onClick={() => setYear(y => y - 1)}
-          className={`p-2 rounded-lg ${t.cardSecondary} ${t.hover} transition`}
-          aria-label="Vorig jaar"
+          className={`p-2 rounded-lg ${theme.cardSecondary} ${theme.hover} transition`}
+          aria-label={t('household.utilities.prevYearAria')}
         >
-          <ChevronLeft className={`w-4 h-4 ${t.textSecondary}`} />
+          <ChevronLeft className={`w-4 h-4 ${theme.textSecondary}`} />
         </button>
-        <span className={`font-semibold ${t.text}`}>{year}</span>
+        <span className={`font-semibold ${theme.text}`}>{year}</span>
         <button
           onClick={() => setYear(y => y + 1)}
           disabled={year >= now.getFullYear()}
-          className={`p-2 rounded-lg ${t.cardSecondary} ${t.hover} transition disabled:opacity-30 disabled:cursor-not-allowed`}
-          aria-label="Volgend jaar"
+          className={`p-2 rounded-lg ${theme.cardSecondary} ${theme.hover} transition disabled:opacity-30 disabled:cursor-not-allowed`}
+          aria-label={t('household.utilities.nextYearAria')}
         >
-          <ChevronRight className={`w-4 h-4 ${t.textSecondary}`} />
+          <ChevronRight className={`w-4 h-4 ${theme.textSecondary}`} />
         </button>
       </div>
 
@@ -892,12 +932,12 @@ function UtilitiesSection({ utilities, setUtilities, budget, config, setConfig, 
           <button
             onClick={() => setConfig(prev => ({ ...(prev || {}), energyCombined: !energyCombined }))}
             className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition ${
-              energyCombined ? 'bg-orange-500 text-white' : `${t.cardSecondary} ${t.textSecondary} ${t.hover}`
+              energyCombined ? 'bg-orange-500 text-white' : `${theme.cardSecondary} ${theme.textSecondary} ${theme.hover}`
             }`}
             aria-pressed={energyCombined}
           >
             <Zap className="w-3.5 h-3.5" />
-            {energyCombined ? 'Gas + licht samen' : 'Gas + licht apart'}
+            {energyCombined ? t('household.utilities.combined') : t('household.utilities.separate')}
           </button>
         </div>
       )}
@@ -910,14 +950,14 @@ function UtilitiesSection({ utilities, setUtilities, budget, config, setConfig, 
           const b = totals.budget;
           const diff = a - b;
           return (
-            <div key={k} className={`${t.cardSecondary} rounded-xl p-3`}>
+            <div key={k} className={`${theme.cardSecondary} rounded-xl p-3`}>
               <div className="flex items-center gap-1.5 mb-1">
                 <Icon className={`w-4 h-4 ${colorFor(k)}`} />
-                <span className={`text-xs font-medium ${t.textSecondary}`}>{labelFor(k)}</span>
+                <span className={`text-xs font-medium ${theme.textSecondary}`}>{labelFor(k)}</span>
               </div>
-              <div className={`text-sm font-semibold ${t.text}`}>{formatEuro(a)}</div>
-              <div className={`text-xs ${diff > 0 ? 'text-red-500' : t.textMuted}`}>
-                begroot {formatEuro(b)}
+              <div className={`text-sm font-semibold ${theme.text}`}>{formatEuro(a)}</div>
+              <div className={`text-xs ${diff > 0 ? 'text-red-500' : theme.textMuted}`}>
+                {t('household.utilities.budgetedSummary', { value: formatEuro(b) })}
               </div>
             </div>
           );
@@ -925,7 +965,7 @@ function UtilitiesSection({ utilities, setUtilities, budget, config, setConfig, 
       </div>
 
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-        {NL_MONTHS.map((mname, idx) => {
+        {monthsLong.map((mname, idx) => {
           const data = utilities[monthKey(year, idx)];
           const future = isFutureMonth(idx);
           const hasData = !!data;
@@ -938,17 +978,17 @@ function UtilitiesSection({ utilities, setUtilities, budget, config, setConfig, 
               key={idx}
               disabled={disabled}
               onClick={() => setEditingMonth(idx)}
-              className={`text-left p-3 rounded-xl transition ${t.cardSecondary} ${
-                disabled ? 'opacity-30 cursor-not-allowed' : t.hover
+              className={`text-left p-3 rounded-xl transition ${theme.cardSecondary} ${
+                disabled ? 'opacity-30 cursor-not-allowed' : theme.hover
               } ${over ? 'ring-2 ring-red-400' : ''}`}
             >
-              <div className={`text-xs ${t.textMuted} capitalize`}>{NL_MONTHS_SHORT[idx]}</div>
-              <div className={`text-sm font-semibold ${over ? 'text-red-500' : t.text}`}>
+              <div className={`text-xs ${theme.textMuted} capitalize`}>{monthsShort[idx]}</div>
+              <div className={`text-sm font-semibold ${over ? 'text-red-500' : theme.text}`}>
                 {hasData ? formatEuro(monthActual) : ''}
               </div>
               {hasData && (
-                <div className={`text-xs ${over ? 'text-red-500' : t.textMuted}`}>
-                  van {formatEuro(monthBudget)}
+                <div className={`text-xs ${over ? 'text-red-500' : theme.textMuted}`}>
+                  {t('household.utilities.monthBudget', { value: formatEuro(monthBudget) })}
                 </div>
               )}
             </button>
@@ -956,20 +996,22 @@ function UtilitiesSection({ utilities, setUtilities, budget, config, setConfig, 
         })}
       </div>
 
-      <div className={`${t.cardSecondary} rounded-xl p-3`}>
-        <div className={`text-xs ${t.textMuted} mb-1`}>Jaartotaal</div>
+      <div className={`${theme.cardSecondary} rounded-xl p-3`}>
+        <div className={`text-xs ${theme.textMuted} mb-1`}>{t('household.utilities.yearTotal')}</div>
         <div className="flex items-baseline justify-between">
-          <span className={`text-lg font-semibold ${t.text}`}>{formatEuro(totalActual)}</span>
-          <span className={`text-xs ${t.textMuted}`}>begroot {formatEuro(totalBudget)}</span>
+          <span className={`text-lg font-semibold ${theme.text}`}>{formatEuro(totalActual)}</span>
+          <span className={`text-xs ${theme.textMuted}`}>{t('household.utilities.budgetedSummary', { value: formatEuro(totalBudget) })}</span>
         </div>
       </div>
 
       {editingMonth !== null && (
         <UtilityMonthEditor
-          t={t}
+          theme={theme}
           year={year}
           month={editingMonth}
           data={utilities[monthKey(year, editingMonth)] || {}}
+          monthsLong={monthsLong}
+          utilityLabel={utilityLabel}
           onCancel={() => setEditingMonth(null)}
           onSave={(d) => { saveMonth(editingMonth, d); setEditingMonth(null); }}
         />
@@ -982,7 +1024,8 @@ function monthKey(year, month) {
   return `${year}-${String(month + 1).padStart(2, '0')}`;
 }
 
-function UtilityMonthEditor({ t, year, month, data, onCancel, onSave }) {
+function UtilityMonthEditor({ theme, year, month, data, monthsLong, utilityLabel, onCancel, onSave }) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState(() => {
     const out = {};
     UTILITY_KEYS.forEach(k => {
@@ -1014,13 +1057,13 @@ function UtilityMonthEditor({ t, year, month, data, onCancel, onSave }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40">
-      <div className={`${t.card} rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-xl`}>
-        <div className={`flex items-center justify-between p-4 border-b ${t.border}`}>
-          <h3 className={`font-semibold ${t.text} capitalize`}>
-            {NL_MONTHS[month]} {year}
+      <div className={`${theme.card} rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-xl`}>
+        <div className={`flex items-center justify-between p-4 border-b ${theme.border}`}>
+          <h3 className={`font-semibold ${theme.text} capitalize`}>
+            {monthsLong[month]} {year}
           </h3>
-          <button onClick={onCancel} className={`p-1 rounded ${t.hover}`}>
-            <X className={`w-5 h-5 ${t.textMuted}`} />
+          <button onClick={onCancel} className={`p-1 rounded ${theme.hover}`}>
+            <X className={`w-5 h-5 ${theme.textMuted}`} />
           </button>
         </div>
         <div className="p-4 space-y-4">
@@ -1032,32 +1075,32 @@ function UtilityMonthEditor({ t, year, month, data, onCancel, onSave }) {
             const total = a + auto;
             const over = total > b && b > 0;
             return (
-              <div key={k} className={`${t.cardSecondary} rounded-xl p-3 ${over ? 'ring-2 ring-red-400' : ''}`}>
+              <div key={k} className={`${theme.cardSecondary} rounded-xl p-3 ${over ? 'ring-2 ring-red-400' : ''}`}>
                 <div className="flex items-center gap-2 mb-2">
                   <Icon className={`w-4 h-4 ${UTILITY_COLOR[k]}`} />
-                  <span className={`text-sm font-medium ${t.textSecondary}`}>{UTILITY_LABEL[k]}</span>
-                  {over && <span className="ml-auto text-xs text-red-500 font-medium">over budget</span>}
+                  <span className={`text-sm font-medium ${theme.textSecondary}`}>{utilityLabel(k)}</span>
+                  {over && <span className="ml-auto text-xs text-red-500 font-medium">{t('household.utilities.overBudget')}</span>}
                 </div>
                 {auto > 0 && (
-                  <div className={`text-xs ${t.textMuted} mb-2`}>
-                    Automatisch uit begroting: <span className={`font-semibold ${t.textSecondary}`}>{formatEuro(auto)}</span>
+                  <div className={`text-xs ${theme.textMuted} mb-2`}>
+                    {t('household.utilities.autoFromBudget')} <span className={`font-semibold ${theme.textSecondary}`}>{formatEuro(auto)}</span>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className={`text-xs ${t.textMuted} block mb-1`}>Begroot</label>
+                    <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.utilities.budget')}</label>
                     <input
                       type="text"
                       inputMode="decimal"
                       value={draft[k].budget}
                       onChange={e => update(k, 'budget', e.target.value)}
                       placeholder="0,00"
-                      className={`w-full px-3 py-2 rounded-lg ${t.input} outline-none text-sm`}
+                      className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm`}
                     />
                   </div>
                   <div>
-                    <label className={`text-xs ${t.textMuted} block mb-1`}>
-                      {auto > 0 ? 'Extra werkelijk' : 'Werkelijk'}
+                    <label className={`text-xs ${theme.textMuted} block mb-1`}>
+                      {auto > 0 ? t('household.utilities.extraActual') : t('household.utilities.actual')}
                     </label>
                     <input
                       type="text"
@@ -1065,31 +1108,31 @@ function UtilityMonthEditor({ t, year, month, data, onCancel, onSave }) {
                       value={draft[k].actual}
                       onChange={e => update(k, 'actual', e.target.value)}
                       placeholder="0,00"
-                      className={`w-full px-3 py-2 rounded-lg ${t.input} outline-none text-sm ${over ? 'text-red-500 font-semibold' : ''}`}
+                      className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm ${over ? 'text-red-500 font-semibold' : ''}`}
                     />
                   </div>
                 </div>
                 {auto > 0 && (
-                  <div className={`text-xs ${t.textMuted} mt-2`}>
-                    Totaal werkelijk: <span className={`font-semibold ${over ? 'text-red-500' : t.textSecondary}`}>{formatEuro(total)}</span>
+                  <div className={`text-xs ${theme.textMuted} mt-2`}>
+                    {t('household.utilities.totalActual')} <span className={`font-semibold ${over ? 'text-red-500' : theme.textSecondary}`}>{formatEuro(total)}</span>
                   </div>
                 )}
               </div>
             );
           })}
         </div>
-        <div className={`flex gap-2 p-4 border-t ${t.border}`}>
+        <div className={`flex gap-2 p-4 border-t ${theme.border}`}>
           <button
             onClick={onCancel}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium ${t.cardSecondary} ${t.textSecondary} ${t.hover} transition`}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium ${theme.cardSecondary} ${theme.textSecondary} ${theme.hover} transition`}
           >
-            Annuleer
+            {t('household.utilities.cancel')}
           </button>
           <button
             onClick={save}
             className="flex-1 py-2 rounded-lg bg-blue-500 text-white text-sm font-medium hover:bg-blue-600 transition"
           >
-            Opslaan
+            {t('common.save')}
           </button>
         </div>
       </div>

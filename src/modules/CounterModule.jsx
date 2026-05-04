@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Sparkles, AlertCircle, Trash2, Settings } from 'lucide-react';
 import { formatAmount } from '../utils/format';
 import ReminderBanner from '../components/ReminderBanner';
+import { useTranslation } from '../i18n/useTranslation';
 
 export default function CounterModule({
   module: mod,
@@ -17,9 +18,10 @@ export default function CounterModule({
   onRemoveEntry,
   onDismissReminder,
   onEdit,
-  t,
+  theme,
   darkMode,
 }) {
+  const { t } = useTranslation();
   const Glyph = Icon || Sparkles;
   const colorClass = `text-${mod.color}-500`;
   const unit = mod.unit || 'minutes';
@@ -45,16 +47,16 @@ export default function CounterModule({
     const minutesPresets = presets.length > 0 ? presets : [15, 30, 45, 60];
 
     return (
-      <div className={`${t.card} rounded-2xl p-5 shadow-sm mb-4`}>
+      <div className={`${theme.card} rounded-2xl p-5 shadow-sm mb-4`}>
         <div className="flex items-center gap-2 mb-4">
           <Glyph className={`w-5 h-5 ${colorClass}`} />
-          <h2 className={`font-semibold ${t.textSecondary}`}>{mod.name}</h2>
+          <h2 className={`font-semibold ${theme.textSecondary}`}>{mod.name}</h2>
           {onEdit && (
             <button
               onClick={onEdit}
-              className={`ml-auto p-1.5 ${t.hover} rounded-lg ${t.textMuted} transition`}
-              title="Module-instellingen"
-              aria-label={`Instellingen voor ${mod.name}`}
+              className={`ml-auto p-1.5 ${theme.hover} rounded-lg ${theme.textMuted} transition`}
+              title={t('modules.settingsTitle')}
+              aria-label={t('modules.settingsAria', { name: mod.name })}
             >
               <Settings className="w-4 h-4" />
             </button>
@@ -63,10 +65,10 @@ export default function CounterModule({
 
         <div className={`${darkMode ? `bg-${mod.color}-900/30` : `bg-${mod.color}-50`} rounded-xl p-4 mb-3`}>
           <div className={`text-3xl font-bold ${darkMode ? `text-${mod.color}-300` : `text-${mod.color}-600`} mb-1`}>
-            {(total / 60).toFixed(1)} uur
+            {t('modules.counterMinutesValue', { value: (total / 60).toFixed(1) })}
           </div>
           <p className={`text-xs ${darkMode ? `text-${mod.color}-400` : `text-${mod.color}-500`}`}>
-            vandaag (doel: {(goalMinutes / 60).toFixed(1)} uur)
+            {t('modules.counterMinutesGoal', { goal: (goalMinutes / 60).toFixed(1) })}
           </p>
         </div>
 
@@ -85,21 +87,21 @@ export default function CounterModule({
         {editable && (
           <button
             onClick={onResetCounter}
-            className={`w-full py-2 ${t.cardSecondary} ${t.hover} ${t.textMuted} rounded-lg text-sm transition`}
+            className={`w-full py-2 ${theme.cardSecondary} ${theme.hover} ${theme.textMuted} rounded-lg text-sm transition`}
           >
-            Reset vandaag
+            {t('modules.counterResetToday')}
           </button>
         )}
 
         {weekMax && (
-          <div className={`mt-4 pt-4 border-t ${t.border}`}>
+          <div className={`mt-4 pt-4 border-t ${theme.border}`}>
             <div className="flex items-center justify-between mb-2">
-              <span className={`text-sm font-medium ${t.textSecondary}`}>Deze week</span>
+              <span className={`text-sm font-medium ${theme.textSecondary}`}>{t('modules.counterThisWeek')}</span>
               <span className={`text-sm font-bold ${weekMinutes >= weekMax ? 'text-red-500' : weekMinutes >= weekMax * 0.83 ? 'text-amber-500' : 'text-green-600'}`}>
-                {weekHours} / {(weekMax / 60).toFixed(0)} uur
+                {t('modules.counterWeekTotal', { week: weekHours, max: (weekMax / 60).toFixed(0) })}
               </span>
             </div>
-            <div className={`w-full ${t.progressBg} rounded-full h-2`}>
+            <div className={`w-full ${theme.progressBg} rounded-full h-2`}>
               <div
                 className={`h-2 rounded-full transition-all duration-700 ${
                   weekPct >= 100 ? 'bg-red-500' : weekPct >= 83 ? 'bg-amber-500' : 'bg-green-500'
@@ -110,7 +112,7 @@ export default function CounterModule({
             {weekMinutes >= weekMax && (
               <div className={`flex items-start gap-2 mt-3 p-2 ${darkMode ? 'bg-red-900/30' : 'bg-red-50'} rounded-lg`}>
                 <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-                <p className={`text-xs ${darkMode ? 'text-red-300' : 'text-red-700'}`}>Weeklimiet bereikt!</p>
+                <p className={`text-xs ${darkMode ? 'text-red-300' : 'text-red-700'}`}>{t('modules.counterWeekLimitReached')}</p>
               </div>
             )}
           </div>
@@ -141,7 +143,7 @@ export default function CounterModule({
       onRemoveEntry={onRemoveEntry}
       onDismissReminder={onDismissReminder}
       onEdit={onEdit}
-      t={t}
+      theme={theme}
       darkMode={darkMode}
     />
   );
@@ -167,9 +169,10 @@ function CounterUI({
   onRemoveEntry,
   onDismissReminder,
   onEdit,
-  t,
+  theme,
   darkMode,
 }) {
+  const { t } = useTranslation();
   const initialCategory = categoriesEnabled && categories.length ? categories[0] : null;
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [manualAmount, setManualAmount] = useState('');
@@ -216,16 +219,16 @@ function CounterUI({
   }
 
   return (
-    <div className={`${t.card} rounded-2xl p-5 shadow-sm mb-4`}>
+    <div className={`${theme.card} rounded-2xl p-5 shadow-sm mb-4`}>
       <div className="flex items-center gap-2 mb-4">
         <Glyph className={`w-5 h-5 ${colorClass}`} />
-        <h2 className={`font-semibold ${t.textSecondary}`}>{mod.name}</h2>
+        <h2 className={`font-semibold ${theme.textSecondary}`}>{mod.name}</h2>
         {onEdit && (
           <button
             onClick={onEdit}
-            className={`ml-auto p-1.5 ${t.hover} rounded-lg ${t.textMuted} transition`}
-            title="Module-instellingen"
-            aria-label={`Instellingen voor ${mod.name}`}
+            className={`ml-auto p-1.5 ${theme.hover} rounded-lg ${theme.textMuted} transition`}
+            title={t('modules.settingsTitle')}
+            aria-label={t('modules.settingsAria', { name: mod.name })}
           >
             <Settings className="w-4 h-4" />
           </button>
@@ -236,7 +239,7 @@ function CounterUI({
         <div className={`text-2xl font-bold ${goalTextClass} mb-2`}>
           {goalLabel}
         </div>
-        <div className={`w-full ${t.progressBg} rounded-full h-2 overflow-hidden`}>
+        <div className={`w-full ${theme.progressBg} rounded-full h-2 overflow-hidden`}>
           <div
             className={`h-2 rounded-full transition-all duration-500 ${barColor}`}
             style={{ width: `${pct}%` }}
@@ -246,7 +249,7 @@ function CounterUI({
 
       {showReminder && (
         <ReminderBanner
-          message="Tip: kies bovenaan welke categorie het is, dan kun je later zien wat je vooral toevoegt."
+          message={t('modules.counterCategoryHint')}
           onDismiss={onDismissReminder}
         />
       )}
@@ -265,7 +268,7 @@ function CounterUI({
                 className={`px-3 py-1 rounded-full text-xs font-medium transition ${
                   active
                     ? `bg-${mod.color}-500 text-white`
-                    : `${t.cardSecondary} ${t.textSecondary} ${t.hover}`
+                    : `${theme.cardSecondary} ${theme.textSecondary} ${theme.hover}`
                 }`}
               >
                 {cat}
@@ -298,16 +301,16 @@ function CounterUI({
             value={manualAmount}
             onChange={(e) => setManualAmount(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submitManual()}
-            placeholder={`Aantal (${unit})`}
-            className={`flex-1 min-w-0 px-3 py-2 ${t.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
+            placeholder={t('modules.counterAmountPlaceholder', { unit })}
+            className={`flex-1 min-w-0 px-3 py-2 ${theme.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
           />
           {categoriesEnabled && categories.length > 0 && (
             <select
               value={manualCategory ?? ''}
               onChange={(e) => setManualCategory(e.target.value || null)}
-              className={`px-2 py-2 ${t.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
+              className={`px-2 py-2 ${theme.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
             >
-              <option value="">geen</option>
+              <option value="">{t('modules.counterCategoryNone')}</option>
               {categories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
@@ -317,19 +320,19 @@ function CounterUI({
             onClick={submitManual}
             className={`px-3 py-2 bg-${mod.color}-500 hover:bg-${mod.color}-600 text-white rounded-lg text-sm font-medium transition`}
           >
-            Toevoegen
+            {t('common.add')}
           </button>
         </div>
       )}
 
       {useEntries && entries.length > 0 && (
-        <div className={`pt-3 mt-2 border-t ${t.border} space-y-1`}>
+        <div className={`pt-3 mt-2 border-t ${theme.border} space-y-1`}>
           {[...entries].reverse().map(entry => (
             <div
               key={entry.id}
-              className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${t.cardSecondary} text-sm`}
+              className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${theme.cardSecondary} text-sm`}
             >
-              <span className={`font-medium ${t.textSecondary}`}>
+              <span className={`font-medium ${theme.textSecondary}`}>
                 {formatAmount(entry.amount, unit)}
               </span>
               {entry.category && (
@@ -337,12 +340,12 @@ function CounterUI({
                   {entry.category}
                 </span>
               )}
-              <span className={`text-xs ${t.textMuted} ml-auto`}>{entry.time}</span>
+              <span className={`text-xs ${theme.textMuted} ml-auto`}>{entry.time}</span>
               {editable && (
                 <button
                   onClick={() => onRemoveEntry(entry.id)}
-                  aria-label="Verwijderen"
-                  className={`p-1 rounded ${t.hover} ${t.textMuted} hover:text-red-500 transition`}
+                  aria-label={t('common.delete')}
+                  className={`p-1 rounded ${theme.hover} ${theme.textMuted} hover:text-red-500 transition`}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

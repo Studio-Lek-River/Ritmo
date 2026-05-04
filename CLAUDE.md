@@ -2,6 +2,12 @@
 
 Dit bestand bevat instructies voor Claude Code in deze repo. De projectinhoud (wat is Ritmo, design-principes, architectuur) staat in [.claude/docs/PROJECT_INSTRUCTIONS.md](.claude/docs/PROJECT_INSTRUCTIONS.md). Lees dat document als bron van waarheid voor het project zelf.
 
+## Werkwijze: research vrij, bij twijfel vragen
+
+**Research is vrij.** Voor het maken van een plan of het voorbereiden van een wijziging mag ik altijd zonder check-in read-only acties doen: file reads, Grep/Glob, codebase-exploration, en web lookups. Geen tussentijdse "mag ik X lezen?"-pauzes.
+
+**Bij twijfel: vragen.** Als er ambiguïteit is die tot verschillend correcte uitkomsten kan leiden (scope, locatie van een wijziging, naamgeving die elders gebruikt wordt, keuze tussen twee architectuur-opties), gebruik ik de `AskUserQuestion`-tool in plaats van te gokken. Bij keuzes die veilig te defaulten zijn → default kiezen en doorgaan, conform de bestaande "geen permissie-pauzes"-feedback.
+
 ## Standaardregel: PROJECT_INSTRUCTIONS.md actueel houden
 
 Na een **structurele wijziging** in deze repo loop ik [.claude/docs/PROJECT_INSTRUCTIONS.md](.claude/docs/PROJECT_INSTRUCTIONS.md) langs en meld ik aan het eind van mijn turn of het document een update nodig heeft.

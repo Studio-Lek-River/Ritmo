@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Check, Plus, Minus, Info, StickyNote, Sparkles, Settings } from 'lucide-react';
 import { normalizeChecklistItemData, isChecklistItemComplete } from '../utils/dayProgress';
+import { useTranslation } from '../i18n/useTranslation';
 
 function CheckboxControl({ color, checked, onClick, disabled }) {
+  const { t } = useTranslation();
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      aria-label={checked ? 'Uitvinken' : 'Afvinken'}
+      aria-label={checked ? t('modules.uncheckAria') : t('modules.checkAria')}
       className={`w-7 h-7 rounded-md border-2 flex items-center justify-center transition flex-shrink-0 disabled:cursor-not-allowed ${
         checked ? `bg-${color}-500 border-${color}-500 check-pop` : 'border-slate-300'
       }`}
@@ -17,26 +19,27 @@ function CheckboxControl({ color, checked, onClick, disabled }) {
   );
 }
 
-function ProgressControl({ color, progress, target, complete, onIncrement, disabled, t }) {
+function ProgressControl({ color, progress, target, complete, onIncrement, disabled, theme }) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center gap-1.5 flex-shrink-0">
       <button
         onClick={() => onIncrement(-1)}
         disabled={disabled || progress <= 0}
-        aria-label="Min"
-        className={`w-7 h-7 rounded-md flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed ${t.cardSecondary} ${t.textSecondary} ${t.hover}`}
+        aria-label={t('modules.counterMin')}
+        className={`w-7 h-7 rounded-md flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed ${theme.cardSecondary} ${theme.textSecondary} ${theme.hover}`}
       >
         <Minus className="w-3.5 h-3.5" />
       </button>
-      <span className={`text-xs font-mono tabular-nums w-10 text-center ${complete ? `text-${color}-500 font-semibold` : t.textSecondary}`}>
+      <span className={`text-xs font-mono tabular-nums w-10 text-center ${complete ? `text-${color}-500 font-semibold` : theme.textSecondary}`}>
         {progress}/{target}
       </span>
       <button
         onClick={() => onIncrement(1)}
         disabled={disabled}
-        aria-label="Plus"
+        aria-label={t('modules.counterPlus')}
         className={`w-7 h-7 rounded-md flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed ${
-          complete ? `bg-${color}-500 text-white` : `${t.cardSecondary} ${t.textSecondary} ${t.hover}`
+          complete ? `bg-${color}-500 text-white` : `${theme.cardSecondary} ${theme.textSecondary} ${theme.hover}`
         }`}
       >
         <Plus className="w-3.5 h-3.5" />
@@ -54,8 +57,9 @@ export default function ChecklistModule({
   onIncrement,
   onSetNote,
   onEdit,
-  t,
+  theme,
 }) {
+  const { t } = useTranslation();
   const [expandedNoteId, setExpandedNoteId] = useState(null);
   const [expandedInfoId, setExpandedInfoId] = useState(null);
 
@@ -73,16 +77,16 @@ export default function ChecklistModule({
   };
 
   return (
-    <div className={`${t.card} rounded-2xl p-5 shadow-sm mb-4`}>
+    <div className={`${theme.card} rounded-2xl p-5 shadow-sm mb-4`}>
       <div className="flex items-center gap-2 mb-4">
         <Glyph className={`w-5 h-5 ${colorClass}`} />
-        <h2 className={`font-semibold ${t.textSecondary}`}>{mod.name}</h2>
+        <h2 className={`font-semibold ${theme.textSecondary}`}>{mod.name}</h2>
         {onEdit && (
           <button
             onClick={onEdit}
-            className={`ml-auto p-1.5 ${t.hover} rounded-lg ${t.textMuted} transition`}
-            title="Module-instellingen"
-            aria-label={`Instellingen voor ${mod.name}`}
+            className={`ml-auto p-1.5 ${theme.hover} rounded-lg ${theme.textMuted} transition`}
+            title={t('modules.settingsTitle')}
+            aria-label={t('modules.settingsAria', { name: mod.name })}
           >
             <Settings className="w-4 h-4" />
           </button>
@@ -90,8 +94,8 @@ export default function ChecklistModule({
       </div>
 
       {items.length === 0 ? (
-        <p className={`${t.textMuted} text-sm text-center py-4`}>
-          Voeg items toe via instellingen ⚙️
+        <p className={`${theme.textMuted} text-sm text-center py-4`}>
+          {t('modules.addItemsHint')}
         </p>
       ) : (
         <div className="space-y-2">
@@ -106,8 +110,8 @@ export default function ChecklistModule({
             const infoOpen = expandedInfoId === item.id;
 
             return (
-              <div key={item.id} className={`rounded-lg ${complete ? t.cardSecondary : ''}`}>
-                <div className={`flex items-center gap-3 p-3 rounded-lg transition ${!complete ? t.hover : ''}`}>
+              <div key={item.id} className={`rounded-lg ${complete ? theme.cardSecondary : ''}`}>
+                <div className={`flex items-center gap-3 p-3 rounded-lg transition ${!complete ? theme.hover : ''}`}>
                   {item.target ? (
                     <ProgressControl
                       color={mod.color}
@@ -116,7 +120,7 @@ export default function ChecklistModule({
                       complete={complete}
                       onIncrement={(delta) => onIncrement(item.id, delta)}
                       disabled={!editable}
-                      t={t}
+                      theme={theme}
                     />
                   ) : (
                     <CheckboxControl
@@ -128,11 +132,11 @@ export default function ChecklistModule({
                   )}
 
                   <div className="flex-1 min-w-0">
-                    <div className={`text-sm text-left ${complete ? `line-through ${t.textMuted}` : t.textSecondary}`}>
+                    <div className={`text-sm text-left ${complete ? `line-through ${theme.textMuted}` : theme.textSecondary}`}>
                       {item.label}
                     </div>
                     {hasNote && !noteOpen && (
-                      <div className={`text-xs italic ${t.textMuted} mt-0.5 truncate`}>
+                      <div className={`text-xs italic ${theme.textMuted} mt-0.5 truncate`}>
                         {note}
                       </div>
                     )}
@@ -141,9 +145,9 @@ export default function ChecklistModule({
                   {hasDescription && (
                     <button
                       onClick={() => toggleInfo(item.id)}
-                      aria-label="Toon instructie"
+                      aria-label={t('modules.showInstructionAria')}
                       className={`w-7 h-7 rounded-md flex items-center justify-center transition flex-shrink-0 ${
-                        infoOpen ? 'bg-blue-500 text-white' : `${t.textMuted} ${t.hover}`
+                        infoOpen ? 'bg-blue-500 text-white' : `${theme.textMuted} ${theme.hover}`
                       }`}
                     >
                       <Info className="w-4 h-4" />
@@ -154,13 +158,13 @@ export default function ChecklistModule({
                     <button
                       onClick={() => toggleNote(item.id)}
                       disabled={!editable && !hasNote}
-                      aria-label="Notitie"
+                      aria-label={t('modules.noteAria')}
                       className={`w-7 h-7 rounded-md flex items-center justify-center transition flex-shrink-0 disabled:cursor-not-allowed ${
                         noteOpen
                           ? 'bg-amber-500 text-white'
                           : hasNote
                             ? 'text-amber-500 hover:bg-amber-100 dark:hover:bg-amber-900/30'
-                            : `${t.textMuted} ${t.hover}`
+                            : `${theme.textMuted} ${theme.hover}`
                       }`}
                     >
                       <StickyNote className="w-4 h-4" />
@@ -181,8 +185,8 @@ export default function ChecklistModule({
                       onChange={(e) => onSetNote(item.id, e.target.value)}
                       disabled={!editable}
                       rows={2}
-                      placeholder="Korte notitie voor vandaag..."
-                      className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 disabled:opacity-60`}
+                      placeholder={t('modules.dailyNotePlaceholder')}
+                      className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 disabled:opacity-60`}
                     />
                   </div>
                 )}

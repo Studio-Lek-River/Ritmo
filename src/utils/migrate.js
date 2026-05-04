@@ -82,6 +82,18 @@ export function migrateModuleConfig(module) {
   return m;
 }
 
+// Niet-destructieve settings-migratie. Voegt nieuwe defaults toe wanneer keys ontbreken.
+// Returnt het (mogelijk gewijzigde) settings-object. Mutatie van het origineel
+// gebeurt niet — caller schrijft het resultaat terug naar storage.
+export function migrateSettings(settings) {
+  if (!settings || typeof settings !== 'object') return settings;
+  const out = { ...settings };
+  if (out.language === undefined) {
+    out.language = 'auto';
+  }
+  return out;
+}
+
 export function migrateDayModuleData(moduleData, moduleConfig) {
   if (!moduleData) return moduleData;
   if (moduleConfig?.type !== 'counter') return moduleData;

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Share, Plus, MoreVertical, CheckCircle2 } from 'lucide-react';
+import { useTranslation } from '../../i18n/useTranslation';
 
 function InlineIcon({ icon: Icon }) {
   return (
@@ -16,15 +17,17 @@ function isStandalone() {
   return Boolean(matchStandalone || iosStandalone);
 }
 
-export default function InstallGuide({ t }) {
+export default function InstallGuide({ theme }) {
+  const { t } = useTranslation();
+
   if (isStandalone()) {
     return (
       <div className={`p-4 rounded-xl bg-green-50 border border-green-200 flex items-start gap-3`}>
         <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-medium text-green-800">Ritmo staat al op je beginscherm</p>
+          <p className="text-sm font-medium text-green-800">{t('install.alreadyInstalled')}</p>
           <p className="text-xs text-green-700 mt-1">
-            Je gebruikt Ritmo als geïnstalleerde app. Niets meer te doen.
+            {t('install.alreadyInstalledDesc')}
           </p>
         </div>
       </div>
@@ -33,42 +36,42 @@ export default function InstallGuide({ t }) {
 
   return (
     <div className="space-y-6">
-      <p className={`text-sm ${t.textSecondary}`}>
-        Door Ritmo op je beginscherm te zetten open je de app sneller en voelt het alsof het een echte app is.
+      <p className={`text-sm ${theme.textSecondary}`}>
+        {t('install.intro')}
       </p>
 
       <section>
-        <h3 className={`text-sm font-semibold ${t.text} mb-1`}>Op iPhone of iPad</h3>
-        <p className={`text-xs ${t.textMuted} mb-3`}>
-          Werkt alleen in Safari, niet in Chrome of andere browsers.
+        <h3 className={`text-sm font-semibold ${theme.text} mb-1`}>{t('install.iosTitle')}</h3>
+        <p className={`text-xs ${theme.textMuted} mb-3`}>
+          {t('install.iosNote')}
         </p>
-        <ol className={`space-y-2 text-sm ${t.textSecondary} list-decimal pl-5`}>
+        <ol className={`space-y-2 text-sm ${theme.textSecondary} list-decimal pl-5`}>
           <li>
-            Tik op het deel-icoon <InlineIcon icon={Share} /> onderin Safari.
+            {t('install.iosStep1Prefix')} <InlineIcon icon={Share} /> {t('install.iosStep1Suffix')}
           </li>
           <li>
-            Scroll omlaag en kies <span className={`font-medium ${t.text}`}>Zet op beginscherm</span> <InlineIcon icon={Plus} />.
+            {t('install.iosStep2Prefix')} <span className={`font-medium ${theme.text}`}>{t('install.iosStep2Mid')}</span> <InlineIcon icon={Plus} />.
           </li>
           <li>
-            Tik rechtsboven op <span className={`font-medium ${t.text}`}>Voeg toe</span>.
+            {t('install.iosStep3Prefix')} <span className={`font-medium ${theme.text}`}>{t('install.iosStep3Action')}</span> {t('install.iosStep3Suffix')}
           </li>
         </ol>
       </section>
 
       <section>
-        <h3 className={`text-sm font-semibold ${t.text} mb-1`}>Op Android</h3>
-        <p className={`text-xs ${t.textMuted} mb-3`}>
-          Werkt het soepelst in Chrome.
+        <h3 className={`text-sm font-semibold ${theme.text} mb-1`}>{t('install.androidTitle')}</h3>
+        <p className={`text-xs ${theme.textMuted} mb-3`}>
+          {t('install.androidNote')}
         </p>
-        <ol className={`space-y-2 text-sm ${t.textSecondary} list-decimal pl-5`}>
+        <ol className={`space-y-2 text-sm ${theme.textSecondary} list-decimal pl-5`}>
           <li>
-            Tik op het menu-icoon <InlineIcon icon={MoreVertical} /> rechtsboven.
+            {t('install.androidStep1Prefix')} <InlineIcon icon={MoreVertical} /> {t('install.androidStep1Suffix')}
           </li>
           <li>
-            Kies <span className={`font-medium ${t.text}`}>App installeren</span> of <span className={`font-medium ${t.text}`}>Toevoegen aan startscherm</span>.
+            {t('install.androidStep2Prefix')} <span className={`font-medium ${theme.text}`}>{t('install.androidStep2A')}</span> {t('install.androidStep2Or')} <span className={`font-medium ${theme.text}`}>{t('install.androidStep2B')}</span>{t('install.androidStep2Suffix')}
           </li>
           <li>
-            Bevestig met <span className={`font-medium ${t.text}`}>Installeren</span>.
+            {t('install.androidStep3Prefix')} <span className={`font-medium ${theme.text}`}>{t('install.androidStep3Action')}</span>{t('install.androidStep3Suffix')}
           </li>
         </ol>
       </section>

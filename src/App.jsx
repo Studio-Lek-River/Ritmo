@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Sun, Moon, Plus, Trash2, TrendingUp, Calendar, Sparkles, Flame, Settings, BookOpen, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Repeat, Trophy, GripVertical, Eye, EyeOff, GraduationCap, HelpCircle, ArrowUpDown, SlidersHorizontal, BedDouble, Check,
 } from 'lucide-react';
@@ -19,7 +19,8 @@ import HelpOverlay from './components/help/HelpOverlay';
 import InstallGuide from './components/help/InstallGuide';
 import FeedbackForm from './components/help/FeedbackForm';
 import ChecklistModule from './modules/ChecklistModule';
-import { migrateModuleConfig, migrateDayModuleData } from './utils/migrate';
+import { migrateModuleConfig, migrateDayModuleData, migrateSettings } from './utils/migrate';
+import { useTranslation } from './i18n/useTranslation';
 import { createItem, logEvent, removeEvent, createTag } from './utils/collections';
 import { formatAmount, formatDuration } from './utils/format';
 import { MODULE_PRESETS } from './utils/presets';
@@ -28,7 +29,7 @@ import {
   fmtDateKey, parseDateKey, addDays, sameDay, startOfWeek,
   isEditable, isFuture, isToday as isTodayDate,
   formatDayTitle, formatDaySubtitle, formatWeekTitle, formatWeekRange,
-  DAYS_NL, WEEKDAY_KEYS, DAYS_SHORT_NL_MON_CAPS, MONTHS_NL_CAPS,
+  WEEKDAY_KEYS, shortWeekdayLabelsMondayFirst, longMonthLabels, weekdayLabelLong,
 } from './utils/dates';
 import { summarizeSleep } from './utils/sleep';
 import {
@@ -39,51 +40,17 @@ import { playSound } from './utils/sound';
 
 const COLOR_OPTIONS = ['red', 'orange', 'amber', 'yellow', 'green', 'teal', 'cyan', 'blue', 'indigo', 'purple', 'pink'];
 
-// Default modules for first-time users
+// Default modules voor nieuwe gebruikers. `nameKey` wordt bij instantiatie
+// (onboarding finish, reset) door instantiateDefaults() naar de huidige taal
+// gerendered en als `name` weggeschreven, waarna het user-data is.
 const DEFAULT_MODULES = [
-  {
-    id: 'morning',
-    name: 'Ochtendroutine',
-    icon: 'Sun',
-    color: 'amber',
-    enabled: true,
-    countInStreak: false,
-    type: 'checklist',
-    items: []
-  },
-  {
-    id: 'physio',
-    name: 'Fysio-oefeningen',
-    icon: 'Activity',
-    color: 'purple',
-    enabled: true,
-    countInStreak: false,
-    type: 'checklist',
-    items: []
-  },
-  {
-    id: 'walk',
-    name: 'Beweging buiten',
-    icon: 'Footprints',
-    color: 'green',
-    enabled: true,
-    countInStreak: false,
-    type: 'choice',
-    options: []
-  },
-  {
-    id: 'evening',
-    name: 'Avondroutine',
-    icon: 'Moon',
-    color: 'indigo',
-    enabled: true,
-    countInStreak: false,
-    type: 'checklist',
-    items: []
-  },
+  { id: 'morning', nameKey: 'presets.defaultMorning', icon: 'Sun', color: 'amber', enabled: true, countInStreak: false, type: 'checklist', items: [] },
+  { id: 'physio', nameKey: 'presets.defaultPhysio', icon: 'Activity', color: 'purple', enabled: true, countInStreak: false, type: 'checklist', items: [] },
+  { id: 'walk', nameKey: 'presets.defaultWalk', icon: 'Footprints', color: 'green', enabled: true, countInStreak: false, type: 'choice', options: [] },
+  { id: 'evening', nameKey: 'presets.defaultEvening', icon: 'Moon', color: 'indigo', enabled: true, countInStreak: false, type: 'checklist', items: [] },
   {
     id: 'work',
-    name: 'Productief werk',
+    nameKey: 'presets.defaultWork',
     icon: 'Briefcase',
     color: 'blue',
     enabled: true,
@@ -98,20 +65,12 @@ const DEFAULT_MODULES = [
     dailyGoalMinutes: 120,
     weeklyMaxMinutes: 360,
   },
-  {
-    id: 'tasks',
-    name: 'Eigen taken',
-    icon: 'Check',
-    color: 'pink',
-    enabled: true,
-    countInStreak: false,
-    type: 'tasks',
-  }
+  { id: 'tasks', nameKey: 'presets.defaultTasks', icon: 'Check', color: 'pink', enabled: true, countInStreak: false, type: 'tasks' },
 ];
 
 const PROJECTS_MODULE_TEMPLATE = {
   id: 'projects',
-  name: 'Projecten',
+  nameKey: 'presets.defaultProjectsModule',
   icon: 'GraduationCap',
   color: 'cyan',
   enabled: true,
@@ -120,7 +79,21 @@ const PROJECTS_MODULE_TEMPLATE = {
   subjects: []
 };
 
+function instantiateDefaults(mods, t) {
+  return mods.map(m => ({
+    ...m,
+    name: m.nameKey ? t(m.nameKey) : (m.name || ''),
+  }));
+}
+
+function resolveModuleName(mod, t) {
+  if (mod?.name) return mod.name;
+  if (mod?.nameKey) return t(mod.nameKey);
+  return '';
+}
+
 export default function Ritmo() {
+  const { t, language, languageSetting, setLanguage } = useTranslation();
   const [view, setView] = useState('today');
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [selectedCollectionId, setSelectedCollectionId] = useState(null);
@@ -140,7 +113,7 @@ export default function Ritmo() {
   const [moreOpen, setMoreOpen] = useState(false);
   const moreMenuRef = useRef(null);
   
-  const [modules, setModules] = useState(DEFAULT_MODULES);
+  const [modules, setModules] = useState(() => instantiateDefaults(DEFAULT_MODULES, t));
   const [moduleData, setModuleData] = useState({}); // per-module daily state
   const [history, setHistory] = useState({});
   const [customTasks, setCustomTasks] = useState([]);
@@ -184,7 +157,7 @@ export default function Ritmo() {
       try {
         const settingsResult = await window.storage.get('settings');
         if (settingsResult?.value) {
-          const settings = JSON.parse(settingsResult.value);
+          const settings = migrateSettings(JSON.parse(settingsResult.value));
           if (settings.modules) {
             loadedModules = settings.modules.map(migrateModuleConfig);
           }
@@ -306,11 +279,12 @@ export default function Ritmo() {
           showReflectionOnToday,
           modules,
           hasOnboarded,
+          language: languageSetting,
         }));
       } catch {}
     };
     saveSettings();
-  }, [darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, showReflectionOnToday, modules, hasOnboarded, loading]);
+  }, [darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, showReflectionOnToday, modules, hasOnboarded, languageSetting, loading]);
 
   // Recurring tasks. Only inject into today's task list, never into a
   // historical day the user is just viewing.
@@ -327,7 +301,7 @@ export default function Ritmo() {
           setCustomTasks(prev => [...prev, {
             id: Date.now() + Math.random(),
             recurringId: rt.id,
-            text: rt.text,
+            text: rtheme.text,
             done: false
           }]);
         }
@@ -383,7 +357,7 @@ export default function Ritmo() {
 
     if (previousCompletionRef.current !== null && totalItems > 0) {
       if (completed === totalItems && previousCompletionRef.current < totalItems) {
-        triggerCelebration('🎉 Alle modules voltooid!');
+        triggerCelebration(t('today.allModulesCompleted'));
       }
     }
     previousCompletionRef.current = completed;
@@ -483,7 +457,7 @@ export default function Ritmo() {
     sfx('tick');
 
     if (mod && goal > 0 && currentTotal < goal && newTotal >= goal) {
-      triggerCelebration(`💪 ${mod.name} doel gehaald!`);
+      triggerCelebration(t('today.goalReached', { name: resolveModuleName(mod, t) }));
     }
   };
 
@@ -525,7 +499,7 @@ export default function Ritmo() {
     sfx('tick');
 
     if (crossedGoal && mod) {
-      triggerCelebration(`💪 ${mod.name} doel gehaald!`);
+      triggerCelebration(t('today.goalReached', { name: resolveModuleName(mod, t) }));
     }
   };
 
@@ -733,10 +707,10 @@ export default function Ritmo() {
   });
   const weekDates = currentWeekDates;
 
-  const dayNames = DAYS_SHORT_NL_MON_CAPS;
-  const monthNames = MONTHS_NL_CAPS;
+  const dayNames = shortWeekdayLabelsMondayFirst();
+  const monthNames = longMonthLabels();
 
-  const t = darkMode ? {
+  const theme = darkMode ? {
     bg: 'bg-gradient-to-br from-slate-900 to-slate-800',
     card: 'bg-slate-800',
     cardSecondary: 'bg-slate-700',
@@ -796,7 +770,7 @@ export default function Ritmo() {
     return <Onboarding onComplete={(selectedModules) => {
       setModules(selectedModules);
       setHasOnboarded(true);
-    }} t={t} darkMode={darkMode} setDarkMode={setDarkMode} />;
+    }} t={t} theme={theme} darkMode={darkMode} setDarkMode={setDarkMode} />;
   }
 
   const enabledModules = modules.filter(m => m.enabled);
@@ -814,7 +788,7 @@ export default function Ritmo() {
           Icon={ICON_OPTIONS[mod.icon] || Sparkles}
           onOpen={(id) => { setSelectedProjectId(id); setView('projects'); }}
           onEdit={() => setEditingModule(mod)}
-          t={t}
+          theme={theme}
         />
       );
     }
@@ -835,7 +809,7 @@ export default function Ritmo() {
           onRemoveEntry={(entryId) => removeCounterEntry(mod.id, entryId)}
           onDismissReminder={() => dismissCounterReminder(mod.id)}
           onEdit={() => setEditingModule(mod)}
-          t={t}
+          theme={theme}
           darkMode={darkMode}
         />
       );
@@ -851,7 +825,7 @@ export default function Ritmo() {
           date={parseDateKey(activeDateKey)}
           onUpdate={(updater) => updateModuleData(mod.id, updater)}
           onEdit={() => setEditingModule(mod)}
-          t={t}
+          theme={theme}
           darkMode={darkMode}
         />
       );
@@ -867,7 +841,7 @@ export default function Ritmo() {
           onLogEvent={(itemId, eventData) => logCollectionEvent(mod.id, itemId, eventData)}
           onOpenView={() => { setSelectedCollectionId(mod.id); setView('collections'); }}
           onEdit={() => setEditingModule(mod)}
-          t={t}
+          theme={theme}
           darkMode={darkMode}
         />
       );
@@ -892,14 +866,14 @@ export default function Ritmo() {
         addTask={addTask}
         toggleTask={toggleTask}
         deleteTask={deleteTask}
-        t={t}
+        theme={theme}
         darkMode={darkMode}
       />
     );
   };
 
   return (
-    <div className={`min-h-screen ${t.bg} p-4 transition-colors duration-300 relative overflow-hidden`}>
+    <div className={`min-h-screen ${theme.bg} p-4 transition-colors duration-300 relative overflow-hidden`}>
       {confetti.map(c => (
         <div
           key={c.id}
@@ -948,25 +922,25 @@ export default function Ritmo() {
         <div className="flex items-start justify-between mb-6">
           <div>
             <div className="flex items-baseline gap-2 mb-1">
-              <h1 className={`text-3xl font-bold ${t.text}`}>Ritmo</h1>
-              <span className={`text-sm ${t.textMuted}`}>· jouw dag, jouw ritme</span>
+              <h1 className={`text-3xl font-bold ${theme.text}`}>{t('app.title')}</h1>
+              <span className={`text-sm ${theme.textMuted}`}>· {t('app.tagline')}</span>
             </div>
-            <p className={`${t.textMuted} text-sm`}>
-              {new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' })}
+            <p className={`${theme.textMuted} text-sm`}>
+              {new Date().toLocaleDateString(language === 'nl' ? 'nl-NL' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className={`p-2 ${t.card} rounded-xl shadow-sm ${t.hover} transition`}
+              className={`p-2 ${theme.card} rounded-xl shadow-sm ${theme.hover} transition`}
             >
               {darkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-slate-600" />}
             </button>
             <button
               onClick={() => setShowSettings(true)}
-              className={`p-2 ${t.card} rounded-xl shadow-sm ${t.hover} transition`}
+              className={`p-2 ${theme.card} rounded-xl shadow-sm ${theme.hover} transition`}
             >
-              <Settings className={`w-5 h-5 ${t.textSecondary}`} />
+              <Settings className={`w-5 h-5 ${theme.textSecondary}`} />
             </button>
           </div>
         </div>
@@ -975,7 +949,7 @@ export default function Ritmo() {
           modules={modules}
           view={view}
           setView={setView}
-          t={t}
+          theme={theme}
           moreOpen={moreOpen}
           setMoreOpen={setMoreOpen}
           moreMenuRef={moreMenuRef}
@@ -988,24 +962,24 @@ export default function Ritmo() {
               onChange={(d) => setActiveDate(d)}
               title={formatDayTitle(activeDate)}
               subtitle={formatDaySubtitle(activeDate)}
-              t={t}
+              theme={theme}
             />
-            {!editable && <ReadOnlyBanner t={t} />}
+            {!editable && <ReadOnlyBanner theme={theme} />}
             {/* Streaks - only for modules waar gebruiker streaks voor wil bijhouden (max 4) */}
             {editable && enabledModules.filter(m => m.countInStreak === true).length > 0 && (
-              <div className={`${t.card} rounded-2xl p-4 shadow-sm mb-4`}>
+              <div className={`${theme.card} rounded-2xl p-4 shadow-sm mb-4`}>
                 <div className="flex items-center gap-2 mb-3">
                   <Flame className="w-4 h-4 text-orange-500" />
-                  <h2 className={`font-semibold ${t.textSecondary} text-sm`}>Streaks</h2>
+                  <h2 className={`font-semibold ${theme.textSecondary} text-sm`}>{t('today.streaks')}</h2>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {enabledModules.filter(m => m.countInStreak === true).slice(0, 4).map(mod => (
                     <StreakBadge 
                       key={mod.id}
-                      label={mod.name} 
+                      label={resolveModuleName(mod, t)}
                       days={getModuleStreak(mod)} 
                       color={mod.color} 
-                      t={t} 
+                      theme={theme} 
                     />
                   ))}
                 </div>
@@ -1014,43 +988,43 @@ export default function Ritmo() {
 
             {/* Overall progress */}
             {totalCompletionItems > 0 && (
-              <div className={`${t.card} rounded-2xl p-5 shadow-sm mb-4`}>
+              <div className={`${theme.card} rounded-2xl p-5 shadow-sm mb-4`}>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className={`font-semibold ${t.textSecondary}`}>Dagvoortgang</h2>
+                  <h2 className={`font-semibold ${theme.textSecondary}`}>{t('today.dayProgress')}</h2>
                   <span className="text-2xl font-bold text-blue-500">{Math.round(overallPercentage)}%</span>
                 </div>
-                <div className={`w-full ${t.progressBg} rounded-full h-3 overflow-hidden`}>
+                <div className={`w-full ${theme.progressBg} rounded-full h-3 overflow-hidden`}>
                   <div 
                     className="bg-gradient-to-r from-blue-400 to-blue-600 h-3 rounded-full transition-all duration-700"
                     style={{ width: `${overallPercentage}%` }}
                   />
                 </div>
-                <p className={`text-xs ${t.textMuted} mt-2`}>
-                  {completedItems} van {totalCompletionItems} items voltooid
+                <p className={`text-xs ${theme.textMuted} mt-2`}>
+                  {t('today.itemsCompleted', { completed: completedItems, total: totalCompletionItems })}
                 </p>
               </div>
             )}
 
             {!editable && todayVisibleModules.length === 0 && (
-              <div className={`${t.card} rounded-2xl p-8 shadow-sm text-center mb-4`}>
-                <div className={`text-2xl mb-2 ${t.textMuted}`}>○</div>
-                <p className={`text-sm ${t.textMuted}`}>Geen activiteit op deze dag</p>
+              <div className={`${theme.card} rounded-2xl p-8 shadow-sm text-center mb-4`}>
+                <div className={`text-2xl mb-2 ${theme.textMuted}`}>○</div>
+                <p className={`text-sm ${theme.textMuted}`}>{t('today.noActivity')}</p>
               </div>
             )}
             {todayVisibleModules.map(renderTodayModule)}
 
             {editable && enabledModules.length === 0 && (
-              <div className={`${t.card} rounded-2xl p-8 shadow-sm text-center`}>
-                <Sparkles className={`w-12 h-12 mx-auto mb-3 ${t.textMuted}`} />
-                <h3 className={`font-semibold ${t.textSecondary} mb-2`}>Geen modules actief</h3>
-                <p className={`text-sm ${t.textMuted} mb-4`}>
-                  Activeer modules via de instellingen om je dag te beginnen.
+              <div className={`${theme.card} rounded-2xl p-8 shadow-sm text-center`}>
+                <Sparkles className={`w-12 h-12 mx-auto mb-3 ${theme.textMuted}`} />
+                <h3 className={`font-semibold ${theme.textSecondary} mb-2`}>{t('today.noModulesActive')}</h3>
+                <p className={`text-sm ${theme.textMuted} mb-4`}>
+                  {t('today.activateModulesHint')}
                 </p>
                 <button
                   onClick={() => setShowSettings(true)}
                   className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition"
                 >
-                  Naar instellingen
+                  {t('today.toSettings')}
                 </button>
               </div>
             )}
@@ -1062,28 +1036,28 @@ export default function Ritmo() {
               const hasAnswer = !!firstQ && !!reflectionAnswers[firstQ];
               if (!editable && !hasAnswer) return null;
               return (
-                <div className={`${t.card} rounded-2xl p-5 shadow-sm mb-4`}>
+                <div className={`${theme.card} rounded-2xl p-5 shadow-sm mb-4`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <BookOpen className="w-5 h-5 text-blue-500" />
-                      <h2 className={`font-semibold ${t.textSecondary}`}>Reflectie</h2>
+                      <h2 className={`font-semibold ${theme.textSecondary}`}>{t('today.reflection')}</h2>
                     </div>
                     <button
                       onClick={() => setView('reflection')}
                       className="text-xs text-blue-500 hover:underline"
                     >
-                      Volledig bekijken
+                      {t('today.viewFull')}
                     </button>
                   </div>
                   {firstQ && (
                     <div>
-                      <label className={`text-xs ${t.textMuted} mb-1 block`}>{firstQ}</label>
+                      <label className={`text-xs ${theme.textMuted} mb-1 block`}>{firstQ}</label>
                       <textarea
                         value={reflectionAnswers[firstQ] || ''}
                         onChange={(e) => setReflectionAnswers(prev => ({ ...prev, [firstQ]: e.target.value }))}
                         disabled={!editable}
-                        placeholder={editable ? 'Schrijf hier...' : ''}
-                        className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm h-16 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-70 disabled:cursor-not-allowed`}
+                        placeholder={editable ? t('reflection.placeholder') : ''}
+                        className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm h-16 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-70 disabled:cursor-not-allowed`}
                       />
                     </div>
                   )}
@@ -1105,7 +1079,7 @@ export default function Ritmo() {
             weekDates={activeWeekDates}
             dayNames={dayNames}
             onPickDay={(date) => { setActiveDate(date); setView('today'); }}
-            t={t}
+            theme={theme}
             darkMode={darkMode}
             goldenBorderEnabled={goldenBorderEnabled}
           />
@@ -1120,7 +1094,7 @@ export default function Ritmo() {
             setSelectedProjectId={setSelectedProjectId}
             markTouchedToday={(moduleId) => updateModuleData(moduleId, prev => ({ ...prev, touchedToday: true }))}
             onCreate={() => openModuleEditor('projects')}
-            t={t}
+            theme={theme}
           />
         )}
 
@@ -1136,7 +1110,7 @@ export default function Ritmo() {
             onLogEvent={logCollectionEvent}
             onRemoveEvent={removeCollectionEvent}
             onCreate={() => openModuleEditor('collection')}
-            t={t}
+            theme={theme}
           />
         )}
 
@@ -1150,7 +1124,7 @@ export default function Ritmo() {
             moduleData={moduleData}
             modules={modules}
             onPickDay={(date) => { setActiveDate(date); setView('today'); }}
-            t={t}
+            theme={theme}
             darkMode={darkMode}
             monthNames={monthNames}
             dayNames={dayNames}
@@ -1159,7 +1133,7 @@ export default function Ritmo() {
         )}
 
         {view === 'household' && (
-          <HouseholdView t={t} darkMode={darkMode} />
+          <HouseholdView theme={theme} darkMode={darkMode} />
         )}
 
         {view === 'reflection' && (
@@ -1169,13 +1143,13 @@ export default function Ritmo() {
             setReflectionAnswers={setReflectionAnswers}
             history={history}
             today={todayKey}
-            t={t}
+            theme={theme}
             darkMode={darkMode}
           />
         )}
 
-        <div className={`text-center text-xs ${t.textMuted} mt-6 pb-4`}>
-          Je voortgang wordt automatisch opgeslagen
+        <div className={`text-center text-xs ${theme.textMuted} mt-6 pb-4`}>
+          {t('app.autosave')}
         </div>
       </div>
 
@@ -1200,7 +1174,7 @@ export default function Ritmo() {
           setGoldenBorderEnabled={setGoldenBorderEnabled}
           showReflectionOnToday={showReflectionOnToday}
           setShowReflectionOnToday={setShowReflectionOnToday}
-          t={t}
+          theme={theme}
           dayNames={dayNames}
           setEditingModule={setEditingModule}
         />
@@ -1222,7 +1196,7 @@ export default function Ritmo() {
             setModules(prev => prev.filter(m => m.id !== id));
             setEditingModule(null);
           }}
-          t={t}
+          theme={theme}
         />
       )}
     </div>
@@ -1232,7 +1206,7 @@ export default function Ritmo() {
 // =============================================
 // ONBOARDING
 // =============================================
-function Onboarding({ onComplete, t, darkMode, setDarkMode }) {
+function Onboarding({ onComplete, t, theme, darkMode, setDarkMode }) {
   const [step, setStep] = useState(0);
   const [selectedDefaults, setSelectedDefaults] = useState(
     DEFAULT_MODULES.reduce((acc, m) => ({ ...acc, [m.id]: false }), {})
@@ -1243,19 +1217,19 @@ function Onboarding({ onComplete, t, darkMode, setDarkMode }) {
   const canProceed = moduleCount >= 1;
 
   const finish = () => {
-    const finalModules = DEFAULT_MODULES.map(m => ({
+    const seeded = instantiateDefaults(DEFAULT_MODULES, t).map(m => ({
       ...m,
-      enabled: selectedDefaults[m.id] === true
+      enabled: selectedDefaults[m.id] === true,
     }));
     if (projectsEnabled) {
-      finalModules.push({ ...PROJECTS_MODULE_TEMPLATE, enabled: true });
+      seeded.push({ ...instantiateDefaults([PROJECTS_MODULE_TEMPLATE], t)[0], enabled: true });
     }
-    onComplete(finalModules);
+    onComplete(seeded);
   };
 
   return (
-    <div className={`min-h-screen ${t.bg} p-4 flex items-center justify-center`}>
-      <div className={`${t.card} rounded-2xl p-6 shadow-lg max-w-lg w-full`}>
+    <div className={`min-h-screen ${theme.bg} p-4 flex items-center justify-center`}>
+      <div className={`${theme.card} rounded-2xl p-6 shadow-lg max-w-lg w-full`}>
         {step === 0 && (
           <div className="text-center">
             <div className="flex justify-center mb-4">
@@ -1265,24 +1239,24 @@ function Onboarding({ onComplete, t, darkMode, setDarkMode }) {
                 animated="splash"
               />
             </div>
-            <h1 className={`text-3xl font-bold ${t.text} mb-2`}>Welkom bij Ritmo</h1>
-            <p className={`${t.textMuted} mb-6`}>
-              Jouw persoonlijke dag-app. Volledig modulair: kies wat je wilt bijhouden, voeg toe wat je nodig hebt, verberg wat niet relevant is.
+            <h1 className={`text-3xl font-bold ${theme.text} mb-2`}>{t('onboarding.welcome')}</h1>
+            <p className={`${theme.textMuted} mb-6`}>
+              {t('onboarding.intro')}
             </p>
             <button
               onClick={() => setStep(1)}
               className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium transition"
             >
-              Aan de slag
+              {t('onboarding.start')}
             </button>
           </div>
         )}
 
         {step === 1 && (
           <div>
-            <h2 className={`text-2xl font-bold ${t.text} mb-2`}>Kies je modules</h2>
-            <p className={`${t.textMuted} mb-4 text-sm`}>
-              Selecteer welke onderdelen je wilt gebruiken. Vink aan wat bij je past. Je kunt dit later altijd uitbreiden.
+            <h2 className={`text-2xl font-bold ${theme.text} mb-2`}>{t('onboarding.pickModules')}</h2>
+            <p className={`${theme.textMuted} mb-4 text-sm`}>
+              {t('onboarding.pickModulesHint')}
             </p>
             <div className="space-y-2 mb-4">
               {DEFAULT_MODULES.map(m => {
@@ -1295,19 +1269,19 @@ function Onboarding({ onComplete, t, darkMode, setDarkMode }) {
                     className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition ${
                       enabled
                         ? `border-${m.color}-400 bg-${m.color}-50 ${darkMode ? 'bg-opacity-10' : ''}`
-                        : `${t.border} ${t.cardSecondary}`
+                        : `${theme.border} ${theme.cardSecondary}`
                     }`}
                   >
-                    <Icon className={`w-5 h-5 ${enabled ? `text-${m.color}-500` : t.textMuted}`} />
+                    <Icon className={`w-5 h-5 ${enabled ? `text-${m.color}-500` : theme.textMuted}`} />
                     <div className="flex-1 text-left">
-                      <div className={`font-medium text-sm ${enabled ? t.textSecondary : t.textMuted}`}>
-                        {m.name}
+                      <div className={`font-medium text-sm ${enabled ? theme.textSecondary : theme.textMuted}`}>
+                        {resolveModuleName(m, t)}
                       </div>
-                      <div className={`text-xs ${t.textMuted}`}>
-                        {m.type === 'checklist' && `${m.items.length} items`}
-                        {m.type === 'choice' && 'Keuze + voltooien'}
-                        {m.type === 'counter' && 'Aantal bijhouden'}
-                        {m.type === 'tasks' && 'Eigen takenlijst'}
+                      <div className={`text-xs ${theme.textMuted}`}>
+                        {m.type === 'checklist' && t('common.item_count', { n: m.items.length })}
+                        {m.type === 'choice' && t('modules.summary.choice')}
+                        {m.type === 'counter' && t('modules.types.counterDesc')}
+                        {m.type === 'tasks' && t('modules.summary.tasks')}
                       </div>
                     </div>
                     <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
@@ -1321,18 +1295,18 @@ function Onboarding({ onComplete, t, darkMode, setDarkMode }) {
             </div>
             {!canProceed && (
               <p className="text-xs text-rose-500 mb-3 text-center">
-                Activeer minstens één module om verder te gaan.
+                {t('onboarding.minOne')}
               </p>
             )}
-            <p className={`text-xs ${t.textMuted} mb-4 text-center`}>
-              💡 Je kunt later eigen modules toevoegen, items wijzigen, en alles personaliseren via instellingen.
+            <p className={`text-xs ${theme.textMuted} mb-4 text-center`}>
+              {t('onboarding.later')}
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => setStep(0)}
-                className={`px-4 py-3 ${t.cardSecondary} ${t.textSecondary} rounded-xl font-medium transition`}
+                className={`px-4 py-3 ${theme.cardSecondary} ${theme.textSecondary} rounded-xl font-medium transition`}
               >
-                Terug
+                {t('common.back')}
               </button>
               <button
                 onClick={() => setStep(2)}
@@ -1343,7 +1317,7 @@ function Onboarding({ onComplete, t, darkMode, setDarkMode }) {
                     : 'bg-slate-300 text-slate-500 cursor-not-allowed'
                 }`}
               >
-                Volgende
+                {t('common.next')}
               </button>
             </div>
           </div>
@@ -1355,15 +1329,13 @@ function Onboarding({ onComplete, t, darkMode, setDarkMode }) {
               <div className={`p-2 rounded-xl bg-cyan-100 ${darkMode ? 'bg-opacity-20' : ''}`}>
                 <GraduationCap className="w-6 h-6 text-cyan-500" />
               </div>
-              <h2 className={`text-2xl font-bold ${t.text}`}>Projecten</h2>
+              <h2 className={`text-2xl font-bold ${theme.text}`}>{t('projects.title')}</h2>
             </div>
-            <p className={`${t.textMuted} mb-3 text-sm`}>
-              Met projecten houd je grotere doelen bij. Denk aan studievakken, werkprojecten of leertrajecten.
-              Per project maak je <span className={t.textSecondary}>onderwerpen</span> aan met
-              <span className={t.textSecondary}> subdoelen</span>, optionele <span className={t.textSecondary}>deadlines</span> en <span className={t.textSecondary}>cijfers</span> (1 tot 10).
+            <p className={`${theme.textMuted} mb-3 text-sm`}>
+              {t('projects.onboardingDescription')} {t('projects.onboardingDetails')}
             </p>
-            <p className={`${t.textMuted} mb-4 text-sm`}>
-              Voortgang en gemiddelden zie je terug op je dagoverzicht. Ideaal voor wie naast dagelijkse routines ook lange-termijndoelen wil tracken.
+            <p className={`${theme.textMuted} mb-4 text-sm`}>
+              {t('projects.onboardingTrack')}
             </p>
 
             <button
@@ -1371,16 +1343,16 @@ function Onboarding({ onComplete, t, darkMode, setDarkMode }) {
               className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition mb-4 ${
                 projectsEnabled
                   ? `border-cyan-400 bg-cyan-50 ${darkMode ? 'bg-opacity-10' : ''}`
-                  : `${t.border} ${t.cardSecondary}`
+                  : `${theme.border} ${theme.cardSecondary}`
               }`}
             >
-              <GraduationCap className={`w-5 h-5 ${projectsEnabled ? 'text-cyan-500' : t.textMuted}`} />
+              <GraduationCap className={`w-5 h-5 ${projectsEnabled ? 'text-cyan-500' : theme.textMuted}`} />
               <div className="flex-1 text-left">
-                <div className={`font-medium text-sm ${projectsEnabled ? t.textSecondary : t.textMuted}`}>
-                  Projecten activeren
+                <div className={`font-medium text-sm ${projectsEnabled ? theme.textSecondary : theme.textMuted}`}>
+                  {t('projects.activate')}
                 </div>
-                <div className={`text-xs ${t.textMuted}`}>
-                  Beheer onderwerpen, subdoelen en cijfers
+                <div className={`text-xs ${theme.textMuted}`}>
+                  {t('projects.activateHint')}
                 </div>
               </div>
               <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
@@ -1390,22 +1362,22 @@ function Onboarding({ onComplete, t, darkMode, setDarkMode }) {
               </div>
             </button>
 
-            <p className={`text-xs ${t.textMuted} mb-4 text-center`}>
-              Niet zeker? Sla over en activeer projecten later via Instellingen.
+            <p className={`text-xs ${theme.textMuted} mb-4 text-center`}>
+              {t('projects.skipHint')}
             </p>
 
             <div className="flex gap-2">
               <button
                 onClick={() => setStep(1)}
-                className={`px-4 py-3 ${t.cardSecondary} ${t.textSecondary} rounded-xl font-medium transition`}
+                className={`px-4 py-3 ${theme.cardSecondary} ${theme.textSecondary} rounded-xl font-medium transition`}
               >
-                Terug
+                {t('common.back')}
               </button>
               <button
                 onClick={finish}
                 className="flex-1 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium transition"
               >
-                Start Ritmo
+                {t('onboarding.finish')}
               </button>
             </div>
           </div>
@@ -1418,13 +1390,15 @@ function Onboarding({ onComplete, t, darkMode, setDarkMode }) {
 // =============================================
 // MODULE RENDERER
 // =============================================
-function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle, onChecklistIncrement, onChecklistNote, onChoiceToggle, onChoiceOptionSet, onEdit, weekDates, history, customTasks, newTask, setNewTask, addTask, toggleTask, deleteTask, t, darkMode }) {
+function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle, onChecklistIncrement, onChecklistNote, onChoiceToggle, onChoiceOptionSet, onEdit, weekDates, history, customTasks, newTask, setNewTask, addTask, toggleTask, deleteTask, theme, darkMode }) {
+  const { t } = useTranslation();
+  const modName = resolveModuleName(mod, t);
   const editButton = onEdit ? (
     <button
       onClick={onEdit}
-      className={`ml-auto p-1.5 ${t.hover} rounded-lg ${t.textMuted} transition`}
-      title="Module-instellingen"
-      aria-label={`Instellingen voor ${mod.name}`}
+      className={`ml-auto p-1.5 ${theme.hover} rounded-lg ${theme.textMuted} transition`}
+      title={t('modules.settingsTitle')}
+      aria-label={t('modules.settingsAria', { name: modName })}
     >
       <Settings className="w-4 h-4" />
     </button>
@@ -1443,7 +1417,7 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
         onIncrement={onChecklistIncrement}
         onSetNote={onChecklistNote}
         onEdit={onEdit}
-        t={t}
+        theme={theme}
       />
     );
   }
@@ -1452,15 +1426,15 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
     const options = mod.options || [];
     const selectedLabel = options.find(o => o.id === data.selectedOption)?.label;
     return (
-      <div className={`${t.card} rounded-2xl p-5 shadow-sm mb-4`}>
+      <div className={`${theme.card} rounded-2xl p-5 shadow-sm mb-4`}>
         <div className="flex items-center gap-2 mb-4">
           <Icon className={`w-5 h-5 ${colorClass}`} />
-          <h2 className={`font-semibold ${t.textSecondary}`}>{mod.name}</h2>
+          <h2 className={`font-semibold ${theme.textSecondary}`}>{modName}</h2>
           {editButton}
         </div>
         {options.length === 0 ? (
-          <p className={`${t.textMuted} text-sm text-center py-4`}>
-            Voeg opties toe via instellingen ⚙️
+          <p className={`${theme.textMuted} text-sm text-center py-4`}>
+            {t('modules.addOptionsHint')}
           </p>
         ) : (
           <>
@@ -1475,7 +1449,7 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
                     className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 disabled:cursor-not-allowed ${
                       isActive
                         ? `bg-${mod.color}-500 text-white shadow-md`
-                        : `${t.cardSecondary} ${t.textMuted}`
+                        : `${theme.cardSecondary} ${theme.textMuted}`
                     } ${!editable && !isActive ? 'opacity-50' : ''}`}
                   >
                     {isActive && <Check className="w-4 h-4" />}
@@ -1485,8 +1459,8 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
               })}
             </div>
             {data.completed && data.selectedOption && (
-              <p className={`text-xs ${t.textMuted} mt-2 text-center`}>
-                ✓ {selectedLabel} gekozen — klik nogmaals om te resetten
+              <p className={`text-xs ${theme.textMuted} mt-2 text-center`}>
+                {t('modules.chosenHint', { label: selectedLabel })}
               </p>
             )}
           </>
@@ -1498,10 +1472,10 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
 
   if (mod.type === 'tasks') {
     return (
-      <div className={`${t.card} rounded-2xl p-5 shadow-sm mb-4`}>
+      <div className={`${theme.card} rounded-2xl p-5 shadow-sm mb-4`}>
         <div className="flex items-center gap-2 mb-4">
           <Icon className={`w-5 h-5 ${colorClass}`} />
-          <h2 className={`font-semibold ${t.textSecondary}`}>{mod.name}</h2>
+          <h2 className={`font-semibold ${theme.textSecondary}`}>{modName}</h2>
           {editButton}
         </div>
         
@@ -1512,8 +1486,8 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
               value={newTask}
               onChange={(e) => setNewTask(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addTask()}
-              placeholder="Voeg een taak toe..."
-              className={`flex-1 px-3 py-2 ${t.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
+              placeholder={t('modules.addTaskPlaceholder')}
+              className={`flex-1 px-3 py-2 ${theme.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
             />
             <button
               onClick={addTask}
@@ -1526,12 +1500,12 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
 
         <div className="space-y-2">
           {customTasks.length === 0 ? (
-            <p className={`text-sm ${t.textMuted} text-center py-4`}>
-              {editable ? 'Nog geen taken toegevoegd' : 'Geen taken op deze dag'}
+            <p className={`text-sm ${theme.textMuted} text-center py-4`}>
+              {editable ? t('modules.noTasksAdded') : t('modules.noTasksOnDay')}
             </p>
           ) : (
             customTasks.map(task => (
-              <div key={task.id} className={`flex items-center gap-3 p-2 ${t.cardSecondary} rounded-lg group`}>
+              <div key={task.id} className={`flex items-center gap-3 p-2 ${theme.cardSecondary} rounded-lg group`}>
                 <button
                   onClick={() => toggleTask(task.id)}
                   disabled={!editable}
@@ -1541,8 +1515,8 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
                 >
                   {task.done && <Check className="w-3 h-3 text-white" />}
                 </button>
-                {task.recurringId && <Repeat className={`w-3 h-3 ${t.textMuted} flex-shrink-0`} />}
-                <span className={`flex-1 text-sm ${task.done ? `line-through ${t.textMuted}` : t.textSecondary}`}>
+                {task.recurringId && <Repeat className={`w-3 h-3 ${theme.textMuted} flex-shrink-0`} />}
+                <span className={`flex-1 text-sm ${task.done ? `line-through ${theme.textMuted}` : theme.textSecondary}`}>
                   {task.text}
                 </span>
                 {editable && (
@@ -1567,7 +1541,8 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
 // =============================================
 // STREAK BADGE
 // =============================================
-function StreakBadge({ label, days, color, t }) {
+function StreakBadge({ label, days, color, theme }) {
+  const { t } = useTranslation();
   const colorMap = {
     amber: 'from-amber-400 to-orange-500',
     purple: 'from-purple-400 to-pink-500',
@@ -1585,9 +1560,9 @@ function StreakBadge({ label, days, color, t }) {
     <div className="text-center">
       <div className={`bg-gradient-to-br ${colorMap[color] || colorMap.blue} rounded-xl p-2 mb-1 shadow-sm`}>
         <div className="text-2xl font-bold text-white">{days}</div>
-        <div className="text-xs text-white/90">{days === 1 ? 'dag' : 'dagen'}</div>
+        <div className="text-xs text-white/90">{days === 1 ? t('common.day') : t('common.days')}</div>
       </div>
-      <div className={`text-xs ${t.textMuted} truncate`}>{label}</div>
+      <div className={`text-xs ${theme.textMuted} truncate`}>{label}</div>
     </div>
   );
 }
@@ -1595,7 +1570,8 @@ function StreakBadge({ label, days, color, t }) {
 // =============================================
 // WEEK VIEW
 // =============================================
-function WeekView({ modules, history, today, activeDateKey, moduleData, activeWeekStart, setActiveWeekStart, weekDates, dayNames, onPickDay, t, darkMode, goldenBorderEnabled }) {
+function WeekView({ modules, history, today, activeDateKey, moduleData, activeWeekStart, setActiveWeekStart, weekDates, dayNames, onPickDay, theme, darkMode, goldenBorderEnabled }) {
+  const { t } = useTranslation();
   const enabledNonTaskModules = modules.filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects' && m.type !== 'collection');
   const atCurrentWeek = sameDay(activeWeekStart, startOfWeek(new Date()));
 
@@ -1604,27 +1580,27 @@ function WeekView({ modules, history, today, activeDateKey, moduleData, activeWe
   );
 
   return (
-    <div className={`${t.card} rounded-2xl p-5 shadow-sm slide-in`}>
+    <div className={`${theme.card} rounded-2xl p-5 shadow-sm slide-in`}>
       <div className="flex items-center justify-between gap-2 mb-4">
         <button
           onClick={() => setActiveWeekStart(addDays(activeWeekStart, -7))}
-          aria-label="Vorige week"
-          className={`w-9 h-9 rounded-lg flex items-center justify-center ${t.hover} ${t.textSecondary} transition`}
+          aria-label={t('dates.previousWeekAria')}
+          className={`w-9 h-9 rounded-lg flex items-center justify-center ${theme.hover} ${theme.textSecondary} transition`}
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
         <div className="flex-1 text-center">
           <div className="flex items-center justify-center gap-2">
             <TrendingUp className="w-4 h-4 text-blue-500" />
-            <h2 className={`font-semibold ${t.textSecondary}`}>{formatWeekTitle(activeWeekStart)}</h2>
+            <h2 className={`font-semibold ${theme.textSecondary}`}>{formatWeekTitle(activeWeekStart)}</h2>
           </div>
-          <div className={`text-xs ${t.textMuted}`}>{formatWeekRange(activeWeekStart)}</div>
+          <div className={`text-xs ${theme.textMuted}`}>{formatWeekRange(activeWeekStart)}</div>
         </div>
         <button
           onClick={() => setActiveWeekStart(addDays(activeWeekStart, 7))}
           disabled={atCurrentWeek}
-          aria-label="Volgende week"
-          className={`w-9 h-9 rounded-lg flex items-center justify-center ${t.hover} ${t.textSecondary} transition disabled:opacity-30 disabled:cursor-not-allowed`}
+          aria-label={t('dates.nextWeekAria')}
+          className={`w-9 h-9 rounded-lg flex items-center justify-center ${theme.hover} ${theme.textSecondary} transition disabled:opacity-30 disabled:cursor-not-allowed`}
         >
           <ChevronRight className="w-5 h-5" />
         </button>
@@ -1641,7 +1617,7 @@ function WeekView({ modules, history, today, activeDateKey, moduleData, activeWe
 
           return (
             <div key={date} className="text-center">
-              <div className={`text-xs font-medium mb-1 ${isTodayCell ? 'text-blue-500' : t.textMuted}`}>
+              <div className={`text-xs font-medium mb-1 ${isTodayCell ? 'text-blue-500' : theme.textMuted}`}>
                 {dayNames[i]}
               </div>
               <button
@@ -1649,13 +1625,13 @@ function WeekView({ modules, history, today, activeDateKey, moduleData, activeWe
                 disabled={future}
                 style={bg ? { background: bg } : undefined}
                 className={`relative w-full h-20 rounded-lg overflow-hidden flex items-center justify-center transition ${
-                  bg ? '' : t.progressBg
+                  bg ? '' : theme.progressBg
                 } ${isTodayCell ? 'ring-2 ring-blue-400' : ''} ${
                   future ? 'opacity-30 cursor-not-allowed' : 'hover:opacity-90'
                 } ${(goldenBorderEnabled && fullyComplete) ? 'ritmo-golden-border' : ''}`}
-                aria-label={`Open ${date}`}
+                aria-label={t('dates.openDay', { date })}
               >
-                <span className={`text-sm font-bold ${bg ? 'text-white drop-shadow' : t.textSecondary}`}>
+                <span className={`text-sm font-bold ${bg ? 'text-white drop-shadow' : theme.textSecondary}`}>
                   {dayNum}
                 </span>
               </button>
@@ -1664,7 +1640,7 @@ function WeekView({ modules, history, today, activeDateKey, moduleData, activeWe
         })}
       </div>
 
-      <div className={`space-y-3 pt-4 border-t ${t.border}`}>
+      <div className={`space-y-3 pt-4 border-t ${theme.border}`}>
         {enabledNonTaskModules.map(mod => {
           const Icon = ICON_OPTIONS[mod.icon] || Sparkles;
           let label = '';
@@ -1675,15 +1651,15 @@ function WeekView({ modules, history, today, activeDateKey, moduleData, activeWe
               const data = d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id];
               return data && mod.items.every(i => data[i.id]);
             }).length;
-            label = mod.name;
-            value = `${fullDays} / 7 dagen volledig`;
+            label = resolveModuleName(mod, t);
+            value = t('week.fullDays', { n: fullDays });
           } else if (mod.type === 'choice') {
             const days = weekDates.filter(d => {
               const data = d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id];
               return data?.completed;
             }).length;
-            label = mod.name;
-            value = `${days} / 7 dagen`;
+            label = resolveModuleName(mod, t);
+            value = t('week.daysCount', { n: days });
           } else if (mod.type === 'counter') {
             const unit = mod.unit || 'minutes';
             const total = weekDates.reduce((sum, d) => {
@@ -1691,7 +1667,7 @@ function WeekView({ modules, history, today, activeDateKey, moduleData, activeWe
               return sum + (data?.total ?? data?.minutes ?? 0);
             }, 0);
             const weekMax = mod.weeklyMax ?? mod.weeklyMaxMinutes;
-            label = mod.name;
+            label = resolveModuleName(mod, t);
             value = weekMax
               ? `${formatAmount(total, unit)} / ${formatAmount(weekMax, unit)}`
               : formatAmount(total, unit);
@@ -1702,17 +1678,17 @@ function WeekView({ modules, history, today, activeDateKey, moduleData, activeWe
               dayData: (d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id]) || null,
             }));
             const summary = summarizeSleep(days, mod);
-            label = mod.name;
+            label = resolveModuleName(mod, t);
             value = summary.nightsLogged === 0
-              ? 'Nog geen data'
-              : `${formatDuration(summary.averageDurationMinutes)} · ${summary.nightsOnTarget} / 7 op ritme`;
+              ? t('week.noData')
+              : `${formatDuration(summary.averageDurationMinutes)} · ${t('week.onRhythm', { n: summary.nightsOnTarget })}`;
           }
 
           return (
             <div key={mod.id} className={`flex items-center justify-between p-3 ${darkMode ? `bg-${mod.color}-900/20` : `bg-${mod.color}-50`} rounded-lg`}>
               <div className="flex items-center gap-2">
                 <Icon className={`w-4 h-4 text-${mod.color}-500`} />
-                <span className={`text-sm font-medium ${t.textSecondary}`}>{label}</span>
+                <span className={`text-sm font-medium ${theme.textSecondary}`}>{label}</span>
               </div>
               <span className={`font-bold text-sm ${darkMode ? `text-${mod.color}-300` : `text-${mod.color}-600`}`}>
                 {value}
@@ -1728,7 +1704,8 @@ function WeekView({ modules, history, today, activeDateKey, moduleData, activeWe
 // =============================================
 // MONTH VIEW
 // =============================================
-function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDateKey, moduleData, modules, onPickDay, t, darkMode, monthNames, dayNames, goldenBorderEnabled }) {
+function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDateKey, moduleData, modules, onPickDay, theme, darkMode, monthNames, dayNames, goldenBorderEnabled }) {
+  const { t } = useTranslation();
   const year = calendarMonth.getFullYear();
   const month = calendarMonth.getMonth();
   const firstDay = new Date(year, month, 1);
@@ -1760,20 +1737,20 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDate
   }).length;
 
   return (
-    <div className={`${t.card} rounded-2xl p-5 shadow-sm slide-in`}>
+    <div className={`${theme.card} rounded-2xl p-5 shadow-sm slide-in`}>
       <div className="flex items-center justify-between mb-4">
-        <button onClick={() => setCalendarMonth(new Date(year, month - 1, 1))} className={`p-2 ${t.hover} rounded-lg transition`}>
-          <ChevronLeft className={`w-5 h-5 ${t.textSecondary}`} />
+        <button onClick={() => setCalendarMonth(new Date(year, month - 1, 1))} className={`p-2 ${theme.hover} rounded-lg transition`}>
+          <ChevronLeft className={`w-5 h-5 ${theme.textSecondary}`} />
         </button>
-        <h2 className={`font-semibold ${t.textSecondary}`}>{monthNames[month]} {year}</h2>
-        <button onClick={() => setCalendarMonth(new Date(year, month + 1, 1))} className={`p-2 ${t.hover} rounded-lg transition`}>
-          <ChevronRight className={`w-5 h-5 ${t.textSecondary}`} />
+        <h2 className={`font-semibold ${theme.textSecondary}`}>{monthNames[month]} {year}</h2>
+        <button onClick={() => setCalendarMonth(new Date(year, month + 1, 1))} className={`p-2 ${theme.hover} rounded-lg transition`}>
+          <ChevronRight className={`w-5 h-5 ${theme.textSecondary}`} />
         </button>
       </div>
 
       <div className="grid grid-cols-7 gap-1 mb-2">
         {dayNames.map(d => (
-          <div key={d} className={`text-center text-xs font-medium ${t.textMuted} py-1`}>{d}</div>
+          <div key={d} className={`text-center text-xs font-medium ${theme.textMuted} py-1`}>{d}</div>
         ))}
       </div>
 
@@ -1798,28 +1775,28 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDate
               } ${isTodayCell ? 'ring-2 ring-blue-500' : ''} ${
                 future ? 'opacity-30 cursor-not-allowed' : 'hover:scale-110'
               } ${(goldenBorderEnabled && fullyComplete) ? 'ritmo-golden-border' : ''}`}
-              aria-label={`Open ${dateStr}`}
+              aria-label={t('dates.openDay', { date: dateStr })}
             >
-              <span className={bg ? 'text-white drop-shadow' : t.textSecondary}>{day}</span>
+              <span className={bg ? 'text-white drop-shadow' : theme.textSecondary}>{day}</span>
             </button>
           );
         })}
       </div>
 
-      <p className={`text-xs ${t.textMuted} mb-4 text-center`}>
-        Klik op een dag om te bekijken
+      <p className={`text-xs ${theme.textMuted} mb-4 text-center`}>
+        {t('month.clickDay')}
       </p>
 
-      <div className={`grid grid-cols-2 gap-2 pt-4 border-t ${t.border}`}>
+      <div className={`grid grid-cols-2 gap-2 pt-4 border-t ${theme.border}`}>
         <div className={`${darkMode ? 'bg-green-900/20' : 'bg-green-50'} p-3 rounded-lg text-center`}>
           <Trophy className={`w-4 h-4 mx-auto mb-1 ${darkMode ? 'text-green-400' : 'text-green-600'}`} />
           <div className={`text-xl font-bold ${darkMode ? 'text-green-300' : 'text-green-600'}`}>{completedDays}</div>
-          <div className={`text-xs ${t.textMuted}`}>volledig</div>
+          <div className={`text-xs ${theme.textMuted}`}>{t('month.fullyCompleted')}</div>
         </div>
         <div className={`${darkMode ? 'bg-blue-900/20' : 'bg-blue-50'} p-3 rounded-lg text-center`}>
           <Calendar className={`w-4 h-4 mx-auto mb-1 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
           <div className={`text-xl font-bold ${darkMode ? 'text-blue-300' : 'text-blue-600'}`}>{partialDays}</div>
-          <div className={`text-xs ${t.textMuted}`}>gedeeltelijk</div>
+          <div className={`text-xs ${theme.textMuted}`}>{t('month.partial')}</div>
         </div>
       </div>
 
@@ -1831,13 +1808,13 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDate
         }));
         const summary = summarizeSleep(days, mod);
         const value = summary.nightsLogged === 0
-          ? 'Nog geen slaapdata in deze maand'
-          : `${formatDuration(summary.averageDurationMinutes)} · ${summary.nightsOnTarget} / ${monthDays.length} op ritme`;
+          ? t('month.noSleepData')
+          : `${formatDuration(summary.averageDurationMinutes)} · ${t('month.onRhythmOf', { n: summary.nightsOnTarget, total: monthDays.length })}`;
         return (
           <div key={mod.id} className={`mt-3 flex items-center justify-between p-3 ${darkMode ? `bg-${mod.color}-900/20` : `bg-${mod.color}-50`} rounded-lg`}>
             <div className="flex items-center gap-2">
               <Icon className={`w-4 h-4 text-${mod.color}-500`} />
-              <span className={`text-sm font-medium ${t.textSecondary}`}>{mod.name}</span>
+              <span className={`text-sm font-medium ${theme.textSecondary}`}>{resolveModuleName(mod, t)}</span>
             </div>
             <span className={`font-bold text-sm ${darkMode ? `text-${mod.color}-300` : `text-${mod.color}-600`}`}>
               {value}
@@ -1852,9 +1829,10 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDate
 // =============================================
 // REFLECTION VIEW
 // =============================================
-function ReflectionView({ reflectionQuestions, reflectionAnswers, setReflectionAnswers, history, today, t, darkMode }) {
+function ReflectionView({ reflectionQuestions, reflectionAnswers, setReflectionAnswers, history, today, theme, darkMode }) {
+  const { t } = useTranslation();
   const [selectedDate, setSelectedDate] = useState(today);
-  
+
   const isToday = selectedDate === today;
   const dayData = isToday ? { reflectionAnswers } : history[selectedDate];
   const answers = isToday ? reflectionAnswers : (dayData?.reflectionAnswers || {});
@@ -1869,60 +1847,60 @@ function ReflectionView({ reflectionQuestions, reflectionAnswers, setReflectionA
 
   return (
     <div className="slide-in space-y-4">
-      <div className={`${t.card} rounded-2xl p-5 shadow-sm`}>
+      <div className={`${theme.card} rounded-2xl p-5 shadow-sm`}>
         <div className="flex items-center gap-2 mb-4">
           <BookOpen className="w-5 h-5 text-blue-500" />
-          <h2 className={`font-semibold ${t.textSecondary}`}>Reflectie</h2>
+          <h2 className={`font-semibold ${theme.textSecondary}`}>{t('reflection.title')}</h2>
         </div>
 
         <div className="mb-4">
-          <label className={`text-xs ${t.textMuted} mb-1 block`}>Datum</label>
+          <label className={`text-xs ${theme.textMuted} mb-1 block`}>{t('reflection.date')}</label>
           <input
             type="date"
             value={selectedDate}
             max={today}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300`}
+            className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300`}
           />
         </div>
 
         <div className="space-y-4">
           {reflectionQuestions.map((q, i) => (
             <div key={i}>
-              <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>{q}</label>
+              <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{q}</label>
               {isToday ? (
                 <textarea
                   value={answers[q] || ''}
                   onChange={(e) => setReflectionAnswers(prev => ({ ...prev, [q]: e.target.value }))}
-                  placeholder="Schrijf hier..."
-                  className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm h-24 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300`}
+                  placeholder={t('reflection.placeholder')}
+                  className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm h-24 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300`}
                 />
               ) : (
-                <div className={`px-3 py-2 ${t.cardSecondary} rounded-lg text-sm min-h-[60px] ${t.textSecondary}`}>
-                  {answers[q] || <span className={t.textMuted}>Geen antwoord ingevuld</span>}
+                <div className={`px-3 py-2 ${theme.cardSecondary} rounded-lg text-sm min-h-[60px] ${theme.textSecondary}`}>
+                  {answers[q] || <span className={theme.textMuted}>{t('reflection.noAnswer')}</span>}
                 </div>
               )}
             </div>
           ))}
         </div>
 
-        <p className={`text-xs ${t.textMuted} mt-4`}>💡 Wijzig vragen via instellingen</p>
+        <p className={`text-xs ${theme.textMuted} mt-4`}>{t('reflection.editHint')}</p>
       </div>
 
       {datesWithReflections.length > 0 && (
-        <div className={`${t.card} rounded-2xl p-5 shadow-sm`}>
-          <h3 className={`font-semibold ${t.textSecondary} mb-3 text-sm`}>Eerdere reflecties</h3>
+        <div className={`${theme.card} rounded-2xl p-5 shadow-sm`}>
+          <h3 className={`font-semibold ${theme.textSecondary} mb-3 text-sm`}>{t('reflection.earlier')}</h3>
           <div className="space-y-2">
             {datesWithReflections.slice(0, 10).map(date => (
               <button
                 key={date}
                 onClick={() => setSelectedDate(date)}
-                className={`w-full text-left px-3 py-2 ${t.cardSecondary} ${t.hover} rounded-lg text-sm transition flex items-center justify-between`}
+                className={`w-full text-left px-3 py-2 ${theme.cardSecondary} ${theme.hover} rounded-lg text-sm transition flex items-center justify-between`}
               >
-                <span className={t.textSecondary}>
+                <span className={theme.textSecondary}>
                   {new Date(date).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'short' })}
                 </span>
-                <ChevronRight className={`w-4 h-4 ${t.textMuted}`} />
+                <ChevronRight className={`w-4 h-4 ${theme.textMuted}`} />
               </button>
             ))}
           </div>
@@ -1935,7 +1913,8 @@ function ReflectionView({ reflectionQuestions, reflectionAnswers, setReflectionA
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, showReflectionOnToday, setShowReflectionOnToday, t, dayNames, setEditingModule }) {
+function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, showReflectionOnToday, setShowReflectionOnToday, theme, dayNames, setEditingModule }) {
+  const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState('modules');
   const [helpView, setHelpView] = useState(null); // null | 'list' | 'install' | 'feedback'
   const [reorderMode, setReorderMode] = useState(false);
@@ -1966,9 +1945,9 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
   };
 
   const helpTitles = {
-    list: 'Help',
-    install: 'App op beginscherm zetten',
-    feedback: 'Feedback geven',
+    list: t('help.title'),
+    install: t('help.install'),
+    feedback: t('help.feedback'),
   };
 
   const handleBack = () => {
@@ -1981,64 +1960,65 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
 
   return (
     <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4 overflow-y-auto">
-      <div className={`${t.card} rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto my-4`}>
+      <div className={`${theme.card} rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto my-4`}>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2 min-w-0">
             {helpView !== null && (
               <button
                 onClick={handleBack}
-                className={`p-2 ${t.hover} rounded-lg`}
-                aria-label="Terug"
+                className={`p-2 ${theme.hover} rounded-lg`}
+                aria-label={t('settings.backAria')}
               >
-                <ChevronLeft className={`w-5 h-5 ${t.textSecondary}`} />
+                <ChevronLeft className={`w-5 h-5 ${theme.textSecondary}`} />
               </button>
             )}
-            <h2 className={`text-xl font-bold ${t.text} truncate`}>
-              {helpView === null ? 'Instellingen' : helpTitles[helpView]}
+            <h2 className={`text-xl font-bold ${theme.text} truncate`}>
+              {helpView === null ? t('settings.title') : helpTitles[helpView]}
             </h2>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
             {helpView === null && (
               <button
                 onClick={() => setHelpView('list')}
-                className={`p-2 ${t.hover} rounded-lg`}
-                aria-label="Help"
+                className={`p-2 ${theme.hover} rounded-lg`}
+                aria-label={t('settings.helpAria')}
               >
-                <HelpCircle className={`w-5 h-5 ${t.textSecondary}`} />
+                <HelpCircle className={`w-5 h-5 ${theme.textSecondary}`} />
               </button>
             )}
-            <button onClick={onClose} className={`p-2 ${t.hover} rounded-lg`} aria-label="Sluiten">
-              <X className={`w-5 h-5 ${t.textSecondary}`} />
+            <button onClick={onClose} className={`p-2 ${theme.hover} rounded-lg`} aria-label={t('settings.closeAria')}>
+              <X className={`w-5 h-5 ${theme.textSecondary}`} />
             </button>
           </div>
         </div>
 
         {helpView === 'list' && (
-          <HelpOverlay t={t} onSelect={setHelpView} />
+          <HelpOverlay theme={theme} onSelect={setHelpView} />
         )}
 
         {helpView === 'install' && (
-          <InstallGuide t={t} />
+          <InstallGuide theme={theme} />
         )}
 
         {helpView === 'feedback' && (
-          <FeedbackForm t={t} onBack={() => setHelpView('list')} />
+          <FeedbackForm theme={theme} onBack={() => setHelpView('list')} />
         )}
 
         {helpView === null && (
         <>
-        <div className={`flex gap-1 mb-6 ${t.cardSecondary} rounded-xl p-1`}>
+        <div className={`flex gap-1 mb-6 ${theme.cardSecondary} rounded-xl p-1`}>
           {[
-            { id: 'modules', label: 'Modules' },
-            { id: 'streaks', label: 'Streaks' },
-            { id: 'reflect', label: 'Reflectie' },
-            { id: 'theme', label: 'Thema' },
+            { id: 'modules', label: t('settings.tabModules') },
+            { id: 'streaks', label: t('settings.tabStreaks') },
+            { id: 'reflect', label: t('settings.tabReflection') },
+            { id: 'theme', label: t('settings.tabTheme') },
+            { id: 'language', label: t('settings.tabLanguage') },
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex-1 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === tab.id ? 'bg-blue-500 text-white' : `${t.textMuted}`
+                activeTab === tab.id ? 'bg-blue-500 text-white' : `${theme.textMuted}`
               }`}
             >
               {tab.label}
@@ -2049,23 +2029,21 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
         {activeTab === 'modules' && (
           <div>
             <div className="flex items-center justify-between gap-2 mb-2">
-              <h3 className={`font-semibold ${t.textSecondary}`}>Beheer modules</h3>
+              <h3 className={`font-semibold ${theme.textSecondary}`}>{t('settings.manageModules')}</h3>
               <button
                 onClick={() => setReorderMode(v => !v)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                   reorderMode
                     ? 'bg-slate-700 text-white'
-                    : `border ${t.border} ${t.textSecondary} ${t.hover}`
+                    : `border ${theme.border} ${theme.textSecondary} ${theme.hover}`
                 }`}
               >
                 <ArrowUpDown className="w-3.5 h-3.5" />
-                {reorderMode ? 'Klaar' : 'Volgorde'}
+                {reorderMode ? t('settings.reorderToggleOn') : t('settings.reorderToggleOff')}
               </button>
             </div>
-            <p className={`text-xs ${t.textMuted} mb-4`}>
-              {reorderMode
-                ? 'Versleep of gebruik de pijltjes om de volgorde aan te passen.'
-                : 'Activeer, verberg, bewerk of verwijder modules. Voeg eigen modules toe voor wat jij belangrijk vindt.'}
+            <p className={`text-xs ${theme.textMuted} mb-4`}>
+              {reorderMode ? t('settings.reorderHint') : t('settings.manageHint')}
             </p>
 
             <div className="space-y-2 mb-4">
@@ -2090,12 +2068,12 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                       setDragOverId(null);
                     }}
                     onClick={() => { if (!reorderMode) setEditingModule(mod); }}
-                    className={`flex items-center gap-2 p-3 ${t.cardSecondary} rounded-lg transition ${
+                    className={`flex items-center gap-2 p-3 ${theme.cardSecondary} rounded-lg transition ${
                       reorderMode ? 'cursor-default' : 'cursor-pointer'
                     } ${isDragging ? 'opacity-40' : ''} ${isDragOver ? `ring-2 ring-${mod.color}-400` : ''}`}
                   >
                     {reorderMode && (
-                      <span className={`${t.textMuted} touch-none cursor-grab active:cursor-grabbing`} aria-hidden>
+                      <span className={`${theme.textMuted} touch-none cursor-grab active:cursor-grabbing`} aria-hidden>
                         <GripVertical className="w-4 h-4" />
                       </span>
                     )}
@@ -2105,22 +2083,22 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                           e.stopPropagation();
                           setModules(prev => prev.map(m => m.id === mod.id ? { ...m, enabled: !m.enabled } : m));
                         }}
-                        className={`p-1.5 rounded transition ${mod.enabled ? `text-${mod.color}-500` : t.textMuted}`}
-                        title={mod.enabled ? 'Verbergen' : 'Tonen'}
+                        className={`p-1.5 rounded transition ${mod.enabled ? `text-${mod.color}-500` : theme.textMuted}`}
+                        title={mod.enabled ? t('common.hide') : t('common.show')}
                       >
                         {mod.enabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                       </button>
                     )}
-                    <Icon className={`w-4 h-4 ${mod.enabled ? `text-${mod.color}-500` : t.textMuted}`} />
+                    <Icon className={`w-4 h-4 ${mod.enabled ? `text-${mod.color}-500` : theme.textMuted}`} />
                     <div className="flex-1 min-w-0">
-                      <div className={`text-sm font-medium ${mod.enabled ? t.textSecondary : t.textMuted}`}>
-                        {mod.name}
+                      <div className={`text-sm font-medium ${mod.enabled ? theme.textSecondary : theme.textMuted}`}>
+                        {resolveModuleName(mod, t)}
                       </div>
-                      <div className={`text-xs ${t.textMuted}`}>
-                        {mod.type === 'checklist' && `Checklist · ${(mod.items || []).length} items`}
-                        {mod.type === 'choice' && 'Keuze + voltooien'}
-                        {mod.type === 'counter' && `Counter · ${formatAmount(mod.dailyGoal ?? mod.dailyGoalMinutes ?? 0, mod.unit || 'minutes')} doel`}
-                        {mod.type === 'tasks' && 'Eigen takenlijst'}
+                      <div className={`text-xs ${theme.textMuted}`}>
+                        {mod.type === 'checklist' && t('modules.summary.checklistItems', { n: (mod.items || []).length })}
+                        {mod.type === 'choice' && t('modules.summary.choice')}
+                        {mod.type === 'counter' && t('modules.summary.counter', { goal: formatAmount(mod.dailyGoal ?? mod.dailyGoalMinutes ?? 0, mod.unit || 'minutes') })}
+                        {mod.type === 'tasks' && t('modules.summary.tasks')}
                       </div>
                     </div>
                     {reorderMode && (
@@ -2128,16 +2106,16 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                         <button
                           onClick={(e) => { e.stopPropagation(); moveModule(mod.id, -1); }}
                           disabled={isFirst}
-                          aria-label="Naar boven"
-                          className={`p-1.5 rounded transition ${t.hover} ${t.textSecondary} disabled:opacity-30 disabled:cursor-not-allowed`}
+                          aria-label={t('common.moveUp')}
+                          className={`p-1.5 rounded transition ${theme.hover} ${theme.textSecondary} disabled:opacity-30 disabled:cursor-not-allowed`}
                         >
                           <ChevronUp className="w-4 h-4" />
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); moveModule(mod.id, 1); }}
                           disabled={isLast}
-                          aria-label="Naar beneden"
-                          className={`p-1.5 rounded transition ${t.hover} ${t.textSecondary} disabled:opacity-30 disabled:cursor-not-allowed`}
+                          aria-label={t('common.moveDown')}
+                          className={`p-1.5 rounded transition ${theme.hover} ${theme.textSecondary} disabled:opacity-30 disabled:cursor-not-allowed`}
                         >
                           <ChevronDown className="w-4 h-4" />
                         </button>
@@ -2163,20 +2141,20 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                 className="w-full py-3 border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-sm font-medium text-slate-500 hover:text-blue-500 transition flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4" />
-                Nieuwe module toevoegen
+                {t('modules.add')}
               </button>
             )}
 
             <button
               onClick={() => {
-                if (window.confirm('Weet je zeker dat je alle modules wilt resetten? Je items en instellingen voor modules gaan verloren. Je dagelijkse data en geschiedenis blijven bewaard.')) {
-                  setModules(DEFAULT_MODULES);
+                if (window.confirm(t('settings.resetConfirm'))) {
+                  setModules(instantiateDefaults(DEFAULT_MODULES, t));
                   setStreakSettings({});
                 }
               }}
-              className={`w-full mt-3 py-2 text-xs ${t.textMuted} hover:text-red-500 transition`}
+              className={`w-full mt-3 py-2 text-xs ${theme.textMuted} hover:text-red-500 transition`}
             >
-              Reset modules naar standaard
+              {t('settings.resetModules')}
             </button>
           </div>
         )}
@@ -2185,13 +2163,13 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
           const activeCount = modules.filter(m => m.countInStreak === true).length;
           return (
             <div>
-              <h3 className={`font-semibold ${t.textSecondary} mb-3`}>Streaks beheren</h3>
-              <p className={`text-xs ${t.textMuted} mb-4`}>
-                Kies welke modules meetellen voor je streaks (max. 4) en bepaal per module de criteria.
+              <h3 className={`font-semibold ${theme.textSecondary} mb-3`}>{t('settings.streaksManage')}</h3>
+              <p className={`text-xs ${theme.textMuted} mb-4`}>
+                {t('settings.streaksHint')}
               </p>
 
-              <div className={`${t.cardSecondary} rounded-lg p-3 mb-4 text-sm ${t.textSecondary}`}>
-                <span className="font-medium">{activeCount}</span> van max. <span className="font-medium">4</span> streaks actief
+              <div className={`${theme.cardSecondary} rounded-lg p-3 mb-4 text-sm ${theme.textSecondary}`}>
+                {t('settings.streaksActive', { active: activeCount })}
               </div>
 
               <div className="space-y-4">
@@ -2204,7 +2182,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                   return (
                     <div
                       key={mod.id}
-                      className={`p-3 ${t.cardSecondary} rounded-lg transition ${
+                      className={`p-3 ${theme.cardSecondary} rounded-lg transition ${
                         isActive ? `border-2 border-${mod.color}-400` : 'border-2 border-transparent'
                       }`}
                     >
@@ -2224,9 +2202,9 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                           {isActive && <Check className="w-3 h-3 text-white" />}
                         </button>
                         <Icon className={`w-4 h-4 text-${mod.color}-500`} />
-                        <span className={`font-medium text-sm ${t.textSecondary}`}>{mod.name}</span>
+                        <span className={`font-medium text-sm ${theme.textSecondary}`}>{resolveModuleName(mod, t)}</span>
                         {atMax && (
-                          <span className={`ml-auto text-xs ${t.textMuted}`}>max. bereikt</span>
+                          <span className={`ml-auto text-xs ${theme.textMuted}`}>{t('settings.streaksMax')}</span>
                         )}
                       </div>
 
@@ -2235,25 +2213,25 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                           <button
                             onClick={() => setStreakSettings(prev => ({ ...prev, [mod.id]: { ...prev[mod.id], requireAll: true } }))}
                             className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition ${
-                              setting.requireAll !== false ? `bg-${mod.color}-500 text-white` : `${t.card} ${t.textMuted}`
+                              setting.requireAll !== false ? `bg-${mod.color}-500 text-white` : `${theme.card} ${theme.textMuted}`
                             }`}
                           >
-                            Alle items
+                            {t('settings.streakAllItems')}
                           </button>
                           <button
                             onClick={() => setStreakSettings(prev => ({ ...prev, [mod.id]: { ...prev[mod.id], requireAll: false } }))}
                             className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition ${
-                              setting.requireAll === false ? `bg-${mod.color}-500 text-white` : `${t.card} ${t.textMuted}`
+                              setting.requireAll === false ? `bg-${mod.color}-500 text-white` : `${theme.card} ${theme.textMuted}`
                             }`}
                           >
-                            Minstens 1
+                            {t('settings.streakAtLeastOne')}
                           </button>
                         </div>
                       )}
 
                       {isActive && mod.type === 'counter' && (mod.unit || 'minutes') === 'minutes' && (
                         <div>
-                          <label className={`text-xs ${t.textMuted} mb-2 block`}>Min. minuten per dag</label>
+                          <label className={`text-xs ${theme.textMuted} mb-2 block`}>{t('settings.streakMinutesGoal')}</label>
                           <div className="flex gap-1">
                             {[30, 60, 90, 120, 180, 240].map(min => {
                               const current = setting.minutesGoal ?? mod.dailyGoal ?? mod.dailyGoalMinutes;
@@ -2262,10 +2240,10 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                                   key={min}
                                   onClick={() => setStreakSettings(prev => ({ ...prev, [mod.id]: { ...prev[mod.id], minutesGoal: min } }))}
                                   className={`flex-1 py-2 rounded-lg text-xs font-medium transition ${
-                                    current === min ? `bg-${mod.color}-500 text-white` : `${t.card} ${t.textMuted}`
+                                    current === min ? `bg-${mod.color}-500 text-white` : `${theme.card} ${theme.textMuted}`
                                   }`}
                                 >
-                                  {min < 60 ? `${min}m` : `${min/60}u`}
+                                  {min < 60 ? `${min}${t('common.minute_short')}` : `${min/60}${t('common.hour_short')}`}
                                 </button>
                               );
                             })}
@@ -2274,14 +2252,14 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                       )}
 
                       {isActive && mod.type === 'counter' && (mod.unit || 'minutes') !== 'minutes' && (
-                        <p className={`text-xs ${t.textMuted}`}>
-                          Streak telt zodra je het dagdoel ({formatAmount(mod.dailyGoal ?? 0, mod.unit)}) haalt.
+                        <p className={`text-xs ${theme.textMuted}`}>
+                          {t('settings.streakCounterUnitHint', { goal: formatAmount(mod.dailyGoal ?? 0, mod.unit) })}
                         </p>
                       )}
 
                       {isActive && mod.type === 'choice' && (
-                        <p className={`text-xs ${t.textMuted}`}>
-                          Streak telt zodra je een optie kiest.
+                        <p className={`text-xs ${theme.textMuted}`}>
+                          {t('settings.streakChoiceHint')}
                         </p>
                       )}
                     </div>
@@ -2294,13 +2272,13 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
 
         {activeTab === 'reflect' && (
           <div>
-            <h3 className={`font-semibold ${t.textSecondary} mb-3`}>Reflectievragen</h3>
+            <h3 className={`font-semibold ${theme.textSecondary} mb-3`}>{t('settings.reflectionQuestions')}</h3>
             <ReflectionSettings
               reflectionQuestions={reflectionQuestions}
               setReflectionQuestions={setReflectionQuestions}
               recurringTasks={recurringTasks}
               setRecurringTasks={setRecurringTasks}
-              t={t}
+              theme={theme}
               dayNames={dayNames}
             />
           </div>
@@ -2308,33 +2286,33 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
 
         {activeTab === 'theme' && (
           <div>
-            <h3 className={`font-semibold ${t.textSecondary} mb-3`}>Thema</h3>
+            <h3 className={`font-semibold ${theme.textSecondary} mb-3`}>{t('settings.theme')}</h3>
             <div className="flex gap-2">
               <button
                 onClick={() => setDarkMode(false)}
                 className={`flex-1 py-3 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 ${
-                  !darkMode ? 'bg-blue-500 text-white' : `${t.cardSecondary} ${t.textMuted}`
+                  !darkMode ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
                 }`}
               >
-                <Sun className="w-4 h-4" /> Licht
+                <Sun className="w-4 h-4" /> {t('settings.themeLight')}
               </button>
               <button
                 onClick={() => setDarkMode(true)}
                 className={`flex-1 py-3 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 ${
-                  darkMode ? 'bg-blue-500 text-white' : `${t.cardSecondary} ${t.textMuted}`
+                  darkMode ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
                 }`}
               >
-                <Moon className="w-4 h-4" /> Donker
+                <Moon className="w-4 h-4" /> {t('settings.themeDark')}
               </button>
             </div>
 
-            <div className={`mt-6 pt-6 border-t ${t.border}`}>
-              <h3 className={`font-semibold ${t.textSecondary} mb-3`}>Effecten</h3>
+            <div className={`mt-6 pt-6 border-t ${theme.border}`}>
+              <h3 className={`font-semibold ${theme.textSecondary} mb-3`}>{t('settings.effects')}</h3>
 
-              <label className={`flex items-center justify-between gap-3 p-3 ${t.cardSecondary} rounded-lg mb-3`}>
+              <label className={`flex items-center justify-between gap-3 p-3 ${theme.cardSecondary} rounded-lg mb-3`}>
                 <div className="min-w-0">
-                  <span className={`text-sm font-medium ${t.textSecondary}`}>Gouden rand bij voltooide dagen</span>
-                  <p className={`text-xs ${t.textMuted} mt-0.5`}>Animatie rond dagen waarop alles afgevinkt is.</p>
+                  <span className={`text-sm font-medium ${theme.textSecondary}`}>{t('settings.goldenBorder')}</span>
+                  <p className={`text-xs ${theme.textMuted} mt-0.5`}>{t('settings.goldenBorderHint')}</p>
                 </div>
                 <input
                   type="checkbox"
@@ -2344,10 +2322,10 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                 />
               </label>
 
-              <label className={`flex items-center justify-between gap-3 p-3 ${t.cardSecondary} rounded-lg mb-3`}>
+              <label className={`flex items-center justify-between gap-3 p-3 ${theme.cardSecondary} rounded-lg mb-3`}>
                 <div className="min-w-0">
-                  <span className={`text-sm font-medium ${t.textSecondary}`}>Reflectie tonen op Vandaag</span>
-                  <p className={`text-xs ${t.textMuted} mt-0.5`}>Verberg de Reflectie-kaart op het Vandaag-scherm. De Reflectie-tab blijft bereikbaar.</p>
+                  <span className={`text-sm font-medium ${theme.textSecondary}`}>{t('settings.showReflection')}</span>
+                  <p className={`text-xs ${theme.textMuted} mt-0.5`}>{t('settings.showReflectionHint')}</p>
                 </div>
                 <input
                   type="checkbox"
@@ -2358,11 +2336,11 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
               </label>
             </div>
 
-            <div className={`mt-6 pt-6 border-t ${t.border}`}>
-              <h3 className={`font-semibold ${t.textSecondary} mb-3`}>Geluiden</h3>
+            <div className={`mt-6 pt-6 border-t ${theme.border}`}>
+              <h3 className={`font-semibold ${theme.textSecondary} mb-3`}>{t('settings.sounds')}</h3>
 
-              <label className={`flex items-center justify-between p-3 ${t.cardSecondary} rounded-lg mb-3`}>
-                <span className={`text-sm font-medium ${t.textSecondary}`}>Geluidseffecten</span>
+              <label className={`flex items-center justify-between p-3 ${theme.cardSecondary} rounded-lg mb-3`}>
+                <span className={`text-sm font-medium ${theme.textSecondary}`}>{t('settings.soundEffects')}</span>
                 <input
                   type="checkbox"
                   checked={soundEnabled}
@@ -2371,8 +2349,8 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                 />
               </label>
 
-              <div className={`flex items-center gap-3 p-3 ${t.cardSecondary} rounded-lg mb-3 ${!soundEnabled ? 'opacity-40' : ''}`}>
-                <span className={`text-sm font-medium ${t.textSecondary} min-w-[60px]`}>Volume</span>
+              <div className={`flex items-center gap-3 p-3 ${theme.cardSecondary} rounded-lg mb-3 ${!soundEnabled ? 'opacity-40' : ''}`}>
+                <span className={`text-sm font-medium ${theme.textSecondary} min-w-[60px]`}>{t('settings.volume')}</span>
                 <input
                   type="range"
                   min="0"
@@ -2382,33 +2360,59 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                   disabled={!soundEnabled}
                   className="flex-1"
                 />
-                <span className={`text-sm ${t.textMuted} min-w-[40px] text-right`}>{soundVolume}%</span>
+                <span className={`text-sm ${theme.textMuted} min-w-[40px] text-right`}>{soundVolume}%</span>
               </div>
 
               <div className="flex gap-2">
                 <button
                   onClick={() => playSound('tick', { enabled: true, volume: soundVolume })}
-                  className={`flex-1 py-2 ${t.cardSecondary} ${t.hover} ${t.textSecondary} rounded-lg text-xs font-medium transition`}
+                  className={`flex-1 py-2 ${theme.cardSecondary} ${theme.hover} ${theme.textSecondary} rounded-lg text-xs font-medium transition`}
                 >
-                  Test tick
+                  {t('settings.testTick')}
                 </button>
                 <button
                   onClick={() => playSound('pop', { enabled: true, volume: soundVolume })}
-                  className={`flex-1 py-2 ${t.cardSecondary} ${t.hover} ${t.textSecondary} rounded-lg text-xs font-medium transition`}
+                  className={`flex-1 py-2 ${theme.cardSecondary} ${theme.hover} ${theme.textSecondary} rounded-lg text-xs font-medium transition`}
                 >
-                  Test pop
+                  {t('settings.testPop')}
                 </button>
                 <button
                   onClick={() => playSound('chime', { enabled: true, volume: soundVolume })}
-                  className={`flex-1 py-2 ${t.cardSecondary} ${t.hover} ${t.textSecondary} rounded-lg text-xs font-medium transition`}
+                  className={`flex-1 py-2 ${theme.cardSecondary} ${theme.hover} ${theme.textSecondary} rounded-lg text-xs font-medium transition`}
                 >
-                  Test chime
+                  {t('settings.testChime')}
                 </button>
               </div>
 
-              <p className={`text-xs ${t.textMuted} mt-3`}>
-                Korte tonen bij afvinken, voltooien van een module en counter-acties.
+              <p className={`text-xs ${theme.textMuted} mt-3`}>
+                {t('settings.soundsHint')}
               </p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'language' && (
+          <div>
+            <h3 className={`font-semibold ${theme.textSecondary} mb-3`}>{t('settings.language')}</h3>
+            <div className="space-y-2">
+              {[
+                { value: 'auto', label: t('settings.languageAuto') },
+                { value: 'nl', label: 'Nederlands' },
+                { value: 'en', label: 'English' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setLanguage(opt.value)}
+                  className={`w-full flex items-center justify-between p-3 rounded-lg text-sm font-medium transition ${
+                    languageSetting === opt.value
+                      ? 'bg-blue-500 text-white'
+                      : `${theme.cardSecondary} ${theme.textSecondary}`
+                  }`}
+                >
+                  <span>{opt.label}</span>
+                  {languageSetting === opt.value && <Check className="w-4 h-4" />}
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -2433,17 +2437,20 @@ const DEFAULT_SLEEP_GOALS = {
   sunday:    { bed: '23:00', wake: '07:30' },
 };
 
-const TYPE_OPTIONS = [
-  { id: 'checklist', label: 'Checklist', desc: 'Lijst met items' },
-  { id: 'choice', label: 'Keuze', desc: 'Optie + voltooien' },
-  { id: 'counter', label: 'Teller', desc: 'Aantal bijhouden tegen een dagdoel' },
-  { id: 'tasks', label: 'Taken', desc: 'Vrije takenlijst' },
-  { id: 'projects', label: 'Project', desc: 'Vakken & subdoelen' },
-  { id: 'sleep', label: 'Slaap', desc: 'Bedtijd, opstaan, ochtendscore' },
-  { id: 'collection', label: 'Collectie', desc: 'Catalogus van items met events' },
-];
+function getTypeOptions(t) {
+  return [
+    { id: 'checklist', label: t('modules.types.checklist'), desc: t('modules.types.checklistDesc') },
+    { id: 'choice', label: t('modules.types.choice'), desc: t('modules.types.choiceDesc') },
+    { id: 'counter', label: t('modules.types.counter'), desc: t('modules.types.counterDesc') },
+    { id: 'tasks', label: t('modules.types.tasks'), desc: t('modules.types.tasksDesc') },
+    { id: 'projects', label: t('modules.types.projects'), desc: t('modules.types.projectsDesc') },
+    { id: 'sleep', label: t('modules.types.sleep'), desc: t('modules.types.sleepDesc') },
+    { id: 'collection', label: t('modules.types.collection'), desc: t('modules.types.collectionDesc') },
+  ];
+}
 
-function CollectionTagsEditor({ tags, onAdd, onUpdate, onRemove, t }) {
+function CollectionTagsEditor({ tags, onAdd, onUpdate, onRemove, theme }) {
+  const { t } = useTranslation();
   const [label, setLabel] = useState('');
   const [color, setColor] = useState('blue');
   const submit = () => {
@@ -2453,20 +2460,20 @@ function CollectionTagsEditor({ tags, onAdd, onUpdate, onRemove, t }) {
   };
   return (
     <div>
-      <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
-        Tags
+      <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+        {t('common.tags')}
       </label>
       {tags.length === 0 ? (
-        <p className={`text-xs ${t.textMuted} mb-2`}>Nog geen tags.</p>
+        <p className={`text-xs ${theme.textMuted} mb-2`}>{t('collections.noTags')}</p>
       ) : (
         <ul className="space-y-1 mb-2">
           {tags.map((tg) => (
-            <li key={tg.id} className={`flex items-center gap-2 p-2 ${t.cardSecondary} rounded-lg`}>
+            <li key={tg.id} className={`flex items-center gap-2 p-2 ${theme.cardSecondary} rounded-lg`}>
               <select
                 value={tg.color}
                 onChange={(e) => onUpdate(tg.id, { color: e.target.value })}
-                className={`px-2 py-1 ${t.input} rounded text-xs`}
-                aria-label="Kleur"
+                className={`px-2 py-1 ${theme.input} rounded text-xs`}
+                aria-label={t('collections.tagColorAria')}
               >
                 {COLOR_OPTIONS.map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -2476,13 +2483,13 @@ function CollectionTagsEditor({ tags, onAdd, onUpdate, onRemove, t }) {
                 type="text"
                 value={tg.label}
                 onChange={(e) => onUpdate(tg.id, { label: e.target.value })}
-                className={`flex-1 px-2 py-1 ${t.input} rounded text-sm`}
+                className={`flex-1 px-2 py-1 ${theme.input} rounded text-sm`}
               />
               <button
                 type="button"
                 onClick={() => onRemove(tg.id)}
                 className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition"
-                aria-label="Tag verwijderen"
+                aria-label={t('collections.deleteTagAria')}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -2494,8 +2501,8 @@ function CollectionTagsEditor({ tags, onAdd, onUpdate, onRemove, t }) {
         <select
           value={color}
           onChange={(e) => setColor(e.target.value)}
-          className={`px-2 py-2 ${t.input} rounded-lg text-sm`}
-          aria-label="Kleur nieuwe tag"
+          className={`px-2 py-2 ${theme.input} rounded-lg text-sm`}
+          aria-label={t('collections.newTagColorAria')}
         >
           {COLOR_OPTIONS.map((c) => (
             <option key={c} value={c}>{c}</option>
@@ -2506,8 +2513,8 @@ function CollectionTagsEditor({ tags, onAdd, onUpdate, onRemove, t }) {
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } }}
-          placeholder="Tag-naam..."
-          className={`flex-1 px-3 py-2 ${t.input} rounded-lg text-sm`}
+          placeholder={t('collections.newTagPlaceholder')}
+          className={`flex-1 px-3 py-2 ${theme.input} rounded-lg text-sm`}
         />
         <button
           type="button"
@@ -2526,7 +2533,9 @@ function genId(prefix) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
+function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
+  const { t } = useTranslation();
+  const TYPE_OPTIONS = useMemo(() => getTypeOptions(t), [t]);
   const [editing, setEditing] = useState(mod);
   const [newItem, setNewItem] = useState('');
   const [expandedItemId, setExpandedItemId] = useState(null);
@@ -2612,44 +2621,44 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className={`${t.card} rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto my-4`}>
+      <div className={`${theme.card} rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto my-4`}>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             {isNew && step !== 'type' && (
               <button
                 onClick={() => setStep(step === 'config' ? 'preset' : 'type')}
-                className={`p-1.5 ${t.hover} rounded-lg ${t.textMuted}`}
-                aria-label="Terug"
+                className={`p-1.5 ${theme.hover} rounded-lg ${theme.textMuted}`}
+                aria-label={t('common.back')}
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
             )}
-            <h2 className={`text-xl font-bold ${t.text}`}>
-              {!isNew && 'Bewerk module'}
-              {isNew && step === 'type' && 'Nieuwe module — kies type'}
-              {isNew && step === 'preset' && 'Kies een suggestie'}
-              {isNew && step === 'config' && 'Module aanpassen'}
+            <h2 className={`text-xl font-bold ${theme.text}`}>
+              {!isNew && t('modules.editTitle')}
+              {isNew && step === 'type' && t('modules.newPickType')}
+              {isNew && step === 'preset' && t('modules.pickPreset')}
+              {isNew && step === 'config' && t('modules.configure')}
             </h2>
           </div>
-          <button onClick={onCancel} className={`p-2 ${t.hover} rounded-lg`}>
-            <X className={`w-5 h-5 ${t.textSecondary}`} />
+          <button onClick={onCancel} className={`p-2 ${theme.hover} rounded-lg`}>
+            <X className={`w-5 h-5 ${theme.textSecondary}`} />
           </button>
         </div>
 
         {step === 'type' && (
           <div className="space-y-4">
-            <p className={`text-sm ${t.textMuted}`}>
-              Wat voor module wil je toevoegen?
+            <p className={`text-sm ${theme.textMuted}`}>
+              {t('modules.typePicker')}
             </p>
             <div className="grid grid-cols-2 gap-2">
               {TYPE_OPTIONS.map(typ => (
                 <button
                   key={typ.id}
                   onClick={() => selectType(typ.id)}
-                  className={`p-3 rounded-lg text-left transition ${t.cardSecondary} ${t.textSecondary} hover:bg-blue-500 hover:text-white`}
+                  className={`p-3 rounded-lg text-left transition ${theme.cardSecondary} ${theme.textSecondary} hover:bg-blue-500 hover:text-white`}
                 >
                   <div className="font-medium text-sm">{typ.label}</div>
-                  <div className={`text-xs ${t.textMuted}`}>{typ.desc}</div>
+                  <div className={`text-xs ${theme.textMuted}`}>{typ.desc}</div>
                 </button>
               ))}
             </div>
@@ -2658,22 +2667,22 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
 
         {step === 'preset' && (
           <div className="space-y-4">
-            <div className={`flex gap-1 p-1 ${t.cardSecondary} rounded-lg`}>
+            <div className={`flex gap-1 p-1 ${theme.cardSecondary} rounded-lg`}>
               <button
                 onClick={() => setPresetTab('suggestions')}
                 className={`flex-1 py-2 rounded-md text-sm font-medium transition ${
-                  presetTab === 'suggestions' ? `${t.card} ${t.textSecondary} shadow-sm` : t.textMuted
+                  presetTab === 'suggestions' ? `${theme.card} ${theme.textSecondary} shadow-sm` : theme.textMuted
                 }`}
               >
-                Suggesties
+                {t('modules.suggestions')}
               </button>
               <button
                 onClick={() => setPresetTab('blank')}
                 className={`flex-1 py-2 rounded-md text-sm font-medium transition ${
-                  presetTab === 'blank' ? `${t.card} ${t.textSecondary} shadow-sm` : t.textMuted
+                  presetTab === 'blank' ? `${theme.card} ${theme.textSecondary} shadow-sm` : theme.textMuted
                 }`}
               >
-                Zelf maken
+                {t('modules.blankSelf')}
               </button>
             </div>
 
@@ -2685,46 +2694,46 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
                     <button
                       key={idx}
                       onClick={() => applyPreset(preset)}
-                      className={`w-full flex items-center gap-3 p-3 ${t.cardSecondary} rounded-lg text-left ${t.hover} transition`}
+                      className={`w-full flex items-center gap-3 p-3 ${theme.cardSecondary} rounded-lg text-left ${theme.hover} transition`}
                     >
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center bg-${preset.color}-100 dark:bg-${preset.color}-900/30 text-${preset.color}-500`}>
                         <PresetIcon className="w-5 h-5" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className={`text-sm font-medium ${t.textSecondary}`}>{preset.name}</div>
+                        <div className={`text-sm font-medium ${theme.textSecondary}`}>{preset.name}</div>
                         {preset.unit && (
-                          <div className={`text-xs ${t.textMuted}`}>
-                            Doel: {formatAmount(preset.dailyGoal, preset.unit)}
+                          <div className={`text-xs ${theme.textMuted}`}>
+                            {t('modules.presetGoal', { amount: formatAmount(preset.dailyGoal, preset.unit) })}
                           </div>
                         )}
                         {preset.items && (
-                          <div className={`text-xs ${t.textMuted}`}>{preset.items.length} items</div>
+                          <div className={`text-xs ${theme.textMuted}`}>{t('modules.presetItems', { n: preset.items.length })}</div>
                         )}
                         {preset.options && (
-                          <div className={`text-xs ${t.textMuted}`}>{preset.options.length} opties</div>
+                          <div className={`text-xs ${theme.textMuted}`}>{t('modules.presetOptions', { n: preset.options.length })}</div>
                         )}
                       </div>
                     </button>
                   );
                 })}
                 {(!MODULE_PRESETS[editing.type] || MODULE_PRESETS[editing.type].length === 0) && (
-                  <p className={`text-sm ${t.textMuted} text-center py-4`}>
-                    Geen suggesties beschikbaar voor dit type. Kies "Zelf maken".
+                  <p className={`text-sm ${theme.textMuted} text-center py-4`}>
+                    {t('modules.noSuggestions')}
                   </p>
                 )}
               </div>
             )}
 
             {presetTab === 'blank' && (
-              <div className={`p-4 ${t.cardSecondary} rounded-lg text-center space-y-3`}>
-                <p className={`text-sm ${t.textSecondary}`}>
-                  Begin met een lege module en vul alles zelf in.
+              <div className={`p-4 ${theme.cardSecondary} rounded-lg text-center space-y-3`}>
+                <p className={`text-sm ${theme.textSecondary}`}>
+                  {t('modules.blankIntro')}
                 </p>
                 <button
                   onClick={startBlank}
                   className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition"
                 >
-                  Lege module maken
+                  {t('modules.blankCreate')}
                 </button>
               </div>
             )}
@@ -2734,18 +2743,18 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
         {step === 'config' && (
         <div className="space-y-4">
           <div>
-            <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>Naam</label>
+            <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('common.name')}</label>
             <input
               type="text"
               value={editing.name || ''}
               onChange={(e) => update('name', e.target.value)}
-              placeholder="Bijv. Meditatie, Lezen, Water drinken..."
-              className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300`}
+              placeholder={t('modules.namePlaceholder')}
+              className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300`}
             />
           </div>
 
           <div>
-            <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>Icoon</label>
+            <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('common.icon')}</label>
             <div className="grid grid-cols-8 gap-1">
               {Object.keys(ICON_OPTIONS).map(iconName => {
                 const Icon = ICON_OPTIONS[iconName];
@@ -2754,7 +2763,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
                     key={iconName}
                     onClick={() => update('icon', iconName)}
                     className={`aspect-square rounded-lg flex items-center justify-center transition ${
-                      editing.icon === iconName ? `bg-${editing.color}-500 text-white` : `${t.cardSecondary} ${t.textMuted}`
+                      editing.icon === iconName ? `bg-${editing.color}-500 text-white` : `${theme.cardSecondary} ${theme.textMuted}`
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -2765,7 +2774,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
           </div>
 
           <div>
-            <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>Kleur</label>
+            <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('common.color')}</label>
             <div className="flex gap-2 flex-wrap">
               {COLOR_OPTIONS.map(c => (
                 <button
@@ -2781,20 +2790,20 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
 
           {editing.type === 'checklist' && (
             <>
-              <div className={`pt-4 border-t ${t.border}`}>
-                <label className={`text-sm font-medium ${t.textSecondary} mb-3 block`}>Opties</label>
+              <div className={`pt-4 border-t ${theme.border}`}>
+                <label className={`text-sm font-medium ${theme.textSecondary} mb-3 block`}>{t('common.options')}</label>
                 <div className="space-y-3">
                   {[
-                    { key: 'allowNotes', title: 'Dagelijkse notities', desc: 'Voeg per dag een korte notitie toe aan een item.' },
-                    { key: 'allowDescriptions', title: 'Instructies per item', desc: 'Geef een item een vaste geheugensteun, bijv. "3 sets van 10".' },
-                    { key: 'allowTargets', title: 'Sets per item', desc: 'Vervang het vinkje door een teller (bijv. 0/3 sets).' },
+                    { key: 'allowNotes', title: t('modules.optDailyNotes.title'), desc: t('modules.optDailyNotes.desc') },
+                    { key: 'allowDescriptions', title: t('modules.optInstructions.title'), desc: t('modules.optInstructions.desc') },
+                    { key: 'allowTargets', title: t('modules.optSetsPerItem.title'), desc: t('modules.optSetsPerItem.desc') },
                   ].map(opt => {
                     const isOn = !!editing[opt.key];
                     return (
                       <button
                         key={opt.key}
                         onClick={() => update(opt.key, !isOn)}
-                        className={`w-full flex items-start gap-3 p-3 rounded-lg text-left transition ${t.cardSecondary} ${t.hover}`}
+                        className={`w-full flex items-start gap-3 p-3 rounded-lg text-left transition ${theme.cardSecondary} ${theme.hover}`}
                       >
                         <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition flex-shrink-0 mt-0.5 ${
                           isOn ? `bg-${editing.color}-500 border-${editing.color}-500` : 'border-slate-300'
@@ -2802,8 +2811,8 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
                           {isOn && <Check className="w-3 h-3 text-white" />}
                         </div>
                         <div className="flex-1">
-                          <div className={`text-sm font-medium ${t.textSecondary}`}>{opt.title}</div>
-                          <div className={`text-xs ${t.textMuted} mt-0.5`}>{opt.desc}</div>
+                          <div className={`text-sm font-medium ${theme.textSecondary}`}>{opt.title}</div>
+                          <div className={`text-xs ${theme.textMuted} mt-0.5`}>{opt.desc}</div>
                         </div>
                       </button>
                     );
@@ -2812,27 +2821,27 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
               </div>
 
               <div>
-                <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>Items</label>
+                <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('common.items')}</label>
                 <div className="space-y-2 mb-2">
                   {(editing.items || []).map(item => {
                     const isExpanded = expandedItemId === item.id;
                     const showSettingsBtn = editing.allowDescriptions || editing.allowTargets;
                     return (
-                      <div key={item.id} className={`${t.cardSecondary} rounded-lg`}>
+                      <div key={item.id} className={`${theme.cardSecondary} rounded-lg`}>
                         <div className="flex items-center gap-2 p-2">
                           <input
                             type="text"
                             value={item.label}
                             onChange={(e) => updateItem(item.id, { label: e.target.value })}
-                            className={`flex-1 px-2 py-1 ${t.input} rounded text-sm focus:outline-none focus:ring-2 focus:ring-${editing.color}-300`}
+                            className={`flex-1 px-2 py-1 ${theme.input} rounded text-sm focus:outline-none focus:ring-2 focus:ring-${editing.color}-300`}
                           />
                           {showSettingsBtn && (
                             <button
                               onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
                               className={`p-1.5 rounded transition ${
-                                isExpanded ? `bg-${editing.color}-500 text-white` : `${t.textMuted} ${t.hover}`
+                                isExpanded ? `bg-${editing.color}-500 text-white` : `${theme.textMuted} ${theme.hover}`
                               }`}
-                              title="Item-instellingen"
+                              title={t('modules.itemSettings')}
                             >
                               <SlidersHorizontal className="w-4 h-4" />
                             </button>
@@ -2848,19 +2857,19 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
                           <div className="px-2 pb-2 space-y-2">
                             {editing.allowDescriptions && (
                               <div>
-                                <label className={`text-xs font-medium ${t.textMuted} mb-1 block`}>Instructie</label>
+                                <label className={`text-xs font-medium ${theme.textMuted} mb-1 block`}>{t('modules.instruction')}</label>
                                 <textarea
                                   value={item.description || ''}
                                   onChange={(e) => updateItem(item.id, { description: e.target.value })}
                                   rows={2}
-                                  placeholder='Bijv. "3 sets van 10"'
-                                  className={`w-full px-2 py-1.5 ${t.input} rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-300`}
+                                  placeholder={t('modules.instructionPlaceholder')}
+                                  className={`w-full px-2 py-1.5 ${theme.input} rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-300`}
                                 />
                               </div>
                             )}
                             {editing.allowTargets && (
                               <div>
-                                <label className={`text-xs font-medium ${t.textMuted} mb-1 block`}>Aantal sets (leeg = vinkje)</label>
+                                <label className={`text-xs font-medium ${theme.textMuted} mb-1 block`}>{t('modules.setsLabel')}</label>
                                 <input
                                   type="number"
                                   min={1}
@@ -2869,8 +2878,8 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
                                     const v = e.target.value;
                                     updateItem(item.id, { target: v === '' ? undefined : Math.max(1, parseInt(v, 10) || 1) });
                                   }}
-                                  placeholder="bijv. 3"
-                                  className={`w-24 px-2 py-1.5 ${t.input} rounded text-sm focus:outline-none focus:ring-2 focus:ring-rose-300`}
+                                  placeholder={t('modules.setsPlaceholder')}
+                                  className={`w-24 px-2 py-1.5 ${theme.input} rounded text-sm focus:outline-none focus:ring-2 focus:ring-rose-300`}
                                 />
                               </div>
                             )}
@@ -2886,8 +2895,8 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
                     value={newItem}
                     onChange={(e) => setNewItem(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addEntry('items')}
-                    placeholder="Nieuw item..."
-                    className={`flex-1 px-3 py-2 ${t.input} rounded-lg text-sm`}
+                    placeholder={t('modules.newItemPlaceholder')}
+                    className={`flex-1 px-3 py-2 ${theme.input} rounded-lg text-sm`}
                   />
                   <button onClick={() => addEntry('items')} className={`px-3 py-2 bg-${editing.color}-500 text-white rounded-lg`}>
                     <Plus className="w-4 h-4" />
@@ -2899,11 +2908,11 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
 
           {editing.type === 'choice' && (
             <div>
-              <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>Opties</label>
+              <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('common.options')}</label>
               <div className="space-y-2 mb-2">
                 {(editing.options || []).map(opt => (
-                  <div key={opt.id} className={`flex items-center gap-2 p-2 ${t.cardSecondary} rounded-lg`}>
-                    <span className={`flex-1 text-sm ${t.textSecondary}`}>{opt.label}</span>
+                  <div key={opt.id} className={`flex items-center gap-2 p-2 ${theme.cardSecondary} rounded-lg`}>
+                    <span className={`flex-1 text-sm ${theme.textSecondary}`}>{opt.label}</span>
                     <button
                       onClick={() => removeEntry('options', opt.id)}
                       className="text-slate-400 hover:text-red-500"
@@ -2919,8 +2928,8 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
                   value={newItem}
                   onChange={(e) => setNewItem(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && addEntry('options')}
-                  placeholder="Bijv. 🚶 Wandelen, 🏃 Hardlopen..."
-                  className={`flex-1 px-3 py-2 ${t.input} rounded-lg text-sm`}
+                  placeholder={t('modules.optionPlaceholder')}
+                  className={`flex-1 px-3 py-2 ${theme.input} rounded-lg text-sm`}
                 />
                 <button onClick={() => addEntry('options')} className={`px-3 py-2 bg-${editing.color}-500 text-white rounded-lg`}>
                   <Plus className="w-4 h-4" />
@@ -2957,38 +2966,38 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
             return (
               <>
                 <div>
-                  <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>Eenheid</label>
+                  <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('modules.unit')}</label>
                   <select
                     value={unit}
                     onChange={(e) => updateUnit(e.target.value)}
-                    className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+                    className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm`}
                   >
-                    <option value="minutes">minuten</option>
-                    <option value="ml">ml</option>
-                    <option value="l">l</option>
-                    <option value="glas">glas</option>
-                    <option value="pages">pagina's</option>
-                    <option value="km">km</option>
-                    <option value="kcal">kcal</option>
-                    <option value="reps">reps</option>
+                    <option value="minutes">{t('modules.units.minutes')}</option>
+                    <option value="ml">{t('modules.units.ml')}</option>
+                    <option value="l">{t('modules.units.l')}</option>
+                    <option value="glas">{t('modules.units.glas')}</option>
+                    <option value="pages">{t('modules.units.pages')}</option>
+                    <option value="km">{t('modules.units.km')}</option>
+                    <option value="kcal">{t('modules.units.kcal')}</option>
+                    <option value="reps">{t('modules.units.reps')}</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
-                    {isMinutes ? 'Dagdoel (minuten)' : `Dagdoel (in ${unit})`}
+                  <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                    {isMinutes ? t('modules.dailyGoalMinutes') : t('modules.dailyGoalUnit', { unit })}
                   </label>
                   <input
                     type="number"
                     value={dailyGoal || ''}
                     onChange={(e) => setBoth('dailyGoal', 'dailyGoalMinutes', parseFloat(e.target.value) || 0)}
-                    className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+                    className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm`}
                   />
                 </div>
 
                 <div>
-                  <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
-                    {isMinutes ? 'Weekmaximum (minuten, optioneel)' : `Weekmaximum (in ${unit}, optioneel)`}
+                  <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                    {isMinutes ? t('modules.weeklyMaxMinutes') : t('modules.weeklyMaxUnit', { unit })}
                   </label>
                   <input
                     type="number"
@@ -2997,50 +3006,50 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
                       const v = e.target.value ? parseFloat(e.target.value) : null;
                       setBoth('weeklyMax', 'weeklyMaxMinutes', v);
                     }}
-                    placeholder="Geen limiet"
-                    className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+                    placeholder={t('modules.weeklyMaxPlaceholder')}
+                    className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm`}
                   />
                 </div>
 
                 {isMinutes ? (
-                  <details className={`${t.cardSecondary} rounded-lg p-3`}>
-                    <summary className={`text-sm font-medium ${t.textSecondary} cursor-pointer`}>
-                      Geavanceerd
+                  <details className={`${theme.cardSecondary} rounded-lg p-3`}>
+                    <summary className={`text-sm font-medium ${theme.textSecondary} cursor-pointer`}>
+                      {t('modules.advanced')}
                     </summary>
                     <div className="mt-3 space-y-3">
                       <div>
-                        <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
-                          Snelknop-presets
+                        <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                          {t('modules.presets')}
                         </label>
                         <input
                           type="text"
                           defaultValue={presetsString}
                           onBlur={(e) => updatePresets(e.target.value)}
-                          placeholder="Bijv. 15, 30, 60 — laat leeg voor de standaard"
-                          className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+                          placeholder={t('modules.presetsPlaceholderMinutes')}
+                          className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm`}
                         />
                       </div>
 
-                      <label className={`flex items-center gap-2 text-sm ${t.textSecondary}`}>
+                      <label className={`flex items-center gap-2 text-sm ${theme.textSecondary}`}>
                         <input
                           type="checkbox"
                           checked={!!editing.categoriesEnabled}
                           onChange={(e) => update('categoriesEnabled', e.target.checked)}
                         />
-                        Categorieën gebruiken
+                        {t('modules.useCategories')}
                       </label>
 
                       {editing.categoriesEnabled && (
                         <div>
-                          <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
-                            Categorieën
+                          <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                            {t('modules.categories')}
                           </label>
                           <input
                             type="text"
                             defaultValue={categoriesString}
                             onBlur={(e) => updateCategories(e.target.value)}
-                            placeholder="Komma-gescheiden, bv. Werk, Studie, Hobby"
-                            className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+                            placeholder={t('modules.categoriesPlaceholderWork')}
+                            className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm`}
                           />
                         </div>
                       )}
@@ -3049,38 +3058,38 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
                 ) : (
                   <>
                     <div>
-                      <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
-                        Snelknop-presets
+                      <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                        {t('modules.presets')}
                       </label>
                       <input
                         type="text"
                         defaultValue={presetsString}
                         onBlur={(e) => updatePresets(e.target.value)}
-                        placeholder={`Bijv. 250, 500, 750 — laat leeg voor geen snelknoppen`}
-                        className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+                        placeholder={t('modules.presetsPlaceholderUnit')}
+                        className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm`}
                       />
                     </div>
 
-                    <label className={`flex items-center gap-2 text-sm ${t.textSecondary}`}>
+                    <label className={`flex items-center gap-2 text-sm ${theme.textSecondary}`}>
                       <input
                         type="checkbox"
                         checked={!!editing.categoriesEnabled}
                         onChange={(e) => update('categoriesEnabled', e.target.checked)}
                       />
-                      Categorieën gebruiken
+                      {t('modules.useCategories')}
                     </label>
 
                     {editing.categoriesEnabled && (
                       <div>
-                        <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
-                          Categorieën
+                        <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                          {t('modules.categories')}
                         </label>
                         <input
                           type="text"
                           defaultValue={categoriesString}
                           onBlur={(e) => updateCategories(e.target.value)}
-                          placeholder="Komma-gescheiden, bv. Water, Thee, Koffie"
-                          className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+                          placeholder={t('modules.categoriesPlaceholderDrink')}
+                          className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm`}
                         />
                       </div>
                     )}
@@ -3109,28 +3118,28 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
             return (
               <>
                 <div>
-                  <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
-                    Doel-tijden per weekdag
+                  <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                    {t('modules.sleepGoalsHeader')}
                   </label>
                   <div className="space-y-1">
                     {WEEKDAY_KEYS.map((wk, i) => {
-                      const dayLabel = DAYS_NL[(i + 1) % 7];
+                      const dayLabel = weekdayLabelLong(wk);
                       const g = goals[wk] || { bed: '', wake: '' };
                       return (
                         <div key={wk} className="flex items-center gap-2">
-                          <span className={`text-xs ${t.textMuted} w-20 capitalize`}>{dayLabel}</span>
+                          <span className={`text-xs ${theme.textMuted} w-20 capitalize`}>{dayLabel}</span>
                           <input
                             type="time"
                             value={g.bed || ''}
                             onChange={(e) => setGoal(wk, 'bed', e.target.value)}
-                            className={`flex-1 min-w-0 px-2 py-1 ${t.input} rounded text-sm`}
+                            className={`flex-1 min-w-0 px-2 py-1 ${theme.input} rounded text-sm`}
                           />
-                          <span className={`text-xs ${t.textMuted}`}>naar</span>
+                          <span className={`text-xs ${theme.textMuted}`}>{t('common.to')}</span>
                           <input
                             type="time"
                             value={g.wake || ''}
                             onChange={(e) => setGoal(wk, 'wake', e.target.value)}
-                            className={`flex-1 min-w-0 px-2 py-1 ${t.input} rounded text-sm`}
+                            className={`flex-1 min-w-0 px-2 py-1 ${theme.input} rounded text-sm`}
                           />
                         </div>
                       );
@@ -3139,8 +3148,8 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
                 </div>
 
                 <div>
-                  <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
-                    Tolerance (minuten)
+                  <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                    {t('modules.tolerance')}
                   </label>
                   <input
                     type="number"
@@ -3150,20 +3159,20 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
                       const v = parseInt(e.target.value, 10);
                       update('toleranceMinutes', isNaN(v) || v < 1 ? 15 : v);
                     }}
-                    className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+                    className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm`}
                   />
-                  <p className={`text-xs ${t.textMuted} mt-1`}>
-                    Een nacht telt als 'op ritme' als beide tijden binnen deze marge van het doel liggen.
+                  <p className={`text-xs ${theme.textMuted} mt-1`}>
+                    {t('modules.toleranceHint')}
                   </p>
                 </div>
 
-                <label className={`flex items-center gap-2 text-sm ${t.textSecondary}`}>
+                <label className={`flex items-center gap-2 text-sm ${theme.textSecondary}`}>
                   <input
                     type="checkbox"
                     checked={showScore}
                     onChange={(e) => update('showMorningScore', e.target.checked)}
                   />
-                  Vraag ochtendscore
+                  {t('modules.morningScoreAsk')}
                 </label>
               </>
             );
@@ -3211,22 +3220,22 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
             return (
               <>
                 <div>
-                  <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
-                    Bijhouden als
+                  <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                    {t('collections.trackAs')}
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {[
-                      { id: 'completion', label: 'Voltooien' },
-                      { id: 'count', label: 'Tellen' },
-                      { id: 'amount', label: 'Hoeveelheid' },
-                      { id: 'flexible', label: 'Per item' },
+                      { id: 'completion', label: t('collections.trackingModes.completion') },
+                      { id: 'count', label: t('collections.trackingModes.count') },
+                      { id: 'amount', label: t('collections.trackingModes.amount') },
+                      { id: 'flexible', label: t('collections.trackingModes.flexible') },
                     ].map(opt => (
                       <button
                         key={opt.id}
                         type="button"
                         onClick={() => update('trackingMode', opt.id)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                          trackingMode === opt.id ? 'bg-blue-500 text-white' : `${t.cardSecondary} ${t.textMuted}`
+                          trackingMode === opt.id ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
                         }`}
                       >
                         {opt.label}
@@ -3237,30 +3246,30 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
 
                 {showUnit && (
                   <div>
-                    <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
-                      Eenheid
+                    <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                      {t('collections.unit')}
                     </label>
                     <input
                       type="text"
                       value={editing.amountUnit || ''}
                       onChange={(e) => update('amountUnit', e.target.value)}
-                      placeholder="bv. ml, pagina"
-                      className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+                      placeholder={t('collections.unitPlaceholder')}
+                      className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm`}
                     />
                   </div>
                 )}
 
                 <div>
-                  <label className={`text-sm font-medium ${t.textSecondary} mb-2 block`}>
-                    Velden per item
+                  <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                    {t('collections.fieldsPerItem')}
                   </label>
                   <div className="space-y-1">
                     {[
-                      { id: 'rating', label: 'Beoordeling (sterren)' },
-                      { id: 'notes', label: 'Notities' },
-                      { id: 'tags', label: 'Tags' },
+                      { id: 'rating', label: t('collections.fieldRatingStars') },
+                      { id: 'notes', label: t('collections.fieldNotes') },
+                      { id: 'tags', label: t('collections.fieldTags') },
                     ].map(f => (
-                      <label key={f.id} className={`flex items-center gap-2 text-sm ${t.textSecondary}`}>
+                      <label key={f.id} className={`flex items-center gap-2 text-sm ${theme.textSecondary}`}>
                         <input
                           type="checkbox"
                           checked={!!fields[f.id]}
@@ -3278,7 +3287,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
                     onAdd={addTag}
                     onUpdate={updateTag}
                     onRemove={removeTag}
-                    t={t}
+                    theme={theme}
                   />
                 )}
               </>
@@ -3299,16 +3308,16 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
             )}
             <button
               onClick={onCancel}
-              className={`px-4 py-2 ${t.cardSecondary} ${t.textSecondary} rounded-lg text-sm font-medium transition`}
+              className={`px-4 py-2 ${theme.cardSecondary} ${theme.textSecondary} rounded-lg text-sm font-medium transition`}
             >
-              Annuleren
+              {t('common.cancel')}
             </button>
             <button
               onClick={() => canSave && onSave(editing)}
               disabled={!canSave}
               className="flex-1 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-slate-300 text-white rounded-lg text-sm font-medium transition"
             >
-              Opslaan
+              {t('common.save')}
             </button>
           </div>
         )}
@@ -3320,7 +3329,8 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, t }) {
 // =============================================
 // REFLECTION SETTINGS
 // =============================================
-function ReflectionSettings({ reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, t, dayNames }) {
+function ReflectionSettings({ reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, theme, dayNames }) {
+  const { t } = useTranslation();
   const [newQuestion, setNewQuestion] = useState('');
   const [newRecurringText, setNewRecurringText] = useState('');
   const [newRecurringDays, setNewRecurringDays] = useState([]);
@@ -3363,8 +3373,8 @@ function ReflectionSettings({ reflectionQuestions, setReflectionQuestions, recur
       <div>
         <div className="space-y-2 mb-3">
           {reflectionQuestions.map((q, i) => (
-            <div key={i} className={`flex items-center gap-2 p-2 ${t.cardSecondary} rounded-lg`}>
-              <span className={`flex-1 text-sm ${t.textSecondary}`}>{q}</span>
+            <div key={i} className={`flex items-center gap-2 p-2 ${theme.cardSecondary} rounded-lg`}>
+              <span className={`flex-1 text-sm ${theme.textSecondary}`}>{q}</span>
               <button onClick={() => removeQuestion(i)} className="text-slate-400 hover:text-red-500">
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -3377,8 +3387,8 @@ function ReflectionSettings({ reflectionQuestions, setReflectionQuestions, recur
             value={newQuestion}
             onChange={(e) => setNewQuestion(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addQuestion()}
-            placeholder="Nieuwe reflectievraag..."
-            className={`flex-1 px-3 py-2 ${t.input} rounded-lg text-sm`}
+            placeholder={t('settings.reflectionNewPlaceholder')}
+            className={`flex-1 px-3 py-2 ${theme.input} rounded-lg text-sm`}
           />
           <button onClick={addQuestion} className="px-3 py-2 bg-blue-500 text-white rounded-lg">
             <Plus className="w-4 h-4" />
@@ -3387,17 +3397,17 @@ function ReflectionSettings({ reflectionQuestions, setReflectionQuestions, recur
       </div>
 
       <div>
-        <h4 className={`font-semibold ${t.textSecondary} mb-3 text-sm`}>Wekelijks terugkerende taken</h4>
+        <h4 className={`font-semibold ${theme.textSecondary} mb-3 text-sm`}>{t('settings.recurringWeekly')}</h4>
         <div className="space-y-2 mb-4">
           {recurringTasks.length === 0 ? (
-            <p className={`text-sm ${t.textMuted} text-center py-2`}>Nog geen terugkerende taken</p>
+            <p className={`text-sm ${theme.textMuted} text-center py-2`}>{t('settings.recurringEmpty')}</p>
           ) : (
             recurringTasks.map(rt => (
-              <div key={rt.id} className={`flex items-center gap-2 p-2 ${t.cardSecondary} rounded-lg`}>
-                <Repeat className={`w-4 h-4 ${t.textMuted}`} />
+              <div key={rt.id} className={`flex items-center gap-2 p-2 ${theme.cardSecondary} rounded-lg`}>
+                <Repeat className={`w-4 h-4 ${theme.textMuted}`} />
                 <div className="flex-1">
-                  <div className={`text-sm ${t.textSecondary}`}>{rt.text}</div>
-                  <div className={`text-xs ${t.textMuted}`}>
+                  <div className={`text-sm ${theme.textSecondary}`}>{rtheme.text}</div>
+                  <div className={`text-xs ${theme.textMuted}`}>
                     {rt.days.map(d => dayNames[d]).join(', ')}
                   </div>
                 </div>
@@ -3414,8 +3424,8 @@ function ReflectionSettings({ reflectionQuestions, setReflectionQuestions, recur
             type="text"
             value={newRecurringText}
             onChange={(e) => setNewRecurringText(e.target.value)}
-            placeholder="Bijv. 'Boodschappen doen'..."
-            className={`w-full px-3 py-2 ${t.input} rounded-lg text-sm`}
+            placeholder={t('settings.recurringExamplePlaceholder')}
+            className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm`}
           />
           <div className="flex gap-1">
             {dayNames.map((day, i) => (
@@ -3423,7 +3433,7 @@ function ReflectionSettings({ reflectionQuestions, setReflectionQuestions, recur
                 key={i}
                 onClick={() => toggleDay(i)}
                 className={`flex-1 py-2 rounded-lg text-xs font-medium transition ${
-                  newRecurringDays.includes(i) ? 'bg-blue-500 text-white' : `${t.cardSecondary} ${t.textMuted}`
+                  newRecurringDays.includes(i) ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
                 }`}
               >
                 {day}
@@ -3435,7 +3445,7 @@ function ReflectionSettings({ reflectionQuestions, setReflectionQuestions, recur
             disabled={!newRecurringText.trim() || newRecurringDays.length === 0}
             className="w-full py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-slate-300 text-white rounded-lg text-sm font-medium transition"
           >
-            Taak toevoegen
+            {t('tasks.add')}
           </button>
         </div>
       </div>

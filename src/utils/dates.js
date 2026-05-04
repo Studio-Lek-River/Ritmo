@@ -1,25 +1,14 @@
-// Date helpers for Ritmo. All day-key formatting uses LOCAL time, not UTC,
+// Date helpers for Ritmo. Day-key formatting uses LOCAL time, not UTC,
 // so an evening at 23:00 still resolves to today's local date instead of
 // shifting to tomorrow under UTC conversion.
+//
+// Maand- en dagnamen komen via Intl.DateTimeFormat met de huidige locale.
+// UI-labels (Vandaag, Deze week, Week van...) komen via i18n.
 
-export const MONTHS_NL = [
-  'januari', 'februari', 'maart', 'april', 'mei', 'juni',
-  'juli', 'augustus', 'september', 'oktober', 'november', 'december',
-];
+import { getCurrentLanguage, getLocale, t } from '../i18n/useTranslation';
 
-export const MONTHS_NL_SHORT = [
-  'jan', 'feb', 'mrt', 'apr', 'mei', 'jun',
-  'jul', 'aug', 'sep', 'okt', 'nov', 'dec',
-];
-
-export const DAYS_NL = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
-export const DAYS_SHORT_NL = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
-
-// Maandag-eerste, capitalized, voor week/maand-grids die op WEEKDAY_KEYS-volgorde indexeren.
-export const DAYS_SHORT_NL_MON_CAPS = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
-export const MONTHS_NL_CAPS = MONTHS_NL.map(m => m.charAt(0).toUpperCase() + m.slice(1));
-
-// Weekday keys with maandag-eerste volgorde voor module-config (goals per weekdag).
+// Weekday-keys gebruikt door module-config (goals per weekdag) en kalender-grids.
+// Volgorde: maandag-eerste.
 export const WEEKDAY_KEYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 
 // JS getDay: 0=zondag..6=zaterdag. Map naar onze maandag-eerste keys.
@@ -90,33 +79,99 @@ export function isFuture(date) {
 }
 
 function capitalize(s) {
+  if (!s) return s;
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+// --- Locale-aware Intl-helpers --------------------------------------------
+
+function formatViaIntl(date, opts) {
+  return new Intl.DateTimeFormat(getLocale(), opts).format(date);
+}
+
+export function monthNameLong(date) {
+  return formatViaIntl(date, { month: 'long' });
+}
+
+export function monthNameShort(date) {
+  return formatViaIntl(date, { month: 'short' });
+}
+
+export function weekdayNameLong(date) {
+  return formatViaIntl(date, { weekday: 'long' });
+}
+
+export function weekdayNameShort(date) {
+  return formatViaIntl(date, { weekday: 'short' });
+}
+
+// Maandag-eerste, gecapitaliseerde korte dag-labels voor week/maand-grids
+// die op WEEKDAY_KEYS-volgorde indexeren. Genereert via Intl in de huidige taal.
+export function shortWeekdayLabelsMondayFirst() {
+  // Use a known monday as anchor (any week is fine since we extract names).
+  const anchor = new Date(2024, 0, 1); // Mon 1 Jan 2024
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(anchor, i);
+    const name = weekdayNameShort(d);
+    return capitalize(name).slice(0, 2);
+  });
+}
+
+// Lange maandnamen array (12), gecapitaliseerd. Gebruikt door MonthView header.
+export function longMonthLabels() {
+  return Array.from({ length: 12 }, (_, m) => {
+    const d = new Date(2024, m, 1);
+    return capitalize(monthNameLong(d));
+  });
+}
+
+// --- Semantische UI-formatters --------------------------------------------
+
 export function formatDayTitle(date) {
-  if (isToday(date)) return 'Vandaag';
-  if (isYesterday(date)) return 'Gisteren';
-  return capitalize(DAYS_NL[date.getDay()]);
+  if (isToday(date)) return t('common.today');
+  if (isYesterday(date)) return t('common.yesterday');
+  return capitalize(weekdayNameLong(date));
 }
 
 export function formatDaySubtitle(date) {
-  return `${date.getDate()} ${MONTHS_NL[date.getMonth()]}`;
+  return `${date.getDate()} ${monthNameLong(date)}`;
 }
 
 export function formatWeekTitle(weekStart) {
   const todayWeek = startOfWeek(new Date());
-  if (sameDay(weekStart, todayWeek)) return 'Deze week';
-  if (sameDay(weekStart, addDays(todayWeek, -7))) return 'Vorige week';
-  return `Week van ${weekStart.getDate()} ${MONTHS_NL_SHORT[weekStart.getMonth()]}`;
+  if (sameDay(weekStart, todayWeek)) return t('dates.thisWeek');
+  if (sameDay(weekStart, addDays(todayWeek, -7))) return t('dates.previousWeek');
+  return t('dates.weekOf', { date: `${weekStart.getDate()} ${monthNameShort(weekStart)}` });
 }
 
 export function formatWeekRange(weekStart) {
   const end = addDays(weekStart, 6);
-  const sm = MONTHS_NL_SHORT[weekStart.getMonth()];
-  const em = MONTHS_NL_SHORT[end.getMonth()];
-  return `${weekStart.getDate()} ${sm} tot ${end.getDate()} ${em}`;
+  return t('dates.weekRange', {
+    startDay: weekStart.getDate(),
+    startMonth: monthNameShort(weekStart),
+    endDay: end.getDate(),
+    endMonth: monthNameShort(end),
+  });
 }
 
 export function formatMonthTitle(date) {
-  return `${capitalize(MONTHS_NL[date.getMonth()])} ${date.getFullYear()}`;
+  return `${capitalize(monthNameLong(date))} ${date.getFullYear()}`;
 }
+
+// Lange weekdag-naam — gebruikt door SleepModule's ModuleEditor.
+export function weekdayLabelLong(weekdayKey) {
+  const idx = WEEKDAY_KEYS.indexOf(weekdayKey);
+  if (idx < 0) return weekdayKey;
+  // Anchor op een bekende maandag; tel idx dagen op.
+  const anchor = new Date(2024, 0, 1); // Mon
+  return capitalize(weekdayNameLong(addDays(anchor, idx)));
+}
+
+// Backwards-compat: alleen behouden voor lopende imports tijdens migratie. Zal
+// worden verwijderd zodra geen consument deze meer gebruikt. Genereert ALTIJD
+// in de huidige taal via Intl, niet vastgepind op Nederlands.
+export function getDaysShortMonCaps() { return shortWeekdayLabelsMondayFirst(); }
+export function getMonthsLongCaps() { return longMonthLabels(); }
+
+// Voor consumenten die alleen de huidige taal-code nodig hebben.
+export { getCurrentLanguage, getLocale };

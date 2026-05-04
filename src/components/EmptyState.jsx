@@ -1,12 +1,12 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
 
-export default function EmptyState({ icon: Icon, title, description, buttonLabel, onClick, t }) {
+export default function EmptyState({ icon: Icon, title, description, buttonLabel, onClick, theme }) {
   return (
-    <div className={`${t.card} rounded-2xl p-8 shadow-sm text-center slide-in`}>
-      <Icon className={`w-12 h-12 mx-auto mb-3 ${t.textMuted}`} />
-      <h3 className={`font-semibold ${t.textSecondary} mb-2`}>{title}</h3>
-      <p className={`text-sm ${t.textMuted} mb-5 max-w-xs mx-auto`}>{description}</p>
+    <div className={`${theme.card} rounded-2xl p-8 shadow-sm text-center slide-in`}>
+      <Icon className={`w-12 h-12 mx-auto mb-3 ${theme.textMuted}`} />
+      <h3 className={`font-semibold ${theme.textSecondary} mb-2`}>{title}</h3>
+      <p className={`text-sm ${theme.textMuted} mb-5 max-w-xs mx-auto`}>{description}</p>
       {buttonLabel && onClick && (
         <button
           onClick={onClick}

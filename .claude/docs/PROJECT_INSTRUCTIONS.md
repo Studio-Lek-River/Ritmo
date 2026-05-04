@@ -15,6 +15,25 @@ Ritmo is een **modulaire dag-app** voor het beheren van persoonlijke routines, g
 
 ---
 
+## 🌍 Tweetaligheid (NL/EN) — harde regel
+
+Ritmo is **tweetalig**: alle UI moet zowel in het Nederlands als in het Engels werken. De standaardtaal volgt de browser (begint met `nl` → Nederlands, anders Engels); de gebruiker kan in instellingen overschrijven naar `nl`, `en` of `auto`.
+
+**Verplicht voor elke UI-string:**
+
+- Geen hardcoded Nederlandse (of Engelse) tekst in JSX, alert/confirm/prompt, placeholder, aria-label, title, of foutmelding. Hardcoded UI-tekst is een **bug**, geen stijlkwestie.
+- Elke nieuwe key komt direct in **zowel** [src/i18n/nl.js](../../src/i18n/nl.js) als [src/i18n/en.js](../../src/i18n/en.js). Een ontbrekende key in één van beide bestanden is een bug.
+- UI-strings worden opgehaald via `useTranslation()` (`t('group.key')`) in componenten, of via de standalone `t(key)`-helper in utils.
+- Datum-formattering gaat via `Intl.DateTimeFormat` met de huidige locale (`nl-NL` of `en-GB`), niet via hardcoded maand/dagnamen.
+- Door de gebruiker zelf ingevoerde tekst (eigen module-namen, items, taken, notities) wordt **niet** vertaald — dat is hun data.
+- Standaard-presets en default-modules krijgen `nameKey` en worden bij instantiatie naar de huidige taal gerendered. Daarna zijn het user-data.
+
+**Onbekende EN-vertaling?** Gebruik tijdelijk `[EN] originele Nederlandse tekst` in `en.js`. Het verschijnt zo zichtbaar in de UI dat het opvolging afdwingt — geen onzichtbare TODO-comments.
+
+Deze regel geldt voor zowel Claude Code als web Claude. Web Claude ziet alleen dit document als context, dus deze regel staat hier prominent.
+
+---
+
 ## 🎯 Twee fundamentele design-principes
 
 Deze twee principes zijn **leidend** voor elke beslissing in het project. Bij twijfel: kies de optie die deze principes het beste dient.
@@ -77,6 +96,7 @@ Ritmo draait om **modules**. Elke module heeft:
   color: string,           // sleutel uit COLOR_OPTIONS (Tailwind-kleuren)
   enabled: boolean,        // zichtbaar op "Vandaag"-tab
   countInStreak: boolean,  // telt mee voor streak-badges (max 4 actief)
+  nameKey?: string,        // i18n-key voor default-naam; `name` overschrijft dit zodra gezet
   type: 'checklist' | 'choice' | 'tasks' | 'projects' | 'counter' | 'sleep' | 'collection',
   // type-specifieke velden:
   items?: [{                                                  // voor checklist
@@ -127,7 +147,7 @@ Het oude `timer`-type is gegeneraliseerd naar `counter` en gemerged in `main`. B
 
 Alle data wordt lokaal opgeslagen via een storage-laag die de `window.storage`-API mimicked. Alle keys hebben prefix `ritmo:` in localStorage:
 
-- `ritmo:settings` — gebruikersinstellingen: `{ modules, darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, hasOnboarded }`
+- `ritmo:settings` — gebruikersinstellingen: `{ modules, darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, showReflectionOnToday, hasOnboarded, language }`. `language` is `'auto' | 'nl' | 'en'` (default `'auto'` — volgt browser).
 - `ritmo:day:YYYY-MM-DD` — dagdata: `{ moduleData, customTasks, reflectionAnswers }`
 
 De `ritmo:`-prefix wordt door `storage.js` automatisch toegevoegd. In de UI roep je dus `window.storage.get('settings')` aan, niet `'ritmo:settings'`. De prefix bestaat alleen op localStorage-niveau.
@@ -138,10 +158,14 @@ De storage-laag is een **abstraction layer**: de UI praat met `window.storage`, 
 
 ```
 src/
-├── App.jsx                    # nog monolithisch (ruim 2500 regels), wordt iteratief opgesplitst
+├── App.jsx                    # nog monolithisch (ruim 3000 regels), wordt iteratief opgesplitst
 ├── main.jsx                   # React entry point
 ├── index.css                  # Tailwind imports + globale stijlen
 ├── storage.js                 # localStorage wrapper met window.storage API
+├── i18n/                      # tweetaligheid (NL/EN)
+│   ├── nl.js                  # Nederlandse strings (genest object)
+│   ├── en.js                  # Engelse strings (gespiegelde structuur)
+│   └── useTranslation.js      # hook + standalone t()-helper voor utils
 ├── modules/                   # geëxtraheerde module-componenten
 │   ├── ProjectsModule.jsx
 │   ├── SleepModule.jsx
@@ -284,4 +308,4 @@ Vraag liever één keer extra dan iets bouwen wat herbouwd moet worden.
 
 ---
 
-_Laatst bijgewerkt: 2026-05-03_
+_Laatst bijgewerkt: 2026-05-04_

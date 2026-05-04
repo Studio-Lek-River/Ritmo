@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import RitmoLogo from './RitmoLogo';
+import { useTranslation } from '../i18n/useTranslation';
 
 /**
  * SplashScreen - eerste scherm dat verschijnt bij het openen van Ritmo.
@@ -35,6 +36,7 @@ export default function SplashScreen({
   onDone,
   darkMode = false,
 }) {
+  const { t } = useTranslation();
   const [fading, setFading] = useState(false);
   const [shouldRender, setShouldRender] = useState(true);
 
@@ -83,7 +85,7 @@ export default function SplashScreen({
           animation: 'ritmo-tagline-fade 0.8s ease-out 1.2s forwards',
         }}
       >
-        Jouw dag, jouw ritme.
+        {t('splash.tagline')}
       </p>
       <style>{`
         @keyframes ritmo-tagline-fade {

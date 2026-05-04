@@ -4,20 +4,21 @@ import StarRating from './StarRating';
 import TagPill from './TagPill';
 import { getColorClasses } from '../utils/colors';
 import { getItemTrackingMode } from '../utils/collections';
+import { useTranslation } from '../i18n/useTranslation';
 
-function summary(item, mode) {
+function summary(item, mode, t) {
   const count = item.events?.length || 0;
   if (mode === 'completion') {
-    return count > 0 ? 'Voltooid' : 'Nog niet voltooid';
+    return count > 0 ? t('collections.completed') : t('collections.notCompleted');
   }
   if (mode === 'count') {
-    return `${count}x gelogd`;
+    return t('collections.countLogged', { n: count });
   }
   if (mode === 'amount') {
     const total = (item.events || []).reduce((s, e) => s + (Number(e.amount) || 0), 0);
-    return `Totaal ${total}`;
+    return t('collections.totalAmount', { n: total });
   }
-  return `${count} events`;
+  return t('collections.eventsCount', { n: count });
 }
 
 export default function ItemDetail({
@@ -30,8 +31,9 @@ export default function ItemDetail({
   onDelete,
   onLogEvent,
   onRemoveEvent,
-  t,
+  theme,
 }) {
+  const { t } = useTranslation();
   const [editMode, setEditMode] = useState(false);
   const [draft, setDraft] = useState(item);
   const c = getColorClasses(collection.color);
@@ -68,19 +70,19 @@ export default function ItemDetail({
 
   const handleDelete = () => {
     if (!editable) return;
-    if (window.confirm(`"${item.name}" verwijderen?`)) {
+    if (window.confirm(t('collections.deleteItemConfirm', { name: item.name }))) {
       onDelete?.();
     }
   };
 
   return (
-    <div className={`${t.card} rounded-2xl p-5 shadow-sm slide-in`}>
+    <div className={`${theme.card} rounded-2xl p-5 shadow-sm slide-in`}>
       <div className="flex items-center gap-2 mb-4">
         <button
           type="button"
           onClick={onBack}
-          className={`p-2 ${t.hover} rounded-lg ${t.textSecondary} transition`}
-          aria-label="Terug"
+          className={`p-2 ${theme.hover} rounded-lg ${theme.textSecondary} transition`}
+          aria-label={t('common.back')}
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
@@ -90,16 +92,16 @@ export default function ItemDetail({
             <button
               type="button"
               onClick={() => setEditMode(true)}
-              className={`p-2 ${t.hover} rounded-lg ${t.textSecondary} transition`}
-              aria-label="Bewerken"
+              className={`p-2 ${theme.hover} rounded-lg ${theme.textSecondary} transition`}
+              aria-label={t('common.edit')}
             >
               <Edit3 className="w-4 h-4" />
             </button>
             <button
               type="button"
               onClick={handleDelete}
-              className={`p-2 ${t.hover} rounded-lg text-red-500 transition`}
-              aria-label="Verwijderen"
+              className={`p-2 ${theme.hover} rounded-lg text-red-500 transition`}
+              aria-label={t('common.delete')}
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -118,20 +120,20 @@ export default function ItemDetail({
                 type="text"
                 value={draft.name}
                 onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                className={`w-full px-2 py-1 rounded-lg text-base font-semibold ${t.input} ${t.textSecondary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-2 py-1 rounded-lg text-base font-semibold ${theme.input} ${theme.textSecondary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               />
             ) : (
-              <h3 className={`font-semibold ${t.textSecondary} truncate`}>{item.name}</h3>
+              <h3 className={`font-semibold ${theme.textSecondary} truncate`}>{item.name}</h3>
             )}
             <p className={`text-xs ${c.iconText}`}>{collection.name}</p>
-            <p className={`text-xs ${t.textMuted} mt-0.5`}>{summary(item, mode)}</p>
+            <p className={`text-xs ${theme.textMuted} mt-0.5`}>{summary(item, mode, t)}</p>
           </div>
         </div>
       </div>
 
       {editMode && collection.trackingMode === 'flexible' && (
         <div className="mb-4">
-          <p className={`text-xs ${t.textMuted} mb-1`}>Bijhouden als</p>
+          <p className={`text-xs ${theme.textMuted} mb-1`}>{t('collections.trackAs')}</p>
           <div className="flex gap-2 flex-wrap">
             {['completion', 'count', 'amount'].map((m) => (
               <button
@@ -141,10 +143,10 @@ export default function ItemDetail({
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                   (draft.trackingMode || 'completion') === m
                     ? 'bg-blue-500 text-white'
-                    : `${t.cardSecondary} ${t.textMuted}`
+                    : `${theme.cardSecondary} ${theme.textMuted}`
                 }`}
               >
-                {m === 'completion' ? 'Voltooien' : m === 'count' ? 'Tellen' : 'Hoeveelheid'}
+                {t(`collections.trackingModes.${m}`)}
               </button>
             ))}
           </div>
@@ -153,7 +155,7 @@ export default function ItemDetail({
 
       {fields.rating && (
         <div className="mb-4">
-          <p className={`text-xs ${t.textMuted} mb-1`}>Beoordeling</p>
+          <p className={`text-xs ${theme.textMuted} mb-1`}>{t('collections.rating')}</p>
           <StarRating
             value={view.rating || 0}
             size="md"
@@ -165,7 +167,7 @@ export default function ItemDetail({
 
       {fields.tags && tags.length > 0 && (
         <div className="mb-4">
-          <p className={`text-xs ${t.textMuted} mb-1`}>Tags</p>
+          <p className={`text-xs ${theme.textMuted} mb-1`}>{t('collections.tags')}</p>
           <div className="flex gap-1.5 flex-wrap">
             {editMode
               ? tags.map((tg) => (
@@ -178,25 +180,25 @@ export default function ItemDetail({
                 ))
               : itemTags.length > 0
                 ? itemTags.map((tg) => <TagPill key={tg.id} tag={tg} />)
-                : <span className={`text-xs ${t.textMuted}`}>Geen tags</span>}
+                : <span className={`text-xs ${theme.textMuted}`}>{t('collections.noTagsShort')}</span>}
           </div>
         </div>
       )}
 
       {fields.notes && (
         <div className="mb-4">
-          <p className={`text-xs ${t.textMuted} mb-1`}>Notities</p>
+          <p className={`text-xs ${theme.textMuted} mb-1`}>{t('collections.notes')}</p>
           {editMode ? (
             <textarea
               value={draft.notes || ''}
               onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
               rows={3}
-              className={`w-full px-3 py-2 rounded-lg text-sm ${t.input} ${t.textSecondary} focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none`}
-              placeholder="Vrije notitie..."
+              className={`w-full px-3 py-2 rounded-lg text-sm ${theme.input} ${theme.textSecondary} focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none`}
+              placeholder={t('collections.notePlaceholder')}
             />
           ) : (
-            <p className={`text-sm ${t.textSecondary} whitespace-pre-wrap`}>
-              {item.notes || <span className={t.textMuted}>Geen notities</span>}
+            <p className={`text-sm ${theme.textSecondary} whitespace-pre-wrap`}>
+              {item.notes || <span className={theme.textMuted}>{t('collections.noNotes')}</span>}
             </p>
           )}
         </div>
@@ -204,25 +206,25 @@ export default function ItemDetail({
 
       <div className="mb-2">
         <div className="flex items-center justify-between mb-1">
-          <p className={`text-xs ${t.textMuted}`}>Geschiedenis</p>
+          <p className={`text-xs ${theme.textMuted}`}>{t('collections.history')}</p>
           {editable && !editMode && (
             <button
               type="button"
               onClick={() => onLogEvent?.()}
               className={`text-xs px-2 py-1 ${c.bar} text-white rounded-lg transition hover:opacity-90 inline-flex items-center gap-1`}
             >
-              <Plus className="w-3 h-3" /> Log nu
+              <Plus className="w-3 h-3" /> {t('collections.logNow')}
             </button>
           )}
         </div>
         {(item.events?.length || 0) === 0 ? (
-          <p className={`text-xs ${t.textMuted} px-1`}>Nog geen events.</p>
+          <p className={`text-xs ${theme.textMuted} px-1`}>{t('collections.noEvents')}</p>
         ) : (
           <ul className="space-y-1">
             {item.events.map((ev, idx) => (
               <li
                 key={idx}
-                className={`group flex items-center justify-between px-3 py-1.5 rounded-lg ${t.cardSecondary} ${t.textSecondary} text-sm`}
+                className={`group flex items-center justify-between px-3 py-1.5 rounded-lg ${theme.cardSecondary} ${theme.textSecondary} text-sm`}
               >
                 <span>
                   {ev.date}
@@ -232,8 +234,8 @@ export default function ItemDetail({
                   <button
                     type="button"
                     onClick={() => onRemoveEvent?.(idx)}
-                    className={`opacity-0 group-hover:opacity-100 p-1 ${t.hover} rounded ${t.textMuted} transition`}
-                    aria-label="Event verwijderen"
+                    className={`opacity-0 group-hover:opacity-100 p-1 ${theme.hover} rounded ${theme.textMuted} transition`}
+                    aria-label={t('collections.deleteEventAria')}
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -251,14 +253,14 @@ export default function ItemDetail({
             onClick={save}
             className="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition inline-flex items-center justify-center gap-1"
           >
-            <Check className="w-4 h-4" /> Opslaan
+            <Check className="w-4 h-4" /> {t('common.save')}
           </button>
           <button
             type="button"
             onClick={cancel}
-            className={`px-3 py-2 ${t.cardSecondary} ${t.textSecondary} rounded-lg text-sm font-medium transition`}
+            className={`px-3 py-2 ${theme.cardSecondary} ${theme.textSecondary} rounded-lg text-sm font-medium transition`}
           >
-            Annuleren
+            {t('common.cancel')}
           </button>
         </div>
       )}

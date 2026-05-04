@@ -1,23 +1,25 @@
 import React from 'react';
 import { Smartphone, MessageSquare } from 'lucide-react';
 import HelpItemRow from './HelpItemRow';
+import { useTranslation } from '../../i18n/useTranslation';
 
-const helpItems = [
-  {
-    id: 'install',
-    icon: Smartphone,
-    title: 'App op beginscherm zetten',
-    description: 'Open Ritmo sneller, vanaf jouw startscherm',
-  },
-  {
-    id: 'feedback',
-    icon: MessageSquare,
-    title: 'Feedback geven',
-    description: 'Probleem melden of een idee delen',
-  },
-];
+export default function HelpOverlay({ theme, onSelect }) {
+  const { t } = useTranslation();
+  const helpItems = [
+    {
+      id: 'install',
+      icon: Smartphone,
+      title: t('help.install'),
+      description: t('help.installDesc'),
+    },
+    {
+      id: 'feedback',
+      icon: MessageSquare,
+      title: t('help.feedback'),
+      description: t('help.feedbackDesc'),
+    },
+  ];
 
-export default function HelpOverlay({ t, onSelect }) {
   return (
     <div className="space-y-2">
       {helpItems.map(item => (
@@ -27,7 +29,7 @@ export default function HelpOverlay({ t, onSelect }) {
           title={item.title}
           description={item.description}
           onClick={() => onSelect(item.id)}
-          t={t}
+          theme={theme}
         />
       ))}
     </div>

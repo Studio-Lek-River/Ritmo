@@ -1,5 +1,6 @@
 // Pure helpers for the 'projects' module type.
 // Used by both the Vandaag-card (ProjectsModule) and the detail view (ProjectsView).
+import { getLocale } from '../i18n/useTranslation';
 
 export function projectProgress(module) {
   const subjects = module?.subjects || [];
@@ -50,11 +51,11 @@ export function clampGrade(input) {
   return Math.round(clamped * 10) / 10;
 }
 
-const DATE_FMT = new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short' });
-
 export function formatDeadline(deadline) {
   if (!deadline) return '';
   const d = new Date(deadline);
   if (Number.isNaN(d.getTime())) return '';
-  return DATE_FMT.format(d).replace('.', '');
+  return new Intl.DateTimeFormat(getLocale(), { day: 'numeric', month: 'short' })
+    .format(d)
+    .replace('.', '');
 }

@@ -6,12 +6,14 @@ import StarRating from '../components/StarRating';
 import TagPill from '../components/TagPill';
 import ItemDetail from '../components/ItemDetail';
 import EmptyState from '../components/EmptyState';
+import { useTranslation } from '../i18n/useTranslation';
 
-const SORT_OPTIONS = [
-  { id: 'recent', label: 'Recent' },
-  { id: 'count', label: 'Meest gelogd' },
-  { id: 'alpha', label: 'A-Z' },
-];
+const SORT_IDS = ['recent', 'count', 'alpha'];
+const SORT_LABEL_KEY = {
+  recent: 'collections.sortRecent',
+  count: 'collections.sortMostLogged',
+  alpha: 'collections.sortAZ',
+};
 
 function lastEventDate(item) {
   return item.events && item.events.length > 0 ? item.events[0].date : null;
@@ -44,8 +46,9 @@ export default function CollectionsView({
   onRemoveEvent,
   onCreate,
   editable = true,
-  t,
+  theme,
 }) {
+  const { t } = useTranslation();
   const collections = useMemo(
     () => modules.filter((m) => m.enabled && m.type === 'collection'),
     [modules]
@@ -81,11 +84,11 @@ export default function CollectionsView({
     return (
       <EmptyState
         icon={Library}
-        title="Nog geen collecties"
-        description="Maak een collectie-module aan om bijvoorbeeld boeken, films of recepten te catalogiseren."
-        buttonLabel={onCreate ? 'Collectie-module aanmaken' : null}
+        title={t('collections.empty')}
+        description={t('collections.emptyDesc')}
+        buttonLabel={onCreate ? t('collections.emptyButton') : null}
         onClick={onCreate}
-        t={t}
+        theme={theme}
       />
     );
   }
@@ -117,8 +120,8 @@ export default function CollectionsView({
     : collections.flatMap((c) => c.tags || []);
 
   const cycleSort = () => {
-    const idx = SORT_OPTIONS.findIndex((s) => s.id === sort);
-    setSort(SORT_OPTIONS[(idx + 1) % SORT_OPTIONS.length].id);
+    const idx = SORT_IDS.indexOf(sort);
+    setSort(SORT_IDS[(idx + 1) % SORT_IDS.length]);
   };
 
   const selected = selectedItemId
@@ -142,7 +145,7 @@ export default function CollectionsView({
         }}
         onLogEvent={(eventData) => onLogEvent?.(collection.id, selected.id, eventData)}
         onRemoveEvent={(idx) => onRemoveEvent?.(collection.id, selected.id, idx)}
-        t={t}
+        theme={theme}
       />
     );
   }
@@ -158,33 +161,33 @@ export default function CollectionsView({
   return (
     <div className="slide-in space-y-4">
       <div className="grid grid-cols-2 gap-2">
-        <div className={`${t.card} rounded-xl p-3 shadow-sm`}>
-          <p className={`text-xs ${t.textMuted}`}>Totaal items</p>
-          <p className={`text-xl font-bold ${t.textSecondary}`}>{stats.totalItems}</p>
+        <div className={`${theme.card} rounded-xl p-3 shadow-sm`}>
+          <p className={`text-xs ${theme.textMuted}`}>{t('collections.totalItems')}</p>
+          <p className={`text-xl font-bold ${theme.textSecondary}`}>{stats.totalItems}</p>
         </div>
-        <div className={`${t.card} rounded-xl p-3 shadow-sm`}>
-          <p className={`text-xs ${t.textMuted}`}>Totaal events</p>
-          <p className={`text-xl font-bold ${t.textSecondary}`}>{stats.totalEvents}</p>
+        <div className={`${theme.card} rounded-xl p-3 shadow-sm`}>
+          <p className={`text-xs ${theme.textMuted}`}>{t('collections.totalEvents')}</p>
+          <p className={`text-xl font-bold ${theme.textSecondary}`}>{stats.totalEvents}</p>
         </div>
       </div>
 
       {stats.topByCount.length > 0 && stats.topByCount.some((it) => (it.events?.length || 0) > 1) && (
-        <div className={`${t.card} rounded-2xl p-4 shadow-sm`}>
-          <h3 className={`font-semibold ${t.textSecondary} mb-2 text-sm`}>Top 5 meest gelogd</h3>
+        <div className={`${theme.card} rounded-2xl p-4 shadow-sm`}>
+          <h3 className={`font-semibold ${theme.textSecondary} mb-2 text-sm`}>{t('collections.top5MostLogged')}</h3>
           <ul className="space-y-1">
             {stats.topByCount.map((it) => {
               const cc = getColorClasses(it._collection.color);
               return (
                 <li
                   key={it.id}
-                  className={`flex items-center justify-between px-2 py-1.5 rounded-lg ${t.hover} cursor-pointer`}
+                  className={`flex items-center justify-between px-2 py-1.5 rounded-lg ${theme.hover} cursor-pointer`}
                   onClick={() => setSelectedItemId(it.id)}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <span className={`w-2 h-2 rounded-full ${cc.bar} flex-shrink-0`} />
-                    <span className={`truncate text-sm ${t.textSecondary}`}>{it.name}</span>
+                    <span className={`truncate text-sm ${theme.textSecondary}`}>{it.name}</span>
                   </div>
-                  <span className={`text-xs ${t.textMuted} flex-shrink-0`}>{it.events.length}x</span>
+                  <span className={`text-xs ${theme.textMuted} flex-shrink-0`}>{it.events.length}x</span>
                 </li>
               );
             })}
@@ -192,15 +195,15 @@ export default function CollectionsView({
         </div>
       )}
 
-      <div className={`${t.card} rounded-2xl p-4 shadow-sm space-y-3`}>
+      <div className={`${theme.card} rounded-2xl p-4 shadow-sm space-y-3`}>
         <div className="relative">
-          <Search className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 ${t.textMuted}`} />
+          <Search className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 ${theme.textMuted}`} />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Zoeken..."
-            className={`w-full pl-9 pr-3 py-2 ${t.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
+            placeholder={t('collections.searchAllPlaceholder')}
+            className={`w-full pl-9 pr-3 py-2 ${theme.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
           />
         </div>
 
@@ -210,10 +213,10 @@ export default function CollectionsView({
               type="button"
               onClick={() => setFilterModuleId(null)}
               className={`px-3 py-1 rounded-full text-xs font-medium transition ${
-                !filterModuleId ? 'bg-blue-500 text-white' : `${t.cardSecondary} ${t.textMuted}`
+                !filterModuleId ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
               }`}
             >
-              Alles
+              {t('collections.filterAll')}
             </button>
             {collections.map((col) => {
               const cc = getColorClasses(col.color);
@@ -253,10 +256,10 @@ export default function CollectionsView({
           <button
             type="button"
             onClick={cycleSort}
-            className={`text-xs ${t.textMuted} ${t.hover} px-2 py-1 rounded-lg inline-flex items-center gap-1 transition`}
+            className={`text-xs ${theme.textMuted} ${theme.hover} px-2 py-1 rounded-lg inline-flex items-center gap-1 transition`}
           >
             <ArrowUpDown className="w-3 h-3" />
-            {SORT_OPTIONS.find((s) => s.id === sort).label}
+            {t(SORT_LABEL_KEY[sort])}
           </button>
           {editable && (
             <button
@@ -269,7 +272,7 @@ export default function CollectionsView({
               }}
               className="text-xs px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg inline-flex items-center gap-1 transition"
             >
-              <Plus className="w-3 h-3" /> Nieuw item
+              <Plus className="w-3 h-3" /> {t('collections.addNewItem')}
             </button>
           )}
         </div>
@@ -279,7 +282,7 @@ export default function CollectionsView({
             <select
               value={newItemModuleId}
               onChange={(e) => setNewItemModuleId(e.target.value)}
-              className={`px-2 py-2 ${t.input} ${t.textSecondary} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              className={`px-2 py-2 ${theme.input} ${theme.textSecondary} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
             >
               {collections.map((col) => (
                 <option key={col.id} value={col.id}>{col.name}</option>
@@ -294,8 +297,8 @@ export default function CollectionsView({
                 if (e.key === 'Escape') { setAdding(false); setNewItemName(''); }
               }}
               autoFocus
-              placeholder="Naam..."
-              className={`flex-1 min-w-[10rem] px-3 py-2 ${t.input} ${t.textSecondary} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              placeholder={t('collections.namePlaceholder')}
+              className={`flex-1 min-w-[10rem] px-3 py-2 ${theme.input} ${theme.textSecondary} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
             />
             <button
               type="button"
@@ -303,16 +306,16 @@ export default function CollectionsView({
               disabled={!newItemName.trim() || !newItemModuleId}
               className="px-3 py-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-lg text-sm transition"
             >
-              Toevoegen
+              {t('collections.submitAdd')}
             </button>
           </div>
         )}
       </div>
 
       {visibleItems.length === 0 ? (
-        <div className={`${t.card} rounded-2xl p-6 shadow-sm text-center`}>
-          <p className={`text-sm ${t.textMuted}`}>
-            {query.trim() || activeTagId ? 'Geen resultaten.' : 'Nog geen items.'}
+        <div className={`${theme.card} rounded-2xl p-6 shadow-sm text-center`}>
+          <p className={`text-sm ${theme.textMuted}`}>
+            {query.trim() || activeTagId ? t('collections.noResults') : t('collections.noItemsYet')}
           </p>
         </div>
       ) : (
@@ -330,7 +333,7 @@ export default function CollectionsView({
             return (
               <li
                 key={it.id}
-                className={`${t.card} rounded-xl p-3 shadow-sm ${t.hover} cursor-pointer transition`}
+                className={`${theme.card} rounded-xl p-3 shadow-sm ${theme.hover} cursor-pointer transition`}
                 onClick={() => setSelectedItemId(it.id)}
               >
                 <div className="flex items-start gap-3">
@@ -339,16 +342,16 @@ export default function CollectionsView({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <h4 className={`font-medium text-sm ${t.textSecondary} truncate`}>{it.name}</h4>
+                      <h4 className={`font-medium text-sm ${theme.textSecondary} truncate`}>{it.name}</h4>
                       {mode === 'completion' && eventsCount > 0 && (
-                        <span className="text-xs text-green-600 dark:text-green-400 flex-shrink-0">Voltooid</span>
+                        <span className="text-xs text-green-600 dark:text-green-400 flex-shrink-0">{t('collections.completed')}</span>
                       )}
                       {mode === 'count' && eventsCount > 0 && (
                         <span className={`text-xs ${cc.iconText} flex-shrink-0`}>{eventsCount}x</span>
                       )}
                     </div>
-                    <p className={`text-xs ${t.textMuted} truncate`}>
-                      {col.name}{last ? ` · laatst ${last}` : ''}
+                    <p className={`text-xs ${theme.textMuted} truncate`}>
+                      {col.name}{last ? ` · ${t('collections.lastEventSuffix', { date: last })}` : ''}
                     </p>
                     {(it.rating > 0 || itemTags.length > 0) && (
                       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
