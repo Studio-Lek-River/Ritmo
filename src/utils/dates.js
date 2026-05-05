@@ -173,5 +173,18 @@ export function weekdayLabelLong(weekdayKey) {
 export function getDaysShortMonCaps() { return shortWeekdayLabelsMondayFirst(); }
 export function getMonthsLongCaps() { return longMonthLabels(); }
 
+export function formatRelativeDate(dateStr) {
+  const date = parseDateKey(dateStr);
+  if (isToday(date)) return t('dates.relative.today');
+  if (isYesterday(date)) return t('dates.relative.yesterday');
+  const diffDays = Math.floor((new Date() - date) / 86400000);
+  if (diffDays < 7) return t('dates.relative.daysAgo', { n: diffDays });
+  const diffWeeks = Math.floor(diffDays / 7);
+  if (diffWeeks < 9) return t('dates.relative.weeksAgo', { n: diffWeeks });
+  return t('dates.relative.onDate', {
+    date: date.toLocaleDateString(getLocale(), { day: 'numeric', month: 'short' }),
+  });
+}
+
 // Voor consumenten die alleen de huidige taal-code nodig hebben.
 export { getCurrentLanguage, getLocale };

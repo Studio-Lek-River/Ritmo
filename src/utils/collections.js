@@ -83,6 +83,34 @@ export function findTagWithGroup(module, tagId) {
   return null;
 }
 
+export function countCheckedItems(collections) {
+  return collections.flatMap((c) => c.items || []).filter((it) => it.checked === true).length;
+}
+
+export function countEventsThisWeek(collections) {
+  const now = new Date();
+  const day = (now.getDay() + 6) % 7; // 0=ma, 6=zo
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - day);
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  return collections
+    .flatMap((c) => c.items || [])
+    .flatMap((it) => it.events || [])
+    .filter((ev) => {
+      const d = new Date(ev.date);
+      return d >= monday && d <= sunday;
+    }).length;
+}
+
+export function countItemsWithActivity(collections) {
+  return collections
+    .flatMap((c) => c.items || [])
+    .filter((it) => (it.events?.length || 0) > 0).length;
+}
+
 export function deleteItemConfirmationDescription(item, t) {
   const eventCount = (item.events || []).length;
   if (eventCount > 0) {
