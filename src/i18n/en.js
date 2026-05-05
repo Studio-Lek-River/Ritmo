@@ -112,6 +112,8 @@ export default {
       yesterday: 'yesterday',
       daysAgo: '{n} days ago',
       inDays: 'in {n} days',
+      weeksAgo: '{n} weeks ago',
+      onDate: 'on {date}',
     },
   },
 
@@ -375,6 +377,16 @@ export default {
     deleteTagGroupDesc: 'All {n} tag(s) in this group will also be removed from your items.',
     deleteTagTitle: 'Delete tag?',
     deleteTagDesc: 'This tag will also be removed from all items.',
+    checkedItems: 'Checked off',
+    eventsThisWeek: 'Events this week',
+    withActivity: 'With activity',
+    checkedCount: '{count} checked',
+    noEventsShort: 'No events yet',
+    eventsWithLast: '{count} event · last {when}',
+    eventsWithLastPlural: '{count} events · last {when}',
+    searchInCollection: 'Search in {name}...',
+    logShort: '+ Log',
+    editCollection: 'Edit {name}',
   },
 
   collectionsView: {
@@ -387,6 +399,8 @@ export default {
     deleteCollectionTitle: 'Delete "{name}"?',
     deleteCollectionDesc: 'This deletes the entire collection, including all items and events. This action cannot be undone.',
     hiddenSuffix: 'hidden',
+    manage: 'Manage',
+    manageAll: 'All collections',
   },
 
   collectionList: {

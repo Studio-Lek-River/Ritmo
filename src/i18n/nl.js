@@ -113,6 +113,8 @@ export default {
       yesterday: 'gisteren',
       daysAgo: '{n} dagen geleden',
       inDays: 'over {n} dagen',
+      weeksAgo: '{n} weken geleden',
+      onDate: 'op {date}',
     },
   },
 
@@ -376,6 +378,16 @@ export default {
     deleteTagGroupDesc: 'Alle {n} tag(s) uit deze groep worden ook verwijderd uit je items.',
     deleteTagTitle: 'Tag verwijderen?',
     deleteTagDesc: 'Deze tag wordt ook verwijderd uit alle items.',
+    checkedItems: 'Afgevinkt',
+    eventsThisWeek: 'Events deze week',
+    withActivity: 'Met activiteit',
+    checkedCount: '{count} afgevinkt',
+    noEventsShort: 'Nog geen events',
+    eventsWithLast: '{count} event · laatst {when}',
+    eventsWithLastPlural: '{count} events · laatst {when}',
+    searchInCollection: 'Zoek in {name}...',
+    logShort: '+ Log',
+    editCollection: 'Bewerk {name}',
   },
 
   collectionsView: {
@@ -388,6 +400,8 @@ export default {
     deleteCollectionTitle: '"{name}" verwijderen?',
     deleteCollectionDesc: 'Dit verwijdert de hele collectie, inclusief alle items en events. Deze actie kan niet ongedaan worden gemaakt.',
     hiddenSuffix: 'verborgen',
+    manage: 'Beheer',
+    manageAll: 'Alle collecties',
   },
 
   collectionList: {
