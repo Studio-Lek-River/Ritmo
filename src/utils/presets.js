@@ -111,7 +111,7 @@ function buildPresets(t) {
         color: 'amber',
         trackingMode: 'completion',
         itemFields: { rating: true, notes: true, tags: true },
-        tags: [],
+        tagGroups: [],
         items: [],
       },
       {
@@ -120,7 +120,7 @@ function buildPresets(t) {
         color: 'purple',
         trackingMode: 'completion',
         itemFields: { rating: true, notes: true, tags: true },
-        tags: [],
+        tagGroups: [],
         items: [],
       },
       {
@@ -129,7 +129,7 @@ function buildPresets(t) {
         color: 'orange',
         trackingMode: 'count',
         itemFields: { rating: true, notes: true, tags: true },
-        tags: [],
+        tagGroups: [],
         items: [],
       },
     ],

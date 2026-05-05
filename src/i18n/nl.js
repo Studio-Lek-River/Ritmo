@@ -364,6 +364,18 @@ export default {
     submitAdd: 'Toevoegen',
     noItemsYet: 'Nog geen items.',
     lastEventSuffix: 'laatst {date}',
+    tagGroupDefault: 'Tags',
+    tagGroups: 'Tag-groepen',
+    addTagGroup: 'Groep toevoegen',
+    groupLabel: 'Naam van de groep',
+    allowMultiple: 'Meerdere keuzes mogelijk',
+    singleSelect: 'Eén keuze per item',
+    noTagGroups: 'Nog geen tag-groepen.',
+    deleteTagGroupAria: 'Groep verwijderen',
+    deleteTagGroupTitle: 'Groep verwijderen?',
+    deleteTagGroupDesc: 'Alle {n} tag(s) uit deze groep worden ook verwijderd uit je items.',
+    deleteTagTitle: 'Tag verwijderen?',
+    deleteTagDesc: 'Deze tag wordt ook verwijderd uit alle items.',
   },
 
   collectionsView: {
@@ -683,6 +695,14 @@ export default {
     books: { name: 'Boeken' },
     films: { name: 'Films' },
     restaurants: { name: 'Restaurants' },
+    laundry: {
+      name: 'Wasmiddelen en wasparfums',
+      groupSoort: 'Soort',
+      tagWasmiddel: 'Wasmiddel',
+      tagWasparfum: 'Wasparfum',
+      groupMerk: 'Merk',
+      groupGeur: 'Geur',
+    },
     sleep: { name: 'Slaap' },
 
     // default modules (uit DEFAULT_MODULES in App.jsx)
