@@ -1,3 +1,12 @@
+# [0.3.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.2.1...v0.3.0) (2026-05-05)
+
+
+### Features
+
+* **collections:** herontwerp CollectionsView met per-module kaarten ([23adfc2](https://github.com/Studio-Lek-River/Ritmo/commit/23adfc2001a996d30f0ea0a5c77dab3ed8407e3a))
+* **collections:** voeg nieuwe i18n-keys toe ([79bbf82](https://github.com/Studio-Lek-River/Ritmo/commit/79bbf82dcc87c99a81c35fa86efb483f6c0220d8))
+* **collections:** voeg stats-helpers toe en formatRelativeDate ([8ff2926](https://github.com/Studio-Lek-River/Ritmo/commit/8ff292682c5a9ad09abe351714ef44af3011f215))
+
 ## [0.2.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.2.0...v0.2.1) (2026-05-05)
 
 
