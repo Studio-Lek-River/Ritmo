@@ -47,3 +47,20 @@ Ritmo gebruikt [semantic-release](.releaserc.json). Het format van elke commit o
 5. **Geen `Co-Authored-By: Claude ...`-trailer** in commit messages.
 
 **Merge-strategie:** squash merging is uitgeschakeld in de repo. PRs gebruiken merge commit of rebase, dus alle losse commits blijven intact op `main`. Elke individuele commit verschijnt als aparte regel in de gegenereerde changelog onder de juiste sectie ("Features", "Bug Fixes"). Het zwaarste type binnen een PR bepaalt de version bump.
+
+## Changelog- en versie-toets
+
+Elke commit bepaalt automatisch de version bump en een regel in CHANGELOG.md. Vóór elke commit doorloop ik deze toets:
+
+### Wat ik check
+
+1. **Type klopt met de feitelijke wijziging** — een gedragsverandering zichtbaar voor de gebruiker is altijd `feat:` of `fix:`, ook als die klein voelt. Een interne refactor zonder zichtbaar effect is `refactor:`.
+2. **Beschrijving is changelog-waardig** — de eerste commit-regel verschijnt letterlijk in CHANGELOG.md. Ik schrijf hem zodat een gebruiker begrijpt wat er veranderd is zonder de code te zien.
+3. **BREAKING CHANGE-vlag** — als een wijziging bestaande data, API's of verwacht gedrag incompatibel verandert, voeg ik `!` toe na het type (`feat!:`) of een `BREAKING CHANGE:`-footer. Ik wijs hier altijd actief op, ook als de gebruiker het niet noemt.
+4. **Version bump expliciet benoemen** — als het niet voor de hand ligt, benoem ik de verwachte bump (`feat:` → minor, `fix:` → patch, `feat!:` → major).
+
+### Wanneer ik dit meld
+
+- Type is onduidelijk: ik noem beide kandidaten + consequentie (wél/geen release, welke bump) en laat de gebruiker kiezen.
+- `BREAKING CHANGE` is van toepassing: altijd actief melden.
+- Type en beschrijving zijn duidelijk: geen extra toelichting — commit direct, geen ruis.
