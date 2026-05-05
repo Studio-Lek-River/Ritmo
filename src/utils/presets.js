@@ -132,6 +132,42 @@ function buildPresets(t) {
         tagGroups: [],
         items: [],
       },
+      {
+        nameKey: 'presets.laundry.name',
+        icon: 'Droplets',
+        color: 'cyan',
+        enabled: true,
+        countInStreak: false,
+        trackingMode: 'count',
+        itemFields: { rating: true, notes: false, tags: true },
+        tagGroups: [
+          {
+            id: 'soort',
+            labelKey: 'presets.laundry.groupSoort',
+            color: 'cyan',
+            allowMultiple: false,
+            tags: [
+              { id: 'soort-wasmiddel', labelKey: 'presets.laundry.tagWasmiddel' },
+              { id: 'soort-wasparfum', labelKey: 'presets.laundry.tagWasparfum' },
+            ],
+          },
+          {
+            id: 'merk',
+            labelKey: 'presets.laundry.groupMerk',
+            color: 'purple',
+            allowMultiple: false,
+            tags: [],
+          },
+          {
+            id: 'geur',
+            labelKey: 'presets.laundry.groupGeur',
+            color: 'pink',
+            allowMultiple: true,
+            tags: [],
+          },
+        ],
+        items: [],
+      },
     ],
     sleep: [
       {
