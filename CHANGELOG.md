@@ -1,3 +1,10 @@
+## [0.2.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.2.0...v0.2.1) (2026-05-05)
+
+
+### Bug Fixes
+
+* **modules:** preset-naam overnemen in naamveld bij selectie ([cdf81c7](https://github.com/Studio-Lek-River/Ritmo/commit/cdf81c7a7df7aca90b9237cb18527c30f67c89a9))
+
 # [0.2.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.1.2...v0.2.0) (2026-05-05)
 
 
