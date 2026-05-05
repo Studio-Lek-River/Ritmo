@@ -62,7 +62,7 @@ export function moduleStatusForDay(module, dayData, date) {
 // split into equal segments left-to-right in module order.
 export function buildDayCellBackground(modules, dayData, date) {
   const completed = modules
-    .filter(m => m.enabled && canCountInStreak(m.type) && m.type !== 'sleep')
+    .filter(m => m.enabled && canCountInStreak(m.type))
     .filter(m => moduleStatusForDay(m, dayData, date) === 'full');
 
   if (completed.length === 0) return null;

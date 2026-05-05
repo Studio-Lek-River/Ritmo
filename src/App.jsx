@@ -37,7 +37,7 @@ import {
   formatDayTitle, formatDaySubtitle, formatWeekTitle, formatWeekRange,
   WEEKDAY_KEYS, shortWeekdayLabelsMondayFirst, longMonthLabels, weekdayLabelLong,
 } from './utils/dates';
-import { summarizeSleep } from './utils/sleep';
+import { summarizeSleep, goalsForNight, isOnTarget } from './utils/sleep';
 import {
   buildDayCellBackground, moduleStatusForDay, isDayFullyComplete,
   normalizeChecklistItemData, isChecklistItemComplete,
@@ -647,7 +647,7 @@ export default function Ritmo() {
         : history[dateStr];
 
       if (!dayData) break;
-      if (!checkFn(dayData)) break;
+      if (!checkFn(dayData, d)) break;
       streak++;
       d = addDays(d, -1);
       if (streak > 365) break;
@@ -685,6 +685,14 @@ export default function Ritmo() {
 
     if (mod.type === 'projects') {
       return calculateStreak(d => d.moduleData?.[mod.id]?.touchedToday === true);
+    }
+
+    if (mod.type === 'sleep') {
+      return calculateStreak((dayData, date) => {
+        const goals = goalsForNight(mod.goals, date);
+        if (!goals?.bed || !goals?.wake) return false;
+        return isOnTarget(dayData.moduleData?.[mod.id], goals, mod.toleranceMinutes ?? 15);
+      });
     }
 
     return 0;
