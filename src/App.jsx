@@ -608,7 +608,6 @@ export default function Ritmo() {
       itemFields: { rating: true, notes: true, tags: true },
       tagGroups: [],
       items: [],
-      _createMode: 'collection',
     });
   };
 
@@ -2638,9 +2637,8 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
   const [newItem, setNewItem] = useState('');
   const [expandedItemId, setExpandedItemId] = useState(null);
   const isNew = !mod.name && !mod.nameKey;
-  const skipPresets = mod._createMode === 'collection';
   const [step, setStep] = useState(
-    isNew ? (skipPresets ? 'config' : (mod.type ? 'preset' : 'type')) : 'config'
+    isNew ? (mod.type ? 'preset' : 'type') : 'config'
   );
   const [presetTab, setPresetTab] = useState('suggestions');
 
@@ -2724,10 +2722,10 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
     // Default-/preset-module ongewijzigd: behoud nameKey, dump `name`. Zo blijft
     // de titel taal-reactief. User-rename: schrijf `name`, dump `nameKey`.
     if (editing.nameKey && trimmed === t(editing.nameKey)) {
-      const { name: _drop, _createMode: _drop2, ...rest } = editing;
+      const { name: _drop, ...rest } = editing;
       return rest;
     }
-    const { nameKey: _dropKey, _createMode: _drop2, ...rest } = editing;
+    const { nameKey: _dropKey, ...rest } = editing;
     return { ...rest, name: trimmed };
   };
 
@@ -2736,7 +2734,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
       <div className={`${theme.card} rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto my-4`}>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            {isNew && !skipPresets && step !== 'type' && (
+            {isNew && step !== 'type' && (
               <button
                 onClick={() => setStep(step === 'config' ? 'preset' : 'type')}
                 className={`p-1.5 ${theme.hover} rounded-lg ${theme.textMuted}`}
@@ -2747,10 +2745,9 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
             )}
             <h2 className={`text-xl font-bold ${theme.text}`}>
               {!isNew && t('modules.editTitle')}
-              {isNew && skipPresets && t('collectionCreate.title')}
-              {isNew && !skipPresets && step === 'type' && t('modules.newPickType')}
-              {isNew && !skipPresets && step === 'preset' && t('modules.pickPreset')}
-              {isNew && !skipPresets && step === 'config' && t('modules.configure')}
+              {isNew && step === 'type' && t('modules.newPickType')}
+              {isNew && step === 'preset' && t('modules.pickPreset')}
+              {isNew && step === 'config' && t('modules.configure')}
             </h2>
           </div>
           <button onClick={onCancel} className={`p-2 ${theme.hover} rounded-lg`}>

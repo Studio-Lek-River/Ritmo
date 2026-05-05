@@ -405,10 +405,6 @@ export default {
     deleteItemDescWithEvents: 'This will delete the item and {count} associated events. This action cannot be undone.',
   },
 
-  collectionCreate: {
-    title: 'New collection',
-  },
-
   projectsView: {
     deleteSubjectTitle: 'Delete "{name}"?',
     deleteSubjectDesc: 'This deletes the subject and all its subgoals. This action cannot be undone.',

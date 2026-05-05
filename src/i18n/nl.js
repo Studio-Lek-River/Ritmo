@@ -406,10 +406,6 @@ export default {
     deleteItemDescWithEvents: 'Dit verwijdert het item en {count} bijbehorende events. Deze actie kan niet ongedaan worden gemaakt.',
   },
 
-  collectionCreate: {
-    title: 'Nieuwe collectie',
-  },
-
   projectsView: {
     deleteSubjectTitle: '"{name}" verwijderen?',
     deleteSubjectDesc: 'Dit verwijdert het onderwerp en alle subdoelen. Deze actie kan niet ongedaan worden gemaakt.',
