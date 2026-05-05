@@ -211,6 +211,14 @@ export default {
       reserveSuffix: 'reserve {value}/mo',
       editAria: 'Edit',
       removeAria: 'Remove',
+      tabList: 'List',
+      tabCalendar: 'Calendar',
+      netThisMonth: 'Net this month',
+      noEventsThisDay: 'No items on this day',
+      calendar: {
+        prevMonthAria: 'Previous month',
+        nextMonthAria: 'Next month',
+      },
       editor: {
         editTitle: 'Edit',
         addTitle: 'Add',
@@ -230,6 +238,7 @@ export default {
         dueDayMonthly: 'Day of month',
         dueDayYearly: 'Due day',
         dueMonth: 'Due month',
+        dueWeekday: 'Day of the week',
         cancel: 'Cancel',
       },
     },

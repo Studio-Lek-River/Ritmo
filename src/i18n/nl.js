@@ -212,6 +212,14 @@ export default {
       reserveSuffix: 'reserveer {value}/mnd',
       editAria: 'Bewerk',
       removeAria: 'Verwijder',
+      tabList: 'Lijst',
+      tabCalendar: 'Kalender',
+      netThisMonth: 'Netto deze maand',
+      noEventsThisDay: 'Geen posten op deze dag',
+      calendar: {
+        prevMonthAria: 'Vorige maand',
+        nextMonthAria: 'Volgende maand',
+      },
       editor: {
         editTitle: 'Bewerken',
         addTitle: 'Toevoegen',
@@ -231,6 +239,7 @@ export default {
         dueDayMonthly: 'Boekdag van de maand',
         dueDayYearly: 'Vervaldag',
         dueMonth: 'Vervalmaand',
+        dueWeekday: 'Dag van de week',
         cancel: 'Annuleer',
       },
     },

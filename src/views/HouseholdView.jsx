@@ -8,6 +8,7 @@ import useStoredState from '../hooks/useStoredState';
 import {
   toMonthly, isOverdue, daysUntilDue, formatRelativeDate, formatEuro, parseEuroInput,
   reconcileUtilitiesAuto, totalActualOf, autoSumOf,
+  eventsForMonth, netForDay, netForMonth,
 } from '../utils/household';
 import { useTranslation, getLocale } from '../i18n/useTranslation';
 
@@ -113,7 +114,7 @@ export default function HouseholdView({ theme, darkMode }) {
         expanded={expanded.budget}
         onToggle={() => toggle('budget')}
       >
-        <BudgetSection budget={budget} setBudget={setBudget} config={config} theme={theme} darkMode={darkMode} monthsLong={names.monthsLong} />
+        <BudgetSection budget={budget} setBudget={setBudget} config={config} theme={theme} darkMode={darkMode} monthsLong={names.monthsLong} monthsShort={names.monthsShort} dayLabels={names.dayLabels} />
       </Section>
 
       <Section
@@ -464,8 +465,9 @@ function GroceriesSection({ groceries, setGroceries, theme, dayLabels }) {
 // Budget
 // ============================================================================
 
-function BudgetSection({ budget, setBudget, config, theme, darkMode, monthsLong }) {
+function BudgetSection({ budget, setBudget, config, theme, darkMode, monthsLong, monthsShort, dayLabels }) {
   const { t } = useTranslation();
+  const [view, setView] = useState('list'); // 'list' | 'calendar'
   const [editing, setEditing] = useState(null); // { kind: 'income'|'expenses', item: { ... } }
   const [adding, setAdding] = useState(null); // 'income' | 'expenses' | null
   const [energyExpanded, setEnergyExpanded] = useState(false);
@@ -498,6 +500,21 @@ function BudgetSection({ budget, setBudget, config, theme, darkMode, monthsLong 
     }));
   };
 
+  const tabBtn = (id, label) => (
+    <button
+      key={id}
+      onClick={() => setView(id)}
+      className={`flex-1 py-2 text-xs font-medium rounded-lg transition ${
+        view === id
+          ? 'bg-blue-500 text-white'
+          : `${theme.cardSecondary} ${theme.textSecondary} ${theme.hover}`
+      }`}
+      aria-pressed={view === id}
+    >
+      {label}
+    </button>
+  );
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-2">
@@ -506,28 +523,48 @@ function BudgetSection({ budget, setBudget, config, theme, darkMode, monthsLong 
         <Stat theme={theme} label={t('household.budget.net')} value={formatEuro(monthlyNet)} accent={monthlyNet < 0 ? 'text-amber-500' : 'text-blue-500'} />
       </div>
 
-      <BudgetList
-        title={t('household.budget.income')}
-        items={income}
-        kind="income"
-        theme={theme}
-        onEdit={(item) => setEditing({ kind: 'income', item })}
-        onAdd={() => setAdding('income')}
-        onDelete={(id) => remove('income', id)}
-      />
+      <div className="flex gap-2">
+        {tabBtn('list', t('household.budget.tabList'))}
+        {tabBtn('calendar', t('household.budget.tabCalendar'))}
+      </div>
 
-      <BudgetList
-        title={t('household.budget.expenses')}
-        items={expenses}
-        kind="expenses"
-        theme={theme}
-        onEdit={(item) => setEditing({ kind: 'expenses', item })}
-        onAdd={() => setAdding('expenses')}
-        onDelete={(id) => remove('expenses', id)}
-        energyCombined={energyCombined}
-        energyExpanded={energyExpanded}
-        onToggleEnergy={() => setEnergyExpanded(v => !v)}
-      />
+      {view === 'list' && (
+        <>
+          <BudgetList
+            title={t('household.budget.income')}
+            items={income}
+            kind="income"
+            theme={theme}
+            onEdit={(item) => setEditing({ kind: 'income', item })}
+            onAdd={() => setAdding('income')}
+            onDelete={(id) => remove('income', id)}
+          />
+
+          <BudgetList
+            title={t('household.budget.expenses')}
+            items={expenses}
+            kind="expenses"
+            theme={theme}
+            onEdit={(item) => setEditing({ kind: 'expenses', item })}
+            onAdd={() => setAdding('expenses')}
+            onDelete={(id) => remove('expenses', id)}
+            energyCombined={energyCombined}
+            energyExpanded={energyExpanded}
+            onToggleEnergy={() => setEnergyExpanded(v => !v)}
+          />
+        </>
+      )}
+
+      {view === 'calendar' && (
+        <BudgetCalendarSection
+          budget={budget}
+          theme={theme}
+          darkMode={darkMode}
+          monthsLong={monthsLong}
+          dayLabels={dayLabels}
+          onPickItem={(item, kind) => setEditing({ kind, item })}
+        />
+      )}
 
       {(editing || adding) && (
         <BudgetEditor
@@ -536,6 +573,7 @@ function BudgetSection({ budget, setBudget, config, theme, darkMode, monthsLong 
           kind={editing?.kind || adding}
           initial={editing?.item}
           monthsLong={monthsLong}
+          dayLabels={dayLabels}
           onCancel={() => { setEditing(null); setAdding(null); }}
           onSave={(item) => {
             const kind = editing?.kind || adding;
@@ -664,7 +702,7 @@ function freqLabel(f, t) {
       : t('household.budget.perMonth');
 }
 
-function BudgetEditor({ theme, darkMode, kind, initial, monthsLong, onCancel, onSave }) {
+function BudgetEditor({ theme, darkMode, kind, initial, monthsLong, dayLabels, onCancel, onSave }) {
   const { t } = useTranslation();
   const [name, setName] = useState(initial?.name || '');
   const [amount, setAmount] = useState(initial ? String(initial.amount).replace('.', ',') : '');
@@ -677,9 +715,17 @@ function BudgetEditor({ theme, darkMode, kind, initial, monthsLong, onCancel, on
   const [dueMonth, setDueMonth] = useState(
     initial?.dueMonth != null ? String(initial.dueMonth) : ''
   );
+  const [dueWeekday, setDueWeekday] = useState(
+    initial?.dueWeekday != null ? String(initial.dueWeekday) : '1'
+  );
 
   const isExpense = kind === 'expenses';
   const supportsAuto = isExpense && (frequency === 'monthly' || frequency === 'yearly');
+  const isWeekly = frequency === 'weekly';
+
+  // dayLabels is Sunday-first: index 0 = Sunday, 1..6 = Monday..Saturday.
+  // ISO weekday is Monday-first: 1..7 = Monday..Sunday. Map ISO 7 → index 0.
+  const isoDayLabel = (iso) => (dayLabels && dayLabels[iso === 7 ? 0 : iso]) || String(iso);
 
   const save = () => {
     const trimmed = name.trim();
@@ -691,6 +737,9 @@ function BudgetEditor({ theme, darkMode, kind, initial, monthsLong, onCancel, on
     const parsedMonth = supportsAuto && frequency === 'yearly' && dueMonth !== ''
       ? Math.min(12, Math.max(1, parseInt(dueMonth, 10) || 1))
       : null;
+    const parsedWeekday = isWeekly
+      ? Math.min(7, Math.max(1, parseInt(dueWeekday, 10) || 1))
+      : null;
     onSave({
       id: initial?.id || newId(),
       name: trimmed,
@@ -700,6 +749,7 @@ function BudgetEditor({ theme, darkMode, kind, initial, monthsLong, onCancel, on
       ...(isExpense && isUtility ? { isUtility } : {}),
       ...(parsedDay != null ? { dueDay: parsedDay } : {}),
       ...(parsedMonth != null ? { dueMonth: parsedMonth } : {}),
+      ...(parsedWeekday != null ? { dueWeekday: parsedWeekday } : {}),
     });
   };
 
@@ -825,6 +875,20 @@ function BudgetEditor({ theme, darkMode, kind, initial, monthsLong, onCancel, on
               )}
             </div>
           )}
+          {isWeekly && (
+            <div>
+              <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.budget.editor.dueWeekday')}</label>
+              <select
+                value={dueWeekday}
+                onChange={e => setDueWeekday(e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm`}
+              >
+                {[1, 2, 3, 4, 5, 6, 7].map(iso => (
+                  <option key={iso} value={iso}>{isoDayLabel(iso)}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         <div className={`flex gap-2 p-4 border-t ${theme.border}`}>
           <button
@@ -842,6 +906,166 @@ function BudgetEditor({ theme, darkMode, kind, initial, monthsLong, onCancel, on
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function BudgetCalendarSection({ budget, theme, darkMode, monthsLong, dayLabels, onPickItem }) {
+  const { t } = useTranslation();
+  const today = new Date();
+  const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [selectedDay, setSelectedDay] = useState(null);
+
+  const year = cursor.getFullYear();
+  const month = cursor.getMonth();
+  const eventsByDay = useMemo(() => eventsForMonth(budget, year, month), [budget, year, month]);
+  const monthlyNet = useMemo(() => netForMonth(eventsByDay), [eventsByDay]);
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDay = new Date(year, month, 1);
+  const startWeekday = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+  const cells = [];
+  for (let i = 0; i < startWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const isCurrentMonth =
+    today.getFullYear() === year && today.getMonth() === month;
+
+  // Monday-first weekday header. dayLabels is Sunday-first (0..6 = Sun..Sat).
+  // We want index ordering 1, 2, 3, 4, 5, 6, 0 → Mon, Tue, ..., Sun.
+  const headerOrder = [1, 2, 3, 4, 5, 6, 0];
+
+  const selectedEvents = selectedDay != null ? (eventsByDay[selectedDay] || []) : [];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => { setCursor(new Date(year, month - 1, 1)); setSelectedDay(null); }}
+          className={`p-2 rounded-lg ${theme.hover}`}
+          aria-label={t('household.budget.calendar.prevMonthAria')}
+        >
+          <ChevronLeft className={`w-4 h-4 ${theme.textSecondary}`} />
+        </button>
+        <h4 className={`text-sm font-semibold ${theme.textSecondary}`}>
+          {monthsLong[month]} {year}
+        </h4>
+        <button
+          onClick={() => { setCursor(new Date(year, month + 1, 1)); setSelectedDay(null); }}
+          className={`p-2 rounded-lg ${theme.hover}`}
+          aria-label={t('household.budget.calendar.nextMonthAria')}
+        >
+          <ChevronRight className={`w-4 h-4 ${theme.textSecondary}`} />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {headerOrder.map(idx => (
+          <div key={idx} className={`text-center text-[10px] font-medium ${theme.textMuted} py-1`}>
+            {dayLabels?.[idx]?.slice(0, 2) ?? ''}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((day, i) => {
+          if (day == null) return <div key={`empty-${i}`} />;
+          const events = eventsByDay[day] || [];
+          const net = netForDay(events);
+          const isToday = isCurrentMonth && today.getDate() === day;
+          const isSelected = selectedDay === day;
+          const iconCount = events.length;
+          const visibleIcons = iconCount <= 3 ? events : events.slice(0, 2);
+          const hasOverflow = iconCount > 3;
+          return (
+            <button
+              key={day}
+              onClick={() => setSelectedDay(prev => prev === day ? null : day)}
+              className={`min-h-[3.25rem] p-1 rounded-md flex flex-col items-stretch text-left transition ${
+                isSelected
+                  ? 'ring-2 ring-blue-500 bg-blue-500/10'
+                  : `${theme.cardSecondary} ${theme.hover}`
+              } ${isToday ? 'ring-1 ring-blue-300' : ''}`}
+              aria-pressed={isSelected}
+            >
+              <span className={`text-[10px] font-medium ${theme.textSecondary} leading-none`}>{day}</span>
+              {net !== 0 && (
+                <span className={`text-[10px] font-semibold leading-tight mt-0.5 ${
+                  net > 0 ? 'text-emerald-500' : 'text-rose-500'
+                }`}>
+                  {net > 0 ? '+' : '−'}{formatEuro(Math.abs(net))}
+                </span>
+              )}
+              {iconCount > 0 && (
+                <span className="flex items-center gap-0.5 mt-auto">
+                  {visibleIcons.map((e, idx) => {
+                    const Icon = BUDGET_ICONS[e.item.icon] || BadgeEuro;
+                    return (
+                      <Icon
+                        key={`${e.item.id}-${idx}`}
+                        className={`w-3 h-3 ${
+                          e.kind === 'income' ? 'text-emerald-500' : theme.textMuted
+                        }`}
+                      />
+                    );
+                  })}
+                  {hasOverflow && (
+                    <span className={`text-[9px] ${theme.textMuted}`}>…</span>
+                  )}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className={`flex items-center justify-between p-3 rounded-xl ${theme.cardSecondary}`}>
+        <span className={`text-xs ${theme.textMuted}`}>{t('household.budget.netThisMonth')}</span>
+        <span className={`text-sm font-semibold ${
+          monthlyNet < 0 ? 'text-rose-500' : monthlyNet > 0 ? 'text-emerald-500' : theme.textSecondary
+        }`}>
+          {monthlyNet > 0 ? '+' : monthlyNet < 0 ? '−' : ''}{formatEuro(Math.abs(monthlyNet))}
+        </span>
+      </div>
+
+      {selectedDay != null && (
+        <div className={`p-3 rounded-xl ${theme.card} border ${theme.border} space-y-2`}>
+          <div className={`text-xs ${theme.textMuted}`}>
+            {selectedDay} {monthsLong[month]} {year}
+          </div>
+          {selectedEvents.length === 0 ? (
+            <p className={`text-xs ${theme.textMuted}`}>{t('household.budget.noEventsThisDay')}</p>
+          ) : (
+            <ul className="space-y-1">
+              {selectedEvents.map((e, idx) => {
+                const Icon = BUDGET_ICONS[e.item.icon] || BadgeEuro;
+                const sign = e.kind === 'income' ? 1 : -1;
+                const amount = sign * (Number(e.item.amount) || 0);
+                const itemKind = e.kind === 'income' ? 'income' : 'expenses';
+                return (
+                  <li
+                    key={`${e.item.id}-${idx}`}
+                    className={`flex items-center gap-2 p-2 rounded-lg ${theme.cardSecondary}`}
+                  >
+                    <Icon className={`w-4 h-4 ${e.kind === 'income' ? 'text-emerald-500' : theme.textSecondary} shrink-0`} />
+                    <button
+                      onClick={() => onPickItem?.(e.item, itemKind)}
+                      className={`flex-1 text-left text-sm ${theme.text} truncate ${theme.hover} rounded px-1`}
+                    >
+                      {e.item.name}
+                    </button>
+                    <span className={`text-xs font-semibold ${
+                      amount > 0 ? 'text-emerald-500' : 'text-rose-500'
+                    }`}>
+                      {amount > 0 ? '+' : '−'}{formatEuro(Math.abs(amount))}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }
