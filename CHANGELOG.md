@@ -1,3 +1,10 @@
+## [0.1.2](https://github.com/Studio-Lek-River/Ritmo/compare/v0.1.1...v0.1.2) (2026-05-05)
+
+
+### Bug Fixes
+
+* **modules:** toon preset-stap bij aanmaken van collectie ([d865b37](https://github.com/Studio-Lek-River/Ritmo/commit/d865b3769a41e5ef594c308d18b01a019f4f8002))
+
 ## [0.1.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.1.0...v0.1.1) (2026-05-05)
 
 
