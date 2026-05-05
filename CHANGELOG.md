@@ -1,3 +1,12 @@
+## [0.1.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.1.0...v0.1.1) (2026-05-05)
+
+
+### Bug Fixes
+
+* **ci:** gebruik RELEASE_TOKEN voor semantic-release push-rechten ([c914c2a](https://github.com/Studio-Lek-River/Ritmo/commit/c914c2ab126311521b4e2cfd4e00d7cc2eaee3af))
+* **ci:** herstel volledige semantic-release configuratie met git push-back ([1e5b757](https://github.com/Studio-Lek-River/Ritmo/commit/1e5b757a44041574c147da9f0542bb12268f479e))
+* **ci:** vereenvoudig semantic-release zonder git push-back ([4e01ca1](https://github.com/Studio-Lek-River/Ritmo/commit/4e01ca16d88409ebe8cf3711d3ad71f243f70d60))
+
 # [0.1.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.0.0...v0.1.0) (2026-05-05)
 
 
