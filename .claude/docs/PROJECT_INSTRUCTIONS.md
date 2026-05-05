@@ -79,7 +79,7 @@ Concreet betekent dit:
 - **Styling**: Tailwind CSS 3 (met dynamische kleur-safelist)
 - **Iconen**: lucide-react
 - **PWA**: vite-plugin-pwa (manifest + service worker)
-- **Storage**: localStorage via een wrapper (`window.storage`-compatible API)
+- **Storage**: IndexedDB via idb-keyval (met `window.storage`-compatible API)
 - **Hosting**: Netlify (gratis tier, koppelt met GitHub-organisatie Studio-Lek-River)
 - **Repo**: github.com/Studio-Lek-River/Ritmo
 - **Licentie**: MIT
@@ -145,14 +145,14 @@ Het oude `timer`-type is gegeneraliseerd naar `counter` en gemerged in `main`. B
 
 ### Data-architectuur
 
-Alle data wordt lokaal opgeslagen via een storage-laag die de `window.storage`-API mimicked. Alle keys hebben prefix `ritmo:` in localStorage:
+Alle data wordt lokaal opgeslagen via een storage-laag (`src/storage.js`) die de `window.storage`-API biedt. De onderliggende opslag is **IndexedDB** via idb-keyval. Keys worden zonder prefix opgeslagen:
 
-- `ritmo:settings` — gebruikersinstellingen: `{ modules, darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, showReflectionOnToday, hasUsedSwipe, hasOnboarded, language }`. `language` is `'auto' | 'nl' | 'en'` (default `'auto'` — volgt browser). `hasUsedSwipe` is een one-shot flag die de eerste swipe-gesture in lijsten registreert; zodra true, verdwijnt de "veeg om te verwijderen"-hint.
-- `ritmo:day:YYYY-MM-DD` — dagdata: `{ moduleData, customTasks, reflectionAnswers }`
+- `settings` — gebruikersinstellingen: `{ modules, darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, showReflectionOnToday, hasUsedSwipe, hasOnboarded, language }`. `language` is `'auto' | 'nl' | 'en'` (default `'auto'` — volgt browser). `hasUsedSwipe` is een one-shot flag die de eerste swipe-gesture in lijsten registreert; zodra true, verdwijnt de "veeg om te verwijderen"-hint.
+- `day:YYYY-MM-DD` — dagdata: `{ moduleData, customTasks, reflectionAnswers }`
 
-De `ritmo:`-prefix wordt door `storage.js` automatisch toegevoegd. In de UI roep je dus `window.storage.get('settings')` aan, niet `'ritmo:settings'`. De prefix bestaat alleen op localStorage-niveau.
+In de UI roep je `window.storage.get('settings')` aan — geen prefix nodig. `storage.js` heeft een ingebouwde eenmalige migratie die bestaande `ritmo:`-prefixed localStorage-entries naar IndexedDB verplaatst.
 
-De storage-laag is een **abstraction layer**: de UI praat met `window.storage`, niet direct met `localStorage`. Dit maakt latere migratie naar cloud-sync (Supabase/Firebase) eenvoudig zonder de UI aan te passen.
+De storage-laag is een **abstraction layer**: de UI praat met `window.storage`, niet direct met IndexedDB. Dit maakt latere migratie naar cloud-sync (Supabase/Firebase) eenvoudig zonder de UI aan te passen.
 
 ### Codestructuur (huidige staat)
 
@@ -161,7 +161,7 @@ src/
 ├── App.jsx                    # nog monolithisch (ruim 3000 regels), wordt iteratief opgesplitst
 ├── main.jsx                   # React entry point
 ├── index.css                  # Tailwind imports + globale stijlen
-├── storage.js                 # localStorage wrapper met window.storage API
+├── storage.js                 # IndexedDB wrapper via idb-keyval met window.storage API; eenmalige migratie van localStorage
 ├── i18n/                      # tweetaligheid (NL/EN)
 │   ├── nl.js                  # Nederlandse strings (genest object)
 │   ├── en.js                  # Engelse strings (gespiegelde structuur)
@@ -193,6 +193,7 @@ src/
 │   ├── EmptyState.jsx         # generieke lege-staat (icoon + titel + omschrijving + optionele CTA)
 │   ├── RitmoLogo.jsx          # R-Loop merk-logo (variant + animation props)
 │   ├── SplashScreen.jsx       # app-start scherm met geanimeerd logo + tagline
+│   ├── BackupSection.jsx      # export/import-UI in de install-tab (download + file-picker + confirm)
 │   └── TabBar.jsx             # tabbalk met overflow-menu ("Meer") en discoverable tabs
 └── utils/                     # pure helper-functies
     ├── colors.js
@@ -205,7 +206,8 @@ src/
     ├── sleep.js               # slaap-helpers (goalsForNight, isOnTarget, summarizeSleep)
     ├── presets.js             # module-presets / templates voor nieuwe modules
     ├── household.js           # helpers voor Huishouden (toMonthly, isOverdue, formatEuro)
-    └── migrate.js             # migraties van oude naar nieuwe data-vormen
+    ├── migrate.js             # migraties van oude naar nieuwe data-vormen
+    └── backup.js              # export/import helpers: exportData, downloadBackup, importData, readFileAsText
 ```
 
 De choice- en tasks-modules zitten nog inline in `App.jsx`, evenals de meeste views, settings-modals en theme-logica. **Refactoring is een doorlopend proces** — bij elke nieuwe feature kijken we of er logica naar een aparte file kan. Geen vaste bestemmingsstructuur opleggen; opsplitsen gebeurt zodra er een tweede gebruiker van een stuk logica is.
@@ -313,4 +315,4 @@ Vraag liever één keer extra dan iets bouwen wat herbouwd moet worden.
 
 ---
 
-_Laatst bijgewerkt: 2026-05-04_
+_Laatst bijgewerkt: 2026-05-05_

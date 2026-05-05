@@ -786,4 +786,24 @@ export default {
     loading: 'Een momentje...',
     tagline: 'Jouw dag, jouw ritme.',
   },
+
+  backup: {
+    settingsHeader: 'Back-up van je data',
+    settingsBody:
+      'Sla al je gegevens op als bestand of zet een eerdere back-up terug. Handig als je de app opnieuw installeert of naar een andere telefoon overstapt.',
+    exportButton: 'Exporteer naar bestand',
+    exportSuccess: 'Back-up gedownload.',
+    importButton: 'Zet back-up terug',
+    importConfirmTitle: 'Back-up terugzetten?',
+    importConfirmBody:
+      'Hierdoor wordt al je huidige data vervangen. Dit kan niet ongedaan worden gemaakt.',
+    importConfirmAction: 'Ja, terugzetten',
+    importCancel: 'Annuleer',
+    importSuccess: 'Back-up teruggezet.',
+    importDays: '{count} dagen hersteld.',
+    importErrorParse: 'Dit bestand is geen geldige JSON.',
+    importErrorNotRitmo: 'Dit lijkt geen Ritmo-back-up te zijn.',
+    importErrorVersion: 'Deze back-up is van een nieuwere versie van Ritmo.',
+    importErrorGeneric: 'Het terugzetten lukte niet. Probeer het opnieuw.',
+  },
 };

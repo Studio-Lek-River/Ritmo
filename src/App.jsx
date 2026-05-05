@@ -18,6 +18,7 @@ import TabBar from './components/TabBar';
 import HelpOverlay from './components/help/HelpOverlay';
 import InstallGuide from './components/help/InstallGuide';
 import InstallBanner from './components/InstallBanner';
+import BackupSection from './components/BackupSection';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
 import ChecklistModule from './modules/ChecklistModule';
@@ -2464,6 +2465,9 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                 </button>
               </div>
             ) : null}
+
+            <hr className="border-gray-200 dark:border-gray-700 mt-4" />
+            <BackupSection theme={theme} />
           </div>
         )}
 

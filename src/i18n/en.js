@@ -776,4 +776,24 @@ export default {
     loading: 'One moment...',
     tagline: 'Your day, your rhythm.',
   },
+
+  backup: {
+    settingsHeader: 'Back up your data',
+    settingsBody:
+      'Save all your data to a file or restore a previous backup. Useful when you reinstall the app or switch to another phone.',
+    exportButton: 'Export to file',
+    exportSuccess: 'Backup downloaded.',
+    importButton: 'Restore backup',
+    importConfirmTitle: 'Restore backup?',
+    importConfirmBody:
+      'This will replace all your current data. This cannot be undone.',
+    importConfirmAction: 'Yes, restore',
+    importCancel: 'Cancel',
+    importSuccess: 'Backup restored.',
+    importDays: '{count} days restored.',
+    importErrorParse: 'This file is not valid JSON.',
+    importErrorNotRitmo: 'This does not look like a Ritmo backup.',
+    importErrorVersion: 'This backup is from a newer version of Ritmo.',
+    importErrorGeneric: 'Restore failed. Please try again.',
+  },
 };
