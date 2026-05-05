@@ -111,7 +111,7 @@ Ritmo draait om **modules**. Elke module heeft:
   unit?: 'minutes' | 'ml' | 'glas' | 'l' | 'stappen',         // voor counter
   dailyGoal?: number,                                         // voor counter
   weeklyMax?: number,                                         // voor counter (optioneel)
-  presets?: [{id, label, amount}],                            // voor counter (snelinvoer-knoppen)
+  presets?: number[],                                         // voor counter (snelinvoer-knoppen, bijv. [15, 30, 60])
   categoriesEnabled?: boolean,                                // voor counter
   categories?: [{id, label}],                                 // voor counter
   goals?: { monday: {bed, wake}, tuesday: {...}, ... },       // voor sleep (per weekdag)
@@ -120,7 +120,11 @@ Ritmo draait om **modules**. Elke module heeft:
   trackingMode?: 'completion' | 'count' | 'amount' | 'flexible', // voor collection
   amountUnit?: string,                                        // voor collection (alleen bij amount/flexible)
   itemFields?: { rating: boolean, notes: boolean, tags: boolean }, // voor collection
-  tags?: [{id, label, color}],                                // voor collection (module-scoped)
+  tagGroups?: [{                                              // voor collection: gegroepeerde tags
+    id, labelKey, color,
+    allowMultiple: boolean,
+    tags: [{id, labelKey}]
+  }],
   items?: [{                                                  // voor collection (overschrijft checklist-items)
     id, name, tags: [tagId], rating: 0..5, notes,
     events: [{date: 'YYYY-MM-DD', amount?, note?}],           // nieuwste-eerst
@@ -194,7 +198,13 @@ src/
 │   ├── RitmoLogo.jsx          # R-Loop merk-logo (variant + animation props)
 │   ├── SplashScreen.jsx       # app-start scherm met geanimeerd logo + tagline
 │   ├── BackupSection.jsx      # export/import-UI in de install-tab (download + file-picker + confirm)
-│   └── TabBar.jsx             # tabbalk met overflow-menu ("Meer") en discoverable tabs
+│   ├── TabBar.jsx             # tabbalk met overflow-menu ("Meer") en discoverable tabs
+│   ├── InstallBanner.jsx      # banner voor PWA-installatie-suggestie
+│   └── help/                  # help-overlay componenten
+│       ├── FeedbackForm.jsx
+│       ├── HelpItemRow.jsx
+│       ├── HelpOverlay.jsx
+│       └── InstallGuide.jsx
 └── utils/                     # pure helper-functies
     ├── colors.js
     ├── icons.js               # ICON_OPTIONS dictionary (lucide-iconen voor module-config)
@@ -207,7 +217,10 @@ src/
     ├── presets.js             # module-presets / templates voor nieuwe modules
     ├── household.js           # helpers voor Huishouden (toMonthly, isOverdue, formatEuro)
     ├── migrate.js             # migraties van oude naar nieuwe data-vormen
-    └── backup.js              # export/import helpers: exportData, downloadBackup, importData, readFileAsText
+    ├── backup.js              # export/import helpers: exportData, downloadBackup, importData, readFileAsText
+    ├── install.js             # PWA-detectie helpers
+    ├── persistStorage.js      # navigator.storage.persist() aanroep bij app-start
+    └── sound.js               # geluidsfeedback helpers
 ```
 
 De choice- en tasks-modules zitten nog inline in `App.jsx`, evenals de meeste views, settings-modals en theme-logica. **Refactoring is een doorlopend proces** — bij elke nieuwe feature kijken we of er logica naar een aparte file kan. Geen vaste bestemmingsstructuur opleggen; opsplitsen gebeurt zodra er een tweede gebruiker van een stuk logica is.
