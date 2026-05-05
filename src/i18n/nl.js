@@ -265,6 +265,12 @@ export default {
       gas: 'Gas',
       cancel: 'Annuleer',
     },
+    linked: {
+      badge: 'gekoppeld',
+      badgeTitle: 'Deze post is gekoppeld aan duurzaamheid',
+      confirmDeleteTitle: 'Gekoppelde post verwijderen?',
+      confirmDeleteDescription: '"{name}" is gekoppeld aan duurzaamheid. Bij verwijderen wordt de koppeling weggehaald en verdwijnt de post uit beide overzichten. De handmatig ingevulde meterstand blijft staan.',
+    },
   },
 
   projects: {

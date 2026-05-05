@@ -11,6 +11,7 @@ import {
   eventsForMonth, netForDay, netForMonth,
 } from '../utils/household';
 import { useTranslation, getLocale } from '../i18n/useTranslation';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const newId = () => (typeof crypto !== 'undefined' && crypto.randomUUID
   ? crypto.randomUUID()
@@ -471,6 +472,7 @@ function BudgetSection({ budget, setBudget, config, theme, darkMode, monthsLong,
   const [editing, setEditing] = useState(null); // { kind: 'income'|'expenses', item: { ... } }
   const [adding, setAdding] = useState(null); // 'income' | 'expenses' | null
   const [energyExpanded, setEnergyExpanded] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null); // { kind, item } | null
 
   const income = budget.income || [];
   const expenses = budget.expenses || [];
@@ -498,6 +500,16 @@ function BudgetSection({ budget, setBudget, config, theme, darkMode, monthsLong,
       ...prev,
       [kind]: (prev[kind] || []).filter(x => x.id !== id),
     }));
+  };
+
+  const requestDelete = (kind, id) => {
+    const list = kind === 'income' ? income : expenses;
+    const item = list.find(x => x.id === id);
+    if (item && item.isUtility) {
+      setPendingDelete({ kind, item });
+    } else {
+      remove(kind, id);
+    }
   };
 
   const tabBtn = (id, label) => (
@@ -537,7 +549,7 @@ function BudgetSection({ budget, setBudget, config, theme, darkMode, monthsLong,
             theme={theme}
             onEdit={(item) => setEditing({ kind: 'income', item })}
             onAdd={() => setAdding('income')}
-            onDelete={(id) => remove('income', id)}
+            onDelete={(id) => requestDelete('income', id)}
           />
 
           <BudgetList
@@ -547,7 +559,7 @@ function BudgetSection({ budget, setBudget, config, theme, darkMode, monthsLong,
             theme={theme}
             onEdit={(item) => setEditing({ kind: 'expenses', item })}
             onAdd={() => setAdding('expenses')}
-            onDelete={(id) => remove('expenses', id)}
+            onDelete={(id) => requestDelete('expenses', id)}
             energyCombined={energyCombined}
             energyExpanded={energyExpanded}
             onToggleEnergy={() => setEnergyExpanded(v => !v)}
@@ -583,6 +595,23 @@ function BudgetSection({ budget, setBudget, config, theme, darkMode, monthsLong,
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        theme={theme}
+        variant="danger"
+        title={t('household.linked.confirmDeleteTitle')}
+        description={t('household.linked.confirmDeleteDescription', {
+          name: pendingDelete?.item?.name || '',
+        })}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        onConfirm={() => {
+          if (pendingDelete) remove(pendingDelete.kind, pendingDelete.item.id);
+          setPendingDelete(null);
+        }}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }
@@ -614,6 +643,7 @@ function BudgetList({
   const renderItem = (item, opts = {}) => {
     const Icon = BUDGET_ICONS[item.icon] || BadgeEuro;
     const monthly = toMonthly(item.amount, item.frequency);
+    const isLinked = !!item.isUtility;
     return (
       <li
         key={item.id}
@@ -621,7 +651,17 @@ function BudgetList({
       >
         <Icon className={`w-5 h-5 ${theme.textSecondary} shrink-0`} />
         <div className="flex-1 min-w-0">
-          <div className={`text-sm font-medium ${theme.text} truncate`}>{item.name}</div>
+          <div className={`text-sm font-medium ${theme.text} truncate flex items-center gap-1.5`}>
+            <span className="truncate">{item.name}</span>
+            {isLinked && (
+              <span
+                className="inline-flex items-center text-[10px] font-medium text-sky-600 bg-sky-100 dark:text-sky-300 dark:bg-sky-900/40 px-1.5 py-0.5 rounded shrink-0"
+                title={t('household.linked.badgeTitle')}
+              >
+                ↔ {t('household.linked.badge')}
+              </span>
+            )}
+          </div>
           <div className={`text-xs ${theme.textMuted}`}>
             {formatEuro(item.amount)} {freqLabel(item.frequency, t)}
             {item.frequency !== 'monthly' && (
@@ -1234,6 +1274,7 @@ function UtilitiesSection({ utilities, setUtilities, budget, config, setConfig, 
           year={year}
           month={editingMonth}
           data={utilities[monthKey(year, editingMonth)] || {}}
+          expenses={expenses}
           monthsLong={monthsLong}
           utilityLabel={utilityLabel}
           onCancel={() => setEditingMonth(null)}
@@ -1248,7 +1289,7 @@ function monthKey(year, month) {
   return `${year}-${String(month + 1).padStart(2, '0')}`;
 }
 
-function UtilityMonthEditor({ theme, year, month, data, monthsLong, utilityLabel, onCancel, onSave }) {
+function UtilityMonthEditor({ theme, year, month, data, expenses = [], monthsLong, utilityLabel, onCancel, onSave }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(() => {
     const out = {};
@@ -1298,6 +1339,9 @@ function UtilityMonthEditor({ theme, year, month, data, monthsLong, utilityLabel
             const auto = autoSumOf(data[k]);
             const total = a + auto;
             const over = total > b && b > 0;
+            const autoEntries = Object.entries(data[k]?.autoFromBudget || {})
+              .map(([id, amount]) => ({ id, amount, item: expenses.find(x => x.id === id) }))
+              .filter(e => e.item);
             return (
               <div key={k} className={`${theme.cardSecondary} rounded-xl p-3 ${over ? 'ring-2 ring-red-400' : ''}`}>
                 <div className="flex items-center gap-2 mb-2">
@@ -1309,6 +1353,29 @@ function UtilityMonthEditor({ theme, year, month, data, monthsLong, utilityLabel
                   <div className={`text-xs ${theme.textMuted} mb-2`}>
                     {t('household.utilities.autoFromBudget')} <span className={`font-semibold ${theme.textSecondary}`}>{formatEuro(auto)}</span>
                   </div>
+                )}
+                {autoEntries.length > 0 && (
+                  <ul className="space-y-1 mb-2">
+                    {autoEntries.map(e => {
+                      const ItemIcon = BUDGET_ICONS[e.item.icon] || BadgeEuro;
+                      return (
+                        <li
+                          key={e.id}
+                          className={`flex items-center gap-2 text-xs px-2 py-1 rounded ${theme.card}`}
+                        >
+                          <ItemIcon className={`w-3.5 h-3.5 ${theme.textSecondary} shrink-0`} />
+                          <span className={`flex-1 truncate ${theme.textSecondary}`}>{e.item.name}</span>
+                          <span
+                            className="inline-flex items-center text-[10px] font-medium text-sky-600 bg-sky-100 dark:text-sky-300 dark:bg-sky-900/40 px-1.5 py-0.5 rounded"
+                            title={t('household.linked.badgeTitle')}
+                          >
+                            ↔ {t('household.linked.badge')}
+                          </span>
+                          <span className={`font-semibold ${theme.textSecondary}`}>{formatEuro(e.amount)}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 )}
                 <div className="grid grid-cols-2 gap-2">
                   <div>

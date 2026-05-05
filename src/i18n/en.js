@@ -264,6 +264,12 @@ export default {
       gas: 'Gas',
       cancel: 'Cancel',
     },
+    linked: {
+      badge: 'linked',
+      badgeTitle: 'This item is linked to sustainability',
+      confirmDeleteTitle: 'Delete linked item?',
+      confirmDeleteDescription: '"{name}" is linked to sustainability. Deleting it removes the link and the item from both views. Manually entered meter readings are kept.',
+    },
   },
 
   projects: {
