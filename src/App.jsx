@@ -1119,6 +1119,7 @@ export default function Ritmo() {
               setModules(prev => prev.filter(m => m.id !== collectionId));
             }}
             onCreate={openCollectionCreator}
+            onEditCollection={(mod) => setEditingModule(mod)}
             hasUsedSwipe={hasUsedSwipe}
             onFirstSwipe={() => setHasUsedSwipe(true)}
             theme={theme}
