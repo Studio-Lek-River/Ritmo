@@ -1,9 +1,13 @@
 {
   "name": "ritmo",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.0.0-development",
   "type": "module",
   "description": "Ritmo - jouw dag, jouw ritme.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Studio-Lek-River/Ritmo.git"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -16,9 +20,12 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.39",
+    "semantic-release": "^25.0.3",
     "tailwindcss": "^3.4.6",
     "vite": "^5.4.10",
     "vite-plugin-pwa": "^0.20.5"
