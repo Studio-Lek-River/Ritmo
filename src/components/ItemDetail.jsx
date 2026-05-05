@@ -3,7 +3,7 @@ import { ArrowLeft, Edit3, Trash2, Plus, X, Check } from 'lucide-react';
 import StarRating from './StarRating';
 import TagPill from './TagPill';
 import ConfirmDialog from './ConfirmDialog';
-import { deleteItemConfirmationDescription, getItemTrackingMode } from '../utils/collections';
+import { deleteItemConfirmationDescription, getItemTrackingMode, getAllTags } from '../utils/collections';
 import { getColorClasses } from '../utils/colors';
 import { useTranslation } from '../i18n/useTranslation';
 
@@ -42,7 +42,7 @@ export default function ItemDetail({
   const c = getColorClasses(collection.color);
   const fields = collection.itemFields || { rating: true, notes: true, tags: true };
   const mode = getItemTrackingMode(item, collection);
-  const tags = collection.tags || [];
+  const tagGroups = collection.tagGroups || [];
 
   const save = () => {
     onUpdate?.(draft);
@@ -54,13 +54,16 @@ export default function ItemDetail({
     setEditMode(false);
   };
 
-  const toggleTag = (tagId) => {
+  const handleTagClick = (group, tagId) => {
     setDraft((prev) => {
-      const has = (prev.tags || []).includes(tagId);
-      return {
-        ...prev,
-        tags: has ? prev.tags.filter((id) => id !== tagId) : [...(prev.tags || []), tagId],
-      };
+      const current = prev.tags || [];
+      const groupTagIds = group.tags.map((t) => t.id);
+      const isSelected = current.includes(tagId);
+      if (group.allowMultiple) {
+        return { ...prev, tags: isSelected ? current.filter((id) => id !== tagId) : [...current, tagId] };
+      }
+      const without = current.filter((id) => !groupTagIds.includes(id));
+      return { ...prev, tags: isSelected ? without : [...without, tagId] };
     });
   };
 
@@ -69,7 +72,6 @@ export default function ItemDetail({
   };
 
   const view = editMode ? draft : item;
-  const itemTags = (view.tags || []).map((id) => tags.find((tg) => tg.id === id)).filter(Boolean);
 
   const handleDelete = () => {
     if (!editable) return;
@@ -171,23 +173,53 @@ export default function ItemDetail({
         </div>
       )}
 
-      {fields.tags && tags.length > 0 && (
+      {fields.tags && tagGroups.length > 0 && (
         <div className="mb-4">
-          <p className={`text-xs ${theme.textMuted} mb-1`}>{t('collections.tags')}</p>
-          <div className="flex gap-1.5 flex-wrap">
-            {editMode
-              ? tags.map((tg) => (
-                  <TagPill
-                    key={tg.id}
-                    tag={tg}
-                    active={(draft.tags || []).includes(tg.id)}
-                    onClick={() => toggleTag(tg.id)}
-                  />
-                ))
-              : itemTags.length > 0
-                ? itemTags.map((tg) => <TagPill key={tg.id} tag={tg} />)
-                : <span className={`text-xs ${theme.textMuted}`}>{t('collections.noTagsShort')}</span>}
-          </div>
+          {editMode
+            ? tagGroups.map((group) => {
+                if (group.tags.length === 0) return null;
+                const groupLabel = group.labelKey ? t(group.labelKey) : (group.label || '');
+                return (
+                  <div key={group.id} className="mb-2 last:mb-0">
+                    {groupLabel && <p className={`text-xs ${theme.textMuted} mb-1`}>{groupLabel}</p>}
+                    <div className="flex gap-1.5 flex-wrap">
+                      {group.tags.map((tag) => (
+                        <TagPill
+                          key={tag.id}
+                          tag={{ ...tag, color: group.color || 'blue' }}
+                          active={(draft.tags || []).includes(tag.id)}
+                          onClick={() => handleTagClick(group, tag.id)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
+            : (() => {
+                const activeParts = tagGroups
+                  .map((group) => ({
+                    group,
+                    selected: group.tags.filter((tag) => (view.tags || []).includes(tag.id)),
+                  }))
+                  .filter(({ selected }) => selected.length > 0);
+                if (activeParts.length === 0) {
+                  return <span className={`text-xs ${theme.textMuted}`}>{t('collections.noTagsShort')}</span>;
+                }
+                return activeParts.map(({ group, selected }) => {
+                  const groupLabel = group.labelKey ? t(group.labelKey) : (group.label || '');
+                  return (
+                    <div key={group.id} className="mb-2 last:mb-0">
+                      {groupLabel && <p className={`text-xs ${theme.textMuted} mb-1`}>{groupLabel}</p>}
+                      <div className="flex gap-1.5 flex-wrap">
+                        {selected.map((tag) => (
+                          <TagPill key={tag.id} tag={{ ...tag, color: group.color || 'blue' }} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                });
+              })()
+          }
         </div>
       )}
 

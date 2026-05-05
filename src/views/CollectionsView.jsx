@@ -5,6 +5,7 @@ import {
   aggregateStats,
   getItemTrackingMode,
   deleteItemConfirmationDescription,
+  getAllTags,
 } from '../utils/collections';
 import StarRating from '../components/StarRating';
 import TagPill from '../components/TagPill';
@@ -140,9 +141,11 @@ export default function CollectionsView({
     sort
   );
 
-  const tagsForChips = filterModuleId
-    ? (collections.find((c) => c.id === filterModuleId)?.tags || [])
-    : collections.flatMap((c) => c.tags || []);
+  const groupsForFilter = filtered.flatMap((col) =>
+    (col.tagGroups || [])
+      .filter((g) => g.tags.length > 0)
+      .map((g) => ({ colId: col.id, group: g }))
+  );
 
   const cycleSort = () => {
     const idx = SORT_IDS.indexOf(sort);
@@ -376,16 +379,26 @@ export default function CollectionsView({
           </div>
         )}
 
-        {tagsForChips.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap">
-            {tagsForChips.map((tg) => (
-              <TagPill
-                key={tg.id}
-                tag={tg}
-                active={activeTagId === tg.id}
-                onClick={() => setActiveTagId((cur) => (cur === tg.id ? null : tg.id))}
-              />
-            ))}
+        {groupsForFilter.length > 0 && (
+          <div className="space-y-1.5">
+            {groupsForFilter.map(({ colId, group }) => {
+              const groupLabel = group.labelKey ? t(group.labelKey) : (group.label || '');
+              return (
+                <div key={`${colId}-${group.id}`} className="flex flex-wrap items-center gap-1.5">
+                  {groupLabel && (
+                    <span className={`text-xs ${theme.textMuted} shrink-0`}>{groupLabel}:</span>
+                  )}
+                  {group.tags.map((tag) => (
+                    <TagPill
+                      key={tag.id}
+                      tag={{ ...tag, color: group.color || 'blue' }}
+                      active={activeTagId === tag.id}
+                      onClick={() => setActiveTagId((cur) => (cur === tag.id ? null : tag.id))}
+                    />
+                  ))}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -474,8 +487,9 @@ export default function CollectionsView({
               const mode = getItemTrackingMode(it, col);
               const eventsCount = it.events?.length || 0;
               const last = lastEventDate(it);
+              const allColTags = getAllTags(col);
               const itemTags = (it.tags || [])
-                .map((id) => (col.tags || []).find((tg) => tg.id === id))
+                .map((id) => allColTags.find((tg) => tg.id === id))
                 .filter(Boolean);
               return (
                 <li key={it.id} className="rounded-xl">
