@@ -1,3 +1,13 @@
+# [0.4.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.3.0...v0.4.0) (2026-05-05)
+
+
+### Features
+
+* **budget:** voeg kalender-subview toe met dag-events en netto-saldo ([d01ccd3](https://github.com/Studio-Lek-River/Ritmo/commit/d01ccd39eb0d33fcfee19b8f24f03b10cb3daeb6))
+* **household:** visualiseer koppeling tussen budget en duurzaamheid ([403a759](https://github.com/Studio-Lek-River/Ritmo/commit/403a759acc137b865d00fd8930cb9a86d77ce984))
+* **month:** voeg module-filter toe aan maandoverzicht ([115de7e](https://github.com/Studio-Lek-River/Ritmo/commit/115de7e49fed755e30dc900d03dbf6d1067388e1))
+* **sleep:** laat slaap meedoen in dag-kleur en streak ([74a2065](https://github.com/Studio-Lek-River/Ritmo/commit/74a206582b4d2938c445064a537568a991a53e7a))
+
 # [0.3.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.2.1...v0.3.0) (2026-05-05)
 
 
