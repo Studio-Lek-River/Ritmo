@@ -37,6 +37,7 @@ import { summarizeSleep } from './utils/sleep';
 import {
   buildDayCellBackground, moduleStatusForDay, isDayFullyComplete,
   normalizeChecklistItemData, isChecklistItemComplete,
+  canCountInStreak,
 } from './utils/dayProgress';
 import { playSound } from './utils/sound';
 
@@ -327,7 +328,7 @@ export default function Ritmo() {
   // Check overall completion
   useEffect(() => {
     if (loading) return;
-    const enabledModules = modules.filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects' && m.type !== 'collection');
+    const enabledModules = modules.filter(m => m.enabled && canCountInStreak(m.type));
     const totalItems = enabledModules.reduce((sum, m) => {
       if (m.type === 'checklist') return sum + m.items.length;
       if (m.type === 'choice') return sum + 1;
@@ -750,7 +751,7 @@ export default function Ritmo() {
   };
 
   // Overall completion
-  const enabledNonTaskModules = modules.filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects' && m.type !== 'collection');
+  const enabledNonTaskModules = modules.filter(m => m.enabled && canCountInStreak(m.type));
   const totalCompletionItems = enabledNonTaskModules.reduce((sum, m) => {
     if (m.type === 'checklist') return sum + m.items.length;
     if (m.type === 'choice') return sum + 1;
@@ -1601,7 +1602,7 @@ function StreakBadge({ label, days, color, theme }) {
 // =============================================
 function WeekView({ modules, history, today, activeDateKey, moduleData, activeWeekStart, setActiveWeekStart, weekDates, dayNames, onPickDay, theme, darkMode, goldenBorderEnabled }) {
   const { t } = useTranslation();
-  const enabledNonTaskModules = modules.filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects' && m.type !== 'collection');
+  const enabledNonTaskModules = modules.filter(m => m.enabled && canCountInStreak(m.type));
   const atCurrentWeek = sameDay(activeWeekStart, startOfWeek(new Date()));
 
   const dayDataFor = (dateStr) => (
@@ -1761,7 +1762,7 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDate
     const dateObj = parseDateKey(d);
     if (buildDayCellBackground(modules, data, dateObj) !== null) return false;
     // any non-empty status counts as partial
-    return modules.some(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects' && m.type !== 'sleep' && m.type !== 'collection' &&
+    return modules.some(m => m.enabled && canCountInStreak(m.type) && m.type !== 'sleep' &&
       moduleStatusForDay(m, data, dateObj) !== 'none');
   }).length;
 
@@ -2164,8 +2165,6 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                   color: 'blue',
                   enabled: true,
                   countInStreak: false,
-                  type: 'checklist',
-                  items: []
                 })}
                 className="w-full py-3 border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-sm font-medium text-slate-500 hover:text-blue-500 transition flex items-center justify-center gap-2"
               >
@@ -2202,7 +2201,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
               </div>
 
               <div className="space-y-4">
-                {modules.filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'collection').map(mod => {
+                {modules.filter(m => m.enabled && canCountInStreak(m.type)).map(mod => {
                   const Icon = ICON_OPTIONS[mod.icon] || Sparkles;
                   const setting = streakSettings[mod.id] || {};
                   const isActive = mod.countInStreak === true;

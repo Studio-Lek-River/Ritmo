@@ -534,6 +534,7 @@ export default {
     sleepOnTrack: 'On track',
     sleepRegistered: 'Logged',
     sleepOnTime: 'on target',
+    clearTime: 'Clear',
     sleepScoreLabels: {
       1: 'Slept badly',
       2: 'So-so',

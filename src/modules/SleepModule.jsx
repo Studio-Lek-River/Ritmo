@@ -87,7 +87,18 @@ export default function SleepModule({
 
       <div className="grid grid-cols-2 gap-6 mb-3">
         <div>
-          <label className={`text-xs font-medium ${theme.textMuted} mb-1 block`}>{t('modules.sleepWokeUpLabel')}</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className={`text-xs font-medium ${theme.textMuted}`}>{t('modules.sleepWokeUpLabel')}</label>
+            {wakeTime && editable && (
+              <button
+                type="button"
+                onClick={() => setWakeTime('')}
+                className={`text-xs ${theme.textMuted} hover:underline`}
+              >
+                {t('modules.clearTime')}
+              </button>
+            )}
+          </div>
           <input
             type="time"
             value={wakeTime}
@@ -102,7 +113,18 @@ export default function SleepModule({
           )}
         </div>
         <div>
-          <label className={`text-xs font-medium ${theme.textMuted} mb-1 block`}>{t('modules.sleepBedtimeLabel')}</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className={`text-xs font-medium ${theme.textMuted}`}>{t('modules.sleepBedtimeLabel')}</label>
+            {bedTime && editable && (
+              <button
+                type="button"
+                onClick={() => setBedTime('')}
+                className={`text-xs ${theme.textMuted} hover:underline`}
+              >
+                {t('modules.clearTime')}
+              </button>
+            )}
+          </div>
           <input
             type="time"
             value={bedTime}

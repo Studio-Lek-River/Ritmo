@@ -422,7 +422,7 @@ export default {
     add: 'Nieuwe module toevoegen',
     edit: 'Module bewerken',
     editTitle: 'Bewerk module',
-    newPickType: 'Nieuwe module — kies type',
+    newPickType: 'Kies type nieuwe module',
     pickPreset: 'Kies een suggestie',
     configure: 'Module aanpassen',
     settingsAria: 'Instellingen voor {name}',
@@ -539,6 +539,7 @@ export default {
     sleepOnTrack: 'Op ritme',
     sleepRegistered: 'Geregistreerd',
     sleepOnTime: 'op tijd',
+    clearTime: 'Wissen',
     sleepScoreLabels: {
       1: 'Slecht geslapen',
       2: 'Matig',

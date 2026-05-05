@@ -62,7 +62,7 @@ export function moduleStatusForDay(module, dayData, date) {
 // split into equal segments left-to-right in module order.
 export function buildDayCellBackground(modules, dayData, date) {
   const completed = modules
-    .filter(m => m.enabled && m.type !== 'tasks' && m.type !== 'projects' && m.type !== 'sleep')
+    .filter(m => m.enabled && canCountInStreak(m.type) && m.type !== 'sleep')
     .filter(m => moduleStatusForDay(m, dayData, date) === 'full');
 
   if (completed.length === 0) return null;
@@ -79,6 +79,12 @@ export function buildDayCellBackground(modules, dayData, date) {
 }
 
 const GLOW_TRACKABLE_TYPES = new Set(['checklist', 'choice', 'counter', 'sleep']);
+
+export const NON_TRACKABLE_TYPES = new Set(['projects', 'collection', 'tasks']);
+
+export function canCountInStreak(moduleType) {
+  return !NON_TRACKABLE_TYPES.has(moduleType);
+}
 
 export function isDayFullyComplete(modules, dayData, date) {
   const trackable = modules.filter(

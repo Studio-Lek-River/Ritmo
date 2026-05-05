@@ -1,4 +1,5 @@
 import { WEEKDAY_KEYS } from './dates';
+import { NON_TRACKABLE_TYPES } from './dayProgress';
 import en from '../i18n/en';
 import nl from '../i18n/nl';
 
@@ -60,6 +61,10 @@ export function migrateModuleConfig(module) {
         : 15,
       showMorningScore: typeof m.showMorningScore === 'boolean' ? m.showMorningScore : true,
     };
+  }
+
+  if (NON_TRACKABLE_TYPES.has(m.type) && m.countInStreak !== false) {
+    m = { ...m, countInStreak: false };
   }
 
   if (m.type === 'collection') {
