@@ -2754,6 +2754,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
   const applyPreset = (preset) => {
     setEditing(prev => {
       const merged = { ...prev, ...preset };
+      if (preset.nameKey && !prev.name) delete merged.name;
       if (preset.items && merged.type !== 'collection') {
         merged.items = preset.items.map(label => ({ id: genId('items'), label }));
       }
