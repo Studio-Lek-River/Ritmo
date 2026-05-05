@@ -1,3 +1,13 @@
+# [0.2.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.1.2...v0.2.0) (2026-05-05)
+
+
+### Features
+
+* **backup:** exporteer en importeer alle data als JSON-bestand ([4633b33](https://github.com/Studio-Lek-River/Ritmo/commit/4633b3397a0a7f2310ea5c92816721ef7701f380))
+* **pwa:** voeg install-banner en install-sectie in instellingen toe ([2f0499e](https://github.com/Studio-Lek-River/Ritmo/commit/2f0499e5a6e2f357ce93342b5063f92b61909ed0))
+* **storage:** migreer localStorage naar IndexedDB via idb-keyval ([692f8d4](https://github.com/Studio-Lek-River/Ritmo/commit/692f8d439f3e12ed459cc1693d3a7cb2a8942fc4))
+* **storage:** vraag persistent storage-permissie aan bij app-start ([b0d810d](https://github.com/Studio-Lek-River/Ritmo/commit/b0d810d7f36397606a83bbf08e1d006a9185824e))
+
 ## [0.1.2](https://github.com/Studio-Lek-River/Ritmo/compare/v0.1.1...v0.1.2) (2026-05-05)
 
 
