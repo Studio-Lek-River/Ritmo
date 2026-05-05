@@ -140,8 +140,10 @@ Ritmo draait om **modules**. Elke module heeft:
 - **Tasks** — vrije takenlijst (toevoegen, afvinken, verwijderen)
 - **Projects** — meerdere lopende projecten met een eigen voortgang per project
 - **Counter** — generieke teller tegen een dagdoel, met instelbare unit (minutes/ml/glas/l/stappen), snelinvoer-presets en optionele categorieën. Dekt zowel de oude timer-use-cases (minuten bijhouden) als water/stappen/glazen
-- **Sleep** — bedtijd, opstaan-tijd en optionele ochtendscore. Doel-tijden per weekdag, configureerbare tolerance. Telt niet automatisch mee voor streaks of dagcel-gradient (gebruiker zet `countInStreak` zelf aan voor week/maand-aggregaten)
+- **Sleep** — bedtijd, opstaan-tijd en optionele ochtendscore. Doel-tijden per weekdag, configureerbare tolerance. Per-dag dataveld in `dayData.moduleData[moduleId]`: `{ bedTime: 'HH:MM', wakeTime: 'HH:MM', morningScore: 1-5 }` (let op: `bedTime`/`wakeTime`, niet `bedActual`/`wakeActual`). Een "nacht" overspant twee dagen: bedtijd hoort bij gisteren, waketijd bij vandaag. De helper `goalsForNight(moduleGoals, date)` in `src/utils/sleep.js` regelt dit — gebruik hem altijd in plaats van `module.goals[weekday]` direct te lezen. Completion-check via `isOnTarget(dayData, goals, toleranceMinutes)` (circulaire 24-uurs vergelijking). Sleep doet net als andere meetellende types mee voor de dag-kleur in week/maand zodra de module enabled is, en voor de streak-badge zodra ook `countInStreak: true` staat
 - **Collection** — persoonlijke catalogus van items (boeken, bieren, films, restaurants) waarop events worden gelogd. Items en events leven in `settings.modules` (niet in dag-data) omdat ze meerdere dagen overspannen. Telt niet mee voor streaks of dag-completion. Eigen "Collecties"-tab verschijnt alleen als er een ingeschakelde collection-module bestaat; van daaruit zoeken, filteren op module/tag, sorteren, en items in detail bewerken
+
+**Welke types kleuren mee in de week/maand-cel?** Alle types waar `canCountInStreak(type) === true` (checklist, choice, counter, sleep) en de instance `enabled: true` is. **Welke types tellen voor de streak-badge?** Hetzelfde, plus de instance moet `countInStreak: true` hebben staan (door de gebruiker).
 
 **Toekomstige module-types worden alleen toegevoegd als ze fundamenteel anders zijn**, niet voor cosmetische verschillen.
 
@@ -153,10 +155,25 @@ Alle data wordt lokaal opgeslagen via een storage-laag (`src/storage.js`) die de
 
 - `settings` — gebruikersinstellingen: `{ modules, darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, showReflectionOnToday, hasUsedSwipe, hasOnboarded, language }`. `language` is `'auto' | 'nl' | 'en'` (default `'auto'` — volgt browser). `hasUsedSwipe` is een one-shot flag die de eerste swipe-gesture in lijsten registreert; zodra true, verdwijnt de "veeg om te verwijderen"-hint.
 - `day:YYYY-MM-DD` — dagdata: `{ moduleData, customTasks, reflectionAnswers }`
+- `household:chores` — array van klusjes
+- `household:groceries` — `{ items, shopDay }`
+- `household:budget` — `{ income: [], expenses: [] }`. Items: `{ id, name, amount, frequency: 'weekly'|'monthly'|'yearly', icon, isUtility?: 'gas'|'electric'|'water'|'', dueDay?: 1-28, dueMonth?: 1-12 (alleen yearly), dueWeekday?: 1-7 ISO (alleen weekly, 1=ma…7=zo) }`
+- `household:utilities` — `{ [monthKey 'YYYY-MM']: { water, electricity, gas } }`. Elke slot: `{ budget, actual, autoFromBudget?: { [budgetItemId]: amount } }`
+- `household:config` — `{ energyCombined: boolean }` (alleen-display-toggle: bepaalt of gas + elektra in de duurzaamheid-overzichten als één "Energie"-meter samengevoegd worden, niet hoe data wordt opgeslagen)
 
 In de UI roep je `window.storage.get('settings')` aan — geen prefix nodig. `storage.js` heeft een ingebouwde eenmalige migratie die bestaande `ritmo:`-prefixed localStorage-entries naar IndexedDB verplaatst.
 
 De storage-laag is een **abstraction layer**: de UI praat met `window.storage`, niet direct met IndexedDB. Dit maakt latere migratie naar cloud-sync (Supabase/Firebase) eenvoudig zonder de UI aan te passen.
+
+### Huishouden: budget ↔ duurzaamheid-koppeling
+
+Een budget-expense met `isUtility: 'gas' | 'electric' | 'water'` wordt automatisch gepropageerd naar de duurzaamheid-meter van die maand via `reconcileUtilitiesAuto()` in `src/utils/household.js`. Het bedrag verschijnt onder `utilities[monthKey][slot].autoFromBudget[itemId]` en telt mee in `totalActualOf(slot)`. Eén bron van waarheid: de budget-expense. Wijzig of verwijder daar, en de duurzaamheid-meter volgt automatisch.
+
+In de UI is een gekoppelde post herkenbaar aan een `↔ gekoppeld` / `↔ linked` badge (zowel in Budget als in Duurzaamheid). Verwijderen van een gekoppelde post vraagt om bevestiging zodat de gebruiker weet dat het op beide plekken effect heeft.
+
+Combined/split voor energie wordt geregeld via `household:config.energyCombined: boolean`. Dit is een **display-toggle**, niet een data-model: er zijn altijd twee aparte budget-items (één met `isUtility: 'electric'`, één met `'gas'`), en de toggle bepaalt slechts of de duurzaamheid-overzichten ze als één "Energie"-meter optellen of als twee aparte meters tonen. Bedragen zelf worden niet automatisch gesplitst of samengevoegd.
+
+**Geen nieuwe parallelle datamodellen voor "linked"-concepten** — bouw verder op `isUtility` + `reconcileUtilitiesAuto`.
 
 ### Codestructuur (huidige staat)
 
@@ -212,7 +229,11 @@ src/
     ├── collections.js         # helpers voor collection-module (event-log, stats, factories)
     ├── format.js              # unit-formatting voor counter-module
     ├── dates.js               # datum-helpers (sleutelvorm, dag-vergelijking, navigatie)
-    ├── dayProgress.js         # completion-status logica per dag
+    ├── dayProgress.js         # completion-status per dag.
+    │                          # `moduleStatusForDay(module, dayData, date)` → 'full'|'partial'|'none'
+    │                          # `buildDayCellBackground(modules, dayData, date)` → CSS gradient string
+    │                          # `isDayFullyComplete(modules, dayData, date)` → boolean (golden border)
+    │                          # `canCountInStreak(type)` → boolean per module-type
     ├── sleep.js               # slaap-helpers (goalsForNight, isOnTarget, summarizeSleep)
     ├── presets.js             # module-presets / templates voor nieuwe modules
     ├── household.js           # helpers voor Huishouden (toMonthly, isOverdue, formatEuro)
@@ -269,6 +290,18 @@ Daar gebeurt:
 3. **Handover-instructies** moeten concreet zijn: welke bestanden, welke wijzigingen, welk gedrag
 4. **Behoud bestaande gebruikersdata** — migraties moeten safe zijn voor wie de app al gebruikt
 5. **Stel kritische vragen** voordat je bouwt: past dit bij de design-principes? Is er een eenvoudiger pad?
+6. **Bij handover-instructies: verifieer datavorm, helper-namen en bestaande koppelingen** voordat je aannames opneemt. Als je niet zeker weet of een veld of helper bestaat, schrijf het als open vraag in de handover ("Claude Code: verifieer of `goalsForNight` al bestaat") in plaats van een verzonnen signature te geven die later ge-refactord moet worden.
+7. **Splits handovers in losse, op zichzelf staande stappen** — elke stap moet als één commit aangeleverd kunnen worden. Eén PR met meerdere features verzamelt alle commits onder hetzelfde versie-nummer, maar elke commit krijgt zijn eigen regel in de changelog (zie sectie "Releases en commit-discipline" hieronder).
+
+### Releases en commit-discipline
+
+Ritmo gebruikt **semantic-release**. Het format van elke commit op `main` bepaalt automatisch het versienummer en de release notes. Daarom is het cruciaal dat handovers en implementatie de stappen schoon scheiden:
+
+- **Eén feature/fix = één commit, met passend Conventional-Commit-type.** Geen gemengde commits ("feat: X en fix: Y").
+- **Handovers met meerdere features**: Claude.ai splitst de handover in genummerde stappen, elk individueel testbaar en commitbaar. Claude Code commit per stap, in de gegeven volgorde, met een eigen `feat:`/`fix:`/`refactor:`/`docs:`-message.
+- **Squash merging staat uit** in deze repo. Alle losse commits blijven intact op `main`, dus elke commit verschijnt als aparte regel in CHANGELOG.md onder de juiste sectie.
+- **Het zwaarste type binnen een PR bepaalt de version bump.** `feat:` → minor, `fix:` → patch, `feat!:` of `BREAKING CHANGE:` → major.
+- **Een breaking change moet altijd actief gemeld worden** — ook als de gebruiker het niet noemt — zodat de bump bewust is.
 
 ---
 
