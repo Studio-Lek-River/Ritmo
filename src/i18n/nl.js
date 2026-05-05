@@ -745,6 +745,14 @@ export default {
     androidStep3Prefix: 'Bevestig met',
     androidStep3Action: 'Installeren',
     androidStep3Suffix: '.',
+    bannerTitle: 'Installeer Ritmo voor betrouwbare opslag',
+    bannerBody: 'Zet Ritmo op je beginscherm zodat je data niet kwijtraakt.',
+    installButton: 'Installeer',
+    dismissButton: 'Niet nu',
+    installed: 'Geïnstalleerd op je beginscherm',
+    installedBody: 'Je data is nu betrouwbaar opgeslagen.',
+    settingsHeader: 'App-installatie',
+    androidHint: 'Tik op de knop hieronder om Ritmo te installeren.',
   },
 
   feedback: {

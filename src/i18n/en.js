@@ -735,6 +735,14 @@ export default {
     androidStep3Prefix: 'Confirm with',
     androidStep3Action: 'Install',
     androidStep3Suffix: '.',
+    bannerTitle: 'Install Ritmo for reliable storage',
+    bannerBody: 'Add Ritmo to your home screen so your data stays safe.',
+    installButton: 'Install',
+    dismissButton: 'Not now',
+    installed: 'Installed on your home screen',
+    installedBody: 'Your data is now reliably stored.',
+    settingsHeader: 'App installation',
+    androidHint: 'Tap the button below to install Ritmo.',
   },
 
   feedback: {

@@ -17,6 +17,8 @@ import RitmoLogo from './components/RitmoLogo';
 import TabBar from './components/TabBar';
 import HelpOverlay from './components/help/HelpOverlay';
 import InstallGuide from './components/help/InstallGuide';
+import InstallBanner from './components/InstallBanner';
+import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
 import ChecklistModule from './modules/ChecklistModule';
 import ConfirmDialog from './components/ConfirmDialog';
@@ -122,6 +124,7 @@ export default function Ritmo() {
   const [goldenBorderEnabled, setGoldenBorderEnabled] = useState(true);
   const [showReflectionOnToday, setShowReflectionOnToday] = useState(false);
   const [hasUsedSwipe, setHasUsedSwipe] = useState(false);
+  const [hasDismissedInstallBanner, setHasDismissedInstallBanner] = useState(false);
   const [confetti, setConfetti] = useState([]);
   const [celebrationMsg, setCelebrationMsg] = useState(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
@@ -166,6 +169,7 @@ export default function Ritmo() {
           if (settings.goldenBorderEnabled !== undefined) setGoldenBorderEnabled(settings.goldenBorderEnabled);
           if (settings.showReflectionOnToday !== undefined) setShowReflectionOnToday(settings.showReflectionOnToday);
           if (settings.hasUsedSwipe !== undefined) setHasUsedSwipe(settings.hasUsedSwipe);
+          if (settings.hasDismissedInstallBanner !== undefined) setHasDismissedInstallBanner(settings.hasDismissedInstallBanner);
           if (loadedModules) setModules(loadedModules);
           if (settings.hasOnboarded !== undefined) setHasOnboarded(settings.hasOnboarded);
         } else {
@@ -275,6 +279,7 @@ export default function Ritmo() {
           goldenBorderEnabled,
           showReflectionOnToday,
           hasUsedSwipe,
+          hasDismissedInstallBanner,
           modules,
           hasOnboarded,
           language: languageSetting,
@@ -282,7 +287,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, showReflectionOnToday, hasUsedSwipe, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, showReflectionOnToday, hasUsedSwipe, hasDismissedInstallBanner, modules, hasOnboarded, languageSetting, loading]);
 
   // Recurring tasks. Only inject into today's task list, never into a
   // historical day the user is just viewing.
@@ -956,6 +961,9 @@ export default function Ritmo() {
               theme={theme}
             />
             {!editable && <ReadOnlyBanner theme={theme} />}
+            {editable && !hasDismissedInstallBanner && (
+              <InstallBanner onDismiss={() => setHasDismissedInstallBanner(true)} />
+            )}
             {/* Streaks - only for modules waar gebruiker streaks voor wil bijhouden (max 4) */}
             {editable && enabledModules.filter(m => m.countInStreak === true).length > 0 && (
               <div className={`${theme.card} rounded-2xl p-4 shadow-sm mb-4`}>
@@ -1921,6 +1929,10 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
   const [activeTab, setActiveTab] = useState('modules');
   const [helpView, setHelpView] = useState(null); // null | 'list' | 'install' | 'feedback'
   const [reorderMode, setReorderMode] = useState(false);
+  const [androidPromptable, setAndroidPromptable] = useState(false);
+  useEffect(() => {
+    return onPromptAvailableChange(setAndroidPromptable);
+  }, []);
   const [draggingId, setDraggingId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
 
@@ -2016,6 +2028,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
             { id: 'reflect', label: t('settings.tabReflection') },
             { id: 'theme', label: t('settings.tabTheme') },
             { id: 'language', label: t('settings.tabLanguage') },
+            { id: 'install', label: t('install.settingsHeader') },
           ].map(tab => (
             <button
               key={tab.id}
@@ -2415,6 +2428,42 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'install' && (
+          <div className="space-y-3">
+            <h3 className={`font-semibold ${theme.textSecondary} mb-3`}>{t('install.settingsHeader')}</h3>
+            {isStandalone() ? (
+              <div className="rounded-xl bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-3">
+                <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                  ✓ {t('install.installed')}
+                </p>
+                <p className="text-sm text-green-800 dark:text-green-200 mt-0.5">
+                  {t('install.installedBody')}
+                </p>
+              </div>
+            ) : isIOS() ? (
+              <div className="space-y-1 text-sm">
+                <p className="font-medium">{t('install.iosTitle')}</p>
+                <p className={`text-xs ${theme.textSecondary}`}>{t('install.iosNote')}</p>
+                <ol className={`list-decimal list-inside space-y-1 mt-2 ${theme.textSecondary}`}>
+                  <li>{t('install.iosStep1Prefix')} {t('install.iosStep1Suffix')}</li>
+                  <li>{t('install.iosStep2Prefix')} <strong>{t('install.iosStep2Mid')}</strong>.</li>
+                  <li>{t('install.iosStep3Prefix')} <strong>{t('install.iosStep3Action')}</strong>{t('install.iosStep3Suffix')}</li>
+                </ol>
+              </div>
+            ) : androidPromptable ? (
+              <div className="space-y-2">
+                <p className={`text-sm ${theme.textSecondary}`}>{t('install.androidHint')}</p>
+                <button
+                  onClick={triggerInstallPrompt}
+                  className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+                >
+                  {t('install.installButton')}
+                </button>
+              </div>
+            ) : null}
           </div>
         )}
 
