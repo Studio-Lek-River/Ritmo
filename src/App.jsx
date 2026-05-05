@@ -2790,10 +2790,8 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
                 {t('modules.suggestions')}
               </button>
               <button
-                onClick={() => setPresetTab('blank')}
-                className={`flex-1 py-2 rounded-md text-sm font-medium transition ${
-                  presetTab === 'blank' ? `${theme.card} ${theme.textSecondary} shadow-sm` : theme.textMuted
-                }`}
+                onClick={startBlank}
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition ${theme.textMuted}`}
               >
                 {t('modules.blankSelf')}
               </button>
@@ -2837,19 +2835,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
               </div>
             )}
 
-            {presetTab === 'blank' && (
-              <div className={`p-4 ${theme.cardSecondary} rounded-lg text-center space-y-3`}>
-                <p className={`text-sm ${theme.textSecondary}`}>
-                  {t('modules.blankIntro')}
-                </p>
-                <button
-                  onClick={startBlank}
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition"
-                >
-                  {t('modules.blankCreate')}
-                </button>
-              </div>
-            )}
+
           </div>
         )}
 
