@@ -2637,10 +2637,9 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
   const [editing, setEditing] = useState(mod);
   const [newItem, setNewItem] = useState('');
   const [expandedItemId, setExpandedItemId] = useState(null);
-  const skipPresets = mod._createMode === 'collection';
   const isNew = !mod.name && !mod.nameKey;
   const [step, setStep] = useState(
-    isNew && !skipPresets ? (mod.type ? 'preset' : 'type') : 'config'
+    isNew ? (mod.type ? 'preset' : 'type') : 'config'
   );
   const [presetTab, setPresetTab] = useState('suggestions');
 
