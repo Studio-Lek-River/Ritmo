@@ -33,3 +33,17 @@ Bij een positieve check meld ik aan het eind van mijn turn:
 3. Wachten op bevestiging — ik pas PROJECT_INSTRUCTIONS.md niet zelf aan zonder akkoord.
 
 Bij een negatieve check (geen update nodig) zeg ik niets — geen ruis.
+
+## Commits: strakke Conventional Commits per type
+
+Ritmo gebruikt [semantic-release](.releaserc.json). Het format van elke commit op `main` bepaalt automatisch het versienummer en de release notes. Format-spec staat in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+**Regels die ik volg bij elke commit:**
+
+1. **Altijd Conventional Commits-format** — `<type>(<scope>): <korte beschrijving>`. Geen vrije commit-messages.
+2. **Eén type per commit, geen mengvormen.** Liever twee aparte commits dan één met een fout type. Een bug-fix én een nieuwe feature gaan in twee commits, niet in één gemengde `feat:`.
+3. **Type kiezen op basis van wat er feitelijk verandert,** niet op basis van of een release gewenst is. Gedragsverandering = `feat:` of `fix:`; alleen interne refactor = `refactor:`; build/deps = `chore:`; documentatie = `docs:`.
+4. **Bij twijfel tussen `feat:` en `fix:`** noem ik dat expliciet in mijn antwoord en laat ik de gebruiker kiezen.
+5. **Geen `Co-Authored-By: Claude ...`-trailer** in commit messages.
+
+**Merge-strategie:** squash merging is uitgeschakeld in de repo. PRs gebruiken merge commit of rebase, dus alle losse commits blijven intact op `main`. Elke individuele commit verschijnt als aparte regel in de gegenereerde changelog onder de juiste sectie ("Features", "Bug Fixes"). Het zwaarste type binnen een PR bepaalt de version bump.
