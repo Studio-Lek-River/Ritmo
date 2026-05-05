@@ -145,6 +145,8 @@ export default {
     partial: 'gedeeltelijk',
     noSleepData: 'Nog geen slaapdata in deze maand',
     onRhythmOf: '{n} / {total} op ritme',
+    filter: 'Filter',
+    filterAll: 'Alle modules',
   },
 
   reflection: {

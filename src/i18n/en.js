@@ -144,6 +144,8 @@ export default {
     partial: 'partial',
     noSleepData: 'No sleep data this month yet',
     onRhythmOf: '{n} / {total} on track',
+    filter: 'Filter',
+    filterAll: 'All modules',
   },
 
   reflection: {

@@ -43,6 +43,7 @@ import {
   normalizeChecklistItemData, isChecklistItemComplete,
   canCountInStreak,
 } from './utils/dayProgress';
+import { getColorHex } from './utils/colors';
 import { playSound } from './utils/sound';
 
 const COLOR_OPTIONS = ['red', 'orange', 'amber', 'yellow', 'green', 'teal', 'cyan', 'blue', 'indigo', 'purple', 'pink'];
@@ -1727,6 +1728,7 @@ function WeekView({ modules, history, today, activeDateKey, moduleData, activeWe
 // =============================================
 function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDateKey, moduleData, modules, onPickDay, theme, darkMode, monthNames, dayNames, goldenBorderEnabled }) {
   const { t } = useTranslation();
+  const [filterModuleId, setFilterModuleId] = useState('all');
   const year = calendarMonth.getFullYear();
   const month = calendarMonth.getMonth();
   const firstDay = new Date(year, month, 1);
@@ -1745,17 +1747,33 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDate
     dateStr === activeDateKey ? { moduleData } : history[dateStr]
   );
 
+  const filterModule = filterModuleId === 'all'
+    ? null
+    : modules.find(m => m.id === filterModuleId) || null;
+
+  const cellBackground = (dateStr, dateObj) => {
+    if (!filterModule) {
+      return buildDayCellBackground(modules, dayDataFor(dateStr), dateObj);
+    }
+    const status = moduleStatusForDay(filterModule, dayDataFor(dateStr), dateObj);
+    return status === 'full' ? getColorHex(filterModule.color) : null;
+  };
+
   const monthDays = cells.filter(c => c !== null);
-  const completedDays = monthDays.filter(d => buildDayCellBackground(modules, dayDataFor(d), parseDateKey(d)) !== null).length;
+  const completedDays = monthDays.filter(d => cellBackground(d, parseDateKey(d)) !== null).length;
   const partialDays = monthDays.filter(d => {
     const data = dayDataFor(d);
     if (!data?.moduleData) return false;
     const dateObj = parseDateKey(d);
-    if (buildDayCellBackground(modules, data, dateObj) !== null) return false;
-    // any non-empty status counts as partial
-    return modules.some(m => m.enabled && canCountInStreak(m.type) && m.type !== 'sleep' &&
+    if (cellBackground(d, dateObj) !== null) return false;
+    if (filterModule) {
+      return moduleStatusForDay(filterModule, data, dateObj) === 'partial';
+    }
+    return modules.some(m => m.enabled && canCountInStreak(m.type) &&
       moduleStatusForDay(m, data, dateObj) !== 'none');
   }).length;
+
+  const filterableModules = modules.filter(m => m.enabled && canCountInStreak(m.type));
 
   return (
     <div className={`${theme.card} rounded-2xl p-5 shadow-sm slide-in`}>
@@ -1768,6 +1786,25 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDate
           <ChevronRight className={`w-5 h-5 ${theme.textSecondary}`} />
         </button>
       </div>
+
+      {filterableModules.length > 0 && (
+        <div className="flex items-center justify-end gap-2 mb-3">
+          <label className={`text-xs ${theme.textMuted}`} htmlFor="month-module-filter">
+            {t('month.filter')}
+          </label>
+          <select
+            id="month-module-filter"
+            value={filterModuleId}
+            onChange={(e) => setFilterModuleId(e.target.value)}
+            className={`px-2 py-1 ${theme.input} rounded text-xs`}
+          >
+            <option value="all">{t('month.filterAll')}</option>
+            {filterableModules.map(m => (
+              <option key={m.id} value={m.id}>{resolveModuleName(m, t)}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="grid grid-cols-7 gap-1 mb-2">
         {dayNames.map(d => (
@@ -1782,8 +1819,8 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDate
           const isTodayCell = dateStr === today;
           const dateObj = parseDateKey(dateStr);
           const future = isFuture(dateObj);
-          const bg = buildDayCellBackground(modules, dayDataFor(dateStr), dateObj);
-          const fullyComplete = isDayFullyComplete(modules, dayDataFor(dateStr), dateObj);
+          const bg = cellBackground(dateStr, dateObj);
+          const fullyComplete = !filterModule && isDayFullyComplete(modules, dayDataFor(dateStr), dateObj);
 
           return (
             <button
