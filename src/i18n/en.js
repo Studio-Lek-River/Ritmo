@@ -363,6 +363,18 @@ export default {
     submitAdd: 'Add',
     noItemsYet: 'No items yet.',
     lastEventSuffix: 'last {date}',
+    tagGroupDefault: 'Tags',
+    tagGroups: 'Tag groups',
+    addTagGroup: 'Add group',
+    groupLabel: 'Group name',
+    allowMultiple: 'Multiple choices allowed',
+    singleSelect: 'One choice per item',
+    noTagGroups: 'No tag groups yet.',
+    deleteTagGroupAria: 'Delete group',
+    deleteTagGroupTitle: 'Delete group?',
+    deleteTagGroupDesc: 'All {n} tag(s) in this group will also be removed from your items.',
+    deleteTagTitle: 'Delete tag?',
+    deleteTagDesc: 'This tag will also be removed from all items.',
   },
 
   collectionsView: {
@@ -675,6 +687,14 @@ export default {
     books: { name: 'Books' },
     films: { name: 'Films' },
     restaurants: { name: 'Restaurants' },
+    laundry: {
+      name: 'Laundry detergents and scent boosters',
+      groupSoort: 'Type',
+      tagWasmiddel: 'Detergent',
+      tagWasparfum: 'Scent booster',
+      groupMerk: 'Brand',
+      groupGeur: 'Scent',
+    },
     sleep: { name: 'Sleep' },
 
     defaultMorning: 'Morning routine',

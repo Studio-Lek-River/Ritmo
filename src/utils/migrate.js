@@ -73,7 +73,6 @@ export function migrateModuleConfig(module) {
       countInStreak: false,
       trackingMode: m.trackingMode || 'completion',
       itemFields: { rating: true, notes: true, tags: true, ...(m.itemFields || {}) },
-      tags: Array.isArray(m.tags) ? m.tags : [],
       items: Array.isArray(m.items)
         ? m.items.map((it) => ({
             tags: [],
@@ -84,6 +83,21 @@ export function migrateModuleConfig(module) {
           }))
         : [],
     };
+  }
+
+  if (m.type === 'collection' && !m.tagGroups) {
+    const oldTags = Array.isArray(m.tags) ? m.tags : [];
+    const tagGroups = oldTags.length === 0
+      ? []
+      : [{
+          id: 'default',
+          labelKey: 'collections.tagGroupDefault',
+          color: VALID_COLORS.has(oldTags[0]?.color) ? oldTags[0].color : 'blue',
+          allowMultiple: true,
+          tags: oldTags.map(({ id, label }) => ({ id, label })),
+        }];
+    const { tags: _drop, ...rest } = m;
+    m = { ...rest, tagGroups };
   }
 
   if (m.color && COLOR_FALLBACK[m.color]) {

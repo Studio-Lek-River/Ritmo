@@ -59,6 +59,30 @@ export function createTag(label, color = 'blue') {
   };
 }
 
+export function generateTagId() {
+  return genId('tag');
+}
+
+export function generateTagGroupId() {
+  return genId('group');
+}
+
+export function getAllTags(module) {
+  if (!module?.tagGroups) return [];
+  return module.tagGroups.flatMap((g) =>
+    g.tags.map((t) => ({ ...t, color: g.color || 'blue', groupId: g.id }))
+  );
+}
+
+export function findTagWithGroup(module, tagId) {
+  if (!module?.tagGroups) return null;
+  for (const group of module.tagGroups) {
+    const tag = group.tags.find((t) => t.id === tagId);
+    if (tag) return { tag, group };
+  }
+  return null;
+}
+
 export function deleteItemConfirmationDescription(item, t) {
   const eventCount = (item.events || []).length;
   if (eventCount > 0) {

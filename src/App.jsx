@@ -19,9 +19,10 @@ import HelpOverlay from './components/help/HelpOverlay';
 import InstallGuide from './components/help/InstallGuide';
 import FeedbackForm from './components/help/FeedbackForm';
 import ChecklistModule from './modules/ChecklistModule';
+import ConfirmDialog from './components/ConfirmDialog';
 import { migrateModuleConfig, migrateDayModuleData, migrateSettings } from './utils/migrate';
 import { useTranslation, resolveModuleName } from './i18n/useTranslation';
-import { createItem, logEvent, removeEvent, createTag } from './utils/collections';
+import { createItem, logEvent, removeEvent, generateTagId, generateTagGroupId } from './utils/collections';
 import { ToastProvider } from './hooks/useToast';
 import Toast from './components/Toast';
 import { formatAmount, formatDuration } from './utils/format';
@@ -605,37 +606,10 @@ export default function Ritmo() {
       type: 'collection',
       trackingMode: 'completion',
       itemFields: { rating: true, notes: true, tags: true },
-      tags: [],
+      tagGroups: [],
       items: [],
       _createMode: 'collection',
     });
-  };
-
-  const addCollectionTag = (moduleId, label, color = 'blue') => {
-    const trimmed = (label || '').trim();
-    if (!trimmed) return;
-    updateCollectionModule(moduleId, (m) => ({
-      ...m,
-      tags: [...(m.tags || []), createTag(trimmed, color)],
-    }));
-  };
-
-  const updateCollectionTag = (moduleId, tag) => {
-    updateCollectionModule(moduleId, (m) => ({
-      ...m,
-      tags: (m.tags || []).map((tg) => (tg.id === tag.id ? tag : tg)),
-    }));
-  };
-
-  const deleteCollectionTag = (moduleId, tagId) => {
-    updateCollectionModule(moduleId, (m) => ({
-      ...m,
-      tags: (m.tags || []).filter((tg) => tg.id !== tagId),
-      items: (m.items || []).map((it) => ({
-        ...it,
-        tags: (it.tags || []).filter((id) => id !== tagId),
-      })),
-    }));
   };
 
   const addTask = () => {
@@ -2477,29 +2451,89 @@ function getTypeOptions(t) {
   ];
 }
 
-function CollectionTagsEditor({ tags, onAdd, onUpdate, onRemove, theme }) {
+function CollectionTagGroupsEditor({ tagGroups, items, onUpdateGroups, theme }) {
   const { t } = useTranslation();
-  const [label, setLabel] = useState('');
-  const [color, setColor] = useState('blue');
-  const submit = () => {
-    if (!label.trim()) return;
-    onAdd(label, color);
-    setLabel('');
+  const [confirmPending, setConfirmPending] = useState(null);
+
+  const applyUpdate = (newGroups, newItems) => onUpdateGroups(newGroups, newItems !== undefined ? newItems : items);
+
+  const addGroup = () => {
+    applyUpdate([...tagGroups, { id: generateTagGroupId(), label: '', color: 'blue', allowMultiple: true, tags: [] }]);
   };
+
+  const updateGroup = (groupId, patch) => {
+    applyUpdate(tagGroups.map((g) => g.id === groupId ? { ...g, ...patch } : g));
+  };
+
+  const removeGroup = (groupId) => {
+    const group = tagGroups.find((g) => g.id === groupId);
+    const usedTagIds = new Set((group?.tags || []).map((t) => t.id));
+    const inUse = items.some((it) => (it.tags || []).some((tid) => usedTagIds.has(tid)));
+    if (inUse) { setConfirmPending({ type: 'group', groupId }); return; }
+    doRemoveGroup(groupId);
+  };
+
+  const doRemoveGroup = (groupId) => {
+    const group = tagGroups.find((g) => g.id === groupId);
+    const usedTagIds = new Set((group?.tags || []).map((t) => t.id));
+    const newItems = items.map((it) => ({ ...it, tags: (it.tags || []).filter((tid) => !usedTagIds.has(tid)) }));
+    applyUpdate(tagGroups.filter((g) => g.id !== groupId), newItems);
+    setConfirmPending(null);
+  };
+
+  const addTagToGroup = (groupId) => {
+    applyUpdate(tagGroups.map((g) =>
+      g.id === groupId ? { ...g, tags: [...g.tags, { id: generateTagId(), label: '' }] } : g
+    ));
+  };
+
+  const updateTagInGroup = (groupId, tagId, patch) => {
+    applyUpdate(tagGroups.map((g) =>
+      g.id === groupId ? { ...g, tags: g.tags.map((tag) => tag.id === tagId ? { ...tag, ...patch } : tag) } : g
+    ));
+  };
+
+  const removeTag = (groupId, tagId) => {
+    const inUse = items.some((it) => (it.tags || []).includes(tagId));
+    if (inUse) { setConfirmPending({ type: 'tag', groupId, tagId }); return; }
+    doRemoveTag(groupId, tagId);
+  };
+
+  const doRemoveTag = (groupId, tagId) => {
+    const newGroups = tagGroups.map((g) =>
+      g.id === groupId ? { ...g, tags: g.tags.filter((tag) => tag.id !== tagId) } : g
+    );
+    const newItems = items.map((it) => ({ ...it, tags: (it.tags || []).filter((id) => id !== tagId) }));
+    applyUpdate(newGroups, newItems);
+    setConfirmPending(null);
+  };
+
+  const pendingGroup = confirmPending ? tagGroups.find((g) => g.id === confirmPending.groupId) : null;
+  const pendingGroupTagCount = pendingGroup?.tags.length || 0;
+
   return (
-    <div>
-      <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
-        {t('common.tags')}
+    <div className="space-y-3">
+      <label className={`text-sm font-medium ${theme.textSecondary} block`}>
+        {t('collections.tagGroups')}
       </label>
-      {tags.length === 0 ? (
-        <p className={`text-xs ${theme.textMuted} mb-2`}>{t('collections.noTags')}</p>
-      ) : (
-        <ul className="space-y-1 mb-2">
-          {tags.map((tg) => (
-            <li key={tg.id} className={`flex items-center gap-2 p-2 ${theme.cardSecondary} rounded-lg`}>
+      {tagGroups.length === 0 && (
+        <p className={`text-xs ${theme.textMuted}`}>{t('collections.noTagGroups')}</p>
+      )}
+      {tagGroups.map((group) => {
+        const groupLabel = group.labelKey ? t(group.labelKey) : (group.label || '');
+        return (
+          <div key={group.id} className={`p-3 ${theme.cardSecondary} rounded-lg space-y-2`}>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={groupLabel}
+                onChange={(e) => updateGroup(group.id, { label: e.target.value, labelKey: undefined })}
+                placeholder={t('collections.groupLabel')}
+                className={`flex-1 px-2 py-1 ${theme.input} rounded text-sm`}
+              />
               <select
-                value={tg.color}
-                onChange={(e) => onUpdate(tg.id, { color: e.target.value })}
+                value={group.color || 'blue'}
+                onChange={(e) => updateGroup(group.id, { color: e.target.value })}
                 className={`px-2 py-1 ${theme.input} rounded text-xs`}
                 aria-label={t('collections.tagColorAria')}
               >
@@ -2507,52 +2541,88 @@ function CollectionTagsEditor({ tags, onAdd, onUpdate, onRemove, theme }) {
                   <option key={c} value={c}>{t(`colors.${c}`)}</option>
                 ))}
               </select>
-              <input
-                type="text"
-                value={tg.label}
-                onChange={(e) => onUpdate(tg.id, { label: e.target.value })}
-                className={`flex-1 px-2 py-1 ${theme.input} rounded text-sm`}
-              />
               <button
                 type="button"
-                onClick={() => onRemove(tg.id)}
+                onClick={() => removeGroup(group.id)}
                 className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition"
-                aria-label={t('collections.deleteTagAria')}
+                aria-label={t('collections.deleteTagGroupAria')}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="flex gap-2">
-        <select
-          value={color}
-          onChange={(e) => setColor(e.target.value)}
-          className={`px-2 py-2 ${theme.input} rounded-lg text-sm`}
-          aria-label={t('collections.newTagColorAria')}
-        >
-          {COLOR_OPTIONS.map((c) => (
-            <option key={c} value={c}>{t(`colors.${c}`)}</option>
-          ))}
-        </select>
-        <input
-          type="text"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } }}
-          placeholder={t('collections.newTagPlaceholder')}
-          className={`flex-1 px-3 py-2 ${theme.input} rounded-lg text-sm`}
-        />
-        <button
-          type="button"
-          onClick={submit}
-          disabled={!label.trim()}
-          className="px-3 py-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-lg text-sm transition"
-        >
-          <Plus className="w-4 h-4" />
-        </button>
-      </div>
+            </div>
+            <label className={`flex items-center gap-2 text-xs ${theme.textMuted} cursor-pointer`}>
+              <input
+                type="checkbox"
+                checked={!!group.allowMultiple}
+                onChange={(e) => updateGroup(group.id, { allowMultiple: e.target.checked })}
+              />
+              {t('collections.allowMultiple')}
+            </label>
+            {group.tags.length > 0 && (
+              <ul className="space-y-1">
+                {group.tags.map((tag) => {
+                  const tagLabel = tag.labelKey ? t(tag.labelKey) : (tag.label || '');
+                  return (
+                    <li key={tag.id} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={tagLabel}
+                        onChange={(e) => updateTagInGroup(group.id, tag.id, { label: e.target.value, labelKey: undefined })}
+                        placeholder={t('collections.newTagPlaceholder')}
+                        className={`flex-1 px-2 py-1 ${theme.input} rounded text-sm`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeTag(group.id, tag.id)}
+                        className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition"
+                        aria-label={t('collections.deleteTagAria')}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <button
+              type="button"
+              onClick={() => addTagToGroup(group.id)}
+              className={`flex items-center gap-1.5 text-xs ${theme.textMuted} hover:text-blue-500 transition`}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              {t('collections.addTag')}
+            </button>
+          </div>
+        );
+      })}
+      <button
+        type="button"
+        onClick={addGroup}
+        className={`flex items-center gap-2 text-sm ${theme.textMuted} hover:text-blue-500 transition`}
+      >
+        <Plus className="w-4 h-4" />
+        {t('collections.addTagGroup')}
+      </button>
+      <ConfirmDialog
+        open={confirmPending?.type === 'group'}
+        title={t('collections.deleteTagGroupTitle')}
+        description={t('collections.deleteTagGroupDesc', { n: pendingGroupTagCount })}
+        confirmLabel={t('common.delete')}
+        variant="danger"
+        onConfirm={() => doRemoveGroup(confirmPending.groupId)}
+        onCancel={() => setConfirmPending(null)}
+        theme={theme}
+      />
+      <ConfirmDialog
+        open={confirmPending?.type === 'tag'}
+        title={t('collections.deleteTagTitle')}
+        description={t('collections.deleteTagDesc')}
+        confirmLabel={t('common.delete')}
+        variant="danger"
+        onConfirm={() => doRemoveTag(confirmPending.groupId, confirmPending.tagId)}
+        onCancel={() => setConfirmPending(null)}
+        theme={theme}
+      />
     </div>
   );
 }
@@ -2567,10 +2637,9 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
   const [editing, setEditing] = useState(mod);
   const [newItem, setNewItem] = useState('');
   const [expandedItemId, setExpandedItemId] = useState(null);
-  const skipPresets = mod._createMode === 'collection';
   const isNew = !mod.name && !mod.nameKey;
   const [step, setStep] = useState(
-    isNew && !skipPresets ? (mod.type ? 'preset' : 'type') : 'config'
+    isNew ? (mod.type ? 'preset' : 'type') : 'config'
   );
   const [presetTab, setPresetTab] = useState('suggestions');
 
@@ -2621,7 +2690,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
       ...(typeId === 'collection' ? {
         trackingMode: prev.trackingMode || 'completion',
         itemFields: prev.itemFields || { rating: true, notes: true, tags: true },
-        tags: prev.tags || [],
+        tagGroups: prev.tagGroups || [],
         items: prev.items || [],
         countInStreak: false,
       } : {}),
@@ -2720,10 +2789,8 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
                 {t('modules.suggestions')}
               </button>
               <button
-                onClick={() => setPresetTab('blank')}
-                className={`flex-1 py-2 rounded-md text-sm font-medium transition ${
-                  presetTab === 'blank' ? `${theme.card} ${theme.textSecondary} shadow-sm` : theme.textMuted
-                }`}
+                onClick={startBlank}
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition ${theme.textMuted}`}
               >
                 {t('modules.blankSelf')}
               </button>
@@ -2767,19 +2834,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
               </div>
             )}
 
-            {presetTab === 'blank' && (
-              <div className={`p-4 ${theme.cardSecondary} rounded-lg text-center space-y-3`}>
-                <p className={`text-sm ${theme.textSecondary}`}>
-                  {t('modules.blankIntro')}
-                </p>
-                <button
-                  onClick={startBlank}
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition"
-                >
-                  {t('modules.blankCreate')}
-                </button>
-              </div>
-            )}
+
           </div>
         )}
 
@@ -3224,40 +3279,12 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
           {editing.type === 'collection' && (() => {
             const trackingMode = editing.trackingMode || 'completion';
             const fields = editing.itemFields || { rating: true, notes: true, tags: true };
-            const tags = editing.tags || [];
+            const tagGroups = editing.tagGroups || [];
             const showUnit = trackingMode === 'amount' || trackingMode === 'flexible';
             const setField = (key, value) => {
               setEditing(prev => ({
                 ...prev,
                 itemFields: { ...(prev.itemFields || { rating: true, notes: true, tags: true }), [key]: value },
-              }));
-            };
-            const addTag = (label, color) => {
-              const trimmed = (label || '').trim();
-              if (!trimmed) return;
-              setEditing(prev => ({
-                ...prev,
-                tags: [...(prev.tags || []), {
-                  id: genId('tag'),
-                  label: trimmed,
-                  color: color || 'blue',
-                }],
-              }));
-            };
-            const updateTag = (id, patch) => {
-              setEditing(prev => ({
-                ...prev,
-                tags: (prev.tags || []).map(tg => tg.id === id ? { ...tg, ...patch } : tg),
-              }));
-            };
-            const removeTag = (id) => {
-              setEditing(prev => ({
-                ...prev,
-                tags: (prev.tags || []).filter(tg => tg.id !== id),
-                items: (prev.items || []).map(it => ({
-                  ...it,
-                  tags: (it.tags || []).filter(tid => tid !== id),
-                })),
               }));
             };
             return (
@@ -3325,11 +3352,12 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
                 </div>
 
                 {fields.tags && (
-                  <CollectionTagsEditor
-                    tags={tags}
-                    onAdd={addTag}
-                    onUpdate={updateTag}
-                    onRemove={removeTag}
+                  <CollectionTagGroupsEditor
+                    tagGroups={tagGroups}
+                    items={editing.items || []}
+                    onUpdateGroups={(newGroups, newItems) =>
+                      setEditing(prev => ({ ...prev, tagGroups: newGroups, items: newItems !== undefined ? newItems : prev.items }))
+                    }
                     theme={theme}
                   />
                 )}
