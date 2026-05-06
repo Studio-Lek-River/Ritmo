@@ -1,15 +1,20 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Home, ChevronDown, ChevronUp,
-  Plus, Trash2, Check, Star, AlertCircle, ChevronLeft, ChevronRight, Edit3, X,
+  Plus, Trash2, Check, Star, ChevronLeft, ChevronRight, Edit3, X, Info, Lightbulb,
   ShoppingCart, Coffee, Utensils, Zap, Droplet, Wifi, Phone, Car, Film, Music, Book, Heart, Gift, Dumbbell, Flame, Plane, Fuel, BadgeEuro, GraduationCap, Briefcase,
 } from 'lucide-react';
 import useStoredState from '../hooks/useStoredState';
 import {
-  toMonthly, isOverdue, daysUntilDue, formatRelativeDate, formatEuro, parseEuroInput,
-  reconcileUtilitiesAuto, totalActualOf, autoSumOf,
+  isOverdue, daysUntilDue, formatRelativeDate, formatEuro, parseEuroInput,
+  defaultStartDate, endDateBefore, isActiveInMonth,
+  activeUtilityTypesAt, disabledUtilityTypes, conflictingUtilityExpenses,
+  monthlyAmountForType, monthlyIncomeTotal, monthlyExpenseTotal,
+  yearActualTotal,
   eventsForMonth, netForDay, netForMonth,
+  UTILITY_TYPES,
 } from '../utils/household';
+import { migrateHousehold } from '../utils/migrate';
 import { useTranslation, getLocale } from '../i18n/useTranslation';
 import ConfirmDialog from '../components/ConfirmDialog';
 
@@ -23,9 +28,8 @@ const BUDGET_ICONS = {
 };
 const BUDGET_ICON_KEYS = Object.keys(BUDGET_ICONS);
 
-const UTILITY_KEYS = ['water', 'electricity', 'gas'];
-const UTILITY_ICON = { water: Droplet, electricity: Zap, gas: Flame };
-const UTILITY_COLOR = { water: 'text-sky-500', electricity: 'text-amber-500', gas: 'text-orange-500' };
+const UTILITY_ICON = { water: Droplet, elektra: Zap, gas: Flame, energie: Lightbulb };
+const UTILITY_COLOR = { water: 'text-sky-500', elektra: 'text-amber-500', gas: 'text-orange-500', energie: 'text-violet-500' };
 
 function buildLocalizedNames(language) {
   // Re-runs whenever language changes; uses Intl with the resolved locale.
@@ -43,43 +47,81 @@ function buildLocalizedNames(language) {
   return { monthsLong, monthsShort, dayLabels };
 }
 
+function monthKeyFor(year, month) {
+  return `${year}-${String(month + 1).padStart(2, '0')}`;
+}
+
+// Locale-aware label voor een 'YYYY-MM' of 'YYYY-MM-DD' string.
+function formatMonthLabel(monthIso, monthsLong) {
+  if (!monthIso) return '';
+  const [y, m] = monthIso.slice(0, 7).split('-').map(Number);
+  if (!y || !m) return '';
+  return `${monthsLong[m - 1]} ${y}`;
+}
+
 export default function HouseholdView({ theme, darkMode }) {
   const { t, language } = useTranslation();
   const names = useMemo(() => buildLocalizedNames(language), [language]);
-  const utilityLabel = (k) => k === 'water'
-    ? t('household.utilities.water')
-    : k === 'electricity'
-      ? t('household.utilities.electricity')
-      : t('household.utilities.gas');
+  const utilityLabel = (k) => t(`household.utilities.types.${k}`);
 
   const [expanded, setExpanded] = useState({
-    chores: true, groceries: false, budget: false, utilities: false,
+    chores: true, groceries: false, fixedCosts: false, utilities: false,
   });
   const toggle = (key) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
   const [chores, setChores] = useStoredState('household:chores', []);
   const [groceries, setGroceries] = useStoredState('household:groceries', { items: [], shopDay: null });
-  const [budget, setBudget] = useStoredState('household:budget', { income: [], expenses: [] });
-  const [utilities, setUtilities] = useStoredState('household:utilities', {});
-  const [config, setConfig] = useStoredState('household:config', { energyCombined: false });
+  const [budget, setBudget] = useStoredState('household:budget', { income: [], expenses: [], oneTime: [] });
+  const [utilities, setUtilities] = useStoredState('household:utilities', { actuals: {} });
+  const [config, setConfig] = useStoredState('household:config', {});
 
-  // Reconcile auto-projection of utility-tagged budget items into the
-  // utilities storage. reconcileUtilitiesAuto returns the same reference
-  // when nothing changed, so listing utilities as a dep is safe — needed
-  // to handle the case where utilities loads from storage after expenses.
+  // Eenmalige migratie van oude isUtility/autoFromBudget-shape naar nieuw
+  // vaste-lasten-model. Lezen via window.storage rechtstreeks om race-
+  // condities met useStoredState's async load te vermijden. Idempotent.
+  const migratedRef = useRef(false);
   useEffect(() => {
-    setUtilities(prev => reconcileUtilitiesAuto(prev, budget.expenses || []));
-  }, [budget.expenses, utilities, setUtilities]);
+    if (migratedRef.current) return;
+    migratedRef.current = true;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [b, u, c] = await Promise.all([
+          window.storage.get('household:budget'),
+          window.storage.get('household:utilities'),
+          window.storage.get('household:config'),
+        ]);
+        if (cancelled) return;
+        const parseValue = (entry, fallback) => {
+          if (!entry) return fallback;
+          try { return JSON.parse(entry.value); } catch { return fallback; }
+        };
+        const result = migrateHousehold(
+          parseValue(b, { income: [], expenses: [] }),
+          parseValue(u, {}),
+          parseValue(c, {}),
+          new Date(),
+        );
+        if (cancelled || !result.changed) return;
+        setBudget(result.budget);
+        setUtilities(result.utilities);
+        setConfig(result.config);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('[migrate-household] failed', e);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const overdueCount = chores.filter(isOverdue).length;
   const groceriesCount = (groceries.items || []).filter(i => !i.checked).length;
-  const monthlyIncome = (budget.income || []).reduce((s, i) => s + toMonthly(i.amount, i.frequency), 0);
-  const monthlyExpenses = (budget.expenses || []).reduce((s, i) => s + toMonthly(i.amount, i.frequency), 0);
-  const monthlyNet = monthlyIncome - monthlyExpenses;
-  const utilitiesYearKey = String(new Date().getFullYear());
-  const utilitiesYearActual = Object.entries(utilities)
-    .filter(([k]) => k.startsWith(utilitiesYearKey + '-'))
-    .reduce((s, [, m]) => s + UTILITY_KEYS.reduce((ms, uk) => ms + totalActualOf(m?.[uk]), 0), 0);
+  const today = new Date();
+  const currentMonthKey = monthKeyFor(today.getFullYear(), today.getMonth());
+  const monthlyIncome = monthlyIncomeTotal(budget.income, currentMonthKey);
+  const monthlyExpenses = monthlyExpenseTotal(budget.expenses, currentMonthKey);
+  const monthlyNetValue = monthlyIncome - monthlyExpenses;
+  const utilitiesYearActual = yearActualTotal(utilities.actuals, today.getFullYear());
 
   return (
     <div className="slide-in space-y-3">
@@ -110,12 +152,23 @@ export default function HouseholdView({ theme, darkMode }) {
       <Section
         theme={theme}
         icon={<BadgeEuro className="w-4 h-4 text-violet-500" />}
-        title={t('household.budget.title')}
-        meta={t('household.budget.meta', { value: formatEuro(monthlyNet) })}
-        expanded={expanded.budget}
-        onToggle={() => toggle('budget')}
+        title={t('household.fixedCosts.title')}
+        meta={t('household.fixedCosts.meta', { value: formatEuro(monthlyNetValue) })}
+        expanded={expanded.fixedCosts}
+        onToggle={() => toggle('fixedCosts')}
       >
-        <BudgetSection budget={budget} setBudget={setBudget} config={config} theme={theme} darkMode={darkMode} monthsLong={names.monthsLong} monthsShort={names.monthsShort} dayLabels={names.dayLabels} />
+        <FixedCostsSection
+          budget={budget}
+          setBudget={setBudget}
+          theme={theme}
+          darkMode={darkMode}
+          monthsLong={names.monthsLong}
+          monthsShort={names.monthsShort}
+          dayLabels={names.dayLabels}
+          monthlyIncome={monthlyIncome}
+          monthlyExpenses={monthlyExpenses}
+          monthlyNetValue={monthlyNetValue}
+        />
       </Section>
 
       <Section
@@ -126,14 +179,11 @@ export default function HouseholdView({ theme, darkMode }) {
         expanded={expanded.utilities}
         onToggle={() => toggle('utilities')}
       >
-        <UtilitiesSection
+        <UtilitiesActualsSection
           utilities={utilities}
           setUtilities={setUtilities}
           budget={budget}
-          config={config}
-          setConfig={setConfig}
           theme={theme}
-          darkMode={darkMode}
           monthsLong={names.monthsLong}
           monthsShort={names.monthsShort}
           utilityLabel={utilityLabel}
@@ -164,6 +214,15 @@ function Section({ theme, icon, title, meta, expanded, onToggle, children }) {
           <div className="pt-4">{children}</div>
         </div>
       )}
+    </div>
+  );
+}
+
+function Stat({ theme, label, value, accent }) {
+  return (
+    <div className={`${theme.cardSecondary} rounded-xl p-3 text-center`}>
+      <div className={`text-xs ${theme.textMuted} mb-1`}>{label}</div>
+      <div className={`text-sm font-semibold ${accent}`}>{value}</div>
     </div>
   );
 }
@@ -463,53 +522,63 @@ function GroceriesSection({ groceries, setGroceries, theme, dayLabels }) {
 }
 
 // ============================================================================
-// Budget
+// Vaste lasten
 // ============================================================================
 
-function BudgetSection({ budget, setBudget, config, theme, darkMode, monthsLong, monthsShort, dayLabels }) {
+function FixedCostsSection({ budget, setBudget, theme, darkMode, monthsLong, monthsShort, dayLabels, monthlyIncome, monthlyExpenses, monthlyNetValue }) {
   const { t } = useTranslation();
-  const [view, setView] = useState('list'); // 'list' | 'calendar'
-  const [editing, setEditing] = useState(null); // { kind: 'income'|'expenses', item: { ... } }
-  const [adding, setAdding] = useState(null); // 'income' | 'expenses' | null
-  const [energyExpanded, setEnergyExpanded] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState(null); // { kind, item } | null
+  const [view, setView] = useState('recurring'); // 'recurring' | 'oneTime' | 'calendar'
+  const [editing, setEditing] = useState(null); // { kind: 'income'|'expense'|'oneTime', item }
+  const [adding, setAdding] = useState(null);   // 'income' | 'expense' | 'oneTime' | null
+  const [pendingDelete, setPendingDelete] = useState(null);
 
   const income = budget.income || [];
   const expenses = budget.expenses || [];
-  const hasGas = expenses.some(x => x.isUtility === 'gas');
-  const hasElectric = expenses.some(x => x.isUtility === 'electric');
-  const energyCombined = !!config?.energyCombined && hasGas && hasElectric;
+  const oneTime = budget.oneTime || [];
 
-  const monthlyIncome = income.reduce((s, i) => s + toMonthly(i.amount, i.frequency), 0);
-  const monthlyExpenses = expenses.reduce((s, i) => s + toMonthly(i.amount, i.frequency), 0);
-  const monthlyNet = monthlyIncome - monthlyExpenses;
-
-  const upsert = (kind, item) => {
+  // Eén handler voor alle recurring saves: plaatst/vervangt het item en past
+  // optionele cutoffs toe op andere items in dezelfde collectie.
+  const handleRecurringSave = (kind, payload) => {
+    const collectionKey = kind === 'income' ? 'income' : 'expenses';
     setBudget(prev => {
-      const list = prev[kind] || [];
-      const exists = list.some(x => x.id === item.id);
-      const updated = exists
-        ? list.map(x => x.id === item.id ? item : x)
-        : [...list, item];
-      return { ...prev, [kind]: updated };
+      const list = prev[collectionKey] || [];
+      const cutMap = new Map((payload.cutoffs || []).map(c => [c.id, c.endDate]));
+      const withCuts = list.map(x => cutMap.has(x.id) ? { ...x, endDate: cutMap.get(x.id) } : x);
+      const idx = withCuts.findIndex(x => x.id === payload.item.id);
+      const placed = idx >= 0
+        ? withCuts.map((x, i) => i === idx ? payload.item : x)
+        : [...withCuts, payload.item];
+      return { ...prev, [collectionKey]: placed };
     });
+    setEditing(null);
+    setAdding(null);
   };
 
-  const remove = (kind, id) => {
+  const handleOneTimeSave = (item) => {
+    setBudget(prev => {
+      const list = prev.oneTime || [];
+      const idx = list.findIndex(x => x.id === item.id);
+      const placed = idx >= 0 ? list.map((x, i) => i === idx ? item : x) : [...list, item];
+      return { ...prev, oneTime: placed };
+    });
+    setEditing(null);
+    setAdding(null);
+  };
+
+  const removeRecurring = (kind, id) => {
+    const collectionKey = kind === 'income' ? 'income' : 'expenses';
     setBudget(prev => ({
       ...prev,
-      [kind]: (prev[kind] || []).filter(x => x.id !== id),
+      [collectionKey]: (prev[collectionKey] || []).filter(x => x.id !== id),
     }));
   };
 
-  const requestDelete = (kind, id) => {
-    const list = kind === 'income' ? income : expenses;
-    const item = list.find(x => x.id === id);
-    if (item && item.isUtility) {
-      setPendingDelete({ kind, item });
-    } else {
-      remove(kind, id);
-    }
+  const removeOneTime = (id) => {
+    setBudget(prev => ({ ...prev, oneTime: (prev.oneTime || []).filter(x => x.id !== id) }));
+  };
+
+  const handlePickItem = (item, kind) => {
+    setEditing({ kind, item });
   };
 
   const tabBtn = (id, label) => (
@@ -527,72 +596,75 @@ function BudgetSection({ budget, setBudget, config, theme, darkMode, monthsLong,
     </button>
   );
 
+  const showRecurringEditor = (editing && (editing.kind === 'income' || editing.kind === 'expense'))
+    || adding === 'income' || adding === 'expense';
+  const showOneTimeEditor = editing?.kind === 'oneTime' || adding === 'oneTime';
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-2">
-        <Stat theme={theme} label={t('household.budget.income')} value={formatEuro(monthlyIncome)} accent="text-emerald-500" />
-        <Stat theme={theme} label={t('household.budget.expenses')} value={formatEuro(monthlyExpenses)} accent="text-rose-500" />
-        <Stat theme={theme} label={t('household.budget.net')} value={formatEuro(monthlyNet)} accent={monthlyNet < 0 ? 'text-amber-500' : 'text-blue-500'} />
+        <Stat theme={theme} label={t('household.fixedCosts.recurring.incomeGroupTitle')} value={formatEuro(monthlyIncome)} accent="text-emerald-500" />
+        <Stat theme={theme} label={t('household.fixedCosts.recurring.expenseGroupTitle')} value={formatEuro(monthlyExpenses)} accent="text-rose-500" />
+        <Stat theme={theme} label={t('household.budget.net')} value={formatEuro(monthlyNetValue)} accent={monthlyNetValue < 0 ? 'text-amber-500' : 'text-blue-500'} />
       </div>
 
       <div className="flex gap-2">
-        {tabBtn('list', t('household.budget.tabList'))}
-        {tabBtn('calendar', t('household.budget.tabCalendar'))}
+        {tabBtn('recurring', t('household.fixedCosts.tabRecurring'))}
+        {tabBtn('oneTime', t('household.fixedCosts.tabOneTime'))}
+        {tabBtn('calendar', t('household.fixedCosts.tabCalendar'))}
       </div>
 
-      {view === 'list' && (
-        <>
-          <BudgetList
-            title={t('household.budget.income')}
-            items={income}
-            kind="income"
-            theme={theme}
-            onEdit={(item) => setEditing({ kind: 'income', item })}
-            onAdd={() => setAdding('income')}
-            onDelete={(id) => requestDelete('income', id)}
-          />
+      {view === 'recurring' && (
+        <RecurringList
+          income={income}
+          expenses={expenses}
+          theme={theme}
+          monthsLong={monthsLong}
+          onEdit={(kind, item) => setEditing({ kind, item })}
+          onAdd={(kind) => setAdding(kind)}
+          onDelete={(kind, item) => setPendingDelete({ flow: 'recurring', kind, item })}
+        />
+      )}
 
-          <BudgetList
-            title={t('household.budget.expenses')}
-            items={expenses}
-            kind="expenses"
-            theme={theme}
-            onEdit={(item) => setEditing({ kind: 'expenses', item })}
-            onAdd={() => setAdding('expenses')}
-            onDelete={(id) => requestDelete('expenses', id)}
-            energyCombined={energyCombined}
-            energyExpanded={energyExpanded}
-            onToggleEnergy={() => setEnergyExpanded(v => !v)}
-          />
-        </>
+      {view === 'oneTime' && (
+        <OneTimeList
+          items={oneTime}
+          theme={theme}
+          monthsLong={monthsLong}
+          onEdit={(item) => setEditing({ kind: 'oneTime', item })}
+          onAdd={() => setAdding('oneTime')}
+          onDelete={(item) => setPendingDelete({ flow: 'oneTime', item })}
+        />
       )}
 
       {view === 'calendar' && (
         <BudgetCalendarSection
           budget={budget}
           theme={theme}
-          darkMode={darkMode}
           monthsLong={monthsLong}
           dayLabels={dayLabels}
-          onPickItem={(item, kind) => setEditing({ kind, item })}
+          onPickItem={handlePickItem}
         />
       )}
 
-      {(editing || adding) && (
-        <BudgetEditor
+      {showRecurringEditor && (
+        <RecurringItemEditor
           theme={theme}
-          darkMode={darkMode}
           kind={editing?.kind || adding}
           initial={editing?.item}
+          expenses={expenses}
           monthsLong={monthsLong}
-          dayLabels={dayLabels}
           onCancel={() => { setEditing(null); setAdding(null); }}
-          onSave={(item) => {
-            const kind = editing?.kind || adding;
-            upsert(kind, item);
-            setEditing(null);
-            setAdding(null);
-          }}
+          onSave={(payload) => handleRecurringSave(editing?.kind || adding, payload)}
+        />
+      )}
+
+      {showOneTimeEditor && (
+        <OneTimeEditor
+          theme={theme}
+          initial={editing?.item}
+          onCancel={() => { setEditing(null); setAdding(null); }}
+          onSave={handleOneTimeSave}
         />
       )}
 
@@ -600,14 +672,18 @@ function BudgetSection({ budget, setBudget, config, theme, darkMode, monthsLong,
         open={!!pendingDelete}
         theme={theme}
         variant="danger"
-        title={t('household.linked.confirmDeleteTitle')}
-        description={t('household.linked.confirmDeleteDescription', {
-          name: pendingDelete?.item?.name || '',
-        })}
+        title={pendingDelete?.flow === 'oneTime'
+          ? t('household.fixedCosts.oneTime.deleteTitle')
+          : t('household.fixedCosts.recurring.deleteTitle')}
+        description={pendingDelete?.flow === 'oneTime'
+          ? t('household.fixedCosts.oneTime.deleteDescription', { name: pendingDelete?.item?.name || '' })
+          : t('household.fixedCosts.recurring.deleteDescription', { name: pendingDelete?.item?.name || '' })}
         confirmLabel={t('common.delete')}
         cancelLabel={t('common.cancel')}
         onConfirm={() => {
-          if (pendingDelete) remove(pendingDelete.kind, pendingDelete.item.id);
+          if (!pendingDelete) return;
+          if (pendingDelete.flow === 'oneTime') removeOneTime(pendingDelete.item.id);
+          else removeRecurring(pendingDelete.kind, pendingDelete.item.id);
           setPendingDelete(null);
         }}
         onCancel={() => setPendingDelete(null)}
@@ -616,70 +692,52 @@ function BudgetSection({ budget, setBudget, config, theme, darkMode, monthsLong,
   );
 }
 
-function Stat({ theme, label, value, accent }) {
-  return (
-    <div className={`${theme.cardSecondary} rounded-xl p-3 text-center`}>
-      <div className={`text-xs ${theme.textMuted} mb-1`}>{label}</div>
-      <div className={`text-sm font-semibold ${accent}`}>{value}</div>
-    </div>
-  );
-}
-
-function BudgetList({
-  title, items, theme, onEdit, onAdd, onDelete,
-  energyCombined = false, energyExpanded = false, onToggleEnergy,
-}) {
+function RecurringList({ income, expenses, theme, monthsLong, onEdit, onAdd, onDelete }) {
   const { t } = useTranslation();
-  const energyItems = energyCombined
-    ? items.filter(i => i.isUtility === 'gas' || i.isUtility === 'electric')
-    : [];
-  const otherItems = energyCombined
-    ? items.filter(i => i.isUtility !== 'gas' && i.isUtility !== 'electric')
-    : items;
-  const energyMonthlyTotal = energyItems.reduce(
-    (s, i) => s + toMonthly(i.amount, i.frequency), 0
-  );
 
-  const renderItem = (item, opts = {}) => {
-    const Icon = BUDGET_ICONS[item.icon] || BadgeEuro;
-    const monthly = toMonthly(item.amount, item.frequency);
-    const isLinked = !!item.isUtility;
+  const sortItems = (list) => [...list].sort((a, b) => {
+    const aActive = !a.endDate;
+    const bActive = !b.endDate;
+    if (aActive !== bActive) return aActive ? -1 : 1;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
+  const renderItem = (item, kind) => {
+    const Icon = BUDGET_ICONS[item.icon] || (kind === 'income' ? BadgeEuro : ShoppingCart);
+    const ended = !!item.endDate;
     return (
-      <li
-        key={item.id}
-        className={`flex items-center gap-3 p-3 rounded-xl ${opts.nested ? theme.card : theme.cardSecondary}`}
-      >
+      <li key={item.id} className={`flex items-center gap-3 p-3 rounded-xl ${theme.cardSecondary} ${ended ? 'opacity-60' : ''}`}>
         <Icon className={`w-5 h-5 ${theme.textSecondary} shrink-0`} />
         <div className="flex-1 min-w-0">
           <div className={`text-sm font-medium ${theme.text} truncate flex items-center gap-1.5`}>
             <span className="truncate">{item.name}</span>
-            {isLinked && (
-              <span
-                className="inline-flex items-center text-[10px] font-medium text-sky-600 bg-sky-100 dark:text-sky-300 dark:bg-sky-900/40 px-1.5 py-0.5 rounded shrink-0"
-                title={t('household.linked.badgeTitle')}
-              >
-                ↔ {t('household.linked.badge')}
+            {item.utilityType && (
+              <span className="inline-flex items-center text-[10px] font-medium text-sky-600 bg-sky-100 dark:text-sky-300 dark:bg-sky-900/40 px-1.5 py-0.5 rounded shrink-0">
+                {t('household.fixedCosts.recurring.utilityBadge')}
               </span>
             )}
           </div>
           <div className={`text-xs ${theme.textMuted}`}>
-            {formatEuro(item.amount)} {freqLabel(item.frequency, t)}
-            {item.frequency !== 'monthly' && (
-              <> &middot; {t('household.budget.reserveSuffix', { value: formatEuro(monthly) })}</>
+            {formatEuro(item.amount)} · {t('household.fixedCosts.recurring.paymentDaySubtitle', { day: item.paymentDay })}
+          </div>
+          <div className={`text-[11px] ${theme.textMuted}`}>
+            {t('household.fixedCosts.recurring.activeFrom', { month: formatMonthLabel(item.startDate, monthsLong) })}
+            {ended && (
+              <> · {t('household.fixedCosts.recurring.activeUntil', { month: formatMonthLabel(item.endDate, monthsLong) })}</>
             )}
           </div>
         </div>
         <button
-          onClick={() => onEdit(item)}
+          onClick={() => onEdit(kind, item)}
           className={`p-1.5 rounded-lg ${theme.textMuted} ${theme.hover} transition`}
-          aria-label={t('household.budget.editAria')}
+          aria-label={t('household.fixedCosts.recurring.editAria')}
         >
           <Edit3 className="w-4 h-4" />
         </button>
         <button
-          onClick={() => onDelete(item.id)}
+          onClick={() => onDelete(kind, item)}
           className={`p-1.5 rounded-lg ${theme.textMuted} ${theme.hover} transition`}
-          aria-label={t('household.budget.removeAria')}
+          aria-label={t('household.fixedCosts.recurring.removeAria')}
         >
           <Trash2 className="w-4 h-4" />
         </button>
@@ -687,109 +745,450 @@ function BudgetList({
     );
   };
 
-  return (
+  const renderGroup = (kind, items, title, addLabel) => (
     <div>
       <div className="flex items-center justify-between mb-2">
         <h3 className={`text-sm font-semibold ${theme.textSecondary}`}>{title}</h3>
         <button
-          onClick={onAdd}
+          onClick={() => onAdd(kind)}
           className="px-2 py-1 rounded-lg bg-blue-500 text-white text-xs font-medium hover:bg-blue-600 transition flex items-center gap-1"
         >
-          <Plus className="w-3.5 h-3.5" /> {t('common.add')}
+          <Plus className="w-3.5 h-3.5" /> {addLabel}
         </button>
       </div>
       {items.length === 0 ? (
-        <p className={`text-xs ${theme.textMuted} text-center py-3`}>{t('household.budget.empty')}</p>
+        <p className={`text-xs ${theme.textMuted} text-center py-3`}>{t('household.fixedCosts.recurring.empty')}</p>
       ) : (
         <ul className="space-y-1">
-          {energyCombined && energyItems.length > 0 && (
-            <li className={`rounded-xl ${theme.cardSecondary}`}>
-              <button
-                onClick={onToggleEnergy}
-                className="w-full flex items-center gap-3 p-3 text-left"
-                aria-expanded={energyExpanded}
-              >
-                <Zap className={`w-5 h-5 text-orange-500 shrink-0`} />
-                <div className="flex-1 min-w-0">
-                  <div className={`text-sm font-medium ${theme.text}`}>{t('household.budget.energy')}</div>
-                  <div className={`text-xs ${theme.textMuted}`}>
-                    {t('household.budget.energyMonthlyDesc', { value: formatEuro(energyMonthlyTotal) })}
-                  </div>
-                </div>
-                {energyExpanded
-                  ? <ChevronUp className={`w-4 h-4 ${theme.textMuted}`} />
-                  : <ChevronDown className={`w-4 h-4 ${theme.textMuted}`} />}
-              </button>
-              {energyExpanded && (
-                <ul className="px-2 pb-2 space-y-1">
-                  {energyItems.map(item => renderItem(item, { nested: true }))}
-                </ul>
-              )}
-            </li>
-          )}
-          {otherItems.map(item => renderItem(item))}
+          {sortItems(items).map(item => renderItem(item, kind))}
         </ul>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {renderGroup('income', income, t('household.fixedCosts.recurring.incomeGroupTitle'), t('household.fixedCosts.recurring.addIncome'))}
+      {renderGroup('expense', expenses, t('household.fixedCosts.recurring.expenseGroupTitle'), t('household.fixedCosts.recurring.addExpense'))}
+    </div>
+  );
+}
+
+function pickConflictKind(newType, conflicts) {
+  if (newType === 'energie' && conflicts.some(c => c.utilityType === 'gas' || c.utilityType === 'elektra')) {
+    return 'energieReplaces';
+  }
+  if ((newType === 'gas' || newType === 'elektra') && conflicts.some(c => c.utilityType === 'energie')) {
+    return 'lossReplacesEnergie';
+  }
+  return 'selfReplaces';
+}
+
+function RecurringItemEditor({ theme, kind, initial, expenses, monthsLong, onCancel, onSave }) {
+  const { t } = useTranslation();
+  const isExpense = kind === 'expense';
+  const isEdit = !!initial;
+
+  const [name, setName] = useState(initial?.name || '');
+  const [amount, setAmount] = useState(initial ? String(initial.amount).replace('.', ',') : '');
+  const [paymentDay, setPaymentDay] = useState(initial?.paymentDay != null ? String(initial.paymentDay) : '');
+  const [startMonth, setStartMonth] = useState(() => (initial?.startDate || defaultStartDate()).slice(0, 7));
+  const [endEnabled, setEndEnabled] = useState(!!initial?.endDate);
+  const [endMonth, setEndMonth] = useState(initial?.endDate ? initial.endDate.slice(0, 7) : '');
+  const [icon, setIcon] = useState(initial?.icon || (kind === 'income' ? 'BadgeEuro' : 'ShoppingCart'));
+  const [utilityType, setUtilityType] = useState(initial?.utilityType || '');
+
+  const [editMode, setEditMode] = useState('correct'); // 'correct' | 'newRate' (alleen edit)
+  const [newRateMonth, setNewRateMonth] = useState(() => defaultStartDate().slice(0, 7));
+
+  const [pendingConflict, setPendingConflict] = useState(null);
+
+  // Bij "nieuw tarief" rekenen we conflicten op de nieuwe startdatum, anders op de
+  // gekozen startMonth. In edit-correct ignoreren we het eigen id zodat de bewerking
+  // niet met zichzelf botst.
+  const effectiveStartIso = (editMode === 'newRate' && isEdit) ? `${newRateMonth}-01` : `${startMonth}-01`;
+  const ignoreId = isEdit && editMode === 'correct' ? initial.id : null;
+
+  const activeTypes = useMemo(
+    () => activeUtilityTypesAt(expenses.filter(e => !ignoreId || e.id !== ignoreId), effectiveStartIso),
+    [expenses, effectiveStartIso, ignoreId],
+  );
+  const disabledMap = useMemo(() => disabledUtilityTypes(activeTypes), [activeTypes]);
+
+  const buildItem = (overrideStartDate) => ({
+    id: isEdit && editMode === 'correct' ? initial.id : newId(),
+    name: name.trim(),
+    amount: parseEuroInput(amount),
+    paymentDay: Math.min(28, Math.max(1, parseInt(paymentDay, 10) || 1)),
+    startDate: overrideStartDate || `${startMonth}-01`,
+    endDate: endEnabled && endMonth ? `${endMonth}-01` : null,
+    icon,
+    ...(isExpense && utilityType ? { utilityType } : {}),
+  });
+
+  const validate = () => {
+    if (!name.trim()) return false;
+    if (!(parseEuroInput(amount) > 0)) return false;
+    if (!paymentDay || isNaN(parseInt(paymentDay, 10))) return false;
+    if (!startMonth) return false;
+    if (endEnabled && (!endMonth || endMonth < startMonth)) return false;
+    if (isEdit && editMode === 'newRate') {
+      if (!newRateMonth) return false;
+      if (newRateMonth <= (initial.startDate || '').slice(0, 7)) return false;
+    }
+    return true;
+  };
+
+  const save = () => {
+    if (!validate()) return;
+
+    const cutoffs = [];
+    let item;
+
+    if (isEdit && editMode === 'newRate') {
+      const newStartIso = `${newRateMonth}-01`;
+      item = buildItem(newStartIso);
+      cutoffs.push({ id: initial.id, endDate: endDateBefore(newStartIso) });
+    } else {
+      item = buildItem();
+    }
+
+    if (isExpense && item.utilityType) {
+      const conflicts = conflictingUtilityExpenses(expenses, item.utilityType, item.startDate, ignoreId);
+      if (conflicts.length > 0) {
+        const kindOfConflict = pickConflictKind(item.utilityType, conflicts);
+        setPendingConflict({ kind: kindOfConflict, items: conflicts, item, baseCutoffs: cutoffs });
+        return;
+      }
+    }
+
+    onSave({ item, cutoffs });
+  };
+
+  const confirmConflict = () => {
+    if (!pendingConflict) return;
+    const cutoffEnd = endDateBefore(pendingConflict.item.startDate);
+    const conflictCutoffs = pendingConflict.items.map(it => ({ id: it.id, endDate: cutoffEnd }));
+    onSave({ item: pendingConflict.item, cutoffs: [...pendingConflict.baseCutoffs, ...conflictCutoffs] });
+    setPendingConflict(null);
+  };
+
+  const titleKey = isEdit
+    ? (kind === 'income' ? 'household.fixedCosts.recurring.editTitleIncome' : 'household.fixedCosts.recurring.editTitleExpense')
+    : (kind === 'income' ? 'household.fixedCosts.recurring.addTitleIncome' : 'household.fixedCosts.recurring.addTitleExpense');
+
+  const conflictTitle = pendingConflict
+    ? (pendingConflict.kind === 'energieReplaces'
+        ? t('household.fixedCosts.recurring.conflict.energieReplaces.title')
+        : pendingConflict.kind === 'lossReplacesEnergie'
+          ? t('household.fixedCosts.recurring.conflict.lossReplacesEnergie.title', { type: t(`household.utilities.types.${pendingConflict.item.utilityType}`) })
+          : t('household.fixedCosts.recurring.conflict.selfReplaces.title', { type: t(`household.utilities.types.${pendingConflict.item.utilityType}`) }))
+    : '';
+  const conflictMessage = pendingConflict
+    ? (pendingConflict.kind === 'energieReplaces'
+        ? t('household.fixedCosts.recurring.conflict.energieReplaces.message', { month: formatMonthLabel(endDateBefore(pendingConflict.item.startDate), monthsLong) })
+        : pendingConflict.kind === 'lossReplacesEnergie'
+          ? t('household.fixedCosts.recurring.conflict.lossReplacesEnergie.message', { month: formatMonthLabel(endDateBefore(pendingConflict.item.startDate), monthsLong) })
+          : t('household.fixedCosts.recurring.conflict.selfReplaces.message', { month: formatMonthLabel(endDateBefore(pendingConflict.item.startDate), monthsLong) }))
+    : '';
+  const conflictConfirm = pendingConflict
+    ? (pendingConflict.kind === 'energieReplaces'
+        ? t('household.fixedCosts.recurring.conflict.energieReplaces.confirm')
+        : pendingConflict.kind === 'lossReplacesEnergie'
+          ? t('household.fixedCosts.recurring.conflict.lossReplacesEnergie.confirm')
+          : t('household.fixedCosts.recurring.conflict.selfReplaces.confirm'))
+    : '';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40">
+      <div className={`${theme.card} rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-xl`}>
+        <div className={`flex items-center justify-between p-4 border-b ${theme.border}`}>
+          <h3 className={`font-semibold ${theme.text}`}>{t(titleKey)}</h3>
+          <button onClick={onCancel} className={`p-1 rounded ${theme.hover}`}>
+            <X className={`w-5 h-5 ${theme.textMuted}`} />
+          </button>
+        </div>
+        <div className="p-4 space-y-3">
+          {isEdit && (
+            <div className={`${theme.cardSecondary} rounded-xl p-3 space-y-2`}>
+              <div className={`text-xs font-medium ${theme.textSecondary}`}>{t('household.fixedCosts.recurring.editMode.label')}</div>
+              <label className="flex items-start gap-2 text-sm">
+                <input type="radio" name="editMode" checked={editMode === 'correct'} onChange={() => setEditMode('correct')} className="mt-1" />
+                <span>
+                  <span className={`block ${theme.text}`}>{t('household.fixedCosts.recurring.editMode.correct')}</span>
+                  <span className={`block text-[11px] ${theme.textMuted}`}>{t('household.fixedCosts.recurring.editMode.correctDescription')}</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm">
+                <input type="radio" name="editMode" checked={editMode === 'newRate'} onChange={() => setEditMode('newRate')} className="mt-1" />
+                <span className="flex-1">
+                  <span className={`block ${theme.text}`}>{t('household.fixedCosts.recurring.editMode.newRate')}</span>
+                  <span className={`block text-[11px] ${theme.textMuted}`}>{t('household.fixedCosts.recurring.editMode.newRateDescription')}</span>
+                  {editMode === 'newRate' && (
+                    <input
+                      type="month"
+                      value={newRateMonth}
+                      onChange={e => setNewRateMonth(e.target.value)}
+                      className={`mt-2 w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm`}
+                    />
+                  )}
+                </span>
+              </label>
+            </div>
+          )}
+
+          <div>
+            <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.fixedCosts.recurring.name')}</label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none focus:ring-2 focus:ring-blue-300 text-sm`}
+              autoFocus
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.fixedCosts.recurring.amount')}</label>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={amount}
+                onChange={e => setAmount(e.target.value)}
+                placeholder="0,00"
+                className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none focus:ring-2 focus:ring-blue-300 text-sm`}
+              />
+              <p className={`text-[10px] ${theme.textMuted} mt-0.5`}>{t('household.fixedCosts.recurring.amountHint')}</p>
+            </div>
+            <div>
+              <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.fixedCosts.recurring.paymentDay')}</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={28}
+                value={paymentDay}
+                onChange={e => setPaymentDay(e.target.value)}
+                placeholder="1-28"
+                className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm`}
+              />
+              <p className={`text-[10px] ${theme.textMuted} mt-0.5`}>{t('household.fixedCosts.recurring.paymentDayHint')}</p>
+            </div>
+          </div>
+
+          {(!isEdit || editMode === 'correct') && (
+            <div>
+              <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.fixedCosts.recurring.startDate')}</label>
+              <input
+                type="month"
+                value={startMonth}
+                onChange={e => setStartMonth(e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm`}
+              />
+            </div>
+          )}
+
+          {isEdit && editMode === 'correct' && (
+            <div className={`${theme.cardSecondary} rounded-xl p-3`}>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={endEnabled} onChange={e => setEndEnabled(e.target.checked)} />
+                <span className={theme.text}>{t('household.fixedCosts.recurring.endDateToggle')}</span>
+              </label>
+              {endEnabled && (
+                <input
+                  type="month"
+                  value={endMonth}
+                  onChange={e => setEndMonth(e.target.value)}
+                  className={`mt-2 w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm`}
+                />
+              )}
+            </div>
+          )}
+
+          {isExpense && (
+            <div>
+              <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.fixedCosts.recurring.utilityType')}</label>
+              <select
+                value={utilityType}
+                onChange={e => setUtilityType(e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm`}
+              >
+                <option value="">{t('household.fixedCosts.recurring.utilityNone')}</option>
+                {UTILITY_TYPES.map(type => {
+                  const isCurrent = utilityType === type;
+                  const isDisabled = !isCurrent && disabledMap[type];
+                  return (
+                    <option key={type} value={type} disabled={isDisabled}>
+                      {t(`household.fixedCosts.recurring.types.${type}`)}
+                      {isDisabled ? ` — ${t('household.fixedCosts.recurring.typeAlreadyActive')}` : ''}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          )}
+
+          <div>
+            <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.fixedCosts.recurring.icon')}</label>
+            <div className={`grid grid-cols-7 gap-1 max-h-36 overflow-y-auto p-2 rounded-lg ${theme.cardSecondary}`}>
+              {BUDGET_ICON_KEYS.map(key => {
+                const Icon = BUDGET_ICONS[key];
+                const selected = icon === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setIcon(key)}
+                    className={`aspect-square flex items-center justify-center rounded-lg transition ${
+                      selected ? 'bg-blue-500 text-white' : `${theme.textSecondary} ${theme.hover}`
+                    }`}
+                    aria-label={key}
+                  >
+                    <Icon className="w-4 h-4" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+        <div className={`flex gap-2 p-4 border-t ${theme.border}`}>
+          <button
+            onClick={onCancel}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium ${theme.cardSecondary} ${theme.textSecondary} ${theme.hover} transition`}
+          >
+            {t('household.fixedCosts.recurring.cancel')}
+          </button>
+          <button
+            onClick={save}
+            disabled={!validate()}
+            className="flex-1 py-2 rounded-lg bg-blue-500 text-white text-sm font-medium disabled:opacity-40 hover:bg-blue-600 transition"
+          >
+            {t('household.fixedCosts.recurring.save')}
+          </button>
+        </div>
+      </div>
+
+      <ConfirmDialog
+        open={!!pendingConflict}
+        theme={theme}
+        variant="default"
+        title={conflictTitle}
+        description={conflictMessage}
+        confirmLabel={conflictConfirm}
+        cancelLabel={t('common.cancel')}
+        onConfirm={confirmConflict}
+        onCancel={() => setPendingConflict(null)}
+      />
+    </div>
+  );
+}
+
+function OneTimeList({ items, theme, monthsLong, onEdit, onAdd, onDelete }) {
+  const { t } = useTranslation();
+
+  const grouped = useMemo(() => {
+    const map = new Map();
+    for (const item of items) {
+      if (!item.date) continue;
+      const monthKey = item.date.slice(0, 7);
+      if (!map.has(monthKey)) map.set(monthKey, []);
+      map.get(monthKey).push(item);
+    }
+    const monthKeys = [...map.keys()].sort().reverse();
+    return monthKeys.map(monthKey => ({
+      monthKey,
+      items: map.get(monthKey).sort((a, b) => (b.date || '').localeCompare(a.date || '')),
+    }));
+  }, [items]);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className={`text-sm font-semibold ${theme.textSecondary}`}>{t('household.fixedCosts.oneTime.groupTitle')}</h3>
+        <button
+          onClick={onAdd}
+          className="px-2 py-1 rounded-lg bg-blue-500 text-white text-xs font-medium hover:bg-blue-600 transition flex items-center gap-1"
+        >
+          <Plus className="w-3.5 h-3.5" /> {t('household.fixedCosts.oneTime.addItem')}
+        </button>
+      </div>
+
+      {grouped.length === 0 ? (
+        <p className={`text-xs ${theme.textMuted} text-center py-3`}>{t('household.fixedCosts.oneTime.empty')}</p>
+      ) : (
+        grouped.map(group => {
+          const [yearStr, monthStr] = group.monthKey.split('-');
+          const monthLabel = monthsLong[Number(monthStr) - 1] || '';
+          return (
+            <div key={group.monthKey}>
+              <div className={`text-xs font-medium ${theme.textMuted} mb-1 capitalize`}>
+                {t('household.fixedCosts.oneTime.monthGroupHeader', { month: monthLabel, year: yearStr })}
+              </div>
+              <ul className="space-y-1">
+                {group.items.map(item => {
+                  const Icon = BUDGET_ICONS[item.icon] || ShoppingCart;
+                  const dayPart = item.date ? Number(item.date.slice(8, 10)) : '';
+                  return (
+                    <li key={item.id} className={`flex items-center gap-3 p-3 rounded-xl ${theme.cardSecondary}`}>
+                      <Icon className={`w-5 h-5 ${theme.textSecondary} shrink-0`} />
+                      <div className="flex-1 min-w-0">
+                        <div className={`text-sm font-medium ${theme.text} truncate`}>{item.name}</div>
+                        <div className={`text-xs ${theme.textMuted}`}>
+                          {formatEuro(item.amount)} · {dayPart} {monthLabel}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => onEdit(item)}
+                        className={`p-1.5 rounded-lg ${theme.textMuted} ${theme.hover} transition`}
+                        aria-label={t('household.fixedCosts.oneTime.editAria')}
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => onDelete(item)}
+                        className={`p-1.5 rounded-lg ${theme.textMuted} ${theme.hover} transition`}
+                        aria-label={t('household.fixedCosts.oneTime.removeAria')}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })
       )}
     </div>
   );
 }
 
-function freqLabel(f, t) {
-  return f === 'weekly'
-    ? t('household.budget.perWeek')
-    : f === 'yearly'
-      ? t('household.budget.perYear')
-      : t('household.budget.perMonth');
-}
-
-function BudgetEditor({ theme, darkMode, kind, initial, monthsLong, dayLabels, onCancel, onSave }) {
+function OneTimeEditor({ theme, initial, onCancel, onSave }) {
   const { t } = useTranslation();
+  const isEdit = !!initial;
+  const todayIso = new Date().toISOString().slice(0, 10);
+
   const [name, setName] = useState(initial?.name || '');
   const [amount, setAmount] = useState(initial ? String(initial.amount).replace('.', ',') : '');
-  const [frequency, setFrequency] = useState(initial?.frequency || 'monthly');
-  const [icon, setIcon] = useState(initial?.icon || (kind === 'income' ? 'BadgeEuro' : 'ShoppingCart'));
-  const [isUtility, setIsUtility] = useState(initial?.isUtility || '');
-  const [dueDay, setDueDay] = useState(
-    initial?.dueDay != null ? String(initial.dueDay) : ''
-  );
-  const [dueMonth, setDueMonth] = useState(
-    initial?.dueMonth != null ? String(initial.dueMonth) : ''
-  );
-  const [dueWeekday, setDueWeekday] = useState(
-    initial?.dueWeekday != null ? String(initial.dueWeekday) : '1'
-  );
+  const [date, setDate] = useState(initial?.date || todayIso);
+  const [icon, setIcon] = useState(initial?.icon || 'ShoppingCart');
 
-  const isExpense = kind === 'expenses';
-  const supportsAuto = isExpense && (frequency === 'monthly' || frequency === 'yearly');
-  const isWeekly = frequency === 'weekly';
-
-  // dayLabels is Sunday-first: index 0 = Sunday, 1..6 = Monday..Saturday.
-  // ISO weekday is Monday-first: 1..7 = Monday..Sunday. Map ISO 7 → index 0.
-  const isoDayLabel = (iso) => (dayLabels && dayLabels[iso === 7 ? 0 : iso]) || String(iso);
+  const validate = () => {
+    if (!name.trim()) return false;
+    if (!(parseEuroInput(amount) > 0)) return false;
+    if (!date) return false;
+    return true;
+  };
 
   const save = () => {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    const parsedAmount = parseEuroInput(amount);
-    const parsedDay = supportsAuto && dueDay !== ''
-      ? Math.min(28, Math.max(1, parseInt(dueDay, 10) || 1))
-      : null;
-    const parsedMonth = supportsAuto && frequency === 'yearly' && dueMonth !== ''
-      ? Math.min(12, Math.max(1, parseInt(dueMonth, 10) || 1))
-      : null;
-    const parsedWeekday = isWeekly
-      ? Math.min(7, Math.max(1, parseInt(dueWeekday, 10) || 1))
-      : null;
+    if (!validate()) return;
     onSave({
       id: initial?.id || newId(),
-      name: trimmed,
-      amount: parsedAmount,
-      frequency,
+      name: name.trim(),
+      amount: parseEuroInput(amount),
+      date,
+      kind: 'expense',
       icon,
-      ...(isExpense && isUtility ? { isUtility } : {}),
-      ...(parsedDay != null ? { dueDay: parsedDay } : {}),
-      ...(parsedMonth != null ? { dueMonth: parsedMonth } : {}),
-      ...(parsedWeekday != null ? { dueWeekday: parsedWeekday } : {}),
     });
   };
 
@@ -798,7 +1197,7 @@ function BudgetEditor({ theme, darkMode, kind, initial, monthsLong, dayLabels, o
       <div className={`${theme.card} rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-xl`}>
         <div className={`flex items-center justify-between p-4 border-b ${theme.border}`}>
           <h3 className={`font-semibold ${theme.text}`}>
-            {initial ? t('household.budget.editor.editTitle') : t('household.budget.editor.addTitle')} &middot; {kind === 'income' ? t('household.budget.editor.incomeLabel') : t('household.budget.editor.expenseLabel')}
+            {isEdit ? t('household.fixedCosts.oneTime.editTitle') : t('household.fixedCosts.oneTime.addTitle')}
           </h3>
           <button onClick={onCancel} className={`p-1 rounded ${theme.hover}`}>
             <X className={`w-5 h-5 ${theme.textMuted}`} />
@@ -806,7 +1205,7 @@ function BudgetEditor({ theme, darkMode, kind, initial, monthsLong, dayLabels, o
         </div>
         <div className="p-4 space-y-3">
           <div>
-            <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('common.name')}</label>
+            <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.fixedCosts.oneTime.name')}</label>
             <input
               type="text"
               value={name}
@@ -817,7 +1216,7 @@ function BudgetEditor({ theme, darkMode, kind, initial, monthsLong, dayLabels, o
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.budget.editor.amount')}</label>
+              <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.fixedCosts.oneTime.amount')}</label>
               <input
                 type="text"
                 inputMode="decimal"
@@ -828,20 +1227,17 @@ function BudgetEditor({ theme, darkMode, kind, initial, monthsLong, dayLabels, o
               />
             </div>
             <div>
-              <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.budget.editor.frequency')}</label>
-              <select
-                value={frequency}
-                onChange={e => setFrequency(e.target.value)}
+              <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.fixedCosts.oneTime.date')}</label>
+              <input
+                type="date"
+                value={date}
+                onChange={e => setDate(e.target.value)}
                 className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm`}
-              >
-                <option value="weekly">{t('household.budget.editor.freqWeekly')}</option>
-                <option value="monthly">{t('household.budget.editor.freqMonthly')}</option>
-                <option value="yearly">{t('household.budget.editor.freqYearly')}</option>
-              </select>
+              />
             </div>
           </div>
           <div>
-            <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('common.icon')}</label>
+            <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.fixedCosts.oneTime.icon')}</label>
             <div className={`grid grid-cols-7 gap-1 max-h-36 overflow-y-auto p-2 rounded-lg ${theme.cardSecondary}`}>
               {BUDGET_ICON_KEYS.map(key => {
                 const Icon = BUDGET_ICONS[key];
@@ -851,9 +1247,7 @@ function BudgetEditor({ theme, darkMode, kind, initial, monthsLong, dayLabels, o
                     key={key}
                     onClick={() => setIcon(key)}
                     className={`aspect-square flex items-center justify-center rounded-lg transition ${
-                      selected
-                        ? 'bg-blue-500 text-white'
-                        : `${theme.textSecondary} ${theme.hover}`
+                      selected ? 'bg-blue-500 text-white' : `${theme.textSecondary} ${theme.hover}`
                     }`}
                     aria-label={key}
                   >
@@ -863,86 +1257,20 @@ function BudgetEditor({ theme, darkMode, kind, initial, monthsLong, dayLabels, o
               })}
             </div>
           </div>
-          {isExpense && (
-            <div>
-              <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.budget.editor.utilityCategory')}</label>
-              <select
-                value={isUtility}
-                onChange={e => setIsUtility(e.target.value)}
-                className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm`}
-              >
-                <option value="">{t('household.budget.editor.utilityNone')}</option>
-                <option value="gas">{t('household.budget.editor.utilityGas')}</option>
-                <option value="electric">{t('household.budget.editor.utilityElectric')}</option>
-                <option value="water">{t('household.budget.editor.utilityWater')}</option>
-              </select>
-              <p className={`text-[11px] ${theme.textMuted} mt-1`}>
-                {t('household.budget.editor.utilityHint')}
-              </p>
-            </div>
-          )}
-          {supportsAuto && (
-            <div className={frequency === 'yearly' ? 'grid grid-cols-2 gap-2' : ''}>
-              <div>
-                <label className={`text-xs ${theme.textMuted} block mb-1`}>
-                  {frequency === 'yearly' ? t('household.budget.editor.dueDayYearly') : t('household.budget.editor.dueDayMonthly')}
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  max={28}
-                  value={dueDay}
-                  onChange={e => setDueDay(e.target.value)}
-                  placeholder="1-28"
-                  className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm`}
-                />
-              </div>
-              {frequency === 'yearly' && (
-                <div>
-                  <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.budget.editor.dueMonth')}</label>
-                  <select
-                    value={dueMonth}
-                    onChange={e => setDueMonth(e.target.value)}
-                    className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm`}
-                  >
-                    <option value="">{t('common.pickMonth')}</option>
-                    {monthsLong.map((m, i) => (
-                      <option key={i} value={i + 1}>{m}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-          )}
-          {isWeekly && (
-            <div>
-              <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.budget.editor.dueWeekday')}</label>
-              <select
-                value={dueWeekday}
-                onChange={e => setDueWeekday(e.target.value)}
-                className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm`}
-              >
-                {[1, 2, 3, 4, 5, 6, 7].map(iso => (
-                  <option key={iso} value={iso}>{isoDayLabel(iso)}</option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
         <div className={`flex gap-2 p-4 border-t ${theme.border}`}>
           <button
             onClick={onCancel}
             className={`flex-1 py-2 rounded-lg text-sm font-medium ${theme.cardSecondary} ${theme.textSecondary} ${theme.hover} transition`}
           >
-            {t('household.budget.editor.cancel')}
+            {t('household.fixedCosts.oneTime.cancel')}
           </button>
           <button
             onClick={save}
-            disabled={!name.trim()}
+            disabled={!validate()}
             className="flex-1 py-2 rounded-lg bg-blue-500 text-white text-sm font-medium disabled:opacity-40 hover:bg-blue-600 transition"
           >
-            {t('common.save')}
+            {t('household.fixedCosts.oneTime.save')}
           </button>
         </div>
       </div>
@@ -950,7 +1278,7 @@ function BudgetEditor({ theme, darkMode, kind, initial, monthsLong, dayLabels, o
   );
 }
 
-function BudgetCalendarSection({ budget, theme, darkMode, monthsLong, dayLabels, onPickItem }) {
+function BudgetCalendarSection({ budget, theme, monthsLong, dayLabels, onPickItem }) {
   const { t } = useTranslation();
   const today = new Date();
   const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -959,7 +1287,7 @@ function BudgetCalendarSection({ budget, theme, darkMode, monthsLong, dayLabels,
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
   const eventsByDay = useMemo(() => eventsForMonth(budget, year, month), [budget, year, month]);
-  const monthlyNet = useMemo(() => netForMonth(eventsByDay), [eventsByDay]);
+  const monthlyNetVal = useMemo(() => netForMonth(eventsByDay), [eventsByDay]);
 
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDay = new Date(year, month, 1);
@@ -968,14 +1296,16 @@ function BudgetCalendarSection({ budget, theme, darkMode, monthsLong, dayLabels,
   for (let i = 0; i < startWeekday; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
-  const isCurrentMonth =
-    today.getFullYear() === year && today.getMonth() === month;
+  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
 
-  // Monday-first weekday header. dayLabels is Sunday-first (0..6 = Sun..Sat).
-  // We want index ordering 1, 2, 3, 4, 5, 6, 0 → Mon, Tue, ..., Sun.
   const headerOrder = [1, 2, 3, 4, 5, 6, 0];
-
   const selectedEvents = selectedDay != null ? (eventsByDay[selectedDay] || []) : [];
+
+  const eventToEditorKind = (kind) => {
+    if (kind === 'income') return 'income';
+    if (kind === 'oneTime') return 'oneTime';
+    return 'expense';
+  };
 
   return (
     <div className="space-y-3">
@@ -983,7 +1313,7 @@ function BudgetCalendarSection({ budget, theme, darkMode, monthsLong, dayLabels,
         <button
           onClick={() => { setCursor(new Date(year, month - 1, 1)); setSelectedDay(null); }}
           className={`p-2 rounded-lg ${theme.hover}`}
-          aria-label={t('household.budget.calendar.prevMonthAria')}
+          aria-label={t('household.fixedCosts.calendar.prevMonthAria')}
         >
           <ChevronLeft className={`w-4 h-4 ${theme.textSecondary}`} />
         </button>
@@ -993,7 +1323,7 @@ function BudgetCalendarSection({ budget, theme, darkMode, monthsLong, dayLabels,
         <button
           onClick={() => { setCursor(new Date(year, month + 1, 1)); setSelectedDay(null); }}
           className={`p-2 rounded-lg ${theme.hover}`}
-          aria-label={t('household.budget.calendar.nextMonthAria')}
+          aria-label={t('household.fixedCosts.calendar.nextMonthAria')}
         >
           <ChevronRight className={`w-4 h-4 ${theme.textSecondary}`} />
         </button>
@@ -1060,11 +1390,11 @@ function BudgetCalendarSection({ budget, theme, darkMode, monthsLong, dayLabels,
       </div>
 
       <div className={`flex items-center justify-between p-3 rounded-xl ${theme.cardSecondary}`}>
-        <span className={`text-xs ${theme.textMuted}`}>{t('household.budget.netThisMonth')}</span>
+        <span className={`text-xs ${theme.textMuted}`}>{t('household.fixedCosts.netThisMonth')}</span>
         <span className={`text-sm font-semibold ${
-          monthlyNet < 0 ? 'text-rose-500' : monthlyNet > 0 ? 'text-emerald-500' : theme.textSecondary
+          monthlyNetVal < 0 ? 'text-rose-500' : monthlyNetVal > 0 ? 'text-emerald-500' : theme.textSecondary
         }`}>
-          {monthlyNet > 0 ? '+' : monthlyNet < 0 ? '−' : ''}{formatEuro(Math.abs(monthlyNet))}
+          {monthlyNetVal > 0 ? '+' : monthlyNetVal < 0 ? '−' : ''}{formatEuro(Math.abs(monthlyNetVal))}
         </span>
       </div>
 
@@ -1074,14 +1404,13 @@ function BudgetCalendarSection({ budget, theme, darkMode, monthsLong, dayLabels,
             {selectedDay} {monthsLong[month]} {year}
           </div>
           {selectedEvents.length === 0 ? (
-            <p className={`text-xs ${theme.textMuted}`}>{t('household.budget.noEventsThisDay')}</p>
+            <p className={`text-xs ${theme.textMuted}`}>{t('household.fixedCosts.noEventsThisDay')}</p>
           ) : (
             <ul className="space-y-1">
               {selectedEvents.map((e, idx) => {
                 const Icon = BUDGET_ICONS[e.item.icon] || BadgeEuro;
                 const sign = e.kind === 'income' ? 1 : -1;
-                const amount = sign * (Number(e.item.amount) || 0);
-                const itemKind = e.kind === 'income' ? 'income' : 'expenses';
+                const amt = sign * (Number(e.item.amount) || 0);
                 return (
                   <li
                     key={`${e.item.id}-${idx}`}
@@ -1089,15 +1418,15 @@ function BudgetCalendarSection({ budget, theme, darkMode, monthsLong, dayLabels,
                   >
                     <Icon className={`w-4 h-4 ${e.kind === 'income' ? 'text-emerald-500' : theme.textSecondary} shrink-0`} />
                     <button
-                      onClick={() => onPickItem?.(e.item, itemKind)}
+                      onClick={() => onPickItem?.(e.item, eventToEditorKind(e.kind))}
                       className={`flex-1 text-left text-sm ${theme.text} truncate ${theme.hover} rounded px-1`}
                     >
                       {e.item.name}
                     </button>
                     <span className={`text-xs font-semibold ${
-                      amount > 0 ? 'text-emerald-500' : 'text-rose-500'
+                      amt > 0 ? 'text-emerald-500' : 'text-rose-500'
                     }`}>
-                      {amount > 0 ? '+' : '−'}{formatEuro(Math.abs(amount))}
+                      {amt > 0 ? '+' : '−'}{formatEuro(Math.abs(amt))}
                     </span>
                   </li>
                 );
@@ -1111,62 +1440,41 @@ function BudgetCalendarSection({ budget, theme, darkMode, monthsLong, dayLabels,
 }
 
 // ============================================================================
-// Duurzaamheid
+// Duurzaamheid (utilities.actuals)
 // ============================================================================
 
-function UtilitiesSection({ utilities, setUtilities, budget, config, setConfig, theme, darkMode, monthsLong, monthsShort, utilityLabel }) {
+function UtilitiesActualsSection({ utilities, setUtilities, budget, theme, monthsLong, monthsShort, utilityLabel }) {
   const { t } = useTranslation();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
-  const [editingMonth, setEditingMonth] = useState(null); // 0-11 or null
+  const [editingMonth, setEditingMonth] = useState(null);
+
+  const expenses = budget?.expenses || [];
+  const actuals = utilities?.actuals || {};
 
   const isFutureMonth = (m) => year > now.getFullYear() || (year === now.getFullYear() && m > now.getMonth());
 
-  const expenses = budget?.expenses || [];
-  const hasGasBudget = expenses.some(x => x.isUtility === 'gas');
-  const hasElectricBudget = expenses.some(x => x.isUtility === 'electric');
-  const canCombine = hasGasBudget && hasElectricBudget;
-  const energyCombined = !!config?.energyCombined && canCombine;
-
-  const yearTotals = UTILITY_KEYS.reduce((acc, k) => {
-    acc[k] = { actual: 0, budget: 0 };
-    return acc;
-  }, {});
+  const yearTotalsActual = UTILITY_TYPES.reduce((acc, k) => { acc[k] = 0; return acc; }, {});
+  const yearTotalsBudget = UTILITY_TYPES.reduce((acc, k) => { acc[k] = 0; return acc; }, {});
   for (let m = 0; m < 12; m++) {
-    const data = utilities[monthKey(year, m)] || {};
-    UTILITY_KEYS.forEach(k => {
-      yearTotals[k].actual += totalActualOf(data[k]);
-      yearTotals[k].budget += data[k]?.budget || 0;
+    const mk = monthKeyFor(year, m);
+    UTILITY_TYPES.forEach(k => {
+      yearTotalsActual[k] += Number(actuals?.[mk]?.[k]) || 0;
+      yearTotalsBudget[k] += monthlyAmountForType(expenses, mk, k);
     });
   }
-  const totalActual = UTILITY_KEYS.reduce((s, k) => s + yearTotals[k].actual, 0);
-  const totalBudget = UTILITY_KEYS.reduce((s, k) => s + yearTotals[k].budget, 0);
-
-  const displayKeys = energyCombined ? ['water', 'energy'] : UTILITY_KEYS;
-  const totalsFor = (k) => k === 'energy'
-    ? {
-        actual: yearTotals.gas.actual + yearTotals.electricity.actual,
-        budget: yearTotals.gas.budget + yearTotals.electricity.budget,
-      }
-    : yearTotals[k];
-  const labelFor = (k) => k === 'energy' ? t('household.utilities.energyLabel') : utilityLabel(k);
-  const iconFor = (k) => k === 'energy' ? Zap : UTILITY_ICON[k];
-  const colorFor = (k) => k === 'energy' ? 'text-orange-500' : UTILITY_COLOR[k];
+  const visibleTypes = UTILITY_TYPES.filter(k => yearTotalsActual[k] > 0 || yearTotalsBudget[k] > 0);
+  const totalActual = visibleTypes.reduce((s, k) => s + yearTotalsActual[k], 0);
+  const totalBudget = visibleTypes.reduce((s, k) => s + yearTotalsBudget[k], 0);
 
   const saveMonth = (m, data) => {
-    const key = monthKey(year, m);
-    const isEmpty = UTILITY_KEYS.every(k => {
-      const v = data[k];
-      return !v || ((!v.budget || v.budget === 0) && (!v.actual || v.actual === 0));
-    });
+    const key = monthKeyFor(year, m);
+    const isEmpty = UTILITY_TYPES.every(k => data[k] == null);
     setUtilities(prev => {
-      const next = { ...prev };
-      if (isEmpty) {
-        delete next[key];
-      } else {
-        next[key] = data;
-      }
-      return next;
+      const nextActuals = { ...(prev?.actuals || {}) };
+      if (isEmpty) delete nextActuals[key];
+      else nextActuals[key] = data;
+      return { ...prev, actuals: nextActuals };
     });
   };
 
@@ -1191,52 +1499,50 @@ function UtilitiesSection({ utilities, setUtilities, budget, config, setConfig, 
         </button>
       </div>
 
-      {canCombine && (
-        <div className="flex justify-center">
-          <button
-            onClick={() => setConfig(prev => ({ ...(prev || {}), energyCombined: !energyCombined }))}
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition ${
-              energyCombined ? 'bg-orange-500 text-white' : `${theme.cardSecondary} ${theme.textSecondary} ${theme.hover}`
-            }`}
-            aria-pressed={energyCombined}
-          >
-            <Zap className="w-3.5 h-3.5" />
-            {energyCombined ? t('household.utilities.combined') : t('household.utilities.separate')}
-          </button>
+      {visibleTypes.length === 0 ? (
+        <div className={`${theme.cardSecondary} rounded-xl p-4 text-center text-sm ${theme.textMuted}`}>
+          {t('household.utilities.monthEditor.empty')}
+        </div>
+      ) : (
+        <div className={`grid ${visibleTypes.length === 1 ? 'grid-cols-1' : visibleTypes.length === 2 ? 'grid-cols-2' : visibleTypes.length === 3 ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'} gap-2`}>
+          {visibleTypes.map(k => {
+            const Icon = UTILITY_ICON[k];
+            const a = yearTotalsActual[k];
+            const b = yearTotalsBudget[k];
+            const diff = a - b;
+            const noContract = b === 0 && a > 0;
+            return (
+              <div key={k} className={`${theme.cardSecondary} rounded-xl p-3`}>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Icon className={`w-4 h-4 ${UTILITY_COLOR[k]}`} />
+                  <span className={`text-xs font-medium ${theme.textSecondary}`}>{utilityLabel(k)}</span>
+                  {noContract && (
+                    <span className="ml-auto" title={t('household.utilities.noContract')}>
+                      <Info className={`w-3 h-3 ${theme.textMuted}`} />
+                    </span>
+                  )}
+                </div>
+                <div className={`text-sm font-semibold ${theme.text}`}>{formatEuro(a)}</div>
+                <div className={`text-xs ${diff > 0 && b > 0 ? 'text-red-500' : theme.textMuted}`}>
+                  {t('household.utilities.budgeted', { value: formatEuro(b) })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      <div className={`grid ${displayKeys.length === 2 ? 'grid-cols-2' : 'grid-cols-3'} gap-2`}>
-        {displayKeys.map(k => {
-          const Icon = iconFor(k);
-          const totals = totalsFor(k);
-          const a = totals.actual;
-          const b = totals.budget;
-          const diff = a - b;
-          return (
-            <div key={k} className={`${theme.cardSecondary} rounded-xl p-3`}>
-              <div className="flex items-center gap-1.5 mb-1">
-                <Icon className={`w-4 h-4 ${colorFor(k)}`} />
-                <span className={`text-xs font-medium ${theme.textSecondary}`}>{labelFor(k)}</span>
-              </div>
-              <div className={`text-sm font-semibold ${theme.text}`}>{formatEuro(a)}</div>
-              <div className={`text-xs ${diff > 0 ? 'text-red-500' : theme.textMuted}`}>
-                {t('household.utilities.budgetedSummary', { value: formatEuro(b) })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
         {monthsLong.map((mname, idx) => {
-          const data = utilities[monthKey(year, idx)];
+          const mk = monthKeyFor(year, idx);
+          const monthActuals = actuals[mk];
+          const monthHasContracts = expenses.some(e => e.utilityType && isActiveInMonth(e, mk));
+          const monthActualSum = UTILITY_TYPES.reduce((s, k) => s + (Number(monthActuals?.[k]) || 0), 0);
+          const monthBudgetSum = UTILITY_TYPES.reduce((s, k) => s + monthlyAmountForType(expenses, mk, k), 0);
+          const hasData = !!monthActuals || monthHasContracts;
           const future = isFutureMonth(idx);
-          const hasData = !!data;
-          const monthActual = data ? UTILITY_KEYS.reduce((s, k) => s + totalActualOf(data[k]), 0) : 0;
-          const monthBudget = data ? UTILITY_KEYS.reduce((s, k) => s + (data[k]?.budget || 0), 0) : 0;
-          const over = hasData && monthActual > monthBudget && monthBudget > 0;
-          const disabled = future && !hasData;
+          const over = monthActualSum > monthBudgetSum && monthBudgetSum > 0;
+          const disabled = future && !monthActuals && !monthHasContracts;
           return (
             <button
               key={idx}
@@ -1248,11 +1554,11 @@ function UtilitiesSection({ utilities, setUtilities, budget, config, setConfig, 
             >
               <div className={`text-xs ${theme.textMuted} capitalize`}>{monthsShort[idx]}</div>
               <div className={`text-sm font-semibold ${over ? 'text-red-500' : theme.text}`}>
-                {hasData ? formatEuro(monthActual) : ''}
+                {monthActualSum > 0 ? formatEuro(monthActualSum) : ''}
               </div>
-              {hasData && (
+              {hasData && monthBudgetSum > 0 && (
                 <div className={`text-xs ${over ? 'text-red-500' : theme.textMuted}`}>
-                  {t('household.utilities.monthBudget', { value: formatEuro(monthBudget) })}
+                  {t('household.utilities.budgeted', { value: formatEuro(monthBudgetSum) })}
                 </div>
               )}
             </button>
@@ -1264,16 +1570,16 @@ function UtilitiesSection({ utilities, setUtilities, budget, config, setConfig, 
         <div className={`text-xs ${theme.textMuted} mb-1`}>{t('household.utilities.yearTotal')}</div>
         <div className="flex items-baseline justify-between">
           <span className={`text-lg font-semibold ${theme.text}`}>{formatEuro(totalActual)}</span>
-          <span className={`text-xs ${theme.textMuted}`}>{t('household.utilities.budgetedSummary', { value: formatEuro(totalBudget) })}</span>
+          <span className={`text-xs ${theme.textMuted}`}>{t('household.utilities.budgeted', { value: formatEuro(totalBudget) })}</span>
         </div>
       </div>
 
       {editingMonth !== null && (
-        <UtilityMonthEditor
+        <UtilityActualsMonthEditor
           theme={theme}
           year={year}
           month={editingMonth}
-          data={utilities[monthKey(year, editingMonth)] || {}}
+          monthData={actuals[monthKeyFor(year, editingMonth)] || {}}
           expenses={expenses}
           monthsLong={monthsLong}
           utilityLabel={utilityLabel}
@@ -1285,36 +1591,35 @@ function UtilitiesSection({ utilities, setUtilities, budget, config, setConfig, 
   );
 }
 
-function monthKey(year, month) {
-  return `${year}-${String(month + 1).padStart(2, '0')}`;
-}
-
-function UtilityMonthEditor({ theme, year, month, data, expenses = [], monthsLong, utilityLabel, onCancel, onSave }) {
+function UtilityActualsMonthEditor({ theme, year, month, monthData, expenses, monthsLong, utilityLabel, onCancel, onSave }) {
   const { t } = useTranslation();
+  const monthKey = monthKeyFor(year, month);
+
   const [draft, setDraft] = useState(() => {
     const out = {};
-    UTILITY_KEYS.forEach(k => {
-      out[k] = {
-        budget: data[k]?.budget != null ? String(data[k].budget).replace('.', ',') : '',
-        actual: data[k]?.actual != null ? String(data[k].actual).replace('.', ',') : '',
-      };
+    UTILITY_TYPES.forEach(k => {
+      out[k] = monthData?.[k] != null ? String(monthData[k]).replace('.', ',') : '';
     });
     return out;
   });
 
-  const update = (k, field, val) => {
-    setDraft(prev => ({ ...prev, [k]: { ...prev[k], [field]: val } }));
-  };
+  const update = (k, val) => setDraft(prev => ({ ...prev, [k]: val }));
+
+  const visibleTypes = UTILITY_TYPES.filter(k => {
+    const hasContract = expenses.some(e => e.utilityType === k && isActiveInMonth(e, monthKey));
+    const hasActual = monthData?.[k] != null;
+    return hasContract || hasActual;
+  });
 
   const save = () => {
     const out = {};
-    UTILITY_KEYS.forEach(k => {
-      const b = parseEuroInput(draft[k].budget);
-      const a = parseEuroInput(draft[k].actual);
-      const auto = data[k]?.autoFromBudget;
-      const hasAuto = auto && Object.keys(auto).length > 0;
-      if (b > 0 || a > 0 || hasAuto) {
-        out[k] = { budget: b, actual: a, ...(hasAuto ? { autoFromBudget: auto } : {}) };
+    UTILITY_TYPES.forEach(k => {
+      const trimmed = (draft[k] || '').trim();
+      if (trimmed === '') {
+        out[k] = null;
+      } else {
+        const n = parseEuroInput(trimmed);
+        out[k] = Number.isFinite(n) ? n : null;
       }
     });
     onSave(out);
@@ -1324,93 +1629,62 @@ function UtilityMonthEditor({ theme, year, month, data, expenses = [], monthsLon
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40">
       <div className={`${theme.card} rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-xl`}>
         <div className={`flex items-center justify-between p-4 border-b ${theme.border}`}>
-          <h3 className={`font-semibold ${theme.text} capitalize`}>
-            {monthsLong[month]} {year}
-          </h3>
+          <div>
+            <h3 className={`font-semibold ${theme.text} capitalize`}>{monthsLong[month]} {year}</h3>
+            <div className={`text-xs ${theme.textMuted}`}>{t('household.utilities.monthEditor.subtitle')}</div>
+          </div>
           <button onClick={onCancel} className={`p-1 rounded ${theme.hover}`}>
             <X className={`w-5 h-5 ${theme.textMuted}`} />
           </button>
         </div>
-        <div className="p-4 space-y-4">
-          {UTILITY_KEYS.map(k => {
-            const Icon = UTILITY_ICON[k];
-            const b = parseEuroInput(draft[k].budget);
-            const a = parseEuroInput(draft[k].actual);
-            const auto = autoSumOf(data[k]);
-            const total = a + auto;
-            const over = total > b && b > 0;
-            const autoEntries = Object.entries(data[k]?.autoFromBudget || {})
-              .map(([id, amount]) => ({ id, amount, item: expenses.find(x => x.id === id) }))
-              .filter(e => e.item);
-            return (
-              <div key={k} className={`${theme.cardSecondary} rounded-xl p-3 ${over ? 'ring-2 ring-red-400' : ''}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Icon className={`w-4 h-4 ${UTILITY_COLOR[k]}`} />
-                  <span className={`text-sm font-medium ${theme.textSecondary}`}>{utilityLabel(k)}</span>
-                  {over && <span className="ml-auto text-xs text-red-500 font-medium">{t('household.utilities.overBudget')}</span>}
-                </div>
-                {auto > 0 && (
-                  <div className={`text-xs ${theme.textMuted} mb-2`}>
-                    {t('household.utilities.autoFromBudget')} <span className={`font-semibold ${theme.textSecondary}`}>{formatEuro(auto)}</span>
+        <div className="p-4 space-y-3">
+          {visibleTypes.length === 0 ? (
+            <p className={`text-sm ${theme.textMuted} text-center py-4`}>{t('household.utilities.monthEditor.empty')}</p>
+          ) : (
+            visibleTypes.map(k => {
+              const Icon = UTILITY_ICON[k];
+              const budgetValue = monthlyAmountForType(expenses, monthKey, k);
+              const activeContracts = expenses.filter(e => e.utilityType === k && isActiveInMonth(e, monthKey));
+              const actualValue = parseEuroInput(draft[k] || '');
+              const over = budgetValue > 0 && actualValue > budgetValue;
+              const noContract = budgetValue === 0;
+              return (
+                <div key={k} className={`${theme.cardSecondary} rounded-xl p-3 ${over ? 'ring-2 ring-red-400' : ''}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon className={`w-4 h-4 ${UTILITY_COLOR[k]}`} />
+                    <span className={`text-sm font-medium ${theme.textSecondary}`}>{utilityLabel(k)}</span>
+                    {noContract && (
+                      <span className={`text-[10px] ${theme.textMuted} ml-auto`}>{t('household.utilities.noContract')}</span>
+                    )}
+                    {over && <span className="ml-auto text-xs text-red-500 font-medium">{t('household.utilities.over')}</span>}
                   </div>
-                )}
-                {autoEntries.length > 0 && (
-                  <ul className="space-y-1 mb-2">
-                    {autoEntries.map(e => {
-                      const ItemIcon = BUDGET_ICONS[e.item.icon] || BadgeEuro;
-                      return (
-                        <li
-                          key={e.id}
-                          className={`flex items-center gap-2 text-xs px-2 py-1 rounded ${theme.card}`}
-                        >
-                          <ItemIcon className={`w-3.5 h-3.5 ${theme.textSecondary} shrink-0`} />
-                          <span className={`flex-1 truncate ${theme.textSecondary}`}>{e.item.name}</span>
-                          <span
-                            className="inline-flex items-center text-[10px] font-medium text-sky-600 bg-sky-100 dark:text-sky-300 dark:bg-sky-900/40 px-1.5 py-0.5 rounded"
-                            title={t('household.linked.badgeTitle')}
-                          >
-                            ↔ {t('household.linked.badge')}
-                          </span>
-                          <span className={`font-semibold ${theme.textSecondary}`}>{formatEuro(e.amount)}</span>
+                  {budgetValue > 0 && (
+                    <div className={`text-xs ${theme.textMuted} mb-1`}>
+                      {t('household.utilities.budgeted', { value: formatEuro(budgetValue) })}
+                    </div>
+                  )}
+                  {activeContracts.length > 0 && (
+                    <ul className="space-y-1 mb-2">
+                      {activeContracts.map(c => (
+                        <li key={c.id} className={`flex items-center gap-2 text-xs px-2 py-1 rounded ${theme.card}`}>
+                          <span className={`flex-1 truncate ${theme.textSecondary}`}>{c.name}</span>
+                          <span className={`font-semibold ${theme.textSecondary}`}>{formatEuro(c.amount)}</span>
                         </li>
-                      );
-                    })}
-                  </ul>
-                )}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className={`text-xs ${theme.textMuted} block mb-1`}>{t('household.utilities.budget')}</label>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={draft[k].budget}
-                      onChange={e => update(k, 'budget', e.target.value)}
-                      placeholder="0,00"
-                      className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm`}
-                    />
-                  </div>
-                  <div>
-                    <label className={`text-xs ${theme.textMuted} block mb-1`}>
-                      {auto > 0 ? t('household.utilities.extraActual') : t('household.utilities.actual')}
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={draft[k].actual}
-                      onChange={e => update(k, 'actual', e.target.value)}
-                      placeholder="0,00"
-                      className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm ${over ? 'text-red-500 font-semibold' : ''}`}
-                    />
-                  </div>
+                      ))}
+                    </ul>
+                  )}
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={draft[k]}
+                    onChange={e => update(k, e.target.value)}
+                    placeholder="0,00"
+                    className={`w-full px-3 py-2 rounded-lg ${theme.input} outline-none text-sm ${over ? 'text-red-500 font-semibold' : ''}`}
+                  />
                 </div>
-                {auto > 0 && (
-                  <div className={`text-xs ${theme.textMuted} mt-2`}>
-                    {t('household.utilities.totalActual')} <span className={`font-semibold ${over ? 'text-red-500' : theme.textSecondary}`}>{formatEuro(total)}</span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
         <div className={`flex gap-2 p-4 border-t ${theme.border}`}>
           <button

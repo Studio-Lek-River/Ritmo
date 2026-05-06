@@ -169,10 +169,13 @@ export function totalActualOf(utilitySlot) {
   return (utilitySlot?.actual || 0) + autoSumOf(utilitySlot);
 }
 
-// Geeft mapping: dayOfMonth (1..daysInMonth) → array van events { item, kind }
-// kind = 'income' | 'expense'. month is 0-indexed conform JS Date.
-// Weekly items zonder dueWeekday krijgen fallback 1 (maandag).
+// Geeft mapping: dayOfMonth (1..daysInMonth) → array van events { item, kind }.
+// kind = 'income' (recurring), 'expense' (recurring), 'oneTime' (eenmalige
+// uitgave op specifieke datum). month is 0-indexed conform JS Date.
+// Recurring items moeten actief zijn (binnen startDate/endDate) en op
+// paymentDay van de maand vallen. OneTime items vallen op item.date.
 export function eventsForMonth(budget, year, month) {
+  const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const events = {};
   const push = (day, item, kind) => {
@@ -184,23 +187,21 @@ export function eventsForMonth(budget, year, month) {
     const list = (budget && budget[group]) || [];
     const kind = group === 'income' ? 'income' : 'expense';
     list.forEach(item => {
-      if (item.enabled === false) return;
-      if (item.frequency === 'monthly') {
-        const day = Math.min(Number(item.dueDay) || 1, daysInMonth);
-        push(day, item, kind);
-      } else if (item.frequency === 'yearly' && Number(item.dueMonth) === month + 1) {
-        const day = Math.min(Number(item.dueDay) || 1, daysInMonth);
-        push(day, item, kind);
-      } else if (item.frequency === 'weekly') {
-        const target = Number(item.dueWeekday) || 1; // 1=ma … 7=zo
-        for (let d = 1; d <= daysInMonth; d++) {
-          const wd = new Date(year, month, d).getDay(); // 0=zo … 6=za
-          const iso = wd === 0 ? 7 : wd;
-          if (iso === target) push(d, item, kind);
-        }
-      }
+      if (!item || item.enabled === false) return;
+      if (!isActiveInMonth(item, monthKey)) return;
+      const day = Math.min(daysInMonth, Math.max(1, Number(item.paymentDay) || 1));
+      push(day, item, kind);
     });
   });
+
+  const oneTime = (budget && budget.oneTime) || [];
+  oneTime.forEach(item => {
+    if (!item || !item.date || typeof item.date !== 'string') return;
+    if (item.date.slice(0, 7) !== monthKey) return;
+    const day = Math.min(daysInMonth, Math.max(1, Number(item.date.slice(8, 10)) || 1));
+    push(day, item, 'oneTime');
+  });
+
   return events;
 }
 
