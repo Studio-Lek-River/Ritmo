@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(npx vite *)",
+      "PowerShell(npx vite build 2>&1)",
+      "PowerShell(node --version)",
+      "PowerShell(node node_modules/vite/bin/vite.js build 2>&1)"
+    ]
+  }
+}
