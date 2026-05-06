@@ -145,3 +145,136 @@ export function migrateDayModuleData(moduleData, moduleConfig) {
     total: moduleData.minutes ?? 0,
   };
 }
+
+// === Vaste-lasten-model: migratie van budget + utilities + config ===========
+//
+// Conversie van het oude isUtility-koppelmodel naar het nieuwe vaste-lasten-
+// model. Idempotent: tweede aanroep is no-op zodra alle velden zijn omgezet.
+// Caller leest household:budget/utilities/config rechtstreeks via window.storage
+// (niet via useStoredState — dat introduceert een race) en schrijft alleen
+// terug als result.changed === true.
+
+const ISUTILITY_TO_UTILITYTYPE = { electric: 'elektra', gas: 'gas', water: 'water' };
+
+function migrateRecurringItem(item, todayStartDate) {
+  let next = item || {};
+
+  if ('frequency' in next) {
+    const oldAmount = Number(next.amount) || 0;
+    let monthly = oldAmount;
+    if (next.frequency === 'weekly') monthly = (oldAmount * 52) / 12;
+    else if (next.frequency === 'yearly') monthly = oldAmount / 12;
+    if (next.frequency === 'weekly' || next.frequency === 'yearly') {
+      // eslint-disable-next-line no-console
+      console.log(`[migrate-household] frequency='${next.frequency}' op item "${next.name}" omgerekend naar maandelijks. Controleer paymentDay.`);
+    }
+    const { frequency: _f, dueMonth: _dm, dueWeekday: _dw, ...rest } = next;
+    next = { ...rest, amount: monthly };
+  }
+
+  const hasDueDay = 'dueDay' in next;
+  const lacksPaymentDay = next.paymentDay === undefined;
+  if (hasDueDay || lacksPaymentDay) {
+    const day = Number(next.dueDay) || Number(next.paymentDay) || 1;
+    const { dueDay: _dd, ...rest } = next;
+    next = { ...rest, paymentDay: Math.min(28, Math.max(1, day)) };
+  }
+
+  if (next.startDate === undefined) {
+    next = { ...next, startDate: todayStartDate };
+  }
+  if (next.endDate === undefined) {
+    next = { ...next, endDate: null };
+  }
+
+  if ('isUtility' in next) {
+    const { isUtility, ...rest } = next;
+    const mapped = ISUTILITY_TO_UTILITYTYPE[isUtility];
+    next = mapped ? { ...rest, utilityType: mapped } : rest;
+  }
+
+  return next;
+}
+
+export function migrateHousehold(budget, utilities, config, today = new Date()) {
+  const todayStartDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+  let changed = false;
+
+  // ---- Budget ----
+  const safeBudget = budget && typeof budget === 'object' ? budget : {};
+  const oldIncome = Array.isArray(safeBudget.income) ? safeBudget.income : [];
+  const oldExpenses = Array.isArray(safeBudget.expenses) ? safeBudget.expenses : [];
+  const oldOneTime = Array.isArray(safeBudget.oneTime) ? safeBudget.oneTime : null;
+
+  const itemsNeedMigration = [...oldIncome, ...oldExpenses].some(it =>
+    it && (
+      'frequency' in it ||
+      'dueDay' in it ||
+      'isUtility' in it ||
+      it.paymentDay === undefined ||
+      it.startDate === undefined ||
+      it.endDate === undefined
+    )
+  );
+  const needsOneTime = oldOneTime === null;
+
+  let nextBudget = safeBudget;
+  if (itemsNeedMigration || needsOneTime) {
+    nextBudget = {
+      ...safeBudget,
+      income: oldIncome.map(it => migrateRecurringItem(it, todayStartDate)),
+      expenses: oldExpenses.map(it => migrateRecurringItem(it, todayStartDate)),
+      oneTime: oldOneTime || [],
+    };
+    changed = true;
+  }
+
+  // ---- Config ----
+  let nextConfig = config && typeof config === 'object' ? config : {};
+  if ('energyCombined' in nextConfig) {
+    const { energyCombined: _ec, ...rest } = nextConfig;
+    nextConfig = rest;
+    changed = true;
+  }
+
+  // ---- Utilities ----
+  const safeUtilities = utilities && typeof utilities === 'object' ? utilities : {};
+  const hasActuals = 'actuals' in safeUtilities;
+  const oldShapeKeys = Object.keys(safeUtilities).filter(k => /^\d{4}-\d{2}$/.test(k));
+  const isOldShape = !hasActuals && oldShapeKeys.length > 0;
+  const isEmpty = !hasActuals && oldShapeKeys.length === 0;
+
+  let nextUtilities = safeUtilities;
+  if (isOldShape) {
+    const newActuals = {};
+    const typeMap = { water: 'water', electricity: 'elektra', gas: 'gas' };
+    for (const monthKey of oldShapeKeys) {
+      const monthData = safeUtilities[monthKey];
+      if (!monthData || typeof monthData !== 'object') continue;
+      const out = {};
+      for (const [oldType, newType] of Object.entries(typeMap)) {
+        const slot = monthData[oldType];
+        if (!slot || typeof slot !== 'object') continue;
+        const actual = Number(slot.actual) || 0;
+        const auto = slot.autoFromBudget && typeof slot.autoFromBudget === 'object'
+          ? Object.values(slot.autoFromBudget).reduce((s, v) => s + (Number(v) || 0), 0)
+          : 0;
+        const total = actual + auto;
+        if (total > 0) out[newType] = total;
+      }
+      if (Object.keys(out).length > 0) newActuals[monthKey] = out;
+    }
+    nextUtilities = { actuals: newActuals };
+    changed = true;
+  } else if (isEmpty) {
+    nextUtilities = { actuals: {} };
+    changed = true;
+  } else if (hasActuals) {
+    if ('expenses' in safeUtilities || typeof safeUtilities.actuals !== 'object' || safeUtilities.actuals === null) {
+      nextUtilities = { actuals: safeUtilities.actuals && typeof safeUtilities.actuals === 'object' ? safeUtilities.actuals : {} };
+      changed = true;
+    }
+  }
+
+  return { budget: nextBudget, utilities: nextUtilities, config: nextConfig, changed };
+}
