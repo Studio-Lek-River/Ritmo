@@ -1,3 +1,10 @@
+# [0.5.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.4.0...v0.5.0) (2026-05-06)
+
+
+### Features
+
+* **household:** hervorm budget tot vaste lasten met eenmalige uitgaven en gestuurde duurzaamheid ([f504f7b](https://github.com/Studio-Lek-River/Ritmo/commit/f504f7ba2d5b0ada7bd3cd1dc3e380a89b6543c5))
+
 # [0.4.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.3.0...v0.4.0) (2026-05-05)
 
 
