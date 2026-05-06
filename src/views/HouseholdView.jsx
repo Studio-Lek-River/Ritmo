@@ -605,7 +605,7 @@ function FixedCostsSection({ budget, setBudget, theme, darkMode, monthsLong, mon
       <div className="grid grid-cols-3 gap-2">
         <Stat theme={theme} label={t('household.fixedCosts.recurring.incomeGroupTitle')} value={formatEuro(monthlyIncome)} accent="text-emerald-500" />
         <Stat theme={theme} label={t('household.fixedCosts.recurring.expenseGroupTitle')} value={formatEuro(monthlyExpenses)} accent="text-rose-500" />
-        <Stat theme={theme} label={t('household.budget.net')} value={formatEuro(monthlyNetValue)} accent={monthlyNetValue < 0 ? 'text-amber-500' : 'text-blue-500'} />
+        <Stat theme={theme} label={t('household.fixedCosts.netLabel')} value={formatEuro(monthlyNetValue)} accent={monthlyNetValue < 0 ? 'text-amber-500' : 'text-blue-500'} />
       </div>
 
       <div className="flex gap-2">
