@@ -2610,12 +2610,12 @@ function CollectionTagGroupsEditor({ tagGroups, items, onUpdateGroups, theme }) 
                 value={groupLabel}
                 onChange={(e) => updateGroup(group.id, { label: e.target.value, labelKey: undefined })}
                 placeholder={t('collections.groupLabel')}
-                className={`flex-1 px-2 py-1 ${theme.input} rounded text-sm`}
+                className={`flex-1 min-w-0 px-2 py-1 ${theme.input} rounded text-sm`}
               />
               <select
                 value={group.color || 'blue'}
                 onChange={(e) => updateGroup(group.id, { color: e.target.value })}
-                className={`px-2 py-1 ${theme.input} rounded text-xs`}
+                className={`max-w-[110px] px-2 py-1 ${theme.input} rounded text-xs`}
                 aria-label={t('collections.tagColorAria')}
               >
                 {COLOR_OPTIONS.map((c) => (
