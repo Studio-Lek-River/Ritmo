@@ -74,6 +74,13 @@ export function getAllTags(module) {
   );
 }
 
+export function resolveTagLabel(tag, t) {
+  if (!tag) return '';
+  if (tag.label) return tag.label;
+  if (tag.labelKey && typeof t === 'function') return t(tag.labelKey);
+  return '';
+}
+
 export function findTagWithGroup(module, tagId) {
   if (!module?.tagGroups) return null;
   for (const group of module.tagGroups) {

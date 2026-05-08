@@ -1,7 +1,10 @@
 import React from 'react';
 import { getColorClasses } from '../utils/colors';
+import { resolveTagLabel } from '../utils/collections';
+import { useTranslation } from '../i18n/useTranslation';
 
 export default function TagPill({ tag, onClick, active = false }) {
+  const { t } = useTranslation();
   const c = getColorClasses(tag.color);
   const clickable = typeof onClick === 'function';
   const base = 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium transition select-none';
@@ -17,7 +20,7 @@ export default function TagPill({ tag, onClick, active = false }) {
       onKeyDown={clickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
       className={`${base} ${styleClasses} ${hover}`}
     >
-      {tag.label}
+      {resolveTagLabel(tag, t)}
     </span>
   );
 }

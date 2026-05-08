@@ -5,6 +5,7 @@ import {
   aggregateStats,
   deleteItemConfirmationDescription,
   getAllTags,
+  resolveTagLabel,
   countCheckedItems,
   countEventsThisWeek,
   countItemsWithActivity,
@@ -270,7 +271,7 @@ export default function CollectionsView({
                 >
                   <option value="">{t('collections.filterAll')}</option>
                   {allColTags.map((tg) => (
-                    <option key={tg.id} value={tg.id}>{tg.label}</option>
+                    <option key={tg.id} value={tg.id}>{resolveTagLabel(tg, t)}</option>
                   ))}
                 </select>
               )}
