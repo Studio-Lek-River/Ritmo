@@ -1,3 +1,17 @@
+# [0.6.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.5.0...v0.6.0) (2026-05-08)
+
+
+### Bug Fixes
+
+* **collection:** hide collection-modules from Today tab ([ad6cc4a](https://github.com/Studio-Lek-River/Ritmo/commit/ad6cc4a8d7ac0221cd641061ad7dfbf5fbf0464f))
+* **collection:** keep tag-group editor controls inside card on narrow screens ([40c2d94](https://github.com/Studio-Lek-River/Ritmo/commit/40c2d94025a5e28fd316f5ab6338bb09cdde54f2))
+* **collection:** resolve preset tag labels via labelKey in lists and filters ([423f539](https://github.com/Studio-Lek-River/Ritmo/commit/423f539059641299d2f7c093a908f836b13909b7))
+
+
+### Features
+
+* **collection:** item-modal voor toevoegen en bewerken, vervangt swipe-to-delete ([c3d3d50](https://github.com/Studio-Lek-River/Ritmo/commit/c3d3d5003d6c3193c7c65e5c5a4182abb34ec2dd))
+
 # [0.5.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.4.0...v0.5.0) (2026-05-06)
 
 
