@@ -6,7 +6,14 @@
       "Bash(npx vite *)",
       "PowerShell(npx vite build 2>&1)",
       "PowerShell(node --version)",
-      "PowerShell(node node_modules/vite/bin/vite.js build 2>&1)"
+      "PowerShell(node node_modules/vite/bin/vite.js build 2>&1)",
+      "Bash(powershell -Command \"\\(Get-Content 'c:\\\\Ritmo\\\\src\\\\App.jsx' | Measure-Object -Line\\).Lines\")",
+      "Bash(awk '/^  collections: \\\\{/,/^  \\\\}/ {print NR\": \"$0}' /c/Ritmo/src/i18n/nl.js)",
+      "Bash(npm run *)",
+      "PowerShell(npm run build 2>&1)",
+      "PowerShell(where.exe node 2>&1; where.exe npm 2>&1; Test-Path \"C:\\\\Program Files\\\\nodejs\\\\npm.cmd\"; Test-Path \"$env:APPDATA\\\\npm\\\\npm.cmd\")",
+      "Bash(git stash *)",
+      "Bash(git restore *)"
     ]
   }
 }
