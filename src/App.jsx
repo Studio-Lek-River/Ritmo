@@ -6,7 +6,6 @@ import './storage';
 import ProjectsModule from './modules/ProjectsModule';
 import CounterModule from './modules/CounterModule';
 import SleepModule from './modules/SleepModule';
-import CollectionModule from './modules/CollectionModule';
 import ProjectsView from './views/ProjectsView';
 import CollectionsView from './views/CollectionsView';
 import HouseholdView from './views/HouseholdView';
@@ -777,7 +776,7 @@ export default function Ritmo() {
     }} t={t} theme={theme} darkMode={darkMode} setDarkMode={setDarkMode} />;
   }
 
-  const enabledModules = modules.filter(m => m.enabled);
+  const enabledModules = modules.filter(m => m.enabled && m.type !== 'collection');
 
   const todayVisibleModules = editable
     ? enabledModules
@@ -828,22 +827,6 @@ export default function Ritmo() {
           editable={editable}
           date={parseDateKey(activeDateKey)}
           onUpdate={(updater) => updateModuleData(mod.id, updater)}
-          onEdit={() => setEditingModule(mod)}
-          theme={theme}
-          darkMode={darkMode}
-        />
-      );
-    }
-    if (mod.type === 'collection') {
-      return (
-        <CollectionModule
-          key={mod.id}
-          module={mod}
-          Icon={ICON_OPTIONS[mod.icon] || Sparkles}
-          editable={editable}
-          onAddItem={(name) => addCollectionItem(mod.id, name)}
-          onLogEvent={(itemId, eventData) => logCollectionEvent(mod.id, itemId, eventData)}
-          onOpenView={() => { setSelectedCollectionId(mod.id); setView('collections'); }}
           onEdit={() => setEditingModule(mod)}
           theme={theme}
           darkMode={darkMode}
