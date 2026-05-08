@@ -446,6 +446,12 @@ export default {
     searchInCollection: 'Search in {name}...',
     logShort: '+ Log',
     editCollection: 'Edit {name}',
+    editItem: 'Edit item',
+    itemName: 'Name',
+    firstEvent: 'First entry',
+    eventDate: 'Date',
+    eventAmount: 'Amount',
+    eventNote: 'Note (optional)',
   },
 
   collectionsView: {

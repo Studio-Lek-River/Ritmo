@@ -24,7 +24,7 @@ import ChecklistModule from './modules/ChecklistModule';
 import ConfirmDialog from './components/ConfirmDialog';
 import { migrateModuleConfig, migrateDayModuleData, migrateSettings } from './utils/migrate';
 import { useTranslation, resolveModuleName } from './i18n/useTranslation';
-import { createItem, logEvent, removeEvent, generateTagId, generateTagGroupId } from './utils/collections';
+import { logEvent, removeEvent, generateTagId, generateTagGroupId } from './utils/collections';
 import { ToastProvider } from './hooks/useToast';
 import Toast from './components/Toast';
 import { formatAmount, formatDuration } from './utils/format';
@@ -538,16 +538,13 @@ export default function Ritmo() {
     }));
   };
 
-  const addCollectionItem = (moduleId, name, options = {}) => {
-    const trimmed = (name || '').trim();
-    if (!trimmed) return null;
-    const base = createItem(trimmed);
-    const newItem = options.skipInitialEvent ? base : logEvent(base);
+  const addCollectionItem = (moduleId, item) => {
+    if (!item || !item.name || !item.name.trim()) return null;
     updateCollectionModule(moduleId, (m) => ({
       ...m,
-      items: [...(m.items || []), newItem],
+      items: [...(m.items || []), item],
     }));
-    return newItem;
+    return item;
   };
 
   const updateCollectionItem = (moduleId, item) => {

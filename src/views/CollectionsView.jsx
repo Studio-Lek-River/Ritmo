@@ -3,7 +3,6 @@ import { Plus, Search, Sparkles, Pencil, Library, ChevronRight } from 'lucide-re
 import { getColorClasses } from '../utils/colors';
 import {
   aggregateStats,
-  deleteItemConfirmationDescription,
   getAllTags,
   resolveTagLabel,
   countCheckedItems,
@@ -13,10 +12,8 @@ import {
 import { formatRelativeDate } from '../utils/dates';
 import StarRating from '../components/StarRating';
 import TagPill from '../components/TagPill';
-import ItemDetail from '../components/ItemDetail';
+import CollectionItemFormModal from '../components/CollectionItemFormModal';
 import EmptyState from '../components/EmptyState';
-import SwipeRow from '../components/SwipeRow';
-import ConfirmDialog from '../components/ConfirmDialog';
 import { useToast } from '../hooks/useToast';
 import { useTranslation } from '../i18n/useTranslation';
 
@@ -47,7 +44,7 @@ export default function CollectionsView({
   onDeleteCollection: _onDeleteCollection,
   onEditCollection,
   hasUsedSwipe: _hasUsedSwipe,
-  onFirstSwipe,
+  onFirstSwipe: _onFirstSwipe,
   editable = true,
   theme,
 }) {
@@ -63,13 +60,10 @@ export default function CollectionsView({
     [collections]
   );
 
-  const [selectedItemId, setSelectedItemId] = useState(null);
-  const [selectedItemEditMode, setSelectedItemEditMode] = useState(false);
-  const [confirmDeleteItem, setConfirmDeleteItem] = useState(null);
+  const [editingItemId, setEditingItemId] = useState(null);
+  const [addingItemModuleId, setAddingItemModuleId] = useState(null);
   const [perModuleQuery, setPerModuleQuery] = useState({});
   const [perModuleTagId, setPerModuleTagId] = useState({});
-  const [addingItemModuleId, setAddingItemModuleId] = useState(null);
-  const [addingItemName, setAddingItemName] = useState('');
   const [manageOpen, setManageOpen] = useState(false);
 
   const allItems = useMemo(
@@ -90,70 +84,30 @@ export default function CollectionsView({
     );
   }
 
-  const selected = selectedItemId ? allItems.find((it) => it.id === selectedItemId) || null : null;
-
-  if (selected) {
-    const collection = selected._collection;
-    const Icon = iconOptions[collection.icon] || Sparkles;
-    return (
-      <ItemDetail
-        item={selected}
-        collection={collection}
-        Icon={Icon}
-        editable={editable}
-        initialEditMode={selectedItemEditMode}
-        onBack={() => {
-          setSelectedItemId(null);
-          setSelectedItemEditMode(false);
-        }}
-        onUpdate={(item) => onUpdateItem?.(collection.id, item)}
-        onDelete={() => {
-          const snapshot = selected;
-          onDeleteItem?.(collection.id, selected.id);
-          setSelectedItemId(null);
-          setSelectedItemEditMode(false);
-          showToast({
-            message: t('toast.itemDeleted'),
-            actionLabel: t('common.undo'),
-            onAction: () => {
-              onUpdateItem?.(collection.id, snapshot);
-            },
-          });
-        }}
-        onLogEvent={(eventData) => onLogEvent?.(collection.id, selected.id, eventData)}
-        onRemoveEvent={(idx) => onRemoveEvent?.(collection.id, selected.id, idx)}
-        theme={theme}
-      />
-    );
-  }
+  const editingItem = editingItemId ? allItems.find((it) => it.id === editingItemId) || null : null;
+  const editingCollection = editingItem ? editingItem._collection : null;
+  const addingCollection = addingItemModuleId
+    ? collections.find((c) => c.id === addingItemModuleId) || null
+    : null;
 
   const stats = aggregateStats(enabledCollections);
   const checkedCount = countCheckedItems(enabledCollections);
   const weekCount = countEventsThisWeek(enabledCollections);
   const activityCount = countItemsWithActivity(enabledCollections);
 
-  const handleSwipeDelete = (item, collection) => setConfirmDeleteItem({ item, collection });
-
-  const handleConfirmDeleteItem = () => {
-    if (!confirmDeleteItem) return;
-    const { item, collection } = confirmDeleteItem;
-    onDeleteItem?.(collection.id, item.id);
-    setConfirmDeleteItem(null);
+  const handleDeleteEditingItem = () => {
+    if (!editingItem || !editingCollection) return;
+    const snapshot = editingItem;
+    const collectionId = editingCollection.id;
+    onDeleteItem?.(collectionId, snapshot.id);
+    setEditingItemId(null);
     showToast({
       message: t('toast.itemDeleted'),
       actionLabel: t('common.undo'),
       onAction: () => {
-        onUpdateItem?.(collection.id, item);
+        onUpdateItem?.(collectionId, snapshot);
       },
     });
-  };
-
-  const submitAddItem = (col) => {
-    const name = addingItemName.trim();
-    if (!name) return;
-    onAddItem?.(col.id, name);
-    setAddingItemModuleId(null);
-    setAddingItemName('');
   };
 
   return (
@@ -216,7 +170,6 @@ export default function CollectionsView({
         });
         const checkedInCol = (col.items || []).filter((it) => it.checked === true).length;
         const accentColor = ACCENT_COLORS[col.color] || '#3b82f6';
-        const isAdding = addingItemModuleId === col.id;
 
         return (
           <div key={col.id} className={`${theme.card} rounded-2xl shadow-sm overflow-hidden`}>
@@ -288,63 +241,63 @@ export default function CollectionsView({
                   const isChecked = item.checked === true;
                   return (
                     <li key={item.id}>
-                      <SwipeRow
-                        disabled={!editable}
-                        onDelete={() => handleSwipeDelete(item, col)}
-                        onFirstSwipe={onFirstSwipe}
-                        ariaLabel={t('collectionList.deleteItemAria')}
-                        className="rounded-xl"
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setEditingItemId(item.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setEditingItemId(item.id);
+                          }
+                        }}
+                        className={`flex items-start gap-2.5 py-2.5 px-2 rounded-xl ${theme.hover} cursor-pointer`}
                       >
-                        <div
-                          className={`flex items-start gap-2.5 py-2.5 px-2 rounded-xl ${theme.hover} cursor-pointer`}
-                          onClick={() => setSelectedItemId(item.id)}
-                        >
-                          {editable && (
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              style={{ accentColor }}
-                              className="mt-0.5 w-4 h-4 flex-shrink-0 cursor-pointer"
-                              onChange={() => onUpdateItem?.(col.id, { ...item, checked: !isChecked })}
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <span
-                                className={`text-sm font-medium truncate ${
-                                  isChecked ? `line-through ${theme.textMuted}` : theme.textSecondary
-                                }`}
+                        {editable && (
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            style={{ accentColor }}
+                            className="mt-0.5 w-4 h-4 flex-shrink-0 cursor-pointer"
+                            onChange={() => onUpdateItem?.(col.id, { ...item, checked: !isChecked })}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <span
+                              className={`text-sm font-medium truncate ${
+                                isChecked ? `line-through ${theme.textMuted}` : theme.textSecondary
+                              }`}
+                            >
+                              {item.name}
+                            </span>
+                            {editable && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onLogEvent?.(col.id, item.id);
+                                }}
+                                className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${cc.pillBg} ${cc.pillText} transition`}
                               >
-                                {item.name}
-                              </span>
-                              {editable && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onLogEvent?.(col.id, item.id);
-                                  }}
-                                  className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${cc.pillBg} ${cc.pillText} transition`}
-                                >
-                                  {t('collections.logShort')}
-                                </button>
-                              )}
-                            </div>
-                            {(itemTags.length > 0 || (item.rating > 0 && col.itemFields?.rating !== false)) && (
-                              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                                {item.rating > 0 && col.itemFields?.rating !== false && (
-                                  <StarRating value={item.rating} size="xs" readonly />
-                                )}
-                                {itemTags.map((tg) => (
-                                  <TagPill key={tg.id} tag={tg} />
-                                ))}
-                              </div>
+                                {t('collections.logShort')}
+                              </button>
                             )}
-                            <p className={`text-xs ${theme.textMuted} mt-0.5`}>{eventMeta}</p>
                           </div>
+                          {(itemTags.length > 0 || (item.rating > 0 && col.itemFields?.rating !== false)) && (
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                              {item.rating > 0 && col.itemFields?.rating !== false && (
+                                <StarRating value={item.rating} size="xs" readonly />
+                              )}
+                              {itemTags.map((tg) => (
+                                <TagPill key={tg.id} tag={tg} />
+                              ))}
+                            </div>
+                          )}
+                          <p className={`text-xs ${theme.textMuted} mt-0.5`}>{eventMeta}</p>
                         </div>
-                      </SwipeRow>
+                      </div>
                     </li>
                   );
                 })}
@@ -358,49 +311,14 @@ export default function CollectionsView({
             {/* Add item */}
             {editable && (
               <div className="px-4 pb-4 pt-1">
-                {isAdding ? (
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={addingItemName}
-                      autoFocus
-                      onChange={(e) => setAddingItemName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') { e.preventDefault(); submitAddItem(col); }
-                        if (e.key === 'Escape') { setAddingItemModuleId(null); setAddingItemName(''); }
-                      }}
-                      placeholder={t('collectionList.addPlaceholder')}
-                      className={`flex-1 px-3 py-1.5 ${theme.input} ${theme.textSecondary} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => submitAddItem(col)}
-                      disabled={!addingItemName.trim()}
-                      className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-40 text-white rounded-lg text-sm transition"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setAddingItemModuleId(null); setAddingItemName(''); }}
-                      className={`px-3 py-1.5 ${theme.cardSecondary} ${theme.textMuted} rounded-lg text-sm transition`}
-                    >
-                      {t('common.cancel')}
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAddingItemModuleId(col.id);
-                      setAddingItemName('');
-                    }}
-                    className={`text-sm ${theme.textMuted} ${theme.hover} px-2 py-1.5 rounded-lg transition flex items-center gap-1.5 w-full`}
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    {t('collections.addItem')}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setAddingItemModuleId(col.id)}
+                  className={`text-sm ${theme.textMuted} ${theme.hover} px-2 py-1.5 rounded-lg transition flex items-center gap-1.5 w-full`}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  {t('collections.addItem')}
+                </button>
               </div>
             )}
           </div>
@@ -462,14 +380,39 @@ export default function CollectionsView({
         </div>
       )}
 
-      <ConfirmDialog
-        open={!!confirmDeleteItem}
-        title={confirmDeleteItem ? t('collectionList.deleteItemTitle', { name: confirmDeleteItem.item.name }) : ''}
-        description={confirmDeleteItem ? deleteItemConfirmationDescription(confirmDeleteItem.item, t) : ''}
-        confirmLabel={t('common.delete')}
-        variant="danger"
-        onConfirm={handleConfirmDeleteItem}
-        onCancel={() => setConfirmDeleteItem(null)}
+      {/* Add-item modal */}
+      <CollectionItemFormModal
+        open={!!addingCollection}
+        mode="add"
+        collection={addingCollection}
+        Icon={addingCollection ? (iconOptions[addingCollection.icon] || Sparkles) : null}
+        editable={editable}
+        onClose={() => setAddingItemModuleId(null)}
+        onSave={(item) => {
+          if (addingItemModuleId) onAddItem?.(addingItemModuleId, item);
+        }}
+        theme={theme}
+      />
+
+      {/* Edit-item modal */}
+      <CollectionItemFormModal
+        open={!!editingItem}
+        mode="edit"
+        collection={editingCollection}
+        Icon={editingCollection ? (iconOptions[editingCollection.icon] || Sparkles) : null}
+        item={editingItem}
+        editable={editable}
+        onClose={() => setEditingItemId(null)}
+        onSave={(updated) => {
+          if (editingCollection) onUpdateItem?.(editingCollection.id, updated);
+        }}
+        onDelete={handleDeleteEditingItem}
+        onLogEvent={() => {
+          if (editingCollection && editingItem) onLogEvent?.(editingCollection.id, editingItem.id);
+        }}
+        onRemoveEvent={(idx) => {
+          if (editingCollection && editingItem) onRemoveEvent?.(editingCollection.id, editingItem.id, idx);
+        }}
         theme={theme}
       />
     </div>

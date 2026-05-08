@@ -447,6 +447,12 @@ export default {
     searchInCollection: 'Zoek in {name}...',
     logShort: '+ Log',
     editCollection: 'Bewerk {name}',
+    editItem: 'Item bewerken',
+    itemName: 'Naam',
+    firstEvent: 'Eerste keer geregistreerd',
+    eventDate: 'Datum',
+    eventAmount: 'Aantal',
+    eventNote: 'Notitie (optioneel)',
   },
 
   collectionsView: {
