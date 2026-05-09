@@ -819,6 +819,37 @@ export default {
     finish: 'Start Ritmo',
     skipAll: 'Onboarding overslaan',
     progress: 'Stap {current} van {total}',
+    tabs: {
+      presets: 'Voorbeelden',
+      custom: 'Zelf maken',
+      skip: 'Overslaan',
+    },
+    presetTab: {
+      description: 'Vink aan wat bij je past. Klap een keuze open om eigen items toe te voegen.',
+      empty: 'Geen voorbeelden voor dit gebied.',
+      addItem: 'Voeg toe',
+    },
+    customTab: {
+      description: 'Maak zelf een lijst — een item per regel. Je kunt details later in de app invullen.',
+      empty: 'Nog niets toegevoegd.',
+      placeholder: {
+        modules: 'Bijv. Meditatie',
+        projects: 'Bijv. Roman schrijven',
+        collections: 'Bijv. Wijnen',
+        household: 'Bijv. Tuin',
+      },
+    },
+    skipTab: {
+      description: 'Geen probleem. Je kunt dit altijd later toevoegen via de instellingen of de juiste tab.',
+    },
+    itemLabel: {
+      steps: 'stappen',
+      options: 'opties',
+      tasks: 'taken',
+      subjects: 'vakken',
+      items: 'items',
+      household: 'items',
+    },
     placeholder: 'Stap-inhoud voor "{area}" volgt.',
     steps: {
       modules:     { title: 'Dagelijkse modules', subtitle: 'Wat wil je elke dag bijhouden?' },

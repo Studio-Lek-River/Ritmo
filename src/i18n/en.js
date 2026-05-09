@@ -810,6 +810,37 @@ export default {
     finish: 'Start Ritmo',
     skipAll: 'Skip onboarding',
     progress: 'Step {current} of {total}',
+    tabs: {
+      presets: 'Examples',
+      custom: 'Create your own',
+      skip: 'Skip',
+    },
+    presetTab: {
+      description: 'Tick what fits. Expand a choice to add your own items.',
+      empty: 'No examples for this area.',
+      addItem: 'Add',
+    },
+    customTab: {
+      description: 'Create your own list — one item per line. You can fill in the details later in the app.',
+      empty: 'Nothing added yet.',
+      placeholder: {
+        modules: 'E.g. Meditation',
+        projects: 'E.g. Write a novel',
+        collections: 'E.g. Wines',
+        household: 'E.g. Garden',
+      },
+    },
+    skipTab: {
+      description: 'No worries. You can always add this later via settings or the relevant tab.',
+    },
+    itemLabel: {
+      steps: 'steps',
+      options: 'options',
+      tasks: 'tasks',
+      subjects: 'subjects',
+      items: 'items',
+      household: 'items',
+    },
     placeholder: 'Step content for "{area}" coming up.',
     steps: {
       modules:     { title: 'Daily modules',  subtitle: 'What do you want to track every day?' },
