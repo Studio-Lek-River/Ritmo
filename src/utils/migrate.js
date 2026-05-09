@@ -46,6 +46,18 @@ export function migrateModuleConfig(module) {
     };
   }
 
+  if (m.type === 'counter' && m.celebration === undefined) {
+    const isWater = m.nameKey === 'presets.drinking.name';
+    m = {
+      ...m,
+      celebration: {
+        enabled: isWater,
+        animation: 'cowDrinkMilk',
+        mode: 'overlay',
+      },
+    };
+  }
+
   if (m.type === 'sleep') {
     const goals = { ...DEFAULT_SLEEP_GOALS, ...(m.goals || {}) };
     for (const k of WEEKDAY_KEYS) {

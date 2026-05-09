@@ -74,6 +74,7 @@ function buildPresets(t) {
         presets: [250, 500, 750],
         categoriesEnabled: false,
         categories: t('presets.drinking.categories'),
+        celebration: { enabled: true, animation: 'cowDrinkMilk', mode: 'overlay' },
       },
       {
         nameKey: 'presets.reading.name',

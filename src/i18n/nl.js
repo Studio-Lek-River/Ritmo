@@ -610,6 +610,12 @@ export default {
     counterMinutesGoal: 'vandaag (doel: {goal} uur)',
     counterWeekTotal: '{week} / {max} uur',
 
+    // celebration (counter-modules)
+    celebration: 'Celebratie',
+    celebrationEnabled: 'Toon celebratie-animatie zodra dagdoel gehaald is',
+    celebrationAnimation: 'Animatie',
+    celebrationDisabledHint: 'Stel eerst een dagdoel in om celebratie aan te zetten.',
+
     // sleep
     bedTime: 'Bedtijd',
     wakeTime: 'Opstaan',
@@ -788,6 +794,10 @@ export default {
     defaultWork: 'Productief werk',
     defaultTasks: 'Eigen taken',
     defaultProjectsModule: 'Projecten',
+  },
+
+  celebrations: {
+    cowDrinkMilk: 'Koe drinkt melk',
   },
 
   // help-overlay components

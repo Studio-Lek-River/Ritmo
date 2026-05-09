@@ -606,6 +606,12 @@ export default {
     counterMinutesGoal: 'today (goal: {goal} h)',
     counterWeekTotal: '{week} / {max} h',
 
+    // celebration (counter modules)
+    celebration: 'Celebration',
+    celebrationEnabled: 'Show celebration animation when daily goal is reached',
+    celebrationAnimation: 'Animation',
+    celebrationDisabledHint: 'Set a daily goal first to enable celebration.',
+
     bedTime: 'Bedtime',
     wakeTime: 'Wake-up',
     morningScore: 'Morning score',
@@ -779,6 +785,10 @@ export default {
     defaultWork: 'Productive work',
     defaultTasks: 'My tasks',
     defaultProjectsModule: 'Projects',
+  },
+
+  celebrations: {
+    cowDrinkMilk: 'Cow drinking milk',
   },
 
   help: {
