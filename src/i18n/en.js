@@ -15,6 +15,8 @@ export default {
     edit: 'Edit',
     add: 'Add',
     close: 'Close',
+    expand: 'Expand',
+    collapse: 'Collapse',
     back: 'Back',
     next: 'Next',
     yes: 'Yes',

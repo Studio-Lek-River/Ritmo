@@ -16,6 +16,8 @@ export default {
     edit: 'Bewerken',
     add: 'Toevoegen',
     close: 'Sluiten',
+    expand: 'Uitklappen',
+    collapse: 'Inklappen',
     back: 'Terug',
     next: 'Volgende',
     yes: 'Ja',
