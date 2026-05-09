@@ -1,3 +1,11 @@
+## [0.9.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.9.0...v0.9.1) (2026-05-09)
+
+
+### Bug Fixes
+
+* **modules:** los undefined name op in CounterUI ([feb062e](https://github.com/Studio-Lek-River/Ritmo/commit/feb062eb8b2e784922fb0e7c5c157da059501173))
+* **tasks:** herstel rtheme.text typo bij recurring tasks ([08c1894](https://github.com/Studio-Lek-River/Ritmo/commit/08c1894c872739dddbb4d054e5301413a8c80e6b))
+
 # [0.9.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.8.0...v0.9.0) (2026-05-09)
 
 
