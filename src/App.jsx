@@ -310,7 +310,7 @@ export default function Ritmo() {
         const existsToday = customTasks.some(t => t.recurringId === rt.id);
         if (!existsToday) {
           setCustomTasks(prev => [...prev, {
-            id: Date.now() + Math.random(),
+            id: genId('task'),
             recurringId: rt.id,
             text: rt.text,
             done: false
