@@ -31,6 +31,7 @@ import { ToastProvider } from './hooks/useToast';
 import Toast from './components/Toast';
 import { formatAmount, formatDuration } from './utils/format';
 import { MODULE_PRESETS } from './utils/presets';
+import { MEASUREMENT_UNITS, unitSymbol, createMetric } from './utils/measurements';
 import { ICON_OPTIONS } from './utils/icons';
 import {
   fmtDateKey, parseDateKey, addDays, sameDay, startOfWeek,
@@ -2498,6 +2499,7 @@ function getTypeOptions(t) {
     { id: 'projects', label: t('modules.types.projects'), desc: t('modules.types.projectsDesc') },
     { id: 'sleep', label: t('modules.types.sleep'), desc: t('modules.types.sleepDesc') },
     { id: 'collection', label: t('modules.types.collection'), desc: t('modules.types.collectionDesc') },
+    { id: 'measurements', label: t('modules.types.measurements'), desc: t('modules.types.measurementsDesc') },
   ];
 }
 
@@ -2687,6 +2689,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
   const [editing, setEditing] = useState(mod);
   const [newItem, setNewItem] = useState('');
   const [expandedItemId, setExpandedItemId] = useState(null);
+  const [removingMetric, setRemovingMetric] = useState(null);
   const isNew = !mod.name && !mod.nameKey;
   const [step, setStep] = useState(
     isNew ? (mod.type ? 'preset' : 'type') : 'config'
@@ -2744,6 +2747,10 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
         items: prev.items || [],
         countInStreak: false,
       } : {}),
+      ...(typeId === 'measurements' ? {
+        metrics: Array.isArray(prev.metrics) ? prev.metrics : [],
+        countInStreak: false,
+      } : {}),
     }));
     setStep('preset');
     setPresetTab('suggestions');
@@ -2758,6 +2765,13 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
       }
       if (preset.options) {
         merged.options = preset.options.map(label => ({ id: genId('options'), label }));
+      }
+      if (preset.metrics && merged.type === 'measurements') {
+        merged.metrics = preset.metrics.map(metric => ({
+          ...metric,
+          id: genId('metric'),
+          events: [],
+        }));
       }
       return merged;
     });
@@ -2871,6 +2885,9 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
                         )}
                         {preset.options && (
                           <div className={`text-xs ${theme.textMuted}`}>{t('modules.presetOptions', { n: preset.options.length })}</div>
+                        )}
+                        {preset.metrics && (
+                          <div className={`text-xs ${theme.textMuted}`}>{t('modules.presetMetrics', { n: preset.metrics.length })}</div>
                         )}
                       </div>
                     </button>
@@ -3454,6 +3471,189 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
               </>
             );
           })()}
+
+          {editing.type === 'measurements' && (() => {
+            const metrics = editing.metrics || [];
+            const updateMetric = (id, patch) => {
+              setEditing(prev => ({
+                ...prev,
+                metrics: (prev.metrics || []).map(m =>
+                  m.id === id ? { ...m, ...patch, ...(patch.name !== undefined ? { nameKey: undefined } : {}) } : m
+                ),
+              }));
+            };
+            const addMetric = () => {
+              setEditing(prev => ({
+                ...prev,
+                metrics: [
+                  ...(prev.metrics || []),
+                  createMetric({ unit: 'kg', icon: 'Activity', decimals: 1 }),
+                ],
+              }));
+            };
+            const requestRemove = (metric) => {
+              if ((metric.events || []).length > 0) {
+                setRemovingMetric(metric);
+              } else {
+                setEditing(prev => ({
+                  ...prev,
+                  metrics: (prev.metrics || []).filter(m => m.id !== metric.id),
+                }));
+              }
+            };
+            return (
+              <div>
+                <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                  {t('modules.measurements.metricsLabel')}
+                </label>
+                <div className="space-y-2 mb-2">
+                  {metrics.map((metric) => {
+                    const isExpanded = expandedItemId === metric.id;
+                    const MetricIcon = ICON_OPTIONS[metric.icon] || ICON_OPTIONS.Activity;
+                    const displayMetricName = metric.name ?? (metric.nameKey ? t(metric.nameKey) : '');
+                    return (
+                      <div key={metric.id} className={`${theme.cardSecondary} rounded-lg`}>
+                        <div className="flex items-center gap-2 p-2">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${theme.card} ${theme.textMuted}`}>
+                            <MetricIcon className="w-4 h-4" />
+                          </div>
+                          <input
+                            type="text"
+                            value={displayMetricName}
+                            onChange={(e) => updateMetric(metric.id, { name: e.target.value })}
+                            placeholder={t('modules.measurements.fields.name')}
+                            className={`flex-1 px-2 py-1 ${theme.input} rounded text-sm focus:outline-none focus:ring-2 focus:ring-${editing.color}-300`}
+                          />
+                          <select
+                            value={metric.unit || 'kg'}
+                            onChange={(e) => updateMetric(metric.id, { unit: e.target.value })}
+                            className={`px-2 py-1 ${theme.input} rounded text-sm focus:outline-none focus:ring-2 focus:ring-${editing.color}-300`}
+                            aria-label={t('modules.measurements.fields.unit')}
+                          >
+                            {MEASUREMENT_UNITS.map(u => (
+                              <option key={u.key} value={u.key}>{unitSymbol(u.key)}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => setExpandedItemId(isExpanded ? null : metric.id)}
+                            className={`p-1.5 rounded transition ${
+                              isExpanded ? `bg-${editing.color}-500 text-white` : `${theme.textMuted} ${theme.hover}`
+                            }`}
+                            title={t('modules.itemSettings')}
+                          >
+                            <SlidersHorizontal className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => requestRemove(metric)}
+                            className="text-slate-400 hover:text-red-500 p-1.5"
+                            aria-label={t('common.delete')}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        {isExpanded && (
+                          <div className="px-2 pb-3 space-y-3">
+                            <div>
+                              <label className={`text-xs font-medium ${theme.textMuted} mb-1 block`}>
+                                {t('common.icon')}
+                              </label>
+                              <div className="grid grid-cols-8 gap-1">
+                                {Object.keys(ICON_OPTIONS).map(iconName => {
+                                  const Icon = ICON_OPTIONS[iconName];
+                                  return (
+                                    <button
+                                      key={iconName}
+                                      type="button"
+                                      onClick={() => updateMetric(metric.id, { icon: iconName })}
+                                      className={`aspect-square rounded-lg flex items-center justify-center transition ${
+                                        metric.icon === iconName ? `bg-${editing.color}-500 text-white` : `${theme.card} ${theme.textMuted}`
+                                      }`}
+                                    >
+                                      <Icon className="w-4 h-4" />
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                            <div className="flex gap-3">
+                              <div className="flex-1">
+                                <label className={`text-xs font-medium ${theme.textMuted} mb-1 block`}>
+                                  {t('modules.measurements.fields.target')}
+                                </label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  value={metric.target ?? ''}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    if (v === '') updateMetric(metric.id, { target: null });
+                                    else {
+                                      const n = Number(v);
+                                      if (Number.isFinite(n)) updateMetric(metric.id, { target: n });
+                                    }
+                                  }}
+                                  placeholder="—"
+                                  className={`w-full px-2 py-1.5 ${theme.input} rounded text-sm focus:outline-none focus:ring-2 focus:ring-${editing.color}-300`}
+                                />
+                              </div>
+                              <div>
+                                <label className={`text-xs font-medium ${theme.textMuted} mb-1 block`}>
+                                  {t('modules.measurements.fields.decimals')}
+                                </label>
+                                <div className="flex gap-1">
+                                  {[0, 1, 2].map(n => (
+                                    <button
+                                      key={n}
+                                      type="button"
+                                      onClick={() => updateMetric(metric.id, { decimals: n })}
+                                      className={`px-3 py-1.5 rounded text-sm font-medium transition ${
+                                        (metric.decimals ?? 1) === n ? `bg-${editing.color}-500 text-white` : `${theme.card} ${theme.textMuted}`
+                                      }`}
+                                    >
+                                      {n}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => updateMetric(metric.id, { lowerIsBetter: !metric.lowerIsBetter })}
+                              className={`w-full flex items-center gap-3 p-2 rounded-lg text-left transition ${theme.card} ${theme.hover}`}
+                            >
+                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition flex-shrink-0 ${
+                                metric.lowerIsBetter ? `bg-${editing.color}-500 border-${editing.color}-500` : 'border-slate-300'
+                              }`}>
+                                {metric.lowerIsBetter && <Check className="w-3 h-3 text-white" />}
+                              </div>
+                              <div className="flex-1">
+                                <div className={`text-sm font-medium ${theme.textSecondary}`}>
+                                  {t('modules.measurements.fields.lowerIsBetter')}
+                                </div>
+                                <div className={`text-xs ${theme.textMuted} mt-0.5`}>
+                                  {t('modules.measurements.fields.lowerIsBetterDesc')}
+                                </div>
+                              </div>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <button
+                  type="button"
+                  onClick={addMetric}
+                  className={`w-full px-3 py-2 ${theme.cardSecondary} ${theme.textSecondary} rounded-lg text-sm font-medium ${theme.hover} flex items-center justify-center gap-2`}
+                >
+                  <Plus className="w-4 h-4" />
+                  {t('modules.measurements.addMetric')}
+                </button>
+              </div>
+            );
+          })()}
         </div>
         )}
 
@@ -3483,6 +3683,26 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
           </div>
         )}
       </div>
+      <ConfirmDialog
+        open={!!removingMetric}
+        title={t('modules.measurements.confirmDeleteMetric.title')}
+        description={removingMetric
+          ? t('modules.measurements.confirmDeleteMetric.description', { count: (removingMetric.events || []).length })
+          : ''}
+        confirmLabel={t('common.delete')}
+        variant="danger"
+        onConfirm={() => {
+          const target = removingMetric;
+          setRemovingMetric(null);
+          if (!target) return;
+          setEditing(prev => ({
+            ...prev,
+            metrics: (prev.metrics || []).filter(m => m.id !== target.id),
+          }));
+        }}
+        onCancel={() => setRemovingMetric(null)}
+        theme={theme}
+      />
     </div>
   );
 }
