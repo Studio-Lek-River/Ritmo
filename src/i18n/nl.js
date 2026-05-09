@@ -538,6 +538,7 @@ export default {
     presetGoal: 'Doel: {amount}',
     presetItems: '{n} items',
     presetOptions: '{n} opties',
+    presetMetrics: '{n} metrics',
     backAria: 'Terug',
 
     // checklist-extra opties
@@ -642,6 +643,66 @@ export default {
       5: 'Heerlijk uitgerust',
     },
 
+    // measurements
+    measurements: {
+      metricsLabel: 'Metrics',
+      addMetric: 'Metric toevoegen',
+      editMetric: 'Metric bewerken',
+      noMetrics: 'Nog geen metrics',
+      metricCount: '{count} metrics',
+      metricCountOne: '1 metric',
+      measurementCount: '{count} metingen',
+      measurementCountOne: '1 meting',
+      noMeasurements: 'Nog geen metingen',
+      addFirst: 'Voeg je eerste meting toe',
+      addFirstHint: 'Voeg een metric toe om je voortgang bij te houden',
+      addMeasurement: 'Meting toevoegen',
+      editMeasurement: 'Meting bewerken',
+      history: 'Geschiedenis',
+      latest: 'Laatste meting',
+      target: 'Doel',
+      vsLast: 'vs. vorige',
+      sinceStart: 'sinds start',
+      createModule: 'Module aanmaken',
+      emptyState: {
+        title: 'Nog geen metingen-module',
+        description: 'Maak een metingen-module aan om numerieke waarden zoals gewicht of bloeddruk over tijd te volgen.',
+      },
+      fields: {
+        name: 'Naam',
+        unit: 'Eenheid',
+        icon: 'Icoon',
+        target: 'Doel (optioneel)',
+        lowerIsBetter: 'Lager is beter',
+        lowerIsBetterDesc: 'Bepaalt of een daling als verbetering wordt getoond (groen) of niet.',
+        higherIsBetter: 'Hoger is beter',
+        decimals: 'Decimalen',
+        date: 'Datum',
+        value: 'Waarde',
+        note: 'Notitie (optioneel)',
+      },
+      units: {
+        kg: 'kilogram',
+        g: 'gram',
+        cm: 'centimeter',
+        mm: 'millimeter',
+        pct: 'procent',
+        mmHg: 'mmHg',
+        bpm: 'bpm',
+        celsius: 'graden Celsius',
+        mgdl: 'mg/dL',
+        mmoll: 'mmol/L',
+      },
+      confirmDeleteEvent: {
+        title: 'Meting verwijderen?',
+        description: 'Deze meting wordt definitief verwijderd.',
+      },
+      confirmDeleteMetric: {
+        title: 'Metric verwijderen?',
+        description: 'Deze metric en {count} bijbehorende metingen worden definitief verwijderd.',
+      },
+    },
+
     // module type-picker
     types: {
       checklist: 'Checklist',
@@ -658,6 +719,8 @@ export default {
       sleepDesc: 'Bedtijd, opstaan, ochtendscore',
       collection: 'Collectie',
       collectionDesc: 'Catalogus van items met events',
+      measurements: 'Metingen',
+      measurementsDesc: 'Numerieke waarden bijhouden over tijd',
     },
 
     // module summaries / hints
@@ -786,6 +849,28 @@ export default {
       groupGeur: 'Geur',
     },
     sleep: { name: 'Slaap' },
+    health: {
+      name: 'Gezondheidsmetingen',
+      metrics: {
+        weight: 'Gewicht',
+        muscle: 'Spiermassa',
+        fat: 'Vetpercentage',
+        waist: 'Buikomvang',
+      },
+    },
+    bloodpressure: {
+      name: 'Bloeddruk',
+      metrics: {
+        systolic: 'Bovendruk',
+        diastolic: 'Onderdruk',
+      },
+    },
+    heartrate: {
+      name: 'Hartslag',
+      metrics: {
+        resting: 'Rusthartslag',
+      },
+    },
 
     // default modules (uit DEFAULT_MODULES in App.jsx)
     defaultMorning: 'Ochtendroutine',
@@ -943,6 +1028,14 @@ export default {
     projects: {
       summary: '{active} actief, {completed} afgerond',
       overdueLabel: '{n} over deadline',
+    },
+    measurements: {
+      summary: '{count} metrics gevolgd',
+      summaryOne: '1 metric gevolgd',
+      noMetrics: 'Nog geen metrics — voeg er een toe in de module-instellingen.',
+      noDataInPeriod: 'Geen metingen in deze periode',
+      singlePoint: 'Slechts één meting in deze periode',
+      changeOverPeriod: '{change} over {count} metingen',
     },
     notSupportedYet: 'Nog niet ondersteund in inzicht',
   },

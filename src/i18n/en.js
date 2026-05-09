@@ -537,6 +537,7 @@ export default {
     presetGoal: 'Goal: {amount}',
     presetItems: '{n} items',
     presetOptions: '{n} options',
+    presetMetrics: '{n} metrics',
     backAria: 'Back',
 
     optDailyNotes: {
@@ -637,6 +638,65 @@ export default {
       5: 'Wonderfully rested',
     },
 
+    measurements: {
+      metricsLabel: 'Metrics',
+      addMetric: 'Add metric',
+      editMetric: 'Edit metric',
+      noMetrics: 'No metrics yet',
+      metricCount: '{count} metrics',
+      metricCountOne: '1 metric',
+      measurementCount: '{count} measurements',
+      measurementCountOne: '1 measurement',
+      noMeasurements: 'No measurements yet',
+      addFirst: 'Add your first measurement',
+      addFirstHint: 'Add a metric to start tracking your progress',
+      addMeasurement: 'Add measurement',
+      editMeasurement: 'Edit measurement',
+      history: 'History',
+      latest: 'Latest measurement',
+      target: 'Target',
+      vsLast: 'vs. previous',
+      sinceStart: 'since start',
+      createModule: 'Create module',
+      emptyState: {
+        title: 'No measurements module yet',
+        description: 'Create a measurements module to track numeric values like weight or blood pressure over time.',
+      },
+      fields: {
+        name: 'Name',
+        unit: 'Unit',
+        icon: 'Icon',
+        target: 'Target (optional)',
+        lowerIsBetter: 'Lower is better',
+        lowerIsBetterDesc: 'Determines whether a decrease is shown as an improvement (green) or not.',
+        higherIsBetter: 'Higher is better',
+        decimals: 'Decimals',
+        date: 'Date',
+        value: 'Value',
+        note: 'Note (optional)',
+      },
+      units: {
+        kg: 'kilograms',
+        g: 'grams',
+        cm: 'centimetres',
+        mm: 'millimetres',
+        pct: 'percent',
+        mmHg: 'mmHg',
+        bpm: 'bpm',
+        celsius: 'degrees Celsius',
+        mgdl: 'mg/dL',
+        mmoll: 'mmol/L',
+      },
+      confirmDeleteEvent: {
+        title: 'Delete measurement?',
+        description: 'This measurement will be permanently removed.',
+      },
+      confirmDeleteMetric: {
+        title: 'Delete metric?',
+        description: 'This metric and {count} associated measurements will be permanently removed.',
+      },
+    },
+
     types: {
       checklist: 'Checklist',
       checklistDesc: 'List of items',
@@ -652,6 +712,8 @@ export default {
       sleepDesc: 'Bedtime, wake-up, morning score',
       collection: 'Collection',
       collectionDesc: 'Catalogue of items with events',
+      measurements: 'Measurements',
+      measurementsDesc: 'Track numeric values over time',
     },
 
     summary: {
@@ -778,6 +840,28 @@ export default {
       groupGeur: 'Scent',
     },
     sleep: { name: 'Sleep' },
+    health: {
+      name: 'Health metrics',
+      metrics: {
+        weight: 'Weight',
+        muscle: 'Muscle mass',
+        fat: 'Body fat',
+        waist: 'Waist circumference',
+      },
+    },
+    bloodpressure: {
+      name: 'Blood pressure',
+      metrics: {
+        systolic: 'Systolic',
+        diastolic: 'Diastolic',
+      },
+    },
+    heartrate: {
+      name: 'Heart rate',
+      metrics: {
+        resting: 'Resting heart rate',
+      },
+    },
 
     defaultMorning: 'Morning routine',
     defaultPhysio: 'Physio exercises',
@@ -933,6 +1017,14 @@ export default {
     projects: {
       summary: '{active} active, {completed} completed',
       overdueLabel: '{n} past deadline',
+    },
+    measurements: {
+      summary: '{count} metrics tracked',
+      summaryOne: '1 metric tracked',
+      noMetrics: 'No metrics yet — add one in the module settings.',
+      noDataInPeriod: 'No measurements in this period',
+      singlePoint: 'Only one measurement in this period',
+      changeOverPeriod: '{change} across {count} measurements',
     },
     notSupportedYet: 'Not yet supported in insights',
   },
