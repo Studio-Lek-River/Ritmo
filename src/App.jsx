@@ -606,10 +606,15 @@ export default function Ritmo() {
   };
 
   const openModuleEditor = (type) => {
+    const defaultIcon = type === 'projects'
+      ? 'GraduationCap'
+      : type === 'measurements'
+        ? 'Heart'
+        : 'Star';
     setEditingModule({
       id: `mod_${Date.now()}`,
       name: '',
-      icon: type === 'projects' ? 'GraduationCap' : 'Star',
+      icon: defaultIcon,
       color: 'blue',
       enabled: true,
       countInStreak: false,
@@ -620,6 +625,9 @@ export default function Ritmo() {
         itemFields: { rating: true, notes: true, tags: true },
         tags: [],
         items: [],
+      } : {}),
+      ...(type === 'measurements' ? {
+        metrics: [],
       } : {}),
     });
   };

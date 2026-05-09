@@ -8,6 +8,7 @@ import SleepInsightCard from '../components/insight/SleepInsightCard';
 import CollectionInsightCard from '../components/insight/CollectionInsightCard';
 import TasksInsightCard from '../components/insight/TasksInsightCard';
 import ProjectsInsightCard from '../components/insight/ProjectsInsightCard';
+import MeasurementsInsightCard from '../components/insight/MeasurementsInsightCard';
 import { rangeForPeriod, buildDays } from '../utils/insights';
 
 function CardForModule({ mod, days, theme, darkMode, t }) {
@@ -19,6 +20,7 @@ function CardForModule({ mod, days, theme, darkMode, t }) {
     case 'collection': return <CollectionInsightCard mod={mod} days={days} theme={theme} darkMode={darkMode} t={t} />;
     case 'tasks':      return <TasksInsightCard mod={mod} days={days} theme={theme} darkMode={darkMode} t={t} />;
     case 'projects':   return <ProjectsInsightCard mod={mod} theme={theme} darkMode={darkMode} t={t} />;
+    case 'measurements': return <MeasurementsInsightCard mod={mod} days={days} theme={theme} darkMode={darkMode} t={t} />;
     default:           return null;
   }
 }
@@ -29,7 +31,9 @@ export default function InsightView({ modules, history, theme, darkMode, t }) {
   const { dayKeys } = useMemo(() => rangeForPeriod(period), [period]);
   const days = useMemo(() => buildDays(history || {}, dayKeys), [history, dayKeys]);
   const hasAnyData = useMemo(
-    () => days.some(d => d.dayData) || enabled.some(m => m.type === 'projects' || m.type === 'collection'),
+    () => days.some(d => d.dayData) || enabled.some(m =>
+      m.type === 'projects' || m.type === 'collection' || m.type === 'measurements',
+    ),
     [days, enabled],
   );
 
