@@ -170,6 +170,36 @@ function buildPresets(t) {
         items: [],
       },
     ],
+    measurements: [
+      {
+        nameKey: 'presets.health.name',
+        icon: 'Heart',
+        color: 'pink',
+        metrics: [
+          { nameKey: 'presets.health.metrics.weight', unit: 'kg',  icon: 'Scale',   decimals: 1, lowerIsBetter: true,  target: null },
+          { nameKey: 'presets.health.metrics.muscle', unit: 'kg',  icon: 'Zap',     decimals: 1, lowerIsBetter: false, target: null },
+          { nameKey: 'presets.health.metrics.fat',    unit: 'pct', icon: 'Droplet', decimals: 1, lowerIsBetter: true,  target: null },
+          { nameKey: 'presets.health.metrics.waist',  unit: 'cm',  icon: 'Ruler',   decimals: 0, lowerIsBetter: true,  target: null },
+        ],
+      },
+      {
+        nameKey: 'presets.bloodpressure.name',
+        icon: 'HeartPulse',
+        color: 'red',
+        metrics: [
+          { nameKey: 'presets.bloodpressure.metrics.systolic',  unit: 'mmHg', icon: 'Activity', decimals: 0, lowerIsBetter: true, target: null },
+          { nameKey: 'presets.bloodpressure.metrics.diastolic', unit: 'mmHg', icon: 'Activity', decimals: 0, lowerIsBetter: true, target: null },
+        ],
+      },
+      {
+        nameKey: 'presets.heartrate.name',
+        icon: 'HeartPulse',
+        color: 'red',
+        metrics: [
+          { nameKey: 'presets.heartrate.metrics.resting', unit: 'bpm', icon: 'Activity', decimals: 0, lowerIsBetter: true, target: null },
+        ],
+      },
+    ],
     sleep: [
       {
         nameKey: 'presets.sleep.name',
