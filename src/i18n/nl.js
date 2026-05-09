@@ -872,6 +872,25 @@ export default {
       },
     },
 
+    household: {
+      choresWeekly: {
+        name: 'Wekelijkse klusjes',
+        items: ['Stoffen', 'Stofzuigen', 'Dweilen', 'Badkamer schoonmaken', 'Keuken schoonmaken'],
+      },
+      choresMonthly: {
+        name: 'Maandelijkse klusjes',
+        items: ['Oven schoonmaken', 'Koelkast ontdooien', 'Douche-kalk verwijderen', 'Ramen lappen'],
+      },
+      staples: {
+        name: 'Vaste boodschappen',
+        items: ['Brood', 'Melk', 'Koffie', 'Eieren', 'Boter'],
+      },
+      maintenance: {
+        name: 'Onderhoud',
+        items: ['CV-ketel onderhoud', 'Brandmelder testen', 'Bandenspanning controleren', 'Filter afzuigkap'],
+      },
+    },
+
     // default modules (uit DEFAULT_MODULES in App.jsx)
     defaultMorning: 'Ochtendroutine',
     defaultPhysio: 'Fysio-oefeningen',

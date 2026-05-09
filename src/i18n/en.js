@@ -863,6 +863,25 @@ export default {
       },
     },
 
+    household: {
+      choresWeekly: {
+        name: 'Weekly chores',
+        items: ['Dusting', 'Vacuuming', 'Mopping', 'Clean bathroom', 'Clean kitchen'],
+      },
+      choresMonthly: {
+        name: 'Monthly chores',
+        items: ['Clean oven', 'Defrost fridge', 'Remove shower limescale', 'Clean windows'],
+      },
+      staples: {
+        name: 'Grocery staples',
+        items: ['Bread', 'Milk', 'Coffee', 'Eggs', 'Butter'],
+      },
+      maintenance: {
+        name: 'Maintenance',
+        items: ['Boiler service', 'Test smoke alarm', 'Check tire pressure', 'Range hood filter'],
+      },
+    },
+
     defaultMorning: 'Morning routine',
     defaultPhysio: 'Physio exercises',
     defaultWalk: 'Outdoor movement',

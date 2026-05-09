@@ -240,3 +240,71 @@ export const MODULE_PRESETS = new Proxy({}, {
     return { enumerable: true, configurable: true };
   },
 });
+
+// Huishouden-presets voor de onboarding-flow. In tegenstelling tot module-presets
+// worden deze geschreven naar aparte storage-keys (`household:chores` en
+// `household:groceries`), niet naar `settings.modules`.
+//
+// Per preset:
+//   - target: 'chores' (regelmatige klusjes) of 'groceries' (vaste boodschappen)
+//   - recurrence/customDays: meegegeven aan elke chore-rij bij commit
+//   - isStaple: meegegeven aan elke grocery-rij bij commit
+//   - items: standaardlijst (i18n), gebruiker mag aanvullen of verwijderen
+function buildHouseholdPresets(t) {
+  return {
+    choresWeekly: {
+      key: 'choresWeekly',
+      nameKey: 'presets.household.choresWeekly.name',
+      icon: 'BrushCleaning',
+      color: 'cyan',
+      target: 'chores',
+      recurrence: 'weekly',
+      items: t('presets.household.choresWeekly.items'),
+    },
+    choresMonthly: {
+      key: 'choresMonthly',
+      nameKey: 'presets.household.choresMonthly.name',
+      icon: 'Sparkles',
+      color: 'indigo',
+      target: 'chores',
+      recurrence: 'monthly',
+      items: t('presets.household.choresMonthly.items'),
+    },
+    staples: {
+      key: 'staples',
+      nameKey: 'presets.household.staples.name',
+      icon: 'ShoppingCart',
+      color: 'amber',
+      target: 'groceries',
+      isStaple: true,
+      items: t('presets.household.staples.items'),
+    },
+    maintenance: {
+      key: 'maintenance',
+      nameKey: 'presets.household.maintenance.name',
+      icon: 'Drill',
+      color: 'orange',
+      target: 'chores',
+      recurrence: 'custom',
+      customDays: 90,
+      items: t('presets.household.maintenance.items'),
+    },
+  };
+}
+
+export function getHouseholdPresets(t) {
+  return buildHouseholdPresets(t || defaultT);
+}
+
+export const HOUSEHOLD_PRESETS = new Proxy({}, {
+  get(_target, prop) {
+    const all = buildHouseholdPresets(defaultT);
+    return all[prop];
+  },
+  ownKeys() {
+    return Object.keys(buildHouseholdPresets(defaultT));
+  },
+  getOwnPropertyDescriptor() {
+    return { enumerable: true, configurable: true };
+  },
+});
