@@ -1,3 +1,15 @@
+# [0.9.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.8.0...v0.9.0) (2026-05-09)
+
+
+### Features
+
+* **onboarding:** commit selecties naar modules en household-storage ([617c17e](https://github.com/Studio-Lek-River/Ritmo/commit/617c17e5d3fbede3e8542afcfa0db9972dff6351))
+* **onboarding:** polish huishouden-stap met i18n custom-namen en lege-state fix ([f9d9976](https://github.com/Studio-Lek-River/Ritmo/commit/f9d9976d860843d8342d3fe27102ed652da86b93))
+* **onboarding:** voeg AreaStep toe met drie tabs voor voorbeelden, custom en overslaan ([126fdfb](https://github.com/Studio-Lek-River/Ritmo/commit/126fdfb6419e4067feb3a752954d9fb8b59399ca))
+* **onboarding:** voeg OnboardingView shell toe met 6-staps navigatie ([bc94d96](https://github.com/Studio-Lek-River/Ritmo/commit/bc94d9632545e52e55fb9b1d89d903548d369d4d))
+* **onboarding:** voeg uitklapbaar item-paneel toe aan preset-cards ([c5865fe](https://github.com/Studio-Lek-River/Ritmo/commit/c5865fe03846627eefce276ded6b8f0bf1a64efb))
+* **presets:** voeg HOUSEHOLD_PRESETS toe met chores en staples voor onboarding ([afe31a4](https://github.com/Studio-Lek-River/Ritmo/commit/afe31a40a6674207bea79e8d5bc670b4fe1a58f1))
+
 # [0.8.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.7.0...v0.8.0) (2026-05-09)
 
 
