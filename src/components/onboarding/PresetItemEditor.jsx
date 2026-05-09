@@ -24,11 +24,7 @@ export default function PresetItemEditor({ labels, setLabels, itemLabelKey, colo
       className={`mt-2 p-3 rounded-xl ${theme.cardSecondary} border ${theme.border}`}
       onClick={(e) => e.stopPropagation()}
     >
-      {labels.length === 0 ? (
-        <p className={`${theme.textMuted} text-xs mb-2`}>
-          {t('onboarding.presetTab.empty', { default: '' }) || ''}
-        </p>
-      ) : (
+      {labels.length > 0 && (
         <div className="space-y-1.5 mb-2">
           {labels.map((label, idx) => (
             <div

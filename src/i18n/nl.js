@@ -852,6 +852,10 @@ export default {
       items: 'items',
       household: 'items',
     },
+    customModuleName: {
+      projects: 'Eigen projecten',
+      collections: 'Eigen collectie',
+    },
     placeholder: 'Stap-inhoud voor "{area}" volgt.',
     steps: {
       modules:     { title: 'Dagelijkse modules', subtitle: 'Wat wil je elke dag bijhouden?' },

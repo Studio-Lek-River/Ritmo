@@ -43,20 +43,20 @@ function moduleFromPreset(preset, labels) {
   };
 }
 
-function customModulesFor(area, customItems) {
+function customModulesFor(area, customItems, t) {
   if (area === 'modules') {
     // Eén module per item, type uit dropdown.
     return customItems.map(({ name, type }) => {
-      const t = type || 'checklist';
+      const moduleType = type || 'checklist';
       return {
-        id: genId(t),
+        id: genId(moduleType),
         name,
-        type: t,
+        type: moduleType,
         icon: 'Sparkles',
         color: 'blue',
         enabled: true,
         countInStreak: false,
-        ...emptyDefaultsForType(t),
+        ...emptyDefaultsForType(moduleType),
       };
     });
   }
@@ -64,7 +64,7 @@ function customModulesFor(area, customItems) {
     if (customItems.length === 0) return [];
     return [{
       id: genId('projects'),
-      name: customItems.length === 1 ? customItems[0].name : 'Projecten',
+      name: customItems.length === 1 ? customItems[0].name : t('onboarding.customModuleName.projects'),
       type: 'projects',
       icon: 'GraduationCap',
       color: 'cyan',
@@ -77,7 +77,7 @@ function customModulesFor(area, customItems) {
     if (customItems.length === 0) return [];
     return [{
       id: genId('collection'),
-      name: customItems.length === 1 ? customItems[0].name : 'Collectie',
+      name: customItems.length === 1 ? customItems[0].name : t('onboarding.customModuleName.collections'),
       type: 'collection',
       icon: 'Sparkles',
       color: 'amber',
@@ -106,7 +106,7 @@ export function buildOnboardingResult(areaState, t) {
         modules.push(moduleFromPreset(preset, labels));
       }
     } else if (s.tab === 'custom') {
-      modules.push(...customModulesFor(area, s.custom));
+      modules.push(...customModulesFor(area, s.custom, t));
     }
   }
 

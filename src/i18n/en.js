@@ -843,6 +843,10 @@ export default {
       items: 'items',
       household: 'items',
     },
+    customModuleName: {
+      projects: 'My projects',
+      collections: 'My collection',
+    },
     placeholder: 'Step content for "{area}" coming up.',
     steps: {
       modules:     { title: 'Daily modules',  subtitle: 'What do you want to track every day?' },
