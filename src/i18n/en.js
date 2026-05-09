@@ -804,13 +804,25 @@ export default {
 
   onboarding: {
     welcome: 'Welcome to Ritmo',
-    intro: 'Your personal day app. Fully modular: pick what you want to track, add what you need, hide what is not relevant.',
+    tagline: 'Your day, your rhythm',
+    intro: 'Ritmo is your day, your way. We will walk through a few areas together. For each one you can pick: ready-made examples, your own list, or skip it entirely.',
     start: 'Get started',
-    pickModules: 'Pick your modules',
-    pickModulesHint: "Select which parts you want to use. Tick what fits. You can always extend this later.",
-    minOne: 'Activate at least one module to continue.',
-    later: '💡 You can later add your own modules, edit items, and personalise everything via settings.',
     finish: 'Start Ritmo',
+    skipAll: 'Skip onboarding',
+    progress: 'Step {current} of {total}',
+    placeholder: 'Step content for "{area}" coming up.',
+    steps: {
+      modules:     { title: 'Daily modules',  subtitle: 'What do you want to track every day?' },
+      projects:    { title: 'Projects',       subtitle: 'Working on something bigger?' },
+      collections: { title: 'Collections',    subtitle: 'What do you want to collect or track?' },
+      household:   { title: 'Household',      subtitle: 'Do you keep your home in Ritmo too?' },
+    },
+    done: {
+      title: 'Ready to start',
+      finish: 'Start Ritmo',
+      summaryEmpty: 'You are starting with an empty Ritmo. You can always add modules and items later.',
+      summary: 'Set up: {modules} modules, {projects} projects, {collections} collections, {household} household items.',
+    },
   },
 
   presets: {

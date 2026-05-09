@@ -12,6 +12,7 @@ import MeasurementsView from './views/MeasurementsView';
 import HouseholdView from './views/HouseholdView';
 import TodayView from './views/TodayView';
 import InsightView from './views/InsightView';
+import OnboardingView from './views/OnboardingView';
 import SplashScreen from './components/SplashScreen';
 import RitmoLogo from './components/RitmoLogo';
 import TabBar from './components/TabBar';
@@ -803,10 +804,10 @@ export default function Ritmo() {
   }
 
   if (!hasOnboarded) {
-    return <Onboarding onComplete={(selectedModules) => {
+    return <OnboardingView onComplete={(selectedModules) => {
       setModules(selectedModules);
       setHasOnboarded(true);
-    }} t={t} theme={theme} darkMode={darkMode} setDarkMode={setDarkMode} />;
+    }} theme={theme} darkMode={darkMode} />;
   }
 
   const enabledModules = modules.filter(m => m.enabled && m.type !== 'collection');
@@ -1185,190 +1186,6 @@ export default function Ritmo() {
       )}
     </div>
     </ToastProvider>
-  );
-}
-
-// =============================================
-// ONBOARDING
-// =============================================
-function Onboarding({ onComplete, t, theme, darkMode, setDarkMode }) {
-  const [step, setStep] = useState(0);
-  const [selectedDefaults, setSelectedDefaults] = useState(
-    DEFAULT_MODULES.reduce((acc, m) => ({ ...acc, [m.id]: false }), {})
-  );
-  const [projectsEnabled, setProjectsEnabled] = useState(false);
-
-  const moduleCount = Object.values(selectedDefaults).filter(Boolean).length;
-  const canProceed = moduleCount >= 1;
-
-  const finish = () => {
-    const seeded = instantiateDefaults(DEFAULT_MODULES).map(m => ({
-      ...m,
-      enabled: selectedDefaults[m.id] === true,
-    }));
-    if (projectsEnabled) {
-      seeded.push({ ...instantiateDefaults([PROJECTS_MODULE_TEMPLATE])[0], enabled: true });
-    }
-    onComplete(seeded);
-  };
-
-  return (
-    <div className={`min-h-screen ${theme.bg} p-4 flex items-center justify-center`}>
-      <div className={`${theme.card} rounded-2xl p-6 shadow-lg max-w-lg w-full`}>
-        {step === 0 && (
-          <div className="text-center">
-            <div className="flex justify-center mb-4">
-              <RitmoLogo
-                size={96}
-                variant={darkMode ? 'light' : 'dark'}
-                animated="splash"
-              />
-            </div>
-            <h1 className={`text-3xl font-bold ${theme.text} mb-2`}>{t('onboarding.welcome')}</h1>
-            <p className={`${theme.textMuted} mb-6`}>
-              {t('onboarding.intro')}
-            </p>
-            <button
-              onClick={() => setStep(1)}
-              className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium transition"
-            >
-              {t('onboarding.start')}
-            </button>
-          </div>
-        )}
-
-        {step === 1 && (
-          <div>
-            <h2 className={`text-2xl font-bold ${theme.text} mb-2`}>{t('onboarding.pickModules')}</h2>
-            <p className={`${theme.textMuted} mb-4 text-sm`}>
-              {t('onboarding.pickModulesHint')}
-            </p>
-            <div className="space-y-2 mb-4">
-              {DEFAULT_MODULES.map(m => {
-                const Icon = ICON_OPTIONS[m.icon] || Sparkles;
-                const enabled = selectedDefaults[m.id] === true;
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => setSelectedDefaults(prev => ({ ...prev, [m.id]: !enabled }))}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition ${
-                      enabled
-                        ? `border-${m.color}-400 bg-${m.color}-50 ${darkMode ? 'bg-opacity-10' : ''}`
-                        : `${theme.border} ${theme.cardSecondary}`
-                    }`}
-                  >
-                    <Icon className={`w-5 h-5 ${enabled ? `text-${m.color}-500` : theme.textMuted}`} />
-                    <div className="flex-1 text-left">
-                      <div className={`font-medium text-sm ${enabled ? theme.textSecondary : theme.textMuted}`}>
-                        {resolveModuleName(m, t)}
-                      </div>
-                      <div className={`text-xs ${theme.textMuted}`}>
-                        {m.type === 'checklist' && t('common.item_count', { n: m.items.length })}
-                        {m.type === 'choice' && t('modules.summary.choice')}
-                        {m.type === 'counter' && t('modules.types.counterDesc')}
-                        {m.type === 'tasks' && t('modules.summary.tasks')}
-                      </div>
-                    </div>
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                      enabled ? `bg-${m.color}-500 border-${m.color}-500` : 'border-slate-300'
-                    }`}>
-                      {enabled && <Check className="w-3 h-3 text-white" />}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            {!canProceed && (
-              <p className="text-xs text-rose-500 mb-3 text-center">
-                {t('onboarding.minOne')}
-              </p>
-            )}
-            <p className={`text-xs ${theme.textMuted} mb-4 text-center`}>
-              {t('onboarding.later')}
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setStep(0)}
-                className={`px-4 py-3 ${theme.cardSecondary} ${theme.textSecondary} rounded-xl font-medium transition`}
-              >
-                {t('common.back')}
-              </button>
-              <button
-                onClick={() => setStep(2)}
-                disabled={!canProceed}
-                className={`flex-1 py-3 rounded-xl font-medium transition ${
-                  canProceed
-                    ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                    : 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                }`}
-              >
-                {t('common.next')}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div>
-            <div className="flex items-center gap-3 mb-3">
-              <div className={`p-2 rounded-xl bg-cyan-100 ${darkMode ? 'bg-opacity-20' : ''}`}>
-                <GraduationCap className="w-6 h-6 text-cyan-500" />
-              </div>
-              <h2 className={`text-2xl font-bold ${theme.text}`}>{t('projects.title')}</h2>
-            </div>
-            <p className={`${theme.textMuted} mb-3 text-sm`}>
-              {t('projects.onboardingDescription')} {t('projects.onboardingDetails')}
-            </p>
-            <p className={`${theme.textMuted} mb-4 text-sm`}>
-              {t('projects.onboardingTrack')}
-            </p>
-
-            <button
-              onClick={() => setProjectsEnabled(v => !v)}
-              className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition mb-4 ${
-                projectsEnabled
-                  ? `border-cyan-400 bg-cyan-50 ${darkMode ? 'bg-opacity-10' : ''}`
-                  : `${theme.border} ${theme.cardSecondary}`
-              }`}
-            >
-              <GraduationCap className={`w-5 h-5 ${projectsEnabled ? 'text-cyan-500' : theme.textMuted}`} />
-              <div className="flex-1 text-left">
-                <div className={`font-medium text-sm ${projectsEnabled ? theme.textSecondary : theme.textMuted}`}>
-                  {t('projects.activate')}
-                </div>
-                <div className={`text-xs ${theme.textMuted}`}>
-                  {t('projects.activateHint')}
-                </div>
-              </div>
-              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                projectsEnabled ? 'bg-cyan-500 border-cyan-500' : 'border-slate-300'
-              }`}>
-                {projectsEnabled && <Check className="w-3 h-3 text-white" />}
-              </div>
-            </button>
-
-            <p className={`text-xs ${theme.textMuted} mb-4 text-center`}>
-              {t('projects.skipHint')}
-            </p>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => setStep(1)}
-                className={`px-4 py-3 ${theme.cardSecondary} ${theme.textSecondary} rounded-xl font-medium transition`}
-              >
-                {t('common.back')}
-              </button>
-              <button
-                onClick={finish}
-                className="flex-1 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium transition"
-              >
-                {t('onboarding.finish')}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
   );
 }
 

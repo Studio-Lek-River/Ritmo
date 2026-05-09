@@ -813,13 +813,25 @@ export default {
 
   onboarding: {
     welcome: 'Welkom bij Ritmo',
-    intro: 'Jouw persoonlijke dag-app. Volledig modulair: kies wat je wilt bijhouden, voeg toe wat je nodig hebt, verberg wat niet relevant is.',
+    tagline: 'Jouw dag, jouw ritme',
+    intro: 'Ritmo is jouw dag, op jouw manier. We lopen samen door een paar onderdelen. Voor elk gebied kun je kiezen: kant-en-klare voorbeelden, je eigen invulling, of helemaal overslaan.',
     start: 'Aan de slag',
-    pickModules: 'Kies je modules',
-    pickModulesHint: 'Selecteer welke onderdelen je wilt gebruiken. Vink aan wat bij je past. Je kunt dit later altijd uitbreiden.',
-    minOne: 'Activeer minstens één module om verder te gaan.',
-    later: '💡 Je kunt later eigen modules toevoegen, items wijzigen, en alles personaliseren via instellingen.',
     finish: 'Start Ritmo',
+    skipAll: 'Onboarding overslaan',
+    progress: 'Stap {current} van {total}',
+    placeholder: 'Stap-inhoud voor "{area}" volgt.',
+    steps: {
+      modules:     { title: 'Dagelijkse modules', subtitle: 'Wat wil je elke dag bijhouden?' },
+      projects:    { title: 'Projecten',          subtitle: 'Werk je aan iets groters?' },
+      collections: { title: 'Collecties',         subtitle: 'Wat wil je verzamelen of bijhouden?' },
+      household:   { title: 'Huishouden',         subtitle: 'Hou je je huis ook bij in Ritmo?' },
+    },
+    done: {
+      title: 'Klaar om te beginnen',
+      finish: 'Start Ritmo',
+      summaryEmpty: 'Je begint met een lege Ritmo. Je kunt altijd later modules en items toevoegen.',
+      summary: 'Klaargezet: {modules} modules, {projects} projecten, {collections} collecties, {household} huishouden-items.',
+    },
   },
 
   presets: {
