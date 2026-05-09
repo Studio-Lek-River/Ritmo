@@ -174,6 +174,7 @@ function CounterUI({
   darkMode,
 }) {
   const { t } = useTranslation();
+  const name = resolveModuleName(mod, t);
   const initialCategory = categoriesEnabled && categories.length ? categories[0] : null;
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [manualAmount, setManualAmount] = useState('');
