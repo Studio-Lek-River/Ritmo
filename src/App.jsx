@@ -24,7 +24,7 @@ import FeedbackForm from './components/help/FeedbackForm';
 import ChecklistModule from './modules/ChecklistModule';
 import CelebrationOverlay from './components/CelebrationOverlay';
 import ConfirmDialog from './components/ConfirmDialog';
-import { CELEBRATION_ANIMATIONS } from './utils/celebrations';
+import { CELEBRATION_ANIMATIONS, CONFETTI_CONFIG, buildConfetti } from './utils/celebrations';
 import { migrateModuleConfig, migrateDayModuleData, migrateSettings } from './utils/migrate';
 import { useTranslation, resolveModuleName } from './i18n/useTranslation';
 import { logEvent, removeEvent, generateTagId, generateTagGroupId } from './utils/collections';
@@ -282,17 +282,10 @@ export default function Ritmo() {
   }, [soundEnabled, soundVolume]);
 
   const triggerCelebration = (message) => {
-    const newConfetti = Array.from({ length: 30 }, (_, i) => ({
-      id: Date.now() + i,
-      x: Math.random() * 100,
-      delay: Math.random() * 0.5,
-      color: ['#fbbf24', '#3b82f6', '#10b981', '#ec4899', '#a855f7'][Math.floor(Math.random() * 5)],
-      rotation: Math.random() * 360,
-    }));
-    setConfetti(newConfetti);
+    setConfetti(buildConfetti());
     setCelebrationMsg(message);
-    setTimeout(() => setConfetti([]), 3000);
-    setTimeout(() => setCelebrationMsg(null), 2500);
+    setTimeout(() => setConfetti([]), CONFETTI_CONFIG.fadeOutMs);
+    setTimeout(() => setCelebrationMsg(null), CONFETTI_CONFIG.messageFadeMs);
   };
 
   // Counter-modules met celebration aan tonen een Lottie-overlay i.p.v. de
