@@ -1,6 +1,6 @@
 import React from 'react';
 import { Sparkles, Settings } from 'lucide-react';
-import { goalsForNight, timeDiffMinutes, sleepDurationMinutes, isOnTarget } from '../utils/sleep';
+import { goalsForNight, timeDiffMinutes, sleepDurationMinutes, isOnTarget, DEFAULT_SLEEP_TOLERANCE_MINUTES } from '../utils/sleep';
 import { formatDuration } from '../utils/format';
 import StarRating from '../components/StarRating';
 import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
@@ -32,7 +32,7 @@ export default function SleepModule({
   };
 
   const goals = goalsForNight(mod.goals, date);
-  const tol = mod.toleranceMinutes ?? 15;
+  const tol = mod.toleranceMinutes ?? DEFAULT_SLEEP_TOLERANCE_MINUTES;
 
   const bedTime = data?.bedTime || '';
   const wakeTime = data?.wakeTime || '';

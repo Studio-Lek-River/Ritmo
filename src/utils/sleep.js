@@ -6,6 +6,10 @@ import { WEEKDAY_KEYS, weekdayKeyForDate, previousWeekdayKey } from './dates';
 
 export { WEEKDAY_KEYS, weekdayKeyForDate, previousWeekdayKey };
 
+// Standaard-tolerantie (in minuten) voor "op tijd naar bed / opgestaan".
+// Gebruikt als module.toleranceMinutes niet is ingesteld.
+export const DEFAULT_SLEEP_TOLERANCE_MINUTES = 15;
+
 export function goalsForNight(moduleGoals, date) {
   if (!moduleGoals || !date) return { bed: null, wake: null };
   const today = weekdayKeyForDate(date);
@@ -52,7 +56,7 @@ export function isOnTarget(dayData, goals, toleranceMinutes) {
   if (!dayData) return false;
   const tol = typeof toleranceMinutes === 'number' && toleranceMinutes >= 0
     ? toleranceMinutes
-    : 15;
+    : DEFAULT_SLEEP_TOLERANCE_MINUTES;
   const bedDiff = timeDiffMinutes(dayData.bedTime, goals?.bed);
   const wakeDiff = timeDiffMinutes(dayData.wakeTime, goals?.wake);
   if (bedDiff == null || wakeDiff == null) return false;
@@ -66,7 +70,7 @@ export function summarizeSleep(daysData, module) {
   let durationCount = 0;
   let nightsOnTarget = 0;
   let nightsLogged = 0;
-  const tol = module?.toleranceMinutes ?? 15;
+  const tol = module?.toleranceMinutes ?? DEFAULT_SLEEP_TOLERANCE_MINUTES;
 
   for (const { date, dayData } of daysData) {
     if (!dayData) continue;
