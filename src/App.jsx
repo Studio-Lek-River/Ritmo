@@ -48,10 +48,8 @@ import {
   normalizeChecklistItemData, isChecklistItemComplete,
   canCountInStreak,
 } from './utils/dayProgress';
-import { getColorHex } from './utils/colors';
+import { getColorHex, COLOR_OPTIONS } from './utils/colors';
 import { playSound } from './utils/sound';
-
-const COLOR_OPTIONS = ['red', 'orange', 'amber', 'yellow', 'green', 'teal', 'cyan', 'blue', 'indigo', 'purple', 'pink'];
 
 // Default modules voor nieuwe gebruikers. `nameKey` blijft op het module-object
 // staan zodat de titel live met `t(nameKey)` wordt gerenderd; pas wanneer de

@@ -1,4 +1,4 @@
-// Maps a color key (string from COLOR_OPTIONS in App.jsx) to a set of Tailwind
+// Maps a color key (string from COLOR_OPTIONS) to a set of Tailwind
 // utility classes used by modules. Tailwind's safelist (tailwind.config.js)
 // guarantees these dynamic classes survive the JIT purge.
 //
@@ -7,11 +7,15 @@
 //
 // Pass `undefined`/unknown key for a neutral zinc fallback.
 
-const KNOWN_COLORS = new Set([
+// Kleuren die de gebruiker kan kiezen voor modules (volgorde = UI-volgorde).
+export const COLOR_OPTIONS = [
   'red', 'orange', 'amber', 'yellow', 'green', 'teal', 'cyan',
   'blue', 'indigo', 'purple', 'pink',
-  'rose',
-]);
+];
+
+// Alle kleuren die we klassen voor genereren — superset van COLOR_OPTIONS,
+// inclusief legacy/intern gebruikte tinten zoals 'rose'.
+const KNOWN_COLORS = new Set([...COLOR_OPTIONS, 'rose']);
 
 // Tailwind 500-stop hex values, matched to the `bg-${key}-500` choice in
 // getColorClasses. Used for inline-style backgrounds (gradients) where
