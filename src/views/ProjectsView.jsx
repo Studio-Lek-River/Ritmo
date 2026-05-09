@@ -15,6 +15,7 @@ import {
 } from '../utils/projects';
 import { useToast } from '../hooks/useToast';
 import { useTranslation } from '../i18n/useTranslation';
+import { createSubject } from '../utils/createSubject';
 
 export default function ProjectsView({
   modules,
@@ -105,12 +106,12 @@ export default function ProjectsView({
   const addSubject = () => {
     const name = newSubjectName.trim();
     if (!name) return;
-    const newId = `subj_${Date.now()}`;
+    const subject = createSubject(name);
     updateProject(p => ({
       ...p,
-      subjects: [...p.subjects, { id: newId, name, subgoals: [] }],
+      subjects: [...p.subjects, subject],
     }));
-    setSelectedSubjectId(newId);
+    setSelectedSubjectId(subject.id);
     setNewSubjectName('');
   };
 

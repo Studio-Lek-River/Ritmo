@@ -2,9 +2,7 @@
 // Metrics en hun events leven in settings.modules[i].metrics[j].events,
 // niet in per-dag moduleData (analoog aan collections).
 
-function genId(prefix) {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-}
+import { genId } from './genId';
 
 // Vaste lijst eenheden. `key` is een interne identifier; `labelKey` resolved
 // via i18n (`t(labelKey)`) voor de unit-dropdown. Het weergavesymbool is

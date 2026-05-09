@@ -3,10 +3,7 @@
 // niet in per-dag moduleData.
 
 import { todayKey } from './dates';
-
-function genId(prefix) {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-}
+import { genId } from './genId';
 
 export function getItemTrackingMode(item, collection) {
   if (collection.trackingMode === 'flexible') {

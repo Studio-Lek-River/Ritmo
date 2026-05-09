@@ -31,6 +31,8 @@ import { ToastProvider } from './hooks/useToast';
 import Toast from './components/Toast';
 import { formatAmount, formatDuration } from './utils/format';
 import { MODULE_PRESETS } from './utils/presets';
+import { genId } from './utils/genId';
+import { applyModulePreset } from './utils/applyModulePreset';
 import { MEASUREMENT_UNITS, unitSymbol, createMetric } from './utils/measurements';
 import { ICON_OPTIONS } from './utils/icons';
 import {
@@ -2687,10 +2689,6 @@ function CollectionTagGroupsEditor({ tagGroups, items, onUpdateGroups, theme }) 
   );
 }
 
-function genId(prefix) {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-}
-
 function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
   const { t } = useTranslation();
   const TYPE_OPTIONS = useMemo(() => getTypeOptions(t), [t]);
@@ -2765,24 +2763,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
   };
 
   const applyPreset = (preset) => {
-    setEditing(prev => {
-      const merged = { ...prev, ...preset };
-      if (preset.nameKey && !prev.name) delete merged.name;
-      if (preset.items && merged.type !== 'collection') {
-        merged.items = preset.items.map(label => ({ id: genId('items'), label }));
-      }
-      if (preset.options) {
-        merged.options = preset.options.map(label => ({ id: genId('options'), label }));
-      }
-      if (preset.metrics && merged.type === 'measurements') {
-        merged.metrics = preset.metrics.map(metric => ({
-          ...metric,
-          id: genId('metric'),
-          events: [],
-        }));
-      }
-      return merged;
-    });
+    setEditing(prev => applyModulePreset(prev, preset));
     setStep('config');
   };
 
