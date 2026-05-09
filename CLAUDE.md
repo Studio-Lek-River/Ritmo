@@ -8,6 +8,30 @@ Dit bestand bevat instructies voor Claude Code in deze repo. De projectinhoud (w
 
 **Bij twijfel: vragen.** Als er ambiguïteit is die tot verschillend correcte uitkomsten kan leiden (scope, locatie van een wijziging, naamgeving die elders gebruikt wordt, keuze tussen twee architectuur-opties), gebruik ik de `AskUserQuestion`-tool in plaats van te gokken. Bij keuzes die veilig te defaulten zijn → default kiezen en doorgaan, conform de bestaande "geen permissie-pauzes"-feedback.
 
+## Auto-commit: bij elke wijziging, nooit pushen
+
+**Harde regel.** Elke wijziging die ik in deze repo maak commit ik zelf. Als ik een bestand bewerk, hoort de commit erbij — niet wachten tot de gebruiker het doet, niet bundelen tot een volgende sessie. De gebruiker pusht zelf; ik roep `git push` nooit aan, in geen enkele variant.
+
+**Granulariteit:** één commit per logische stap. Een `feat:` en een `fix:` in dezelfde turn worden twee aparte commits, in de volgorde die het meest logisch reviewt. Eén feature die twee bestanden raakt is één commit. Bij twijfel: liever splitsen dan mengen — gemengde commits zijn nooit correct (zie Conventional Commits-regels hieronder).
+
+**Wanneer wel:**
+- Bij elke daadwerkelijke wijziging aan code, config, instructies of documentatie in deze repo.
+- Direct na het afronden van de logische stap, niet aan het eind van de turn als een afsluitactie.
+- Ook bij kleine wijzigingen (typo's, comment-fixes) — geen drempel.
+
+**Wanneer niet:**
+- Research, exploratie, of plan-mode zonder wijzigingen.
+- Wijzigingen aan bestanden buiten de Ritmo-repo (bv. `~/.claude/plans/...` of memory-bestanden).
+- Als de gebruiker expliciet zegt "alleen wijzigen, niet committen" voor deze actie.
+- Bij een failing build/lint-hook: niet committen tot het werkt; fix eerst, dan commit (geen `--no-verify`).
+
+**Pushen — nooit.**
+- Geen `git push`, `git push --force`, `git push origin ...`, geen `gh pr create` met implicite push.
+- Niet via een hook of script dat ik zelf draai.
+- De gebruiker pusht. Punt.
+
+**Format:** Conventional Commits per type, zoals hieronder beschreven. Geen `Co-Authored-By: Claude`-trailer.
+
 ## Commits: strakke Conventional Commits per type
 
 Ritmo gebruikt [semantic-release](.releaserc.json). Het format van elke commit op `main` bepaalt automatisch het versienummer en de release notes. Format-spec staat in [CONTRIBUTING.md](CONTRIBUTING.md).
