@@ -5,6 +5,7 @@ import {
   ShoppingCart, Coffee, Utensils, Zap, Droplet, Wifi, Phone, Car, Film, Music, Book, Heart, Gift, Dumbbell, Flame, Plane, Fuel, BadgeEuro, GraduationCap, Briefcase,
 } from 'lucide-react';
 import useStoredState from '../hooks/useStoredState';
+import { STORAGE_KEYS } from '../storage';
 import {
   isOverdue, daysUntilDue, formatRelativeDate, formatEuro, parseEuroInput,
   defaultStartDate, endDateBefore, isActiveInMonth,
@@ -69,8 +70,8 @@ export default function HouseholdView({ theme, darkMode }) {
   });
   const toggle = (key) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
-  const [chores, setChores] = useStoredState('household:chores', []);
-  const [groceries, setGroceries] = useStoredState('household:groceries', { items: [], shopDay: null });
+  const [chores, setChores] = useStoredState(STORAGE_KEYS.HOUSEHOLD_CHORES, []);
+  const [groceries, setGroceries] = useStoredState(STORAGE_KEYS.HOUSEHOLD_GROCERIES, { items: [], shopDay: null });
   const [budget, setBudget] = useStoredState('household:budget', { income: [], expenses: [], oneTime: [] });
   const [utilities, setUtilities] = useStoredState('household:utilities', { actuals: {} });
   const [config, setConfig] = useStoredState('household:config', {});

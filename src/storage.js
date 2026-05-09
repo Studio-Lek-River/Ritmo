@@ -85,4 +85,12 @@ if (typeof window !== 'undefined') {
   window.storage = storage;
 }
 
+// Centrale registry van vaste storage-keys. Per-dag- en per-module-keys
+// worden dynamisch opgebouwd (`day:YYYY-MM-DD`, `module:<id>`); hier staan
+// alleen de keys met een vaste naam.
+export const STORAGE_KEYS = {
+  HOUSEHOLD_CHORES: 'household:chores',
+  HOUSEHOLD_GROCERIES: 'household:groceries',
+};
+
 export default storage;

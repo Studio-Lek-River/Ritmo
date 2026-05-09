@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { STORAGE_KEYS } from '../storage';
 import WelcomeStep from '../components/onboarding/WelcomeStep';
 import AreaStep from '../components/onboarding/AreaStep';
 import DoneStep from '../components/onboarding/DoneStep';
@@ -42,11 +43,11 @@ export default function OnboardingView({ onComplete, theme, darkMode }) {
       const { modules, chores, groceries } = buildOnboardingResult(areaState, t);
       const writes = [];
       if (chores.length > 0) {
-        writes.push(window.storage.set('household:chores', JSON.stringify(chores)));
+        writes.push(window.storage.set(STORAGE_KEYS.HOUSEHOLD_CHORES, JSON.stringify(chores)));
       }
       if (groceries.length > 0) {
         writes.push(window.storage.set(
-          'household:groceries',
+          STORAGE_KEYS.HOUSEHOLD_GROCERIES,
           JSON.stringify({ items: groceries, shopDay: null })
         ));
       }
