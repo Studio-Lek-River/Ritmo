@@ -312,7 +312,7 @@ export default function Ritmo() {
           setCustomTasks(prev => [...prev, {
             id: Date.now() + Math.random(),
             recurringId: rt.id,
-            text: rtheme.text,
+            text: rt.text,
             done: false
           }]);
         }
@@ -3593,7 +3593,7 @@ function ReflectionSettings({ reflectionQuestions, setReflectionQuestions, recur
               <div key={rt.id} className={`flex items-center gap-2 p-2 ${theme.cardSecondary} rounded-lg`}>
                 <Repeat className={`w-4 h-4 ${theme.textMuted}`} />
                 <div className="flex-1">
-                  <div className={`text-sm ${theme.textSecondary}`}>{rtheme.text}</div>
+                  <div className={`text-sm ${theme.textSecondary}`}>{rt.text}</div>
                   <div className={`text-xs ${theme.textMuted}`}>
                     {rt.days.map(d => dayNames[d]).join(', ')}
                   </div>
