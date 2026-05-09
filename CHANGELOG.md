@@ -1,3 +1,11 @@
+# [0.7.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.6.0...v0.7.0) (2026-05-09)
+
+
+### Features
+
+* **modules:** add celebration field to counter type ([0aba4f5](https://github.com/Studio-Lek-River/Ritmo/commit/0aba4f56b38bea66034ee88b2102a9b301ffe079))
+* **modules:** add Lottie celebration overlay for counter goals ([43f4b0d](https://github.com/Studio-Lek-River/Ritmo/commit/43f4b0dc065b0fcebe41f0da704519c8483f30ae))
+
 # [0.6.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.5.0...v0.6.0) (2026-05-08)
 
 
