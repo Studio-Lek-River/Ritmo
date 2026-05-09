@@ -21,7 +21,9 @@ import BackupSection from './components/BackupSection';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
 import ChecklistModule from './modules/ChecklistModule';
+import CelebrationOverlay from './components/CelebrationOverlay';
 import ConfirmDialog from './components/ConfirmDialog';
+import { CELEBRATION_ANIMATIONS } from './utils/celebrations';
 import { migrateModuleConfig, migrateDayModuleData, migrateSettings } from './utils/migrate';
 import { useTranslation, resolveModuleName } from './i18n/useTranslation';
 import { logEvent, removeEvent, generateTagId, generateTagGroupId } from './utils/collections';
@@ -128,6 +130,7 @@ export default function Ritmo() {
   const [hasDismissedInstallBanner, setHasDismissedInstallBanner] = useState(false);
   const [confetti, setConfetti] = useState([]);
   const [celebrationMsg, setCelebrationMsg] = useState(null);
+  const [celebrationOverlay, setCelebrationOverlay] = useState(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
 
   const previousCompletionRef = useRef(null);
@@ -332,6 +335,20 @@ export default function Ritmo() {
     setTimeout(() => setCelebrationMsg(null), 2500);
   };
 
+  // Counter-modules met celebration aan tonen een Lottie-overlay i.p.v. de
+  // confetti-toast — eenmalig per dag, gemarkeerd via celebrationShown in
+  // dayData. Andere counters en de "alles voltooid"-celebratie houden de toast.
+  const tryCounterCelebration = (mod, message) => {
+    const cel = mod?.celebration;
+    const alreadyShown = moduleData[mod.id]?.celebrationShown === true;
+    if (cel?.enabled && cel.mode === 'overlay' && !alreadyShown) {
+      setCelebrationOverlay({ moduleId: mod.id, animationId: cel.animation });
+      updateModuleData(mod.id, prev => ({ ...prev, celebrationShown: true }));
+    } else {
+      triggerCelebration(message);
+    }
+  };
+
   // Check overall completion
   useEffect(() => {
     if (loading) return;
@@ -461,7 +478,7 @@ export default function Ritmo() {
     sfx('tick');
 
     if (mod && goal > 0 && currentTotal < goal && newTotal >= goal) {
-      triggerCelebration(t('today.goalReached', { name: resolveModuleName(mod, t) }));
+      tryCounterCelebration(mod, t('today.goalReached', { name: resolveModuleName(mod, t) }));
     }
   };
 
@@ -503,7 +520,7 @@ export default function Ritmo() {
     sfx('tick');
 
     if (crossedGoal && mod) {
-      triggerCelebration(t('today.goalReached', { name: resolveModuleName(mod, t) }));
+      tryCounterCelebration(mod, t('today.goalReached', { name: resolveModuleName(mod, t) }));
     }
   };
 
@@ -884,6 +901,13 @@ export default function Ritmo() {
             {celebrationMsg}
           </div>
         </div>
+      )}
+
+      {celebrationOverlay && (
+        <CelebrationOverlay
+          animationId={celebrationOverlay.animationId}
+          onClose={() => setCelebrationOverlay(null)}
+        />
       )}
 
       <style>{`
@@ -3271,6 +3295,46 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
                     )}
                   </>
                 )}
+
+                {(() => {
+                  const cel = editing.celebration ?? { enabled: false, animation: 'cowDrinkMilk', mode: 'overlay' };
+                  const goalSet = (editing.dailyGoal ?? editing.dailyGoalMinutes ?? 0) > 0;
+                  const animationOptions = Object.values(CELEBRATION_ANIMATIONS);
+                  return (
+                    <div className={`${theme.cardSecondary} rounded-lg p-3 space-y-3`}>
+                      <label className={`flex items-center gap-2 text-sm ${theme.textSecondary}`}>
+                        <input
+                          type="checkbox"
+                          checked={!!cel.enabled}
+                          disabled={!goalSet}
+                          onChange={(e) => update('celebration', { ...cel, enabled: e.target.checked })}
+                        />
+                        {t('modules.celebrationEnabled')}
+                      </label>
+                      {!goalSet && (
+                        <p className={`text-xs ${theme.textSecondary} opacity-70`}>
+                          {t('modules.celebrationDisabledHint')}
+                        </p>
+                      )}
+                      {cel.enabled && goalSet && (
+                        <div>
+                          <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                            {t('modules.celebrationAnimation')}
+                          </label>
+                          <select
+                            value={cel.animation}
+                            onChange={(e) => update('celebration', { ...cel, animation: e.target.value })}
+                            className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm`}
+                          >
+                            {animationOptions.map(a => (
+                              <option key={a.id} value={a.id}>{t(a.labelKey)}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </>
             );
           })()}

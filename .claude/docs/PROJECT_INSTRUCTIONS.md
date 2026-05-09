@@ -78,6 +78,7 @@ Concreet betekent dit:
 - **Frontend**: React 18 + Vite 5
 - **Styling**: Tailwind CSS 3 (met dynamische kleur-safelist)
 - **Iconen**: lucide-react
+- **Animaties**: lottie-react (Lottie-bestanden in `src/assets/animations/`)
 - **PWA**: vite-plugin-pwa (manifest + service worker)
 - **Storage**: IndexedDB via idb-keyval (met `window.storage`-compatible API)
 - **Hosting**: Netlify (gratis tier, koppelt met GitHub-organisatie Studio-Lek-River)
@@ -114,6 +115,11 @@ Ritmo draait om **modules**. Elke module heeft:
   presets?: number[],                                         // voor counter (snelinvoer-knoppen, bijv. [15, 30, 60])
   categoriesEnabled?: boolean,                                // voor counter
   categories?: [{id, label}],                                 // voor counter
+  celebration?: {                                             // voor counter: Lottie-animatie bij eerste doel-bereikt van de dag
+    enabled: boolean,
+    animation: string,                                        // sleutel uit CELEBRATION_ANIMATIONS-registry
+    mode: 'overlay',                                          // ruimte voor 'tile' later
+  },
   goals?: { monday: {bed, wake}, tuesday: {...}, ... },       // voor sleep (per weekdag)
   toleranceMinutes?: number,                                  // voor sleep (default 15)
   showMorningScore?: boolean,                                 // voor sleep (default true)
@@ -183,6 +189,8 @@ src/
 ├── main.jsx                   # React entry point
 ├── index.css                  # Tailwind imports + globale stijlen
 ├── storage.js                 # IndexedDB wrapper via idb-keyval met window.storage API; eenmalige migratie van localStorage
+├── assets/                    # statische assets (Lottie-JSON, e.d.)
+│   └── animations/            # Lottie-bestanden voor celebratie-overlays
 ├── i18n/                      # tweetaligheid (NL/EN)
 │   ├── nl.js                  # Nederlandse strings (genest object)
 │   ├── en.js                  # Engelse strings (gespiegelde structuur)
@@ -217,6 +225,7 @@ src/
 │   ├── BackupSection.jsx      # export/import-UI in de install-tab (download + file-picker + confirm)
 │   ├── TabBar.jsx             # tabbalk met overflow-menu ("Meer") en discoverable tabs
 │   ├── InstallBanner.jsx      # banner voor PWA-installatie-suggestie
+│   ├── CelebrationOverlay.jsx # full-screen Lottie-overlay bij eerste doel-bereikt van de dag (counter)
 │   └── help/                  # help-overlay componenten
 │       ├── FeedbackForm.jsx
 │       ├── HelpItemRow.jsx
@@ -241,7 +250,8 @@ src/
     ├── backup.js              # export/import helpers: exportData, downloadBackup, importData, readFileAsText
     ├── install.js             # PWA-detectie helpers
     ├── persistStorage.js      # navigator.storage.persist() aanroep bij app-start
-    └── sound.js               # geluidsfeedback helpers
+    ├── sound.js               # geluidsfeedback helpers
+    └── celebrations.js        # registry van Lottie-celebratie-animaties (CELEBRATION_ANIMATIONS)
 ```
 
 De choice- en tasks-modules zitten nog inline in `App.jsx`, evenals de meeste views, settings-modals en theme-logica. **Refactoring is een doorlopend proces** — bij elke nieuwe feature kijken we of er logica naar een aparte file kan. Geen vaste bestemmingsstructuur opleggen; opsplitsen gebeurt zodra er een tweede gebruiker van een stuk logica is.
