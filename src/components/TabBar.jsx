@@ -23,6 +23,12 @@ export default function TabBar({ modules, view, setView, theme, moreOpen, setMor
       emptyAddable: true,
       visible: modules.some(m => m.enabled && m.type === 'collection'),
     },
+    {
+      id: 'measurements',
+      label: t('nav.measurements'),
+      emptyAddable: true,
+      visible: modules.some(m => m.enabled && m.type === 'measurements'),
+    },
     { id: 'reflection', label: t('nav.reflection'), always: true },
   ];
   const visibleTabs = allTabs.filter(tab => tab.always || tab.visible);

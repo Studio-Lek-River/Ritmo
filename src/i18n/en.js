@@ -93,6 +93,7 @@ export default {
     reflection: 'Reflection',
     projects: 'Projects',
     collections: 'Collections',
+    measurements: 'Measurements',
     household: 'Household',
     settings: 'Settings',
     more: 'More',

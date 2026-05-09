@@ -94,6 +94,7 @@ export default {
     reflection: 'Reflectie',
     projects: 'Projecten',
     collections: 'Collecties',
+    measurements: 'Metingen',
     household: 'Huishouden',
     settings: 'Instellingen',
     more: 'Meer',

@@ -97,6 +97,21 @@ export function migrateModuleConfig(module) {
     };
   }
 
+  if (m.type === 'measurements') {
+    m = {
+      ...m,
+      metrics: Array.isArray(m.metrics)
+        ? m.metrics.map((metric) => ({
+            target: null,
+            lowerIsBetter: false,
+            decimals: 1,
+            ...(metric || {}),
+            events: Array.isArray(metric?.events) ? metric.events : [],
+          }))
+        : [],
+    };
+  }
+
   if (m.type === 'collection' && !m.tagGroups) {
     const oldTags = Array.isArray(m.tags) ? m.tags : [];
     const tagGroups = oldTags.length === 0

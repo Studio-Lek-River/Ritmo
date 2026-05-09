@@ -8,6 +8,7 @@ import CounterModule from './modules/CounterModule';
 import SleepModule from './modules/SleepModule';
 import ProjectsView from './views/ProjectsView';
 import CollectionsView from './views/CollectionsView';
+import MeasurementsView from './views/MeasurementsView';
 import HouseholdView from './views/HouseholdView';
 import TodayView from './views/TodayView';
 import InsightView from './views/InsightView';
@@ -595,6 +596,14 @@ export default function Ritmo() {
     }));
   };
 
+  // ---- measurements handlers --------------------------------------------
+
+  const updateMeasurementsModule = (updatedModule) => {
+    setModules(prev => prev.map(m =>
+      m.id === updatedModule.id && m.type === 'measurements' ? updatedModule : m
+    ));
+  };
+
   const openModuleEditor = (type) => {
     setEditingModule({
       id: `mod_${Date.now()}`,
@@ -1054,6 +1063,16 @@ export default function Ritmo() {
             onEditCollection={(mod) => setEditingModule(mod)}
             hasUsedSwipe={hasUsedSwipe}
             onFirstSwipe={() => setHasUsedSwipe(true)}
+            theme={theme}
+          />
+        )}
+
+        {view === 'measurements' && (
+          <MeasurementsView
+            module={modules.find(m => m.enabled && m.type === 'measurements')}
+            onUpdateModule={updateMeasurementsModule}
+            onCreate={() => openModuleEditor('measurements')}
+            onEditModule={(mod) => setEditingModule(mod)}
             theme={theme}
           />
         )}
