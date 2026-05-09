@@ -45,6 +45,8 @@ import {
   Smartphone,
   Bot,
   Scissors,
+  Scale,
+  Ruler,
 } from 'lucide-react';
 
 export const ICON_OPTIONS = {
@@ -94,4 +96,6 @@ export const ICON_OPTIONS = {
   Smartphone,
   Bot,
   Scissors,
+  Scale,
+  Ruler,
 };
