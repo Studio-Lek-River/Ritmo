@@ -13,7 +13,21 @@
       "PowerShell(npm run build 2>&1)",
       "PowerShell(where.exe node 2>&1; where.exe npm 2>&1; Test-Path \"C:\\\\Program Files\\\\nodejs\\\\npm.cmd\"; Test-Path \"$env:APPDATA\\\\npm\\\\npm.cmd\")",
       "Bash(git stash *)",
-      "Bash(git restore *)"
+      "Bash(git restore *)",
+      "Bash(Get-Content \"c:\\\\Ritmo\\\\src\\\\App.jsx\")",
+      "Bash(Measure-Object -Line)",
+      "Bash(Select-Object -ExpandProperty Lines)",
+      "Bash(grep -E \"\\(Module|View\\)\\\\.jsx$\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Ritmo\\\\src\\\\views\" -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object -Property Name, FullName)",
+      "Bash(awk '{print $1}')",
+      "Bash(ls \"C:\\\\Users\\\\bas.vanhees\\\\.claude\\\\plans\" 2>nul || echo \"NO_DIR\")",
+      "Bash(npm install *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
+    ],
+    "additionalDirectories": [
+      "c:\\Ritmo"
     ]
   }
 }
