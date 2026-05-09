@@ -24,7 +24,9 @@
       "Bash(ls \"C:\\\\Users\\\\bas.vanhees\\\\.claude\\\\plans\" 2>nul || echo \"NO_DIR\")",
       "Bash(npm install *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git diff *)",
+      "Read(//dev/**)"
     ],
     "additionalDirectories": [
       "c:\\Ritmo"

@@ -895,4 +895,54 @@ export default {
     importErrorVersion: 'Deze back-up is van een nieuwere versie van Ritmo.',
     importErrorGeneric: 'Het terugzetten lukte niet. Probeer het opnieuw.',
   },
+
+  insight: {
+    headerButtonAria: 'Open inzicht',
+    title: 'Inzicht',
+    period: {
+      '7days': '7 dagen',
+      '30days': '30 dagen',
+      '90days': '90 dagen',
+      all: 'Alles',
+    },
+    empty: {
+      noModules: 'Activeer eerst een module op Vandaag om hier patronen te zien.',
+      noHistory: 'Nog geen data om te tonen. Begin met loggen op de Vandaag-tab.',
+      moduleNoData: 'Geen data in deze periode.',
+    },
+    footerHint: 'Je ziet alle ingeschakelde modules. Module verbergen? Zet hem uit op Vandaag.',
+    counter: {
+      summary: 'Gemiddeld {avg}, doel gehaald op {hits} van {total} dagen',
+      summaryNoGoal: 'Gemiddeld {avg} per dag',
+      goalLabel: 'doel {value}',
+    },
+    checklist: {
+      summary: 'Gemiddeld {avg}% voltooid over {days} dagen',
+      itemPct: '{pct}% van {days} dagen',
+    },
+    choice: {
+      summary: 'Meest gekozen: {top} ({count}x)',
+      summaryEmpty: 'Geen keuze geregistreerd in deze periode',
+    },
+    sleep: {
+      summary: 'Op tijd in bed op {hits} van {total} nachten, gemiddeld {time}',
+      summaryNoGoal: 'Gemiddeld in bed om {time}',
+      bedDot: 'Bedtijd',
+      wakeDot: 'Wektijd',
+    },
+    collection: {
+      summary: '{count} events in {days} dagen',
+      summaryEmpty: 'Geen events in deze periode',
+      topItemsHeading: 'Meest geregistreerd',
+    },
+    tasks: {
+      summary: '{completed} van {total} taken afgerond',
+      summaryEmpty: 'Geen taken in deze periode',
+    },
+    projects: {
+      summary: '{active} actief, {completed} afgerond',
+      overdueLabel: '{n} over deadline',
+    },
+    notSupportedYet: 'Nog niet ondersteund in inzicht',
+  },
 };

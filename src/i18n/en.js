@@ -885,4 +885,54 @@ export default {
     importErrorVersion: 'This backup is from a newer version of Ritmo.',
     importErrorGeneric: 'Restore failed. Please try again.',
   },
+
+  insight: {
+    headerButtonAria: 'Open insights',
+    title: 'Insights',
+    period: {
+      '7days': '7 days',
+      '30days': '30 days',
+      '90days': '90 days',
+      all: 'All',
+    },
+    empty: {
+      noModules: 'Activate a module on Today first to see patterns here.',
+      noHistory: 'No data to show yet. Start logging on the Today tab.',
+      moduleNoData: 'No data in this period.',
+    },
+    footerHint: 'You see all enabled modules. Want to hide a module? Disable it on Today.',
+    counter: {
+      summary: 'Average {avg}, goal reached on {hits} of {total} days',
+      summaryNoGoal: 'Average {avg} per day',
+      goalLabel: 'goal {value}',
+    },
+    checklist: {
+      summary: 'Average {avg}% completed over {days} days',
+      itemPct: '{pct}% of {days} days',
+    },
+    choice: {
+      summary: 'Most chosen: {top} ({count}x)',
+      summaryEmpty: 'No choice registered in this period',
+    },
+    sleep: {
+      summary: 'On time in bed on {hits} of {total} nights, average {time}',
+      summaryNoGoal: 'Average in bed at {time}',
+      bedDot: 'Bedtime',
+      wakeDot: 'Wake time',
+    },
+    collection: {
+      summary: '{count} events in {days} days',
+      summaryEmpty: 'No events in this period',
+      topItemsHeading: 'Most logged',
+    },
+    tasks: {
+      summary: '{completed} of {total} tasks completed',
+      summaryEmpty: 'No tasks in this period',
+    },
+    projects: {
+      summary: '{active} active, {completed} completed',
+      overdueLabel: '{n} past deadline',
+    },
+    notSupportedYet: 'Not yet supported in insights',
+  },
 };
