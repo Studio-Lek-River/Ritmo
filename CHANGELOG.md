@@ -1,3 +1,16 @@
+# [0.8.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.7.0...v0.8.0) (2026-05-09)
+
+
+### Features
+
+* voeg generieke LineChart-component toe ([d034d22](https://github.com/Studio-Lek-River/Ritmo/commit/d034d222fbb9b54b303dacaf6c118d705218ef22))
+* voeg health/bloodpressure/heartrate presets toe voor measurements ([eaed5c8](https://github.com/Studio-Lek-River/Ritmo/commit/eaed5c89514bcfb88bd80ba29786d5ad6d6c188e))
+* voeg measurements module-type toe (renderer + detail-view) ([5fa4e33](https://github.com/Studio-Lek-River/Ritmo/commit/5fa4e33dd7111b5cff520dc89cc95eb04b83d6d1))
+* voeg measurements toe aan ModuleEditor met inline metric-rijen ([2b18118](https://github.com/Studio-Lek-River/Ritmo/commit/2b181189c808b51a004500285221a00f40879148))
+* voeg measurements-helpers en MEASUREMENT_UNITS toe ([95e0b14](https://github.com/Studio-Lek-River/Ritmo/commit/95e0b1474c1ff9fb641433eee64558cadf40a4cb))
+* voeg MeasurementsInsightCard toe aan Insights-tab ([611f86d](https://github.com/Studio-Lek-River/Ritmo/commit/611f86df31e79a67740095e1937c7bac016b374a))
+* voeg Scale en Ruler iconen toe aan ICON_OPTIONS ([4aa256b](https://github.com/Studio-Lek-River/Ritmo/commit/4aa256b407e7178fb790b8eb7a7b2205c4925445))
+
 # [0.7.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.6.0...v0.7.0) (2026-05-09)
 
 
