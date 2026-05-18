@@ -636,6 +636,8 @@ export default {
     sleepOnTrack: 'Op ritme',
     sleepRegistered: 'Geregistreerd',
     sleepOnTime: 'op tijd',
+    sleepTapToFill: 'tik om in te vullen',
+    sleepOnTimeGoalReached: 'Op tijd, doel gehaald',
     clearTime: 'Wissen',
     sleepScoreLabels: {
       1: 'Slecht geslapen',

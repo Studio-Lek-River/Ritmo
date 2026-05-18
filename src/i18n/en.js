@@ -631,6 +631,8 @@ export default {
     sleepOnTrack: 'On track',
     sleepRegistered: 'Logged',
     sleepOnTime: 'on target',
+    sleepTapToFill: 'tap to fill in',
+    sleepOnTimeGoalReached: 'On time, goal reached',
     clearTime: 'Clear',
     sleepScoreLabels: {
       1: 'Slept badly',

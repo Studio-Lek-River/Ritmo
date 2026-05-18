@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Settings } from 'lucide-react';
+import { Sparkles, Settings, Check } from 'lucide-react';
 import { goalsForNight, timeDiffMinutes, sleepDurationMinutes, isOnTarget, DEFAULT_SLEEP_TOLERANCE_MINUTES } from '../utils/sleep';
 import { formatDuration } from '../utils/format';
 import StarRating from '../components/StarRating';
@@ -55,22 +55,24 @@ export default function SleepModule({
     onUpdate(prev => ({ ...prev, morningScore: prev.morningScore === value ? null : value }));
   };
 
-  const diffClass = (diff) => {
-    if (diff == null) return theme.textMuted;
-    return Math.abs(diff) <= tol
-      ? (darkMode ? 'text-green-300' : 'text-green-600')
-      : theme.textSecondary;
-  };
+  const headerGoal = (goals.wake || goals.bed)
+    ? `${goals.wake || '?'} · ${goals.bed || '?'}`
+    : null;
 
   return (
     <div className={`${theme.card} rounded-2xl p-5 shadow-sm mb-4`}>
       <div className="flex items-center gap-2 mb-3">
         <Glyph className={`w-5 h-5 ${colorClass}`} />
-        <h2 className={`font-semibold ${theme.textSecondary}`}>{name}</h2>
+        <h2 className={`font-semibold ${theme.textSecondary} flex-1`}>{name}</h2>
+        {headerGoal && (
+          <span className={`text-[10px] ${theme.textMuted} uppercase tracking-wide`}>
+            {headerGoal}
+          </span>
+        )}
         {onEdit && (
           <button
             onClick={onEdit}
-            className={`ml-auto p-1.5 ${theme.hover} rounded-lg ${theme.textMuted} transition`}
+            className={`p-1.5 ${theme.hover} rounded-lg ${theme.textMuted} transition`}
             title={t('modules.settingsTitle')}
             aria-label={t('modules.settingsAria', { name })}
           >
@@ -79,76 +81,45 @@ export default function SleepModule({
         )}
       </div>
 
-      {(goals.bed || goals.wake) && (
-        <div className={`text-xs ${theme.textMuted} mb-3`}>
-          {t('modules.sleepGoalTonight')} {goals.bed || '?'} {t('common.to')} {goals.wake || '?'}
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-6 mb-3">
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className={`text-xs font-medium ${theme.textMuted}`}>{t('modules.sleepWokeUpLabel')}</label>
-            {wakeTime && editable && (
-              <button
-                type="button"
-                onClick={() => setWakeTime('')}
-                className={`text-xs ${theme.textMuted} hover:underline`}
-              >
-                {t('modules.clearTime')}
-              </button>
-            )}
-          </div>
-          <input
-            type="time"
-            value={wakeTime}
-            disabled={!editable}
-            onChange={(e) => setWakeTime(e.target.value)}
-            className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300 disabled:opacity-60`}
-          />
-          {wakeDiff != null && (
-            <div className={`text-xs mt-1 ${diffClass(wakeDiff)}`}>
-              {formatDiff(wakeDiff)}
-            </div>
-          )}
-        </div>
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className={`text-xs font-medium ${theme.textMuted}`}>{t('modules.sleepBedtimeLabel')}</label>
-            {bedTime && editable && (
-              <button
-                type="button"
-                onClick={() => setBedTime('')}
-                className={`text-xs ${theme.textMuted} hover:underline`}
-              >
-                {t('modules.clearTime')}
-              </button>
-            )}
-          </div>
-          <input
-            type="time"
-            value={bedTime}
-            disabled={!editable}
-            onChange={(e) => setBedTime(e.target.value)}
-            className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300 disabled:opacity-60`}
-          />
-          {bedDiff != null && (
-            <div className={`text-xs mt-1 ${diffClass(bedDiff)}`}>
-              {formatDiff(bedDiff)}
-            </div>
-          )}
-        </div>
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <SleepTimeBlock
+          label={t('modules.sleepWokeUpLabel')}
+          value={wakeTime}
+          diff={wakeDiff}
+          tol={tol}
+          editable={editable}
+          onChange={setWakeTime}
+          color={mod.color}
+          darkMode={darkMode}
+          formatDiff={formatDiff}
+          placeholderHint={t('modules.sleepTapToFill')}
+        />
+        <SleepTimeBlock
+          label={t('modules.sleepBedtimeLabel')}
+          value={bedTime}
+          diff={bedDiff}
+          tol={tol}
+          editable={editable}
+          onChange={setBedTime}
+          color={mod.color}
+          darkMode={darkMode}
+          formatDiff={formatDiff}
+          placeholderHint={t('modules.sleepTapToFill')}
+        />
       </div>
 
       {duration != null && (
-        <div className={`text-xs ${theme.textMuted} mb-3`}>
-          {t('modules.sleepDuration')} {formatDuration(duration)}
+        <div className="flex items-center justify-between mb-3 text-xs">
+          <span className={theme.textMuted}>{t('modules.sleepDuration')}</span>
+          <span className={`font-semibold ${theme.textSecondary}`}>{formatDuration(duration)}</span>
         </div>
       )}
 
       {mod.showMorningScore && (
         <div className="mb-3">
-          <div className={`text-xs font-medium ${theme.textMuted} mb-1`}>{t('modules.sleepHowSlept')}</div>
+          <div className={`text-xs font-medium ${theme.textMuted} mb-1`}>
+            {t('modules.sleepHowSlept')}
+          </div>
           <StarRating
             value={morningScore ?? 0}
             onChange={setScore}
@@ -162,15 +133,89 @@ export default function SleepModule({
 
       {hasAny && (
         <div
-          className={`mt-2 px-3 py-2 rounded-lg text-xs font-medium ${
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${
             onTarget
-              ? (darkMode ? 'bg-green-900/30 text-green-300' : 'bg-green-50 text-green-700')
-              : `${theme.cardSecondary} ${theme.textMuted}`
+              ? (darkMode ? 'bg-emerald-900/30 text-emerald-300' : 'bg-emerald-50 text-emerald-700')
+              : (darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600')
           }`}
         >
-          {onTarget ? t('modules.sleepOnTrack') : t('modules.sleepRegistered')}
+          {onTarget ? (
+            <>
+              <Check className="w-3.5 h-3.5" strokeWidth={3} />
+              <span>{t('modules.sleepOnTimeGoalReached')}</span>
+            </>
+          ) : (
+            <span>{t('modules.sleepRegistered')}</span>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+function SleepTimeBlock({
+  label, value, diff, tol, editable, onChange, color, darkMode, formatDiff, placeholderHint,
+}) {
+  const hasValue = !!value;
+  const inputRef = React.useRef(null);
+
+  const handleClick = () => {
+    if (!editable) return;
+    const el = inputRef.current;
+    if (!el) return;
+    if (typeof el.showPicker === 'function') {
+      try { el.showPicker(); return; } catch { /* fall through */ }
+    }
+    el.focus();
+  };
+
+  const onTargetDiff = diff != null && Math.abs(diff) <= tol;
+  const diffColor = onTargetDiff
+    ? (darkMode ? 'text-emerald-300' : 'text-emerald-700')
+    : (darkMode ? 'text-amber-300' : 'text-amber-700');
+
+  const blockClass = hasValue
+    ? (darkMode
+        ? `bg-${color}-900/30 hover:bg-${color}-900/40`
+        : `bg-${color}-50 hover:bg-${color}-100`)
+    : (darkMode
+        ? 'bg-slate-800/60 hover:bg-slate-800 border border-dashed border-slate-600'
+        : 'bg-stone-50 hover:bg-stone-100 border border-dashed border-stone-300');
+  const valueColor = hasValue
+    ? (darkMode ? `text-${color}-200` : `text-${color}-900`)
+    : (darkMode ? 'text-slate-500' : 'text-stone-400');
+  const labelColor = hasValue
+    ? (darkMode ? `text-${color}-300` : `text-${color}-600`)
+    : (darkMode ? 'text-slate-500' : 'text-stone-500');
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={!editable}
+      className={`relative ${blockClass} rounded-xl px-3 py-3 text-left transition disabled:opacity-60`}
+    >
+      <p className={`text-[10px] font-medium uppercase tracking-wide mb-0.5 ${labelColor}`}>
+        {label}
+      </p>
+      <p className={`text-2xl font-bold ${valueColor}`}>
+        {hasValue ? value : '--:--'}
+      </p>
+      {hasValue ? (
+        diff != null && <p className={`text-[11px] mt-0.5 ${diffColor}`}>{formatDiff(diff)}</p>
+      ) : (
+        <p className={`text-[11px] mt-0.5 ${darkMode ? 'text-slate-500' : 'text-stone-400'}`}>{placeholderHint}</p>
+      )}
+      <input
+        ref={inputRef}
+        type="time"
+        value={value || ''}
+        disabled={!editable}
+        onChange={(e) => onChange(e.target.value)}
+        className="absolute inset-0 opacity-0 pointer-events-none"
+        tabIndex={-1}
+        aria-hidden="true"
+      />
+    </button>
   );
 }
