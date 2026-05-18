@@ -1,3 +1,10 @@
+## [0.10.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.10.0...v0.10.1) (2026-05-18)
+
+
+### Bug Fixes
+
+* **sleep:** tap op tijd-vakje opent native picker ([02ce03c](https://github.com/Studio-Lek-River/Ritmo/commit/02ce03c676f687c6e844630fba0b566c55d063d8))
+
 # [0.10.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.9.1...v0.10.0) (2026-05-18)
 
 
