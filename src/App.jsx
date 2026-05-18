@@ -70,9 +70,6 @@ export default function Ritmo() {
   const [showSettings, setShowSettings] = useState(false);
   const [editingModule, setEditingModule] = useState(null);
   const [hasOnboarded, setHasOnboarded] = useState(true);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const moreMenuRef = useRef(null);
-  
   const [modules, setModules] = useState(() => instantiateDefaults(DEFAULT_MODULES));
   const [moduleData, setModuleData] = useState({}); // per-module daily state
   const [history, setHistory] = useState({});
@@ -100,17 +97,6 @@ export default function Ritmo() {
     const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     setDarkMode(isDark);
   }, []);
-
-  useEffect(() => {
-    if (!moreOpen) return;
-    const handler = (e) => {
-      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target)) {
-        setMoreOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [moreOpen]);
 
   // Load all data
   useEffect(() => {
@@ -931,15 +917,7 @@ export default function Ritmo() {
           </div>
         </div>
 
-        <TabBar
-          modules={modules}
-          view={view}
-          setView={setView}
-          theme={theme}
-          moreOpen={moreOpen}
-          setMoreOpen={setMoreOpen}
-          moreMenuRef={moreMenuRef}
-        />
+        <TabBar view={view} setView={setView} theme={theme} />
 
         {view === 'today' && (
           <TodayView
