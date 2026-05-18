@@ -1,3 +1,12 @@
+# [0.10.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.9.1...v0.10.0) (2026-05-18)
+
+
+### Features
+
+* **measurements:** add module-preset picker and metric library ([7b7f60e](https://github.com/Studio-Lek-River/Ritmo/commit/7b7f60e9696ff55006d0ceeacde76516914da604))
+* **sleep:** redesign sleep module to match counter style ([4afe063](https://github.com/Studio-Lek-River/Ritmo/commit/4afe063bba5a176cfd5821649d5b4709dafbfb92))
+* **tabbar:** replace overflow menu with two-row tab layout ([af54f5c](https://github.com/Studio-Lek-River/Ritmo/commit/af54f5c2f7bc4e06e2af89c04604884814f0979a))
+
 ## [0.9.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.9.0...v0.9.1) (2026-05-09)
 
 
