@@ -699,6 +699,20 @@ export default {
         title: 'Delete metric?',
         description: 'This metric and {count} associated measurements will be permanently removed.',
       },
+      fromLibrary: 'From library',
+      customMetric: 'Custom metric',
+      addPreset: 'Add preset',
+      addPresetShort: '+ Preset',
+      addModuleShort: '+ Module',
+      pickPresetTitle: 'Pick a preset',
+      pickPresetIntro: 'A preset adds a complete set of metrics.',
+      addPresetTo: 'Add {preset}',
+      addPresetToIntro: 'Which module would you like to add these metrics to?',
+      existingModule: 'Existing · {count} metrics',
+      createNewModule: 'Create a new module',
+      createNewModuleHint: '{preset} becomes a separate module',
+      libraryTitle: 'Metric from library',
+      libraryIntro: 'Pick a common measurement with pre-filled settings.',
     },
 
     types: {
@@ -862,6 +876,19 @@ export default {
       summaryEmpty: 'You are starting with an empty Ritmo. You can always add modules and items later.',
       summary: 'Set up: {modules} modules, {projects} projects, {collections} collections, {household} household items.',
     },
+  },
+
+  metricLibrary: {
+    weight: 'Weight',
+    height: 'Height',
+    bodyFat: 'Body fat',
+    muscleMass: 'Muscle mass',
+    waist: 'Waist',
+    restingHr: 'Resting heart rate',
+    systolic: 'Systolic',
+    diastolic: 'Diastolic',
+    temperature: 'Body temperature',
+    glucose: 'Glucose',
   },
 
   presets: {

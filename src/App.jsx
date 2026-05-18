@@ -36,6 +36,8 @@ import { genId } from './utils/genId';
 import { applyModulePreset } from './utils/applyModulePreset';
 import { MEASUREMENT_UNITS, unitSymbol, createMetric } from './utils/measurements';
 import { ICON_OPTIONS } from './utils/icons';
+import { instantiateMetric } from './utils/metricLibrary';
+import MetricLibraryModal from './components/MetricLibraryModal';
 import {
   fmtDateKey, parseDateKey, addDays, sameDay, startOfWeek,
   isEditable, isFuture, isToday as isTodayDate,
@@ -69,6 +71,7 @@ export default function Ritmo() {
   const [darkMode, setDarkMode] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [editingModule, setEditingModule] = useState(null);
+  const [metricLibraryOpen, setMetricLibraryOpen] = useState(false);
   const [hasOnboarded, setHasOnboarded] = useState(true);
   const [modules, setModules] = useState(() => instantiateDefaults(DEFAULT_MODULES));
   const [moduleData, setModuleData] = useState({}); // per-module daily state
@@ -543,6 +546,26 @@ export default function Ritmo() {
     ));
   };
 
+  const createMeasurementsFromPreset = useCallback((preset, targetModuleId) => {
+    if (targetModuleId) {
+      setModules(prev => prev.map(m => {
+        if (m.id !== targetModuleId) return m;
+        const newMetrics = (preset.metrics || []).map(metric => ({
+          ...metric,
+          id: genId('metric'),
+          events: [],
+        }));
+        return { ...m, metrics: [...(m.metrics || []), ...newMetrics] };
+      }));
+      return;
+    }
+    const newModule = applyModulePreset(
+      { type: 'measurements', id: genId('measurements'), enabled: true, countInStreak: false },
+      preset
+    );
+    setModules(prev => [...prev, newModule]);
+  }, [setModules]);
+
   const openModuleEditor = (type) => {
     const defaultIcon = type === 'projects'
       ? 'GraduationCap'
@@ -1008,9 +1031,10 @@ export default function Ritmo() {
 
         {view === 'measurements' && (
           <MeasurementsView
-            module={modules.find(m => m.enabled && m.type === 'measurements')}
+            modules={modules.filter(m => m.enabled && m.type === 'measurements')}
             onUpdateModule={updateMeasurementsModule}
             onCreate={() => openModuleEditor('measurements')}
+            onCreateFromPreset={createMeasurementsFromPreset}
             onEditModule={(mod) => setEditingModule(mod)}
             theme={theme}
           />
@@ -3376,14 +3400,37 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
                     );
                   })}
                 </div>
-                <button
-                  type="button"
-                  onClick={addMetric}
-                  className={`w-full px-3 py-2 ${theme.cardSecondary} ${theme.textSecondary} rounded-lg text-sm font-medium ${theme.hover} flex items-center justify-center gap-2`}
-                >
-                  <Plus className="w-4 h-4" />
-                  {t('modules.measurements.addMetric')}
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMetricLibraryOpen(true)}
+                    className={`px-3 py-2 ${theme.cardSecondary} ${theme.textSecondary} rounded-lg text-sm font-medium flex items-center justify-center gap-1 ${theme.hover}`}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    {t('modules.measurements.fromLibrary')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={addMetric}
+                    className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    {t('modules.measurements.customMetric')}
+                  </button>
+                </div>
+                {metricLibraryOpen && (
+                  <MetricLibraryModal
+                    onPick={(libraryKey) => {
+                      const newMetric = instantiateMetric(libraryKey);
+                      if (!newMetric) return;
+                      setEditing(prev => ({ ...prev, metrics: [...(prev.metrics || []), newMetric] }));
+                      setMetricLibraryOpen(false);
+                    }}
+                    onClose={() => setMetricLibraryOpen(false)}
+                    theme={theme}
+                    t={t}
+                  />
+                )}
               </div>
             );
           })()}

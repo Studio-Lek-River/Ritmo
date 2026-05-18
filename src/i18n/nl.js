@@ -705,6 +705,20 @@ export default {
         title: 'Metric verwijderen?',
         description: 'Deze metric en {count} bijbehorende metingen worden definitief verwijderd.',
       },
+      fromLibrary: 'Uit bibliotheek',
+      customMetric: 'Eigen metric',
+      addPreset: 'Preset toevoegen',
+      addPresetShort: '+ Preset',
+      addModuleShort: '+ Module',
+      pickPresetTitle: 'Kies een preset',
+      pickPresetIntro: 'Een preset voegt een complete set metrics toe.',
+      addPresetTo: '{preset} toevoegen',
+      addPresetToIntro: 'Aan welke module wil je deze metrics toevoegen?',
+      existingModule: 'Bestaand · {count} metrics',
+      createNewModule: 'Nieuwe module aanmaken',
+      createNewModuleHint: '{preset} wordt een aparte module',
+      libraryTitle: 'Metric uit bibliotheek',
+      libraryIntro: 'Kies een veelgebruikte meting met voor-ingevulde instellingen.',
     },
 
     // module type-picker
@@ -871,6 +885,19 @@ export default {
       summaryEmpty: 'Je begint met een lege Ritmo. Je kunt altijd later modules en items toevoegen.',
       summary: 'Klaargezet: {modules} modules, {projects} projecten, {collections} collecties, {household} huishouden-items.',
     },
+  },
+
+  metricLibrary: {
+    weight: 'Gewicht',
+    height: 'Lengte',
+    bodyFat: 'Vetpercentage',
+    muscleMass: 'Spiermassa',
+    waist: 'Buikomvang',
+    restingHr: 'Rusthartslag',
+    systolic: 'Bovendruk',
+    diastolic: 'Onderdruk',
+    temperature: 'Lichaamstemperatuur',
+    glucose: 'Glucose',
   },
 
   presets: {
