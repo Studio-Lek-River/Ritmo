@@ -3,6 +3,9 @@ import {
   Sun, Moon, Plus, Trash2, TrendingUp, Calendar, Sparkles, Settings, BookOpen, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Repeat, Trophy, GripVertical, Eye, EyeOff, GraduationCap, HelpCircle, ArrowUpDown, SlidersHorizontal, BedDouble, Check, BarChart3,
 } from 'lucide-react';
 import './storage';
+import { isSyncEnabled } from './sync/supabase';
+import { onAuthChange, getCurrentUser } from './sync/auth';
+import ConflictToast from './components/ConflictToast';
 import ProjectsModule from './modules/ProjectsModule';
 import CounterModule from './modules/CounterModule';
 import SleepModule from './modules/SleepModule';
@@ -92,6 +95,8 @@ export default function Ritmo() {
   const [celebrationMsg, setCelebrationMsg] = useState(null);
   const [celebrationOverlay, setCelebrationOverlay] = useState(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [currentUser, setCurrentUser] = useState(null);
+  const [conflictInfo, setConflictInfo] = useState(null);
 
   const previousCompletionRef = useRef(null);
   const prevModuleStatusRef = useRef({});
@@ -99,6 +104,21 @@ export default function Ritmo() {
   useEffect(() => {
     const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     setDarkMode(isDark);
+  }, []);
+
+  // Auth state + join-route detection
+  useEffect(() => {
+    if (!isSyncEnabled()) return;
+
+    // Detect /join/:token in the URL and persist for after auth
+    const pathMatch = window.location.pathname.match(/^\/join\/([A-Z0-9]{8})$/i);
+    if (pathMatch) {
+      sessionStorage.setItem('pendingInvite', pathMatch[1].toUpperCase());
+    }
+
+    getCurrentUser().then(user => setCurrentUser(user));
+    const unsub = onAuthChange(user => setCurrentUser(user));
+    return unsub;
   }, []);
 
   // Load all data
@@ -855,6 +875,12 @@ export default function Ritmo() {
     <ToastProvider>
     <div className={`min-h-screen ${theme.bg} p-4 transition-colors duration-300 relative overflow-hidden`}>
       <Toast theme={theme} />
+      {conflictInfo && (
+        <ConflictToast
+          name={conflictInfo.displayName || conflictInfo.updatedBy}
+          onDismiss={() => setConflictInfo(null)}
+        />
+      )}
       {confetti.map(c => (
         <div
           key={c.id}
@@ -1059,7 +1085,12 @@ export default function Ritmo() {
         )}
 
         {view === 'household' && (
-          <HouseholdView theme={theme} darkMode={darkMode} />
+          <HouseholdView
+            theme={theme}
+            darkMode={darkMode}
+            currentUser={currentUser}
+            onConflict={setConflictInfo}
+          />
         )}
 
         {view === 'insight' && (
