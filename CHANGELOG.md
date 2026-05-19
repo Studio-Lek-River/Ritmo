@@ -1,3 +1,14 @@
+# [0.11.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.10.1...v0.11.0) (2026-05-19)
+
+
+### Features
+
+* **household:** wire mee-eten sectie into HouseholdView ([db1e11d](https://github.com/Studio-Lek-River/Ritmo/commit/db1e11dbba783d6329981931927f77f029e3c13f))
+* **i18n:** add household.mealPlan translations ([d6fcb57](https://github.com/Studio-Lek-River/Ritmo/commit/d6fcb57f24c25ae86ffe9179e42bebe0fa287a6e))
+* **mealplan:** add mealplan utility helpers ([a863877](https://github.com/Studio-Lek-River/Ritmo/commit/a863877efd2ea5a000a31464ed38dd648d9c5d47))
+* **mealplan:** add MealPlanSection component ([fd20d46](https://github.com/Studio-Lek-River/Ritmo/commit/fd20d46af1a00b204ad392b92e7e9696f3da36e4))
+* **mealplan:** add MealPlanSettings modal ([e412664](https://github.com/Studio-Lek-River/Ritmo/commit/e412664e88891d43f7bb0c95e9916256519c4e34))
+
 ## [0.10.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.10.0...v0.10.1) (2026-05-18)
 
 
