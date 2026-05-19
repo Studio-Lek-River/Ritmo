@@ -3,7 +3,9 @@ import {
   Home, ChevronDown, ChevronUp,
   Plus, Trash2, Check, Star, ChevronLeft, ChevronRight, Edit3, X, Info, Lightbulb,
   ShoppingCart, Coffee, Utensils, Zap, Droplet, Wifi, Phone, Car, Film, Music, Book, Heart, Gift, Dumbbell, Flame, Plane, Fuel, BadgeEuro, GraduationCap, Briefcase,
+  UtensilsCrossed,
 } from 'lucide-react';
+import MealPlanSection from './household/MealPlanSection';
 import useStoredState from '../hooks/useStoredState';
 import { STORAGE_KEYS } from '../storage';
 import {
@@ -18,6 +20,8 @@ import {
 import { migrateHousehold } from '../utils/migrate';
 import { useTranslation, getLocale } from '../i18n/useTranslation';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { DEFAULT_MEALPLAN_CONFIG, createSelfMember, countForDay } from '../utils/mealplan';
+import { todayKey } from '../utils/dates';
 
 const newId = () => (typeof crypto !== 'undefined' && crypto.randomUUID
   ? crypto.randomUUID()
@@ -66,7 +70,7 @@ export default function HouseholdView({ theme, darkMode }) {
   const utilityLabel = (k) => t(`household.utilities.types.${k}`);
 
   const [expanded, setExpanded] = useState({
-    chores: true, groceries: false, fixedCosts: false, utilities: false,
+    chores: true, groceries: false, mealPlan: false, fixedCosts: false, utilities: false,
   });
   const toggle = (key) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -75,6 +79,9 @@ export default function HouseholdView({ theme, darkMode }) {
   const [budget, setBudget] = useStoredState('household:budget', { income: [], expenses: [], oneTime: [] });
   const [utilities, setUtilities] = useStoredState('household:utilities', { actuals: {} });
   const [config, setConfig] = useStoredState('household:config', {});
+  const [mealPlanConfig, setMealPlanConfig] = useStoredState('household:mealplan:config', DEFAULT_MEALPLAN_CONFIG);
+  const [mealPlanMembers, setMealPlanMembers] = useStoredState('household:mealplan:members', [createSelfMember()]);
+  const [mealPlanPlan, setMealPlanPlan] = useStoredState('household:mealplan:plan', {});
 
   // Eenmalige migratie van oude isUtility/autoFromBudget-shape naar nieuw
   // vaste-lasten-model. Lezen via window.storage rechtstreeks om race-
@@ -118,6 +125,7 @@ export default function HouseholdView({ theme, darkMode }) {
   const overdueCount = chores.filter(isOverdue).length;
   const groceriesCount = (groceries.items || []).filter(i => !i.checked).length;
   const today = new Date();
+  const mealPlanTodayCount = countForDay(mealPlanPlan[todayKey()], mealPlanMembers, mealPlanConfig.defaultStatus);
   const currentMonthKey = monthKeyFor(today.getFullYear(), today.getMonth());
   const monthlyIncome = monthlyIncomeTotal(budget.income, currentMonthKey);
   const monthlyExpenses = monthlyExpenseTotal(budget.expenses, currentMonthKey);
@@ -148,6 +156,27 @@ export default function HouseholdView({ theme, darkMode }) {
         onToggle={() => toggle('groceries')}
       >
         <GroceriesSection groceries={groceries} setGroceries={setGroceries} theme={theme} dayLabels={names.dayLabels} />
+      </Section>
+
+      <Section
+        theme={theme}
+        icon={<UtensilsCrossed className="w-4 h-4 text-amber-500" />}
+        title={t('household.mealPlan.sectionTitle')}
+        meta={mealPlanTodayCount > 0
+          ? t('household.mealPlan.sectionMeta', { n: mealPlanTodayCount })
+          : t('household.mealPlan.sectionMetaNone')}
+        expanded={expanded.mealPlan}
+        onToggle={() => toggle('mealPlan')}
+      >
+        <MealPlanSection
+          theme={theme}
+          config={mealPlanConfig}
+          setConfig={setMealPlanConfig}
+          members={mealPlanMembers}
+          setMembers={setMealPlanMembers}
+          plan={mealPlanPlan}
+          setPlan={setMealPlanPlan}
+        />
       </Section>
 
       <Section
