@@ -24,7 +24,7 @@ import {
   sameDay,
 } from '../../utils/dates';
 
-export default function MealPlanSection({ theme, config, setConfig, members, setMembers, plan, setPlan }) {
+export default function MealPlanSection({ theme, config, setConfig, members, setMembers, plan, setPlan, sharedMode, householdId, currentUserId }) {
   const { t } = useTranslation();
 
   const [weekOffset, setWeekOffset] = useState(0);
@@ -33,9 +33,10 @@ export default function MealPlanSection({ theme, config, setConfig, members, set
   const [pendingSkip, setPendingSkip] = useState(null);
   const [guestInputs, setGuestInputs] = useState({});
 
-  const selfMember = members.find(m => m.id === CURRENT_USER_ID) ?? createSelfMember();
+  const effectiveUserId = (sharedMode && currentUserId) ? currentUserId : CURRENT_USER_ID;
+  const selfMember = members.find(m => m.id === effectiveUserId) ?? createSelfMember();
   const selfRole = selfMember.role;
-  const isActive = !!config.householdName;
+  const isActive = sharedMode ? true : !!config.householdName;
 
   const today = new Date();
   const weekStart = startOfWeek(addDays(today, weekOffset * 7));
@@ -47,6 +48,12 @@ export default function MealPlanSection({ theme, config, setConfig, members, set
 
   // Helpers voor plan-mutaties
   function updateEntry(dateKey, memberId, patch) {
+    // In shared mode: write to cloud storage for own entries
+    if (sharedMode && memberId === effectiveUserId && householdId) {
+      const current = plan[dateKey]?.[memberId] ?? { status: null, guests: [] };
+      const newEntry = { ...current, ...patch };
+      window.storage.set(`shared:${householdId}:mealplan:${memberId}:${dateKey}`, JSON.stringify(newEntry));
+    }
     setPlan(prev => {
       const dayData = prev[dateKey] ?? {};
       const memberEntry = dayData[memberId] ?? { status: null, guests: [] };
@@ -226,13 +233,13 @@ export default function MealPlanSection({ theme, config, setConfig, members, set
           const entry = planForSelected[member.id] ?? { status: null, guests: [] };
           const effective = effectiveStatus(entry.status, config.defaultStatus);
           const canEdit = canEditMember({
-            userId: CURRENT_USER_ID,
+            userId: effectiveUserId,
             userRole: selfRole,
             memberId: member.id,
             deadlinePassed,
           });
           const guestVal = guestInputs[member.id] ?? '';
-          const canAddGuest = canEdit && (member.id === CURRENT_USER_ID || selfRole === 'admin');
+          const canAddGuest = canEdit && (member.id === effectiveUserId || selfRole === 'admin');
 
           return (
             <div key={member.id} className={`${theme.cardSecondary} rounded-xl p-3 space-y-2`}>
