@@ -1,3 +1,19 @@
+# [0.12.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.11.0...v0.12.0) (2026-05-19)
+
+
+### Features
+
+* **i18n:** add share, auth, household sync, and meeeten translation keys ([9db3c91](https://github.com/Studio-Lek-River/Ritmo/commit/9db3c91da41830e7cb7e4076ac06602f6e0954a0))
+* **sync:** add AuthModal, InviteModal, ConflictToast, and ShareToggle components ([2e9fcef](https://github.com/Studio-Lek-River/Ritmo/commit/2e9fcefe4c9c318c4c998101d74e905f263c525e))
+* **sync:** add households CRUD (create, invite, redeem, leave) ([6fd6af7](https://github.com/Studio-Lek-River/Ritmo/commit/6fd6af73c1ca493ecd0f1ea1685633832bc670c2))
+* **sync:** add HouseholdSetupView (start/join household) ([6fe2e61](https://github.com/Studio-Lek-River/Ritmo/commit/6fe2e616f4a9fc30071d3aa17525c71cfe182c29))
+* **sync:** add realtime Supabase channel subscription with conflict detection ([242e7e0](https://github.com/Studio-Lek-River/Ritmo/commit/242e7e062fa2e40230f45f29a367fb497ee37340))
+* **sync:** add shared mode to MealPlanSection (user ID bridging + cloud writes) ([033eed9](https://github.com/Studio-Lek-River/Ritmo/commit/033eed9256434b14cdc918bfb63236cb52430df8))
+* **sync:** add Supabase client singleton, auth helpers, and invite token generator ([428f2c5](https://github.com/Studio-Lek-River/Ritmo/commit/428f2c525a8c9a440cb42e5188299af863988f1c))
+* **sync:** add sync queue, household storage backend, and shared-key routing in storage ([c2da5bd](https://github.com/Studio-Lek-River/Ritmo/commit/c2da5bd31f794487fedf46785255aa6701d7b8e9))
+* **sync:** integrate auth, household management, and ShareToggle into HouseholdView ([e6bb705](https://github.com/Studio-Lek-River/Ritmo/commit/e6bb705f65fd70ca5e4d3d4f74043a072464d476))
+* **sync:** wire auth state, join-route detection, and ConflictToast into App ([289fc94](https://github.com/Studio-Lek-River/Ritmo/commit/289fc945aae750c001c92cdded158b3b0850c23d))
+
 # [0.11.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.10.1...v0.11.0) (2026-05-19)
 
 
