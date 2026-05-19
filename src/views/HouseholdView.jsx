@@ -3,7 +3,7 @@ import {
   Home, ChevronDown, ChevronUp,
   Plus, Trash2, Check, Star, ChevronLeft, ChevronRight, Edit3, X, Info, Lightbulb,
   ShoppingCart, Coffee, Utensils, Zap, Droplet, Wifi, Phone, Car, Film, Music, Book, Heart, Gift, Dumbbell, Flame, Plane, Fuel, BadgeEuro, GraduationCap, Briefcase,
-  UtensilsCrossed,
+  UtensilsCrossed, Users, UserPlus, LogOut,
 } from 'lucide-react';
 import MealPlanSection from './household/MealPlanSection';
 import useStoredState from '../hooks/useStoredState';
@@ -22,6 +22,14 @@ import { useTranslation, getLocale } from '../i18n/useTranslation';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { DEFAULT_MEALPLAN_CONFIG, createSelfMember, countForDay } from '../utils/mealplan';
 import { todayKey } from '../utils/dates';
+import { isSyncEnabled } from '../sync/supabase';
+import { signOut } from '../sync/auth';
+import { getMyHouseholds, getHouseholdMembers, createInvite, leaveHousehold } from '../sync/households';
+import { subscribeToHousehold } from '../sync/realtime';
+import HouseholdSetupView from './HouseholdSetupView';
+import AuthModal from '../components/AuthModal';
+import InviteModal from '../components/InviteModal';
+import ShareToggle from '../components/ShareToggle';
 
 const newId = () => (typeof crypto !== 'undefined' && crypto.randomUUID
   ? crypto.randomUUID()
@@ -64,7 +72,7 @@ function formatMonthLabel(monthIso, monthsLong) {
   return `${monthsLong[m - 1]} ${y}`;
 }
 
-export default function HouseholdView({ theme, darkMode }) {
+export default function HouseholdView({ theme, darkMode, currentUser, onConflict }) {
   const { t, language } = useTranslation();
   const names = useMemo(() => buildLocalizedNames(language), [language]);
   const utilityLabel = (k) => t(`household.utilities.types.${k}`);
@@ -82,6 +90,98 @@ export default function HouseholdView({ theme, darkMode }) {
   const [mealPlanConfig, setMealPlanConfig] = useStoredState('household:mealplan:config', DEFAULT_MEALPLAN_CONFIG);
   const [mealPlanMembers, setMealPlanMembers] = useStoredState('household:mealplan:members', [createSelfMember()]);
   const [mealPlanPlan, setMealPlanPlan] = useStoredState('household:mealplan:plan', {});
+
+  // Sync / household state
+  const [currentHousehold, setCurrentHousehold] = useState(null);
+  const [householdMembers, setHouseholdMembers] = useState([]);
+  const [householdLoading, setHouseholdLoading] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [currentInvite, setCurrentInvite] = useState(null);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [shareConfirm, setShareConfirm] = useState(null); // 'enable' | 'disable'
+
+  const syncEnabled = isSyncEnabled();
+
+  useEffect(() => {
+    if (!syncEnabled || !currentUser) {
+      setCurrentHousehold(null);
+      setHouseholdMembers([]);
+      return;
+    }
+    let cancelled = false;
+    setHouseholdLoading(true);
+    getMyHouseholds()
+      .then(households => {
+        if (cancelled) return;
+        if (households.length > 0) {
+          setCurrentHousehold(households[0]);
+          return getHouseholdMembers(households[0].id).then(members => {
+            if (!cancelled) setHouseholdMembers(members);
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setHouseholdLoading(false); });
+    return () => { cancelled = true; };
+  }, [currentUser, syncEnabled]);
+
+  useEffect(() => {
+    if (!currentHousehold) return;
+    const unsub = subscribeToHousehold(currentHousehold.id, conflict => {
+      const member = householdMembers.find(m => m.user_id === conflict.updatedBy);
+      onConflict?.({ ...conflict, displayName: member?.display_name || conflict.updatedBy });
+    });
+    return unsub;
+  }, [currentHousehold?.id]);
+
+  async function handleCreateInvite() {
+    if (!currentHousehold) return;
+    try {
+      const invite = await createInvite(currentHousehold.id);
+      setCurrentInvite(invite);
+      setShowInviteModal(true);
+    } catch (err) {
+      console.error('Invite failed', err);
+    }
+  }
+
+  async function handleLeave() {
+    if (!currentHousehold) return;
+    try {
+      await leaveHousehold(currentHousehold.id);
+      setCurrentHousehold(null);
+      setHouseholdMembers([]);
+      setMealPlanConfig(prev => ({ ...prev, shared: { enabled: false, householdId: null } }));
+    } catch (err) {
+      console.error('Leave failed', err);
+    }
+    setShowLeaveConfirm(false);
+  }
+
+  async function handleToggleShare() {
+    if (!mealPlanConfig.shared?.enabled) {
+      if (!currentHousehold) return;
+      // Upload existing plan data to shared keys
+      for (const [dateKey, dayPlan] of Object.entries(mealPlanPlan)) {
+        const myEntry = dayPlan[currentUser?.id] || dayPlan['local-self'];
+        if (myEntry) {
+          const storageKey = `shared:${currentHousehold.id}:mealplan:${currentUser.id}:${dateKey}`;
+          await window.storage.set(storageKey, JSON.stringify(myEntry));
+        }
+      }
+      setMealPlanConfig(prev => ({
+        ...prev,
+        shared: { enabled: true, householdId: currentHousehold.id },
+      }));
+    } else {
+      setMealPlanConfig(prev => ({
+        ...prev,
+        shared: { enabled: false, householdId: null },
+      }));
+    }
+    setShareConfirm(null);
+  }
 
   // Eenmalige migratie van oude isUtility/autoFromBudget-shape naar nieuw
   // vaste-lasten-model. Lezen via window.storage rechtstreeks om race-
@@ -132,8 +232,87 @@ export default function HouseholdView({ theme, darkMode }) {
   const monthlyNetValue = monthlyIncome - monthlyExpenses;
   const utilitiesYearActual = yearActualTotal(utilities.actuals, today.getFullYear());
 
+  const isShared = mealPlanConfig.shared?.enabled;
+  const sharedMembers = isShared ? householdMembers.map(m => ({
+    id: m.user_id,
+    name: m.display_name,
+    role: m.role,
+    color: 'amber',
+  })) : null;
+
   return (
     <div className="slide-in space-y-3">
+
+      {/* Household sync block */}
+      {syncEnabled && (
+        <div className={`${theme.card} rounded-2xl shadow-sm p-4`}>
+          {!currentUser ? (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`text-sm font-medium ${theme.text}`}>{t('household.setupTitle')}</p>
+                <p className={`text-xs ${theme.textMuted}`}>{t('auth.signInTitle')}</p>
+              </div>
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition"
+              >
+                {t('auth.sendLink')}
+              </button>
+            </div>
+          ) : !currentHousehold && !householdLoading ? (
+            <HouseholdSetupView
+              currentUser={currentUser}
+              onSetupComplete={() => {
+                setHouseholdLoading(true);
+                getMyHouseholds().then(hs => {
+                  if (hs.length > 0) {
+                    setCurrentHousehold(hs[0]);
+                    return getHouseholdMembers(hs[0].id).then(setHouseholdMembers);
+                  }
+                }).finally(() => setHouseholdLoading(false));
+              }}
+              theme={theme}
+            />
+          ) : currentHousehold ? (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className={`text-sm font-semibold ${theme.text}`}>{currentHousehold.name}</p>
+                  <p className={`text-xs ${theme.textMuted}`}>{currentUser.email}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCreateInvite}
+                    title={t('household.inviteTitle')}
+                    className={`p-2 rounded-lg ${theme.hover} transition`}
+                  >
+                    <UserPlus size={16} className="text-indigo-500" />
+                  </button>
+                  <button
+                    onClick={() => setShowLeaveConfirm(true)}
+                    title={t('household.leaveButton')}
+                    className={`p-2 rounded-lg ${theme.hover} transition`}
+                  >
+                    <LogOut size={16} className={theme.textMuted} />
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {householdMembers.map(m => (
+                  <div key={m.user_id} className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs">
+                    <Users size={12} />
+                    <span>{m.display_name}</span>
+                    {m.role === 'admin' && <span className="opacity-60">(admin)</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className={`text-sm ${theme.textMuted}`}>...</p>
+          )}
+        </div>
+      )}
+
       <Section
         theme={theme}
         icon={<Home className="w-4 h-4 text-blue-500" />}
@@ -167,15 +346,25 @@ export default function HouseholdView({ theme, darkMode }) {
           : t('household.mealPlan.sectionMetaNone')}
         expanded={expanded.mealPlan}
         onToggle={() => toggle('mealPlan')}
+        headerRight={syncEnabled && currentHousehold ? (
+          <ShareToggle
+            enabled={isShared}
+            disabled={!currentHousehold}
+            onClick={() => setShareConfirm(isShared ? 'disable' : 'enable')}
+          />
+        ) : null}
       >
         <MealPlanSection
           theme={theme}
           config={mealPlanConfig}
           setConfig={setMealPlanConfig}
-          members={mealPlanMembers}
-          setMembers={setMealPlanMembers}
+          members={isShared && sharedMembers ? sharedMembers : mealPlanMembers}
+          setMembers={isShared ? () => {} : setMealPlanMembers}
           plan={mealPlanPlan}
           setPlan={setMealPlanPlan}
+          sharedMode={isShared}
+          householdId={mealPlanConfig.shared?.householdId}
+          currentUserId={currentUser?.id}
         />
       </Section>
 
@@ -219,26 +408,70 @@ export default function HouseholdView({ theme, darkMode }) {
           utilityLabel={utilityLabel}
         />
       </Section>
+
+      {/* Modals */}
+      {showAuthModal && (
+        <AuthModal
+          theme={theme}
+          onClose={() => setShowAuthModal(false)}
+          onAuthenticated={() => setShowAuthModal(false)}
+        />
+      )}
+      {showInviteModal && currentInvite && (
+        <InviteModal
+          theme={theme}
+          token={currentInvite.token}
+          expiresAt={currentInvite.expiresAt}
+          onClose={() => { setShowInviteModal(false); setCurrentInvite(null); }}
+        />
+      )}
+      {showLeaveConfirm && (
+        <ConfirmDialog
+          theme={theme}
+          message={t('household.leaveConfirm')}
+          onConfirm={handleLeave}
+          onCancel={() => setShowLeaveConfirm(false)}
+        />
+      )}
+      {shareConfirm === 'enable' && (
+        <ConfirmDialog
+          theme={theme}
+          message={t('share.confirmShareBody')}
+          onConfirm={handleToggleShare}
+          onCancel={() => setShareConfirm(null)}
+        />
+      )}
+      {shareConfirm === 'disable' && (
+        <ConfirmDialog
+          theme={theme}
+          message={t('share.confirmUnshareBody')}
+          onConfirm={handleToggleShare}
+          onCancel={() => setShareConfirm(null)}
+        />
+      )}
     </div>
   );
 }
 
-function Section({ theme, icon, title, meta, expanded, onToggle, children }) {
+function Section({ theme, icon, title, meta, expanded, onToggle, children, headerRight }) {
   return (
     <div className={`${theme.card} rounded-2xl shadow-sm overflow-hidden`}>
-      <button
-        onClick={onToggle}
-        className={`w-full flex items-center gap-3 p-4 ${theme.hover} transition`}
-      >
-        <span className="flex items-center gap-2">
-          {icon}
-          <span className={`font-semibold ${theme.text}`}>{title}</span>
-        </span>
-        <span className={`text-xs ${theme.textMuted} ml-auto`}>{meta}</span>
-        {expanded
-          ? <ChevronUp className={`w-4 h-4 ${theme.textMuted}`} />
-          : <ChevronDown className={`w-4 h-4 ${theme.textMuted}`} />}
-      </button>
+      <div className="flex items-center">
+        <button
+          onClick={onToggle}
+          className={`flex-1 flex items-center gap-3 p-4 ${theme.hover} transition`}
+        >
+          <span className="flex items-center gap-2">
+            {icon}
+            <span className={`font-semibold ${theme.text}`}>{title}</span>
+          </span>
+          <span className={`text-xs ${theme.textMuted} ml-auto`}>{meta}</span>
+          {expanded
+            ? <ChevronUp className={`w-4 h-4 ${theme.textMuted}`} />
+            : <ChevronDown className={`w-4 h-4 ${theme.textMuted}`} />}
+        </button>
+        {headerRight && <div className="pr-3 flex-shrink-0">{headerRight}</div>}
+      </div>
       {expanded && (
         <div className={`p-4 pt-0 border-t ${theme.border}`}>
           <div className="pt-4">{children}</div>
