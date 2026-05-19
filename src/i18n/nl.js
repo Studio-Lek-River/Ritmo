@@ -316,6 +316,20 @@ export default {
         removeAria: 'Verwijder',
       },
     },
+    setupTitle: 'Huishouden',
+    startButton: 'Huishouden starten',
+    joinButton: 'Join met code',
+    startHouseholdName: 'Naam van je huishouden',
+    startDisplayName: 'Jouw naam in dit huishouden',
+    joinTokenLabel: 'Invite-code',
+    joinDisplayName: 'Jouw naam in dit huishouden',
+    inviteTitle: 'Nodig iemand uit',
+    inviteShareText: 'Deel deze link, of laat de QR scannen',
+    inviteCopyLink: 'Kopieer link',
+    inviteExpiresIn: 'Geldig tot {date}',
+    leaveButton: 'Huishouden verlaten',
+    leaveConfirm: 'Weet je het zeker? Je verliest toegang tot gedeelde modules.',
+    conflictToast: 'Je wijziging is overschreven door {name}',
     mealPlan: {
       sectionTitle: 'Mee-eten',
       sectionMeta: '{n} mee-eters vandaag',
@@ -365,6 +379,35 @@ export default {
         inviteFutureNote: 'Uitnodiging voor huisgenoten op afstand komt in een toekomstige versie.',
         save: 'Opslaan',
       },
+    },
+  },
+
+  share: {
+    share: 'Delen met huishouden',
+    unshare: 'Stoppen met delen',
+    sharedTitle: 'Deze module is gedeeld met je huishouden',
+    notSharedTitle: 'Persoonlijke module',
+    confirmShareTitle: 'Module delen?',
+    confirmShareBody: 'De data wordt naar de cloud gesynchroniseerd. Huisgenoten zien wijzigingen.',
+    confirmUnshareTitle: 'Stop delen?',
+    confirmUnshareBody: 'De cloud-data blijft voor andere leden. Jij ziet alleen je lokale kopie.',
+  },
+
+  auth: {
+    signInTitle: 'Inloggen',
+    emailLabel: 'E-mailadres',
+    sendLink: 'Stuur magic link',
+    checkMailbox: 'Check je mailbox',
+    signOut: 'Uitloggen',
+    inviteInvalid: 'Deze invite-link is ongeldig of verlopen',
+    inviteUsed: 'Deze invite-link is al gebruikt',
+  },
+
+  meeeten: {
+    status: {
+      thuis: 'Thuis',
+      weg: 'Weg',
+      misschien: 'Misschien',
     },
   },
 

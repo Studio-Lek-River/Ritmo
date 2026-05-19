@@ -315,6 +315,20 @@ export default {
         removeAria: 'Remove',
       },
     },
+    setupTitle: 'Household',
+    startButton: 'Create household',
+    joinButton: 'Join with code',
+    startHouseholdName: 'Household name',
+    startDisplayName: 'Your name in this household',
+    joinTokenLabel: 'Invite code',
+    joinDisplayName: 'Your name in this household',
+    inviteTitle: 'Invite someone',
+    inviteShareText: 'Share this link, or let them scan the QR',
+    inviteCopyLink: 'Copy link',
+    inviteExpiresIn: 'Valid until {date}',
+    leaveButton: 'Leave household',
+    leaveConfirm: 'Are you sure? You will lose access to shared modules.',
+    conflictToast: 'Your change was overwritten by {name}',
     mealPlan: {
       sectionTitle: 'Meal plan',
       sectionMeta: '{n} eating today',
@@ -364,6 +378,35 @@ export default {
         inviteFutureNote: 'Inviting remote housemates is coming in a future version.',
         save: 'Save',
       },
+    },
+  },
+
+  share: {
+    share: 'Share with household',
+    unshare: 'Stop sharing',
+    sharedTitle: 'This module is shared with your household',
+    notSharedTitle: 'Personal module',
+    confirmShareTitle: 'Share module?',
+    confirmShareBody: 'Data will be synced to the cloud. Housemates will see changes.',
+    confirmUnshareTitle: 'Stop sharing?',
+    confirmUnshareBody: 'Cloud data stays for other members. You will only see your local copy.',
+  },
+
+  auth: {
+    signInTitle: 'Sign in',
+    emailLabel: 'Email address',
+    sendLink: 'Send magic link',
+    checkMailbox: 'Check your inbox',
+    signOut: 'Sign out',
+    inviteInvalid: 'This invite link is invalid or expired',
+    inviteUsed: 'This invite link has already been used',
+  },
+
+  meeeten: {
+    status: {
+      thuis: 'Home',
+      weg: 'Out',
+      misschien: 'Maybe',
     },
   },
 
