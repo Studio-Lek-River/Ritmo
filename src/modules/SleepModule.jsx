@@ -1,4 +1,3 @@
-import React from 'react';
 import { Sparkles, Settings, Check } from 'lucide-react';
 import { goalsForNight, timeDiffMinutes, sleepDurationMinutes, isOnTarget, DEFAULT_SLEEP_TOLERANCE_MINUTES } from '../utils/sleep';
 import { formatDuration } from '../utils/format';
@@ -157,17 +156,6 @@ function SleepTimeBlock({
   label, value, diff, tol, editable, onChange, color, darkMode, formatDiff, placeholderHint,
 }) {
   const hasValue = !!value;
-  const inputRef = React.useRef(null);
-
-  const handleClick = () => {
-    if (!editable) return;
-    const el = inputRef.current;
-    if (!el) return;
-    if (typeof el.showPicker === 'function') {
-      try { el.showPicker(); return; } catch { /* fall through */ }
-    }
-    el.focus();
-  };
 
   const onTargetDiff = diff != null && Math.abs(diff) <= tol;
   const diffColor = onTargetDiff
@@ -189,11 +177,10 @@ function SleepTimeBlock({
     : (darkMode ? 'text-slate-500' : 'text-stone-500');
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={!editable}
-      className={`relative ${blockClass} rounded-xl px-3 py-3 text-left transition disabled:opacity-60`}
+    <label
+      className={`relative block ${blockClass} rounded-xl px-3 py-3 text-left transition ${
+        editable ? 'cursor-pointer' : 'opacity-60 pointer-events-none'
+      }`}
     >
       <p className={`text-[10px] font-medium uppercase tracking-wide mb-0.5 ${labelColor}`}>
         {label}
@@ -207,15 +194,13 @@ function SleepTimeBlock({
         <p className={`text-[11px] mt-0.5 ${darkMode ? 'text-slate-500' : 'text-stone-400'}`}>{placeholderHint}</p>
       )}
       <input
-        ref={inputRef}
         type="time"
         value={value || ''}
         disabled={!editable}
         onChange={(e) => onChange(e.target.value)}
-        className="absolute inset-0 opacity-0 pointer-events-none"
-        tabIndex={-1}
-        aria-hidden="true"
+        aria-label={label}
+        className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
       />
-    </button>
+    </label>
   );
 }
