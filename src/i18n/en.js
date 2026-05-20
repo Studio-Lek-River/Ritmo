@@ -329,6 +329,10 @@ export default {
     leaveButton: 'Leave household',
     leaveConfirm: 'Are you sure? You will lose access to shared modules.',
     conflictToast: 'Your change was overwritten by {name}',
+    syncDisabled: {
+      title: 'Account features are not configured',
+      description: 'This version of Ritmo runs without cloud sync. All household data is stored locally only.',
+    },
     mealPlan: {
       sectionTitle: 'Meal plan',
       sectionMeta: '{n} eating today',

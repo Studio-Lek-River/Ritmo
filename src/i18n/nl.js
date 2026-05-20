@@ -330,6 +330,10 @@ export default {
     leaveButton: 'Huishouden verlaten',
     leaveConfirm: 'Weet je het zeker? Je verliest toegang tot gedeelde modules.',
     conflictToast: 'Je wijziging is overschreven door {name}',
+    syncDisabled: {
+      title: 'Account-functies zijn niet geconfigureerd',
+      description: 'Deze versie van Ritmo draait zonder cloud-sync. Alle huishoudgegevens worden alleen lokaal opgeslagen.',
+    },
     mealPlan: {
       sectionTitle: 'Mee-eten',
       sectionMeta: '{n} mee-eters vandaag',

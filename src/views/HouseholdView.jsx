@@ -313,6 +313,17 @@ export default function HouseholdView({ theme, darkMode, currentUser, onConflict
         </div>
       )}
 
+      {!syncEnabled && (
+        <div className={`${theme.card} rounded-2xl shadow-sm p-4`}>
+          <p className={`text-sm font-medium ${theme.text} mb-1`}>
+            {t('household.syncDisabled.title')}
+          </p>
+          <p className={`text-xs ${theme.textMuted}`}>
+            {t('household.syncDisabled.description')}
+          </p>
+        </div>
+      )}
+
       <Section
         theme={theme}
         icon={<Home className="w-4 h-4 text-blue-500" />}
