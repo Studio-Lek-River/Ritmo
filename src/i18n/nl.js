@@ -735,6 +735,7 @@ export default {
     sleepOnTime: 'op tijd',
     sleepTapToFill: 'tik om in te vullen',
     sleepOnTimeGoalReached: 'Op tijd, doel gehaald',
+    sleepGoalShort: 'doel: {time}',
     clearTime: 'Wissen',
     sleepScoreLabels: {
       1: 'Slecht geslapen',

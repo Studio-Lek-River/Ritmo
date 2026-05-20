@@ -730,6 +730,7 @@ export default {
     sleepOnTime: 'on target',
     sleepTapToFill: 'tap to fill in',
     sleepOnTimeGoalReached: 'On time, goal reached',
+    sleepGoalShort: 'target: {time}',
     clearTime: 'Clear',
     sleepScoreLabels: {
       1: 'Slept badly',

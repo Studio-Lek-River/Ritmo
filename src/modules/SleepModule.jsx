@@ -54,20 +54,14 @@ export default function SleepModule({
     onUpdate(prev => ({ ...prev, morningScore: prev.morningScore === value ? null : value }));
   };
 
-  const headerGoal = (goals.wake || goals.bed)
-    ? `${goals.wake || '?'} · ${goals.bed || '?'}`
-    : null;
+  const wakeGoalLabel = goals.wake ? t('modules.sleepGoalShort', { time: goals.wake }) : null;
+  const bedGoalLabel = goals.bed ? t('modules.sleepGoalShort', { time: goals.bed }) : null;
 
   return (
     <div className={`${theme.card} rounded-2xl p-5 shadow-sm mb-4`}>
       <div className="flex items-center gap-2 mb-3">
         <Glyph className={`w-5 h-5 ${colorClass}`} />
         <h2 className={`font-semibold ${theme.textSecondary} flex-1`}>{name}</h2>
-        {headerGoal && (
-          <span className={`text-[10px] ${theme.textMuted} uppercase tracking-wide`}>
-            {headerGoal}
-          </span>
-        )}
         {onEdit && (
           <button
             onClick={onEdit}
@@ -92,6 +86,7 @@ export default function SleepModule({
           darkMode={darkMode}
           formatDiff={formatDiff}
           placeholderHint={t('modules.sleepTapToFill')}
+          goalLabel={wakeGoalLabel}
         />
         <SleepTimeBlock
           label={t('modules.sleepBedtimeLabel')}
@@ -104,6 +99,7 @@ export default function SleepModule({
           darkMode={darkMode}
           formatDiff={formatDiff}
           placeholderHint={t('modules.sleepTapToFill')}
+          goalLabel={bedGoalLabel}
         />
       </div>
 
@@ -153,7 +149,7 @@ export default function SleepModule({
 }
 
 function SleepTimeBlock({
-  label, value, diff, tol, editable, onChange, color, darkMode, formatDiff, placeholderHint,
+  label, value, diff, tol, editable, onChange, color, darkMode, formatDiff, placeholderHint, goalLabel,
 }) {
   const hasValue = !!value;
 
@@ -185,11 +181,21 @@ function SleepTimeBlock({
       <p className={`text-[10px] font-medium uppercase tracking-wide mb-0.5 ${labelColor}`}>
         {label}
       </p>
+      {goalLabel && (
+        <p className={`text-[10px] mb-0.5 ${darkMode ? 'text-slate-500' : 'text-stone-400'}`}>
+          {goalLabel}
+        </p>
+      )}
       <p className={`text-2xl font-bold ${valueColor}`}>
         {hasValue ? value : '--:--'}
       </p>
       {hasValue ? (
-        diff != null && <p className={`text-[11px] mt-0.5 ${diffColor}`}>{formatDiff(diff)}</p>
+        <>
+          {diff != null && <p className={`text-[11px] mt-0.5 ${diffColor}`}>{formatDiff(diff)}</p>}
+          {diff != null && goalLabel && (
+            <SleepDeviationBar diff={diff} tol={tol} color={color} darkMode={darkMode} />
+          )}
+        </>
       ) : (
         <p className={`text-[11px] mt-0.5 ${darkMode ? 'text-slate-500' : 'text-stone-400'}`}>{placeholderHint}</p>
       )}
@@ -202,5 +208,29 @@ function SleepTimeBlock({
         className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
       />
     </label>
+  );
+}
+
+function SleepDeviationBar({ diff, tol, color, darkMode }) {
+  const MAX_RANGE = Math.max(tol * 2, 60);
+  const clampedDiff = Math.max(-MAX_RANGE, Math.min(MAX_RANGE, diff));
+  const pct = ((clampedDiff + MAX_RANGE) / (MAX_RANGE * 2)) * 100;
+  const onTarget = Math.abs(diff) <= tol;
+  const greenWidth = (tol / MAX_RANGE) * 100;
+
+  return (
+    <div className="relative w-full mt-2" style={{ height: '10px' }}>
+      <div className={`absolute top-1/2 -translate-y-1/2 w-full h-1.5 rounded-full ${darkMode ? 'bg-slate-700' : 'bg-stone-200'}`} />
+      <div
+        className={`absolute top-1/2 -translate-y-1/2 h-1.5 rounded-full ${darkMode ? 'bg-emerald-800/70' : 'bg-emerald-200'}`}
+        style={{ left: `${50 - greenWidth}%`, width: `${greenWidth * 2}%` }}
+      />
+      <div
+        className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full ${
+          onTarget ? 'bg-emerald-500' : `bg-${color}-500`
+        }`}
+        style={{ left: `${pct}%` }}
+      />
+    </div>
   );
 }
