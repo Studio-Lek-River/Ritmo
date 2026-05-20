@@ -27,12 +27,15 @@ function CardForModule({ mod, days, theme, darkMode, t }) {
 
 export default function InsightView({ modules, history, theme, darkMode, t }) {
   const [period, setPeriod] = useState('7');
-  const enabled = useMemo(() => (modules || []).filter(m => m.enabled), [modules]);
+  const enabled = useMemo(
+    () => (modules || []).filter(m => m.enabled && m.type !== 'collection'),
+    [modules],
+  );
   const { dayKeys } = useMemo(() => rangeForPeriod(period), [period]);
   const days = useMemo(() => buildDays(history || {}, dayKeys), [history, dayKeys]);
   const hasAnyData = useMemo(
     () => days.some(d => d.dayData) || enabled.some(m =>
-      m.type === 'projects' || m.type === 'collection' || m.type === 'measurements',
+      m.type === 'projects' || m.type === 'measurements',
     ),
     [days, enabled],
   );
