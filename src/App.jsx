@@ -1871,62 +1871,38 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
               {reorderMode ? t('settings.reorderHint') : t('settings.manageHint')}
             </p>
 
-            <div className="space-y-2 mb-4">
-              {modules.map((mod, index) => {
-                const Icon = ICON_OPTIONS[mod.icon] || Sparkles;
-                const isFirst = index === 0;
-                const isLast = index === modules.length - 1;
-                const isDragging = draggingId === mod.id;
-                const isDragOver = dragOverId === mod.id && draggingId && draggingId !== mod.id;
-                return (
-                  <div
-                    key={mod.id}
-                    draggable={reorderMode}
-                    onDragStart={() => setDraggingId(mod.id)}
-                    onDragEnd={() => { setDraggingId(null); setDragOverId(null); }}
-                    onDragOver={(e) => { if (reorderMode) { e.preventDefault(); setDragOverId(mod.id); } }}
-                    onDrop={(e) => {
-                      if (!reorderMode) return;
-                      e.preventDefault();
-                      if (draggingId && draggingId !== mod.id) reorderModules(draggingId, mod.id);
-                      setDraggingId(null);
-                      setDragOverId(null);
-                    }}
-                    onClick={() => { if (!reorderMode) setEditingModule(mod); }}
-                    className={`flex items-center gap-2 p-3 ${theme.cardSecondary} rounded-lg transition ${
-                      reorderMode ? 'cursor-default' : 'cursor-pointer'
-                    } ${isDragging ? 'opacity-40' : ''} ${isDragOver ? `ring-2 ring-${mod.color}-400` : ''}`}
-                  >
-                    {reorderMode && (
+            {reorderMode ? (
+              <div className="space-y-2 mb-4">
+                {modules.map((mod, index) => {
+                  const Icon = ICON_OPTIONS[mod.icon] || Sparkles;
+                  const isFirst = index === 0;
+                  const isLast = index === modules.length - 1;
+                  const isDragging = draggingId === mod.id;
+                  const isDragOver = dragOverId === mod.id && draggingId && draggingId !== mod.id;
+                  return (
+                    <div
+                      key={mod.id}
+                      draggable
+                      onDragStart={() => setDraggingId(mod.id)}
+                      onDragEnd={() => { setDraggingId(null); setDragOverId(null); }}
+                      onDragOver={(e) => { e.preventDefault(); setDragOverId(mod.id); }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (draggingId && draggingId !== mod.id) reorderModules(draggingId, mod.id);
+                        setDraggingId(null);
+                        setDragOverId(null);
+                      }}
+                      className={`flex items-center gap-2 p-3 ${theme.cardSecondary} rounded-lg transition cursor-default ${isDragging ? 'opacity-40' : ''} ${isDragOver ? `ring-2 ring-${mod.color}-400` : ''}`}
+                    >
                       <span className={`${theme.textMuted} touch-none cursor-grab active:cursor-grabbing`} aria-hidden>
                         <GripVertical className="w-4 h-4" />
                       </span>
-                    )}
-                    {!reorderMode && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setModules(prev => prev.map(m => m.id === mod.id ? { ...m, enabled: !m.enabled } : m));
-                        }}
-                        className={`p-1.5 rounded transition ${mod.enabled ? `text-${mod.color}-500` : theme.textMuted}`}
-                        title={mod.enabled ? t('common.hide') : t('common.show')}
-                      >
-                        {mod.enabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                      </button>
-                    )}
-                    <Icon className={`w-4 h-4 ${mod.enabled ? `text-${mod.color}-500` : theme.textMuted}`} />
-                    <div className="flex-1 min-w-0">
-                      <div className={`text-sm font-medium ${mod.enabled ? theme.textSecondary : theme.textMuted}`}>
-                        {resolveModuleName(mod, t)}
+                      <Icon className={`w-4 h-4 ${mod.enabled ? `text-${mod.color}-500` : theme.textMuted}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className={`text-sm font-medium ${mod.enabled ? theme.textSecondary : theme.textMuted}`}>
+                          {resolveModuleName(mod, t)}
+                        </div>
                       </div>
-                      <div className={`text-xs ${theme.textMuted}`}>
-                        {mod.type === 'checklist' && t('modules.summary.checklistItems', { n: (mod.items || []).length })}
-                        {mod.type === 'choice' && t('modules.summary.choice')}
-                        {mod.type === 'counter' && t('modules.summary.counter', { goal: formatAmount(mod.dailyGoal ?? mod.dailyGoalMinutes ?? 0, mod.unit || 'minutes') })}
-                        {mod.type === 'tasks' && t('modules.summary.tasks')}
-                      </div>
-                    </div>
-                    {reorderMode && (
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <button
                           onClick={(e) => { e.stopPropagation(); moveModule(mod.id, -1); }}
@@ -1945,11 +1921,72 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                           <ChevronDown className="w-4 h-4" />
                         </button>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mb-4 space-y-4">
+                {[
+                  { key: 'today', types: ['checklist', 'choice', 'counter', 'tasks', 'sleep', 'projects'] },
+                  { key: 'collections', types: ['collection'] },
+                  { key: 'measurements', types: ['measurements'] },
+                ].map(group => {
+                  const groupMods = modules.filter(m => group.types.includes(m.type));
+                  return (
+                    <div key={group.key}>
+                      <h4 className={`text-xs font-semibold uppercase tracking-wide ${theme.textMuted} mb-2`}>
+                        {t(`settings.moduleGroups.${group.key}`)}
+                      </h4>
+                      {groupMods.length === 0 ? (
+                        <p className={`text-xs ${theme.textMuted}`}>
+                          {t(`settings.moduleGroups.${group.key}Empty`)}
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {groupMods.map(mod => {
+                            const Icon = ICON_OPTIONS[mod.icon] || Sparkles;
+                            return (
+                              <div
+                                key={mod.id}
+                                onClick={() => setEditingModule(mod)}
+                                className={`flex items-center gap-2 p-3 ${theme.cardSecondary} rounded-lg transition cursor-pointer`}
+                              >
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setModules(prev => prev.map(m => m.id === mod.id ? { ...m, enabled: !m.enabled } : m));
+                                  }}
+                                  className={`p-1.5 rounded transition ${mod.enabled ? `text-${mod.color}-500` : theme.textMuted}`}
+                                  title={mod.enabled ? t('common.hide') : t('common.show')}
+                                >
+                                  {mod.enabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                                </button>
+                                <Icon className={`w-4 h-4 ${mod.enabled ? `text-${mod.color}-500` : theme.textMuted}`} />
+                                <div className="flex-1 min-w-0">
+                                  <div className={`text-sm font-medium ${mod.enabled ? theme.textSecondary : theme.textMuted}`}>
+                                    {resolveModuleName(mod, t)}
+                                  </div>
+                                  <div className={`text-xs ${theme.textMuted}`}>
+                                    {mod.type === 'checklist' && t('modules.summary.checklistItems', { n: (mod.items || []).length })}
+                                    {mod.type === 'choice' && t('modules.summary.choice')}
+                                    {mod.type === 'counter' && t('modules.summary.counter', { goal: formatAmount(mod.dailyGoal ?? mod.dailyGoalMinutes ?? 0, mod.unit || 'minutes') })}
+                                    {mod.type === 'tasks' && t('modules.summary.tasks')}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                <p className={`text-xs ${theme.textMuted} mt-2`}>
+                  {t('settings.moduleGroups.householdNote')}
+                </p>
+              </div>
+            )}
 
             {!reorderMode && (
               <button

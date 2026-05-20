@@ -876,6 +876,15 @@ export default {
     manageHint: 'Activeer, verberg, bewerk of verwijder modules. Voeg eigen modules toe voor wat jij belangrijk vindt.',
     reorderToggleOn: 'Klaar',
     reorderToggleOff: 'Volgorde',
+    moduleGroups: {
+      today: 'Vandaag',
+      todayEmpty: 'Geen modules voor vandaag',
+      collections: 'Collecties',
+      collectionsEmpty: 'Geen collecties',
+      measurements: 'Metingen',
+      measurementsEmpty: 'Geen metingen',
+      householdNote: 'Huishoud-secties (klusjes, boodschappen, mee-eten) staan altijd in het Huishouden-tabblad.',
+    },
     resetModules: 'Reset modules naar standaard',
     resetConfirm: 'Weet je zeker dat je alle modules wilt resetten? Je items en instellingen voor modules gaan verloren. Je dagelijkse data en geschiedenis blijven bewaard.',
 

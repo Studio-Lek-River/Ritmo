@@ -867,6 +867,15 @@ export default {
     manageHint: 'Activate, hide, edit or delete modules. Add your own modules for what matters to you.',
     reorderToggleOn: 'Done',
     reorderToggleOff: 'Reorder',
+    moduleGroups: {
+      today: 'Today',
+      todayEmpty: 'No modules for today',
+      collections: 'Collections',
+      collectionsEmpty: 'No collections',
+      measurements: 'Measurements',
+      measurementsEmpty: 'No measurements',
+      householdNote: 'Household sections (chores, groceries, meal plan) always appear in the Household tab.',
+    },
     resetModules: 'Reset modules to default',
     resetConfirm: 'Are you sure you want to reset all modules? Your items and module settings will be lost. Your daily data and history are kept.',
 
