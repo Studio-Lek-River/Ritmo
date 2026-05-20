@@ -897,6 +897,7 @@ export default {
     streakMinutesGoal: 'Min. minuten per dag',
     streakCounterUnitHint: 'Streak telt zodra je het dagdoel ({goal}) haalt.',
     streakChoiceHint: 'Streak telt zodra je een optie kiest.',
+    streakSleepHint: 'Streak telt als slaap- en wektijd binnen de tolerantie van het doel vallen.',
 
     reflectionQuestions: 'Reflectievragen',
     reflectionAddQuestion: 'Vraag toevoegen',

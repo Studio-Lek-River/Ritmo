@@ -888,6 +888,7 @@ export default {
     streakMinutesGoal: 'Min. minutes per day',
     streakCounterUnitHint: 'Streak counts when you reach the daily goal ({goal}).',
     streakChoiceHint: 'Streak counts as soon as you pick an option.',
+    streakSleepHint: 'Streak counts when both bed and wake times are within the goal tolerance.',
 
     reflectionQuestions: 'Reflection questions',
     reflectionAddQuestion: 'Add question',

@@ -650,14 +650,16 @@ export default function Ritmo() {
   // Streak calculation. moduleData is the source of truth for the active
   // date; for any other day, fall back to history (which is updated on save).
   const calculateStreak = (checkFn) => {
-    let streak = 0;
-    let d = new Date();
+    const todayStr = fmtDateKey(new Date());
+    const todayData = activeDateKey === todayStr ? { moduleData } : history[todayStr];
+    const todayDone = todayData ? checkFn(todayData, new Date()) : false;
+
+    let streak = todayDone ? 1 : 0;
+    let d = addDays(new Date(), -1);
+
     while (true) {
       const dateStr = fmtDateKey(d);
-      const dayData = dateStr === activeDateKey
-        ? { moduleData }
-        : history[dateStr];
-
+      const dayData = dateStr === activeDateKey ? { moduleData } : history[dateStr];
       if (!dayData) break;
       if (!checkFn(dayData, d)) break;
       streak++;
@@ -2120,6 +2122,12 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                       {isActive && mod.type === 'choice' && (
                         <p className={`text-xs ${theme.textMuted}`}>
                           {t('settings.streakChoiceHint')}
+                        </p>
+                      )}
+
+                      {isActive && mod.type === 'sleep' && (
+                        <p className={`text-xs ${theme.textMuted}`}>
+                          {t('settings.streakSleepHint')}
                         </p>
                       )}
                     </div>
