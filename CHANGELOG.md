@@ -1,3 +1,21 @@
+# [0.13.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.12.0...v0.13.0) (2026-05-20)
+
+
+### Bug Fixes
+
+* **animation:** restore cow-drink-milk Lottie JSON and enforce min display time in CelebrationOverlay ([2390ca9](https://github.com/Studio-Lek-River/Ritmo/commit/2390ca97149b9ebe5e316e9e8f871f6182f68824))
+* **insights:** read selectedOption instead of selected in aggregateChoice ([8c25b10](https://github.com/Studio-Lek-River/Ritmo/commit/8c25b1054bc06fcd53d33450bf1c2cb0cf8ba4ee))
+* **streak:** start streak from yesterday when today is incomplete; add sleep streak hint ([99fd792](https://github.com/Studio-Lek-River/Ritmo/commit/99fd7927bd30121b1d959aca128d35a52b0ce28e))
+* **today:** exclude measurements modules from Today view enabledModules ([e4c2a3e](https://github.com/Studio-Lek-River/Ritmo/commit/e4c2a3ef30bd85fcf394d7fc3805ced4505dd502))
+
+
+### Features
+
+* **household:** show sync-disabled explanation when env vars are not configured ([657a7ff](https://github.com/Studio-Lek-River/Ritmo/commit/657a7ff1992fc88f809be00e9f89379dbbc4899f))
+* **insight:** exclude collection modules from InsightView ([ba85dfb](https://github.com/Studio-Lek-River/Ritmo/commit/ba85dfb47821aab7b5ecd4635350441f5d866e27))
+* **settings:** group modules by type in settings (today / collections / measurements) ([45de9fe](https://github.com/Studio-Lek-River/Ritmo/commit/45de9fe56bc66a38abddfd90f1565ea40bcdf881))
+* **sleep:** add goal label and deviation bar to SleepTimeBlock ([f787166](https://github.com/Studio-Lek-River/Ritmo/commit/f7871660dfa74a3946ae56d38aa44882caee05f7))
+
 # [0.12.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.11.0...v0.12.0) (2026-05-19)
 
 
