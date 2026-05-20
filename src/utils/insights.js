@@ -86,7 +86,7 @@ export function aggregateChoice(mod, days) {
     const md = dayData?.moduleData?.[mod.id];
     if (!md) continue;
     if (md.completed) doneDays += 1;
-    const sel = md.selected;
+    const sel = md.selectedOption;
     if (sel) counts.set(sel, (counts.get(sel) || 0) + 1);
   }
   const byOption = options.map(opt => ({
