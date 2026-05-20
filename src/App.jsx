@@ -788,7 +788,7 @@ export default function Ritmo() {
     }} theme={theme} darkMode={darkMode} />;
   }
 
-  const enabledModules = modules.filter(m => m.enabled && m.type !== 'collection');
+  const enabledModules = modules.filter(m => m.enabled && m.type !== 'collection' && m.type !== 'measurements');
 
   const todayVisibleModules = editable
     ? enabledModules
