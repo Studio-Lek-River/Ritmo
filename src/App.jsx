@@ -22,6 +22,7 @@ import TabBar from './components/TabBar';
 import HelpOverlay from './components/help/HelpOverlay';
 import InstallGuide from './components/help/InstallGuide';
 import BackupSection from './components/BackupSection';
+import AuthSection from './components/auth/AuthSection';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
 import ChecklistModule from './modules/ChecklistModule';
@@ -73,6 +74,7 @@ export default function Ritmo() {
   const [splashDone, setSplashDone] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState(null);
   const [editingModule, setEditingModule] = useState(null);
   const [metricLibraryOpen, setMetricLibraryOpen] = useState(false);
   const [hasOnboarded, setHasOnboarded] = useState(true);
@@ -1124,7 +1126,9 @@ export default function Ritmo() {
 
       {showSettings && (
         <SettingsModal
-          onClose={() => setShowSettings(false)}
+          onClose={() => { setShowSettings(false); setSettingsInitialTab(null); }}
+          initialTab={settingsInitialTab}
+          onNavigateHousehold={() => { setShowSettings(false); setSettingsInitialTab(null); setView('household'); }}
           modules={modules}
           setModules={setModules}
           reflectionQuestions={reflectionQuestions}
@@ -1735,9 +1739,9 @@ function ReflectionView({ reflectionQuestions, reflectionAnswers, setReflectionA
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, showReflectionOnToday, setShowReflectionOnToday, theme, dayNames, setEditingModule }) {
+function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, showReflectionOnToday, setShowReflectionOnToday, theme, dayNames, setEditingModule, initialTab, onNavigateHousehold }) {
   const { t, languageSetting, setLanguage } = useTranslation();
-  const [activeTab, setActiveTab] = useState('modules');
+  const [activeTab, setActiveTab] = useState(initialTab || 'modules');
   const [helpView, setHelpView] = useState(null); // null | 'list' | 'install' | 'feedback'
   const [reorderMode, setReorderMode] = useState(false);
   const [androidPromptable, setAndroidPromptable] = useState(false);
@@ -2318,6 +2322,13 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                 </button>
               </div>
             ) : null}
+
+            {isSyncEnabled() && (
+              <>
+                <hr className="border-gray-200 dark:border-gray-700 mt-4" />
+                <AuthSection theme={theme} onNavigateHousehold={onNavigateHousehold} />
+              </>
+            )}
 
             <hr className="border-gray-200 dark:border-gray-700 mt-4" />
             <BackupSection theme={theme} />
