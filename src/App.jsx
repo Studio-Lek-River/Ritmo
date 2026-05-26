@@ -1094,6 +1094,7 @@ export default function Ritmo() {
             darkMode={darkMode}
             currentUser={currentUser}
             onConflict={setConflictInfo}
+            onOpenSettings={() => { setSettingsInitialTab('install'); setShowSettings(true); }}
           />
         )}
 

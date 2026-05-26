@@ -27,7 +27,6 @@ import { signOut } from '../sync/auth';
 import { getMyHouseholds, getHouseholdMembers, createInvite, leaveHousehold } from '../sync/households';
 import { subscribeToHousehold } from '../sync/realtime';
 import HouseholdSetupView from './HouseholdSetupView';
-import AuthModal from '../components/AuthModal';
 import InviteModal from '../components/InviteModal';
 import ShareToggle from '../components/ShareToggle';
 
@@ -72,7 +71,7 @@ function formatMonthLabel(monthIso, monthsLong) {
   return `${monthsLong[m - 1]} ${y}`;
 }
 
-export default function HouseholdView({ theme, darkMode, currentUser, onConflict }) {
+export default function HouseholdView({ theme, darkMode, currentUser, onConflict, onOpenSettings }) {
   const { t, language } = useTranslation();
   const names = useMemo(() => buildLocalizedNames(language), [language]);
   const utilityLabel = (k) => t(`household.utilities.types.${k}`);
@@ -95,8 +94,8 @@ export default function HouseholdView({ theme, darkMode, currentUser, onConflict
   const [currentHousehold, setCurrentHousehold] = useState(null);
   const [householdMembers, setHouseholdMembers] = useState([]);
   const [householdLoading, setHouseholdLoading] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [authNoticeDismissed, setAuthNoticeDismissed] = useStoredState('auth.householdAuthNoticeDismissed', false);
   const [currentInvite, setCurrentInvite] = useState(null);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [shareConfirm, setShareConfirm] = useState(null); // 'enable' | 'disable'
@@ -244,22 +243,32 @@ export default function HouseholdView({ theme, darkMode, currentUser, onConflict
     <div className="slide-in space-y-3">
 
       {/* Household sync block */}
-      {syncEnabled && (
+      {syncEnabled && !currentUser && !authNoticeDismissed && (
+        <div className={`${theme.cardSecondary} rounded-2xl p-4 flex flex-col gap-3`}>
+          <div>
+            <p className={`text-sm font-semibold ${theme.textSecondary}`}>{t('auth.householdNoticeTitle')}</p>
+            <p className={`text-sm ${theme.textMuted}`}>{t('auth.householdNoticeBody')}</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={onOpenSettings}
+              className="flex-1 px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition"
+            >
+              {t('auth.openSettings')}
+            </button>
+            <button
+              onClick={() => setAuthNoticeDismissed(true)}
+              className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium ${theme.card} ${theme.textSecondary} hover:opacity-80 transition`}
+            >
+              {t('auth.dismiss')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {syncEnabled && currentUser && (
         <div className={`${theme.card} rounded-2xl shadow-sm p-4`}>
-          {!currentUser ? (
-            <div className="flex items-center justify-between">
-              <div>
-                <p className={`text-sm font-medium ${theme.text}`}>{t('household.setupTitle')}</p>
-                <p className={`text-xs ${theme.textMuted}`}>{t('auth.signInTitle')}</p>
-              </div>
-              <button
-                onClick={() => setShowAuthModal(true)}
-                className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition"
-              >
-                {t('auth.sendLink')}
-              </button>
-            </div>
-          ) : !currentHousehold && !householdLoading ? (
+          {!currentHousehold && !householdLoading ? (
             <HouseholdSetupView
               currentUser={currentUser}
               onSetupComplete={() => {
@@ -421,13 +430,6 @@ export default function HouseholdView({ theme, darkMode, currentUser, onConflict
       </Section>
 
       {/* Modals */}
-      {showAuthModal && (
-        <AuthModal
-          theme={theme}
-          onClose={() => setShowAuthModal(false)}
-          onAuthenticated={() => setShowAuthModal(false)}
-        />
-      )}
       {showInviteModal && currentInvite && (
         <InviteModal
           theme={theme}
