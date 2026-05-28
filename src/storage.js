@@ -6,6 +6,7 @@ import {
   createStore,
 } from 'idb-keyval';
 import { isSharedKey, getShared, setShared, deleteShared } from './sync/householdStorage';
+import { isUserSyncKey, getUserData, setUserData, deleteUserData } from './sync/userDataStorage';
 
 const PREFIX = 'ritmo:';
 const MIGRATION_FLAG = '__migrated_from_localstorage__';
@@ -55,6 +56,11 @@ export const storage = {
       const value = await getShared(key);
       return value === null ? null : { key, value };
     }
+    if (isUserSyncKey(key)) {
+      await ensureMigrated();
+      const value = await getUserData(key);
+      return value === null ? null : { key, value };
+    }
     await ensureMigrated();
     const value = await idbGet(key, store);
     if (value === undefined || value === null) return null;
@@ -66,6 +72,11 @@ export const storage = {
       await setShared(key, value);
       return { key, value };
     }
+    if (isUserSyncKey(key)) {
+      await ensureMigrated();
+      await setUserData(key, value);
+      return { key, value };
+    }
     await ensureMigrated();
     await idbSet(key, value, store);
     return { key, value };
@@ -74,6 +85,11 @@ export const storage = {
   async delete(key) {
     if (isSharedKey(key)) {
       await deleteShared(key);
+      return { key, deleted: true };
+    }
+    if (isUserSyncKey(key)) {
+      await ensureMigrated();
+      await deleteUserData(key);
       return { key, deleted: true };
     }
     await ensureMigrated();
@@ -87,6 +103,8 @@ export const storage = {
     const filtered = allKeys.filter((k) => {
       if (k === MIGRATION_FLAG) return false;
       if (typeof k !== 'string') return false;
+      if (k.startsWith('__sync:')) return false;
+      if (k === '_sync_queue') return false;
       if (prefix) return k.startsWith(prefix);
       return true;
     });
