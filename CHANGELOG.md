@@ -1,3 +1,22 @@
+# [0.14.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.13.0...v0.14.0) (2026-05-26)
+
+
+### Features
+
+* **auth:** add AuthSection orchestrator with reset-flow detection ([1a3d891](https://github.com/Studio-Lek-River/Ritmo/commit/1a3d89158877664faddefe66ae2264b8eb6205ff))
+* **auth:** add ChangePasswordForm for signed-in users ([060c357](https://github.com/Studio-Lek-River/Ritmo/commit/060c3579a1d725a9411743e5cce1e90544e1cf59))
+* **auth:** add email verification and mail-sent notices ([bc5ab76](https://github.com/Studio-Lek-River/Ritmo/commit/bc5ab7692eab30873c9554515ac0632b94ab5cd4))
+* **auth:** add forgot/reset password flow components ([57a03e5](https://github.com/Studio-Lek-River/Ritmo/commit/57a03e525b870a14ddcb7c9d7d71459f31abf6ed))
+* **auth:** add magic link form ([87de363](https://github.com/Studio-Lek-River/Ritmo/commit/87de3634829b609f512e1d210817f5926074399e))
+* **auth:** add password prompt for magic-link users ([7944c43](https://github.com/Studio-Lek-River/Ritmo/commit/7944c4362f3269793eafe4b9230b3e2856ca12ff))
+* **auth:** add password validation and error translation helpers ([2364148](https://github.com/Studio-Lek-River/Ritmo/commit/23641488f0dcc5b7254babe396c802701c7cfbd7))
+* **auth:** add PasswordRequirements component ([e8f760c](https://github.com/Studio-Lek-River/Ritmo/commit/e8f760cea6a96e932bfebd0d499267e798b36521))
+* **auth:** add SignedInPanel with household list and sign-out ([32d0de1](https://github.com/Studio-Lek-River/Ritmo/commit/32d0de1e1a2d9b0d8a0537c7a56ac83947c60311))
+* **auth:** add SignInForm and SignUpForm components ([0dac94c](https://github.com/Studio-Lek-River/Ritmo/commit/0dac94c9ef1aa901ead154e0d3247ff73f3bc7dc))
+* **i18n:** add auth keys for password-based auth UI ([fd558e0](https://github.com/Studio-Lek-River/Ritmo/commit/fd558e0a212e166828d4345e24b7a973fab7eb39))
+* **settings:** integrate AuthSection in install tab ([388b258](https://github.com/Studio-Lek-River/Ritmo/commit/388b258ee521c9cb5f3fc0cdcdecd01b8669f394))
+* **sync:** add password auth functions to sync/auth ([de8ed5d](https://github.com/Studio-Lek-River/Ritmo/commit/de8ed5d946b5e8897140869f9fe8dd9278c44eec))
+
 # [0.13.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.12.0...v0.13.0) (2026-05-20)
 
 
