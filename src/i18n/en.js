@@ -396,6 +396,20 @@ export default {
     confirmUnshareBody: 'Cloud data stays for other members. You will only see your local copy.',
   },
 
+  sync: {
+    conflict: {
+      title: 'Sync conflict',
+      description: 'Cloud data exists for these items. Which version do you want to keep?',
+      keepCloud: 'Keep cloud',
+      keepLocal: 'Keep local',
+      itemSettings: 'Settings',
+      itemDay: 'Day of {date}',
+    },
+    error: {
+      pullFailed: 'Could not fetch cloud data',
+    },
+  },
+
   auth: {
     signInTitle: 'Sign in',
     emailLabel: 'Email address',

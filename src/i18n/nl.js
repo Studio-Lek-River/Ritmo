@@ -397,6 +397,20 @@ export default {
     confirmUnshareBody: 'De cloud-data blijft voor andere leden. Jij ziet alleen je lokale kopie.',
   },
 
+  sync: {
+    conflict: {
+      title: 'Synchronisatie-conflict',
+      description: 'Er staat cloud-data voor deze items. Welke versie wil je behouden?',
+      keepCloud: 'Behoud cloud',
+      keepLocal: 'Behoud lokaal',
+      itemSettings: 'Instellingen',
+      itemDay: 'Dag van {date}',
+    },
+    error: {
+      pullFailed: 'Kon cloud-data niet ophalen',
+    },
+  },
+
   auth: {
     signInTitle: 'Inloggen',
     emailLabel: 'E-mailadres',
