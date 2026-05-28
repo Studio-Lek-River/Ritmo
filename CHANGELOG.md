@@ -1,3 +1,15 @@
+# [0.15.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.14.0...v0.15.0) (2026-05-28)
+
+
+### Features
+
+* **app:** pull user data on login with conflict resolution ([b95e675](https://github.com/Studio-Lek-River/Ritmo/commit/b95e6757f8a3248f3cd15c0e1b687a6274da8e3e))
+* **i18n:** add sync conflict strings ([475aadd](https://github.com/Studio-Lek-River/Ritmo/commit/475aadd9c61b3562f4d29041d5421bb89a61c74e))
+* **storage:** delegate settings and day:* keys to userDataStorage ([802700b](https://github.com/Studio-Lek-River/Ritmo/commit/802700bd0b71da592b94da2e17dea2cc78dccd42))
+* **sync:** add userDataStorage module with push/pull/delete ([cd9db07](https://github.com/Studio-Lek-River/Ritmo/commit/cd9db07df87d399ea38de21db0ee6d7616eea615))
+* **sync:** generalize flushQueue for per-item onConflict and delete op ([7e84ae0](https://github.com/Studio-Lek-River/Ritmo/commit/7e84ae0db0c2d32c07f6b1396ca75830a59717f0))
+* **sync:** SyncConflictDialog component ([992acc7](https://github.com/Studio-Lek-River/Ritmo/commit/992acc76cc6ed2c9f64b4f2961f3f772b7157d45))
+
 # [0.14.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.13.0...v0.14.0) (2026-05-26)
 
 
