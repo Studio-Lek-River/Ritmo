@@ -65,11 +65,16 @@ export async function flushQueue() {
     for (const item of queue) {
       try {
         if (item.op === 'upsert') {
+          const onConflict = item.onConflict || 'household_id,module_id,user_id,date';
           const { error } = await supabase
             .from(item.table)
-            .upsert(item.record, {
-              onConflict: 'household_id,module_id,user_id,date',
-            });
+            .upsert(item.record, { onConflict });
+          if (error) throw error;
+        } else if (item.op === 'delete') {
+          const { error } = await supabase
+            .from(item.table)
+            .delete()
+            .match(item.match);
           if (error) throw error;
         }
       } catch (err) {
