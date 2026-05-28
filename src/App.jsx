@@ -5,7 +5,9 @@ import {
 import './storage';
 import { isSyncEnabled } from './sync/supabase';
 import { onAuthChange, getCurrentUser } from './sync/auth';
+import { pullUserData } from './sync/userDataStorage';
 import ConflictToast from './components/ConflictToast';
+import SyncConflictDialog from './components/SyncConflictDialog';
 import ProjectsModule from './modules/ProjectsModule';
 import CounterModule from './modules/CounterModule';
 import SleepModule from './modules/SleepModule';
@@ -99,6 +101,8 @@ export default function Ritmo() {
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [currentUser, setCurrentUser] = useState(null);
   const [conflictInfo, setConflictInfo] = useState(null);
+  const [pendingConflicts, setPendingConflicts] = useState(null);
+  const conflictResolverRef = useRef(null);
 
   const previousCompletionRef = useRef(null);
   const prevModuleStatusRef = useRef({});
@@ -123,82 +127,106 @@ export default function Ritmo() {
     return unsub;
   }, []);
 
-  // Load all data
-  useEffect(() => {
-    async function loadData() {
-      let loadedModules = null;
+  const loadFromStorage = useCallback(async () => {
+    let loadedModules = null;
+    const todayKeyForLoad = fmtDateKey(new Date());
 
-      try {
-        const settingsResult = await window.storage.get('settings');
-        if (settingsResult?.value) {
-          const settings = migrateSettings(JSON.parse(settingsResult.value));
-          if (settings.modules) {
-            loadedModules = settings.modules.map(migrateModuleConfig);
-          }
-          if (settings.darkMode !== undefined) setDarkMode(settings.darkMode);
-          if (settings.reflectionQuestions) setReflectionQuestions(settings.reflectionQuestions);
-          if (settings.recurringTasks) setRecurringTasks(settings.recurringTasks);
-          if (settings.streakSettings) setStreakSettings(settings.streakSettings);
-          if (settings.soundEnabled !== undefined) setSoundEnabled(settings.soundEnabled);
-          if (settings.soundVolume !== undefined) setSoundVolume(settings.soundVolume);
-          if (settings.goldenBorderEnabled !== undefined) setGoldenBorderEnabled(settings.goldenBorderEnabled);
-          if (settings.showReflectionOnToday !== undefined) setShowReflectionOnToday(settings.showReflectionOnToday);
-          if (settings.hasUsedSwipe !== undefined) setHasUsedSwipe(settings.hasUsedSwipe);
-          if (settings.hasDismissedInstallBanner !== undefined) setHasDismissedInstallBanner(settings.hasDismissedInstallBanner);
-          if (loadedModules) setModules(loadedModules);
-          if (settings.hasOnboarded !== undefined) setHasOnboarded(settings.hasOnboarded);
-        } else {
-          setHasOnboarded(false);
+    try {
+      const settingsResult = await window.storage.get('settings');
+      if (settingsResult?.value) {
+        const settings = migrateSettings(JSON.parse(settingsResult.value));
+        if (settings.modules) {
+          loadedModules = settings.modules.map(migrateModuleConfig);
         }
-      } catch {
+        if (settings.darkMode !== undefined) setDarkMode(settings.darkMode);
+        if (settings.reflectionQuestions) setReflectionQuestions(settings.reflectionQuestions);
+        if (settings.recurringTasks) setRecurringTasks(settings.recurringTasks);
+        if (settings.streakSettings) setStreakSettings(settings.streakSettings);
+        if (settings.soundEnabled !== undefined) setSoundEnabled(settings.soundEnabled);
+        if (settings.soundVolume !== undefined) setSoundVolume(settings.soundVolume);
+        if (settings.goldenBorderEnabled !== undefined) setGoldenBorderEnabled(settings.goldenBorderEnabled);
+        if (settings.showReflectionOnToday !== undefined) setShowReflectionOnToday(settings.showReflectionOnToday);
+        if (settings.hasUsedSwipe !== undefined) setHasUsedSwipe(settings.hasUsedSwipe);
+        if (settings.hasDismissedInstallBanner !== undefined) setHasDismissedInstallBanner(settings.hasDismissedInstallBanner);
+        if (loadedModules) setModules(loadedModules);
+        if (settings.hasOnboarded !== undefined) setHasOnboarded(settings.hasOnboarded);
+      } else {
         setHasOnboarded(false);
       }
-
-      const migrateDayData = (raw) => {
-        if (!raw?.moduleData || !loadedModules) return raw;
-        const migrated = {};
-        for (const [id, md] of Object.entries(raw.moduleData)) {
-          const cfg = loadedModules.find(m => m.id === id);
-          migrated[id] = migrateDayModuleData(md, cfg);
-        }
-        return { ...raw, moduleData: migrated };
-      };
-
-      try {
-        const result = await window.storage.get(`day:${todayKey}`);
-        if (result?.value) {
-          const data = migrateDayData(JSON.parse(result.value));
-          setModuleData(data.moduleData || {});
-          setCustomTasks(data.customTasks || []);
-          setReflectionAnswers(data.reflectionAnswers || {});
-          // First state load comes from storage directly; suppress the
-          // first save that would otherwise round-trip the same data back.
-          skipNextSaveRef.current = true;
-        }
-      } catch (e) {}
-
-      try {
-        const keys = await window.storage.list('day:');
-        if (keys?.keys) {
-          const allHistory = {};
-          for (const key of keys.keys) {
-            try {
-              const r = await window.storage.get(key);
-              if (r?.value) {
-                const date = key.replace('day:', '');
-                allHistory[date] = migrateDayData(JSON.parse(r.value));
-              }
-            } catch {}
-          }
-          setHistory(allHistory);
-        }
-      } catch {}
-
-      setLoading(false);
+    } catch {
+      setHasOnboarded(false);
     }
-    loadData();
-    // One-shot on mount; activeDate changes are handled by a separate effect.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    const migrateDayData = (raw) => {
+      if (!raw?.moduleData || !loadedModules) return raw;
+      const migrated = {};
+      for (const [id, md] of Object.entries(raw.moduleData)) {
+        const cfg = loadedModules.find(m => m.id === id);
+        migrated[id] = migrateDayModuleData(md, cfg);
+      }
+      return { ...raw, moduleData: migrated };
+    };
+
+    try {
+      const result = await window.storage.get(`day:${todayKeyForLoad}`);
+      if (result?.value) {
+        const data = migrateDayData(JSON.parse(result.value));
+        setModuleData(data.moduleData || {});
+        setCustomTasks(data.customTasks || []);
+        setReflectionAnswers(data.reflectionAnswers || {});
+        skipNextSaveRef.current = true;
+      }
+    } catch (e) {}
+
+    try {
+      const keys = await window.storage.list('day:');
+      if (keys?.keys) {
+        const allHistory = {};
+        for (const key of keys.keys) {
+          try {
+            const r = await window.storage.get(key);
+            if (r?.value) {
+              const date = key.replace('day:', '');
+              allHistory[date] = migrateDayData(JSON.parse(r.value));
+            }
+          } catch {}
+        }
+        setHistory(allHistory);
+      }
+    } catch {}
+
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadFromStorage();
+  }, [loadFromStorage]);
+
+  const userId = currentUser?.id;
+  useEffect(() => {
+    if (!isSyncEnabled() || !userId) return;
+    let cancelled = false;
+    (async () => {
+      const result = await pullUserData(userId, (conflicts) =>
+        new Promise((resolve) => {
+          conflictResolverRef.current = resolve;
+          setPendingConflicts(conflicts);
+        }),
+      );
+      if (cancelled) return;
+      if (result.pulled > 0 || result.conflicts > 0) {
+        skipNextSaveRef.current = true;
+        await loadFromStorage();
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userId, loadFromStorage]);
+
+  const handleResolveConflict = useCallback((choice) => {
+    const resolver = conflictResolverRef.current;
+    conflictResolverRef.current = null;
+    setPendingConflicts(null);
+    resolver?.(choice);
   }, []);
 
   // When the active date changes, swap in that day's data from history.
@@ -885,6 +913,13 @@ export default function Ritmo() {
           onDismiss={() => setConflictInfo(null)}
         />
       )}
+      <SyncConflictDialog
+        open={Boolean(pendingConflicts && pendingConflicts.length > 0)}
+        conflicts={pendingConflicts || []}
+        onResolve={handleResolveConflict}
+        theme={theme}
+      />
+
       {confetti.map(c => (
         <div
           key={c.id}
