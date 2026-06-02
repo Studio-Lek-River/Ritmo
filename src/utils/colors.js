@@ -35,8 +35,35 @@ const COLOR_HEX = {
   rose: '#f43f5e',
 };
 
+// Tailwind 300-stop hex values, een lichtere tint per kleur. Gebruikt voor de
+// achterste golflaag van de glas-weergave (LiquidGlass), waar een tweede,
+// lichtere vloeistofkleur nodig is naast de basis (500-stop) kleur.
+const COLOR_HEX_LIGHT = {
+  red: '#fca5a5',
+  orange: '#fdba74',
+  amber: '#fcd34d',
+  yellow: '#fde047',
+  green: '#86efac',
+  teal: '#5eead4',
+  cyan: '#67e8f9',
+  blue: '#93c5fd',
+  indigo: '#a5b4fc',
+  purple: '#d8b4fe',
+  pink: '#f9a8d4',
+  rose: '#fda4af',
+};
+
 export function getColorHex(colorKey) {
   return COLOR_HEX[colorKey] || '#71717a';
+}
+
+// Geeft de basis- en lichte vloeistofkleur voor de glas-weergave. Beide vallen
+// terug op een neutrale zinc-tint bij een onbekende sleutel.
+export function glassFill(colorKey) {
+  return {
+    base: getColorHex(colorKey),
+    light: COLOR_HEX_LIGHT[colorKey] || '#a1a1aa',
+  };
 }
 
 export function getColorClasses(colorKey) {
