@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Sparkles, AlertCircle, Trash2, Settings } from 'lucide-react';
 import { formatAmount } from '../utils/format';
 import ReminderBanner from '../components/ReminderBanner';
+import LiquidGlass from '../components/LiquidGlass';
+import { glassFill, getColorClasses } from '../utils/colors';
 import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 
 export default function CounterModule({
@@ -182,6 +184,7 @@ function CounterUI({
 
   const pct = dailyGoal > 0 ? Math.min(100, (total / dailyGoal) * 100) : 0;
   const reachedGoal = dailyGoal > 0 && total >= dailyGoal;
+  const display = mod.counterDisplay ?? 'bar';
 
   const showReminder = useMemo(() => {
     if (!categoriesEnabled || categories.length === 0) return false;
@@ -238,15 +241,32 @@ function CounterUI({
       </div>
 
       <div className={`${darkMode ? `bg-${mod.color}-900/30` : `bg-${mod.color}-50`} rounded-xl p-4 mb-3`}>
-        <div className={`text-2xl font-bold ${goalTextClass} mb-2`}>
-          {goalLabel}
+        <div className="flex items-center gap-2 mb-2">
+          <div className={`text-2xl font-bold ${goalTextClass}`}>
+            {goalLabel}
+          </div>
+          {display === 'glass' && reachedGoal && (
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getColorClasses(mod.color).pillBg} ${getColorClasses(mod.color).pillText}`}>
+              {t('modules.counterGoalReached')}
+            </span>
+          )}
         </div>
-        <div className={`w-full ${theme.progressBg} rounded-full h-2 overflow-hidden`}>
-          <div
-            className={`h-2 rounded-full transition-all duration-500 ${barColor}`}
-            style={{ width: `${pct}%` }}
+        {display === 'glass' ? (
+          <LiquidGlass
+            pct={dailyGoal > 0 ? total / dailyGoal : 0}
+            baseColor={glassFill(mod.color).base}
+            lightColor={glassFill(mod.color).light}
+            shape={mod.glassShape ?? 'tumbler'}
+            label={t('modules.counterGlassAria')}
           />
-        </div>
+        ) : (
+          <div className={`w-full ${theme.progressBg} rounded-full h-2 overflow-hidden`}>
+            <div
+              className={`h-2 rounded-full transition-all duration-500 ${barColor}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        )}
       </div>
 
       {showReminder && (
