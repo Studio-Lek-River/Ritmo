@@ -2995,6 +2995,11 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
             const weeklyMax = editing.weeklyMax ?? editing.weeklyMaxMinutes ?? '';
             const presetsString = (editing.presets || []).join(', ');
             const categoriesString = (editing.categories || []).join(', ');
+            const display = editing.counterDisplay ?? 'bar';
+            const glassShape = editing.glassShape ?? 'tumbler';
+            // Glas-weergave alleen aanbieden waar de counter-module hem ook echt
+            // toont: het standaard-pad (alles behalve pure-minuten zonder categorieen).
+            const showGlassOption = !isMinutes || editing.categoriesEnabled;
             const setBoth = (goalKey, legacyKey, parsed) => {
               setEditing(prev => ({ ...prev, [goalKey]: parsed, [legacyKey]: parsed }));
             };
@@ -3032,6 +3037,55 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
                     <option value="reps">{t('modules.units.reps')}</option>
                   </select>
                 </div>
+
+                {showGlassOption && (
+                  <div>
+                    <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('modules.counterDisplay')}</label>
+                    <div className="flex gap-2">
+                      {[
+                        { val: 'bar', label: t('modules.counterDisplayBar') },
+                        { val: 'glass', label: t('modules.counterDisplayGlass') },
+                      ].map(opt => (
+                        <button
+                          key={opt.val}
+                          type="button"
+                          onClick={() => update('counterDisplay', opt.val)}
+                          className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition ${
+                            display === opt.val
+                              ? `bg-${editing.color}-500 text-white`
+                              : `${theme.cardSecondary} ${theme.textSecondary} ${theme.hover}`
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                    {display === 'glass' && (
+                      <div className="mt-3">
+                        <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('modules.counterGlassShape')}</label>
+                        <div className="flex gap-2">
+                          {[
+                            { val: 'tumbler', label: t('modules.counterGlassTumbler') },
+                            { val: 'highball', label: t('modules.counterGlassHighball') },
+                          ].map(opt => (
+                            <button
+                              key={opt.val}
+                              type="button"
+                              onClick={() => update('glassShape', opt.val)}
+                              className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition ${
+                                glassShape === opt.val
+                                  ? `bg-${editing.color}-500 text-white`
+                                  : `${theme.cardSecondary} ${theme.textSecondary} ${theme.hover}`
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
