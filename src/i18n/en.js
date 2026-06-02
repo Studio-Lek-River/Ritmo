@@ -820,6 +820,16 @@ export default {
     counterMinutesGoal: 'today (goal: {goal} h)',
     counterWeekTotal: '{week} / {max} h',
 
+    // glass display (counter modules)
+    counterDisplay: 'Display',
+    counterDisplayBar: 'Bar',
+    counterDisplayGlass: 'Glass',
+    counterGlassShape: 'Glass shape',
+    counterGlassTumbler: 'Tumbler',
+    counterGlassHighball: 'Highball',
+    counterGlassAria: 'Glass showing fill level',
+    counterGoalReached: 'Goal',
+
     // celebration (counter modules)
     celebration: 'Celebration',
     celebrationEnabled: 'Show celebration animation when daily goal is reached',
