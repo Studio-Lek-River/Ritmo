@@ -1,3 +1,13 @@
+# [0.16.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.15.0...v0.16.0) (2026-06-02)
+
+
+### Features
+
+* **app:** Account-tab met zichtbare sync-status ([9fccceb](https://github.com/Studio-Lek-River/Ritmo/commit/9fcccebbc745a2b7d2ef7869010a9782f1c63342))
+* **i18n:** sync.status + settings.tabAccount strings (nl/en) ([f571a9c](https://github.com/Studio-Lek-River/Ritmo/commit/f571a9ce8db35827bfb4ea305e03116cec0c82c8))
+* **sync:** observable sync-status laag + useSyncStatus hook ([2e08983](https://github.com/Studio-Lek-River/Ritmo/commit/2e08983b292933a1e5ef5239b4b6ee7167248021))
+* **sync:** voed sync-status vanuit flushQueue en userData-functies ([e06a772](https://github.com/Studio-Lek-River/Ritmo/commit/e06a7720f356e0f0c1d6f121308bf5eaf31e7d93))
+
 # [0.15.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.14.0...v0.15.0) (2026-05-28)
 
 
