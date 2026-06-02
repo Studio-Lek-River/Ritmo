@@ -22,6 +22,10 @@ export const DEFAULT_MODULES = [
     categories: [],
     dailyGoalMinutes: 120,
     weeklyMaxMinutes: 360,
+    // Optioneel, alleen counter-modules:
+    //   counterDisplay?: 'bar' | 'glass'      weergave op de Vandaag-tab, default 'bar'
+    //   glassShape?: 'tumbler' | 'highball'   glasvorm bij 'glass', default 'tumbler'
+    // Afwezigheid telt overal als 'bar'/'tumbler'; geen migratie nodig.
   },
   { id: 'tasks', nameKey: 'presets.defaultTasks', icon: 'Check', color: 'pink', enabled: true, countInStreak: false, type: 'tasks' },
 ];
