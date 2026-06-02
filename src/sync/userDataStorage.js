@@ -9,6 +9,7 @@ import { supabase, isSyncEnabled } from './supabase';
 import { onAuthChange, getCurrentUser } from './auth';
 import { enqueue, getQueue } from './syncQueue';
 import { flushQueue } from './householdStorage';
+import { markSyncing, markSynced, markError, refreshPending } from './syncStatus';
 
 const store = createStore('ritmo-db', 'ritmo-store');
 const TABLE = 'user_data';
@@ -75,6 +76,7 @@ export async function setUserData(key, value) {
     },
   });
 
+  await refreshPending();
   flushQueue();
 }
 
@@ -90,6 +92,7 @@ export async function deleteUserData(key) {
     match: { user_id: currentUserId, key },
   });
 
+  await refreshPending();
   flushQueue();
 }
 
@@ -103,6 +106,8 @@ export async function pullUserData(userId, resolveConflict) {
     return { pulled: 0, pushed: 0, conflicts: 0, error: null };
   }
 
+  markSyncing();
+
   const { data, error } = await supabase
     .from(TABLE)
     .select('key, value, updated_at')
@@ -110,6 +115,7 @@ export async function pullUserData(userId, resolveConflict) {
 
   if (error) {
     console.warn('Ritmo user_data pull failed', error);
+    markError();
     return { pulled: 0, pushed: 0, conflicts: 0, error };
   }
 
@@ -198,6 +204,8 @@ export async function pullUserData(userId, resolveConflict) {
   }
 
   flushQueue();
+
+  markSynced();
 
   return { pulled, pushed, conflicts: conflicts.length, error: null };
 }

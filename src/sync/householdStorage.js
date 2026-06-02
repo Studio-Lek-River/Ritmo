@@ -1,6 +1,7 @@
 import { get as idbGet, set as idbSet, del as idbDel, createStore } from 'idb-keyval';
 import { supabase, isSyncEnabled } from './supabase';
 import { enqueue, getQueue, setQueue } from './syncQueue';
+import { markSyncing, markSynced, markError } from './syncStatus';
 
 const store = createStore('ritmo-db', 'ritmo-store');
 const SHARED_PREFIX = 'shared:';
@@ -59,6 +60,8 @@ let flushing = false;
 export async function flushQueue() {
   if (!isSyncEnabled() || flushing || !navigator.onLine) return;
   flushing = true;
+  markSyncing();
+  let hadFailure = false;
   try {
     const queue = await getQueue();
     const remaining = [];
@@ -78,6 +81,7 @@ export async function flushQueue() {
           if (error) throw error;
         }
       } catch (err) {
+        hadFailure = true;
         item.attempts += 1;
         if (item.attempts < 5) {
           remaining.push(item);
@@ -87,6 +91,10 @@ export async function flushQueue() {
       }
     }
     await setQueue(remaining);
+    if (hadFailure && remaining.length > 0) markError();
+    else markSynced();
+  } catch {
+    markError();
   } finally {
     flushing = false;
   }
