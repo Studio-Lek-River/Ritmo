@@ -25,6 +25,7 @@ import HelpOverlay from './components/help/HelpOverlay';
 import InstallGuide from './components/help/InstallGuide';
 import BackupSection from './components/BackupSection';
 import AuthSection from './components/auth/AuthSection';
+import SyncStatusRow from './components/SyncStatusRow';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
 import ChecklistModule from './modules/ChecklistModule';
@@ -1164,6 +1165,7 @@ export default function Ritmo() {
         <SettingsModal
           onClose={() => { setShowSettings(false); setSettingsInitialTab(null); }}
           initialTab={settingsInitialTab}
+          currentUser={currentUser}
           onNavigateHousehold={() => { setShowSettings(false); setSettingsInitialTab(null); setView('household'); }}
           modules={modules}
           setModules={setModules}
@@ -1775,7 +1777,7 @@ function ReflectionView({ reflectionQuestions, reflectionAnswers, setReflectionA
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, showReflectionOnToday, setShowReflectionOnToday, theme, dayNames, setEditingModule, initialTab, onNavigateHousehold }) {
+function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, showReflectionOnToday, setShowReflectionOnToday, theme, dayNames, setEditingModule, initialTab, currentUser, onNavigateHousehold }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
   const [helpView, setHelpView] = useState(null); // null | 'list' | 'install' | 'feedback'
@@ -1880,6 +1882,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
             { id: 'theme', label: t('settings.tabTheme') },
             { id: 'language', label: t('settings.tabLanguage') },
             { id: 'install', label: t('install.settingsHeader') },
+            { id: 'account', label: t('settings.tabAccount') },
           ].map(tab => (
             <button
               key={tab.id}
@@ -2359,15 +2362,17 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
               </div>
             ) : null}
 
-            {isSyncEnabled() && (
-              <>
-                <hr className="border-gray-200 dark:border-gray-700 mt-4" />
-                <AuthSection theme={theme} onNavigateHousehold={onNavigateHousehold} />
-              </>
-            )}
-
             <hr className="border-gray-200 dark:border-gray-700 mt-4" />
             <BackupSection theme={theme} />
+          </div>
+        )}
+
+        {activeTab === 'account' && (
+          <div className="space-y-4">
+            {isSyncEnabled() && (
+              <AuthSection theme={theme} onNavigateHousehold={onNavigateHousehold} />
+            )}
+            <SyncStatusRow theme={theme} signedIn={!!currentUser} userId={currentUser?.id} />
           </div>
         )}
 
