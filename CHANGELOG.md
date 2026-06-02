@@ -1,3 +1,14 @@
+# [0.17.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.16.0...v0.17.0) (2026-06-02)
+
+
+### Features
+
+* **app:** weergave- en glasvorm-keuze in counter-editor ([4f1fd35](https://github.com/Studio-Lek-River/Ritmo/commit/4f1fd35beee8f9fca6031109da0b0923efec52e3))
+* **colors:** glassFill light-tint helper voor glas-weergave ([e71d551](https://github.com/Studio-Lek-River/Ritmo/commit/e71d551347ac693e4f34877290bad513c4f63a0f))
+* **counter:** optionele glas-weergave en doel-badge in counter-module ([f0bbf28](https://github.com/Studio-Lek-River/Ritmo/commit/f0bbf28f6bea3c0d2953414bad48a2e0bb8e21be))
+* **glass:** LiquidGlass component met golfanimatie en glasvormen ([18de5dc](https://github.com/Studio-Lek-River/Ritmo/commit/18de5dc36496fb0e693d8862c73abc496e8d73e0))
+* **i18n:** glas-weergave strings (nl/en) ([ad65a78](https://github.com/Studio-Lek-River/Ritmo/commit/ad65a78147d62eca26f993805ea95f7a57a61fa8))
+
 # [0.16.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.15.0...v0.16.0) (2026-06-02)
 
 
