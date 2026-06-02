@@ -409,6 +409,20 @@ export default {
     error: {
       pullFailed: 'Kon cloud-data niet ophalen',
     },
+    status: {
+      synced: 'Gesynchroniseerd',
+      syncing: 'Synchroniseren...',
+      pending: '{n} wijziging wacht',
+      pendingPlural: '{n} wijzigingen wachten',
+      offline: 'Offline, wijzigingen bewaard',
+      error: 'Synchronisatie mislukt',
+      localOnly: 'Alleen op dit apparaat',
+      signInHint: 'Log in om te synchroniseren tussen apparaten.',
+      lastJustNow: 'zojuist',
+      lastMinutes: '{n} min geleden',
+      syncNow: 'Nu synchroniseren',
+      retry: 'Opnieuw proberen',
+    },
   },
 
   auth: {
@@ -971,6 +985,7 @@ export default {
     tabReflection: 'Reflectie',
     tabTheme: 'Thema',
     tabLanguage: 'Taal',
+    tabAccount: 'Account',
     manageModules: 'Beheer modules',
     reorderHint: 'Versleep of gebruik de pijltjes om de volgorde aan te passen.',
     manageHint: 'Activeer, verberg, bewerk of verwijder modules. Voeg eigen modules toe voor wat jij belangrijk vindt.',

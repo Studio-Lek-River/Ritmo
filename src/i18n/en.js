@@ -408,6 +408,20 @@ export default {
     error: {
       pullFailed: 'Could not fetch cloud data',
     },
+    status: {
+      synced: 'Synced',
+      syncing: 'Syncing...',
+      pending: '{n} change pending',
+      pendingPlural: '{n} changes pending',
+      offline: 'Offline, changes saved',
+      error: 'Sync failed',
+      localOnly: 'This device only',
+      signInHint: 'Sign in to sync across devices.',
+      lastJustNow: 'just now',
+      lastMinutes: '{n} min ago',
+      syncNow: 'Sync now',
+      retry: 'Try again',
+    },
   },
 
   auth: {
@@ -962,6 +976,7 @@ export default {
     tabReflection: 'Reflection',
     tabTheme: 'Theme',
     tabLanguage: 'Language',
+    tabAccount: 'Account',
     manageModules: 'Manage modules',
     reorderHint: 'Drag or use the arrows to change the order.',
     manageHint: 'Activate, hide, edit or delete modules. Add your own modules for what matters to you.',
