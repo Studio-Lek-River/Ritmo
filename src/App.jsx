@@ -58,6 +58,7 @@ import {
   canCountInStreak,
 } from './utils/dayProgress';
 import { getColorHex, COLOR_OPTIONS } from './utils/colors';
+import CounterDisplay, { DISPLAY_STYLE_KEYS } from './components/CounterDisplay';
 import { DEFAULT_MODULES, instantiateDefaults } from './utils/defaultModules';
 import { playSound } from './utils/sound';
 
@@ -3004,10 +3005,6 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
             const presetsString = (editing.presets || []).join(', ');
             const categoriesString = (editing.categories || []).join(', ');
             const display = editing.counterDisplay ?? 'bar';
-            const glassShape = editing.glassShape ?? 'tumbler';
-            // Glas-weergave alleen aanbieden waar de counter-module hem ook echt
-            // toont: het standaard-pad (alles behalve pure-minuten zonder categorieen).
-            const showGlassOption = !isMinutes || editing.categoriesEnabled;
             const setBoth = (goalKey, legacyKey, parsed) => {
               setEditing(prev => ({ ...prev, [goalKey]: parsed, [legacyKey]: parsed }));
             };
@@ -3046,54 +3043,41 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
                   </select>
                 </div>
 
-                {showGlassOption && (
-                  <div>
-                    <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('modules.counterDisplay')}</label>
-                    <div className="flex gap-2">
-                      {[
-                        { val: 'bar', label: t('modules.counterDisplayBar') },
-                        { val: 'glass', label: t('modules.counterDisplayGlass') },
-                      ].map(opt => (
+                <div>
+                  <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('modules.counterDisplay')}</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {DISPLAY_STYLE_KEYS.map((key) => {
+                      const active = display === key;
+                      const labelKey = `counterDisplay${key.charAt(0).toUpperCase()}${key.slice(1)}`;
+                      return (
                         <button
-                          key={opt.val}
+                          key={key}
                           type="button"
-                          onClick={() => update('counterDisplay', opt.val)}
-                          className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition ${
-                            display === opt.val
-                              ? `bg-${editing.color}-500 text-white`
-                              : `${theme.cardSecondary} ${theme.textSecondary} ${theme.hover}`
+                          onClick={() => update('counterDisplay', key)}
+                          aria-pressed={active}
+                          className={`flex flex-col items-center gap-1 px-2 py-2 rounded-lg text-xs font-medium transition border ${
+                            active
+                              ? `border-${editing.color}-500 ${theme.cardSecondary}`
+                              : `border-transparent ${theme.cardSecondary} ${theme.hover}`
                           }`}
                         >
-                          {opt.label}
+                          <span className="flex items-center justify-center h-9">
+                            <CounterDisplay
+                              displayStyle={key}
+                              value={6}
+                              goal={10}
+                              colorKey={active ? editing.color : null}
+                              size={28}
+                            />
+                          </span>
+                          <span className={active ? `text-${editing.color}-600` : theme.textSecondary}>
+                            {t(`modules.${labelKey}`)}
+                          </span>
                         </button>
-                      ))}
-                    </div>
-                    {display === 'glass' && (
-                      <div className="mt-3">
-                        <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('modules.counterGlassShape')}</label>
-                        <div className="flex gap-2">
-                          {[
-                            { val: 'tumbler', label: t('modules.counterGlassTumbler') },
-                            { val: 'highball', label: t('modules.counterGlassHighball') },
-                          ].map(opt => (
-                            <button
-                              key={opt.val}
-                              type="button"
-                              onClick={() => update('glassShape', opt.val)}
-                              className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition ${
-                                glassShape === opt.val
-                                  ? `bg-${editing.color}-500 text-white`
-                                  : `${theme.cardSecondary} ${theme.textSecondary} ${theme.hover}`
-                              }`}
-                            >
-                              {opt.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })}
                   </div>
-                )}
+                </div>
 
                 <div>
                   <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
