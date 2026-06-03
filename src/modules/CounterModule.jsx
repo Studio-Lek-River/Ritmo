@@ -2,8 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Sparkles, AlertCircle, Trash2, Settings } from 'lucide-react';
 import { formatAmount } from '../utils/format';
 import ReminderBanner from '../components/ReminderBanner';
-import LiquidGlass from '../components/LiquidGlass';
-import { glassFill, getColorClasses } from '../utils/colors';
+import CounterDisplay from '../components/CounterDisplay';
+import { getColorClasses } from '../utils/colors';
 import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 
 export default function CounterModule({
@@ -245,25 +245,26 @@ function CounterUI({
           <div className={`text-2xl font-bold ${goalTextClass}`}>
             {goalLabel}
           </div>
-          {display === 'glass' && reachedGoal && (
+          {display !== 'bar' && reachedGoal && (
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getColorClasses(mod.color).pillBg} ${getColorClasses(mod.color).pillText}`}>
               {t('modules.counterGoalReached')}
             </span>
           )}
         </div>
-        {display === 'glass' ? (
-          <LiquidGlass
-            pct={dailyGoal > 0 ? total / dailyGoal : 0}
-            baseColor={glassFill(mod.color).base}
-            lightColor={glassFill(mod.color).light}
-            shape={mod.glassShape ?? 'tumbler'}
-            label={t('modules.counterGlassAria')}
-          />
-        ) : (
+        {display === 'bar' ? (
           <div className={`w-full ${theme.progressBg} rounded-full h-2 overflow-hidden`}>
             <div
               className={`h-2 rounded-full transition-all duration-500 ${barColor}`}
               style={{ width: `${pct}%` }}
+            />
+          </div>
+        ) : (
+          <div className="flex justify-center">
+            <CounterDisplay
+              displayStyle={display}
+              value={total}
+              goal={dailyGoal}
+              colorKey={mod.color}
             />
           </div>
         )}

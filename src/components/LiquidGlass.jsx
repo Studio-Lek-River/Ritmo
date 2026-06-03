@@ -81,6 +81,7 @@ export default function LiquidGlass({
   shape = 'tumbler',
   animate = true,
   label,
+  size = 96,
 }) {
   const id = useId().replace(/:/g, '');
   const clipId = `glass-clip-${id}`;
@@ -97,7 +98,7 @@ export default function LiquidGlass({
         viewBox="0 0 120 150"
         role="img"
         aria-label={label}
-        style={{ width: 96, height: 120 }}
+        style={{ width: size, height: size * 1.25 }}
       >
         <defs>
           <clipPath id={clipId}>
