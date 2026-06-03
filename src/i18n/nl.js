@@ -824,13 +824,16 @@ export default {
     counterMinutesGoal: 'vandaag (doel: {goal} uur)',
     counterWeekTotal: '{week} / {max} uur',
 
-    // glas-weergave (counter-modules)
+    // weergave (counter-modules)
     counterDisplay: 'Weergave',
-    counterDisplayBar: 'Balk',
     counterDisplayGlass: 'Glas',
-    counterGlassShape: 'Glasvorm',
-    counterGlassTumbler: 'Glas',
-    counterGlassHighball: 'Hoog glas',
+    counterDisplayBottle: 'Fles',
+    counterDisplayDrop: 'Druppel',
+    counterDisplayPlant: 'Plant',
+    counterDisplayRing: 'Ring',
+    counterDisplayGauge: 'Meter',
+    counterDisplaySegments: 'Segmenten',
+    counterDisplayBar: 'Balk',
     counterGlassAria: 'Glas met vulniveau',
     counterGoalReached: 'Doel',
 
