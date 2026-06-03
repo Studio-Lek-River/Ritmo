@@ -1874,25 +1874,33 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
 
         {helpView === null && (
         <>
-        <div className={`flex gap-1 mb-6 ${theme.cardSecondary} rounded-xl p-1`}>
+        <div className="mb-6 space-y-1">
           {[
-            { id: 'modules', label: t('settings.tabModules') },
-            { id: 'streaks', label: t('settings.tabStreaks') },
-            { id: 'reflect', label: t('settings.tabReflection') },
-            { id: 'theme', label: t('settings.tabTheme') },
-            { id: 'language', label: t('settings.tabLanguage') },
-            { id: 'install', label: t('install.settingsHeader') },
-            { id: 'account', label: t('settings.tabAccount') },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-2 rounded-lg text-xs font-medium transition ${
-                activeTab === tab.id ? 'bg-blue-500 text-white' : `${theme.textMuted}`
-              }`}
-            >
-              {tab.label}
-            </button>
+            [
+              { id: 'modules', label: t('settings.tabModules') },
+              { id: 'streaks', label: t('settings.tabStreaks') },
+              { id: 'reflect', label: t('settings.tabReflection') },
+              { id: 'theme', label: t('settings.tabTheme') },
+            ],
+            [
+              { id: 'language', label: t('settings.tabLanguage') },
+              { id: 'install', label: t('install.settingsHeader') },
+              { id: 'account', label: t('settings.tabAccount') },
+            ],
+          ].map((row, rowIndex) => (
+            <div key={rowIndex} className={`flex gap-1 ${theme.cardSecondary} rounded-xl p-1`}>
+              {row.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex-1 py-2 rounded-lg text-xs font-medium transition ${
+                    activeTab === tab.id ? 'bg-blue-500 text-white' : `${theme.textMuted}`
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           ))}
         </div>
 
