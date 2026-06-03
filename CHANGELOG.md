@@ -1,3 +1,10 @@
+## [0.17.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.17.0...v0.17.1) (2026-06-03)
+
+
+### Bug Fixes
+
+* **settings:** tabbalk in twee rijen zodat account binnen overlay blijft ([4310719](https://github.com/Studio-Lek-River/Ritmo/commit/43107192194af8dafa4387f1d5e08469cd8d648d))
+
 # [0.17.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.16.0...v0.17.0) (2026-06-02)
 
 
