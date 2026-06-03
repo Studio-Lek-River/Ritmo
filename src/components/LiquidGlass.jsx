@@ -57,6 +57,21 @@ const SHAPES = {
     cavity: 'M42 12 L78 12 L75 140 Q75 142 73 142 L47 142 Q45 142 45 140 Z',
     outline: 'M40 8 L80 8 L77 142 Q76 146 72 146 L48 146 Q44 146 43 142 Z',
   },
+  // Fles met smalle hals en schouder; vulniveau stopt onder de schouder zodat de
+  // hals leeg blijft (zoals een echte fles).
+  bottle: {
+    yTop: 46,
+    yBottom: 134,
+    cavity: 'M52 14 L68 14 L68 30 Q68 38 82 50 Q86 56 86 64 L86 132 Q86 136 82 136 L38 136 Q34 136 34 132 L34 64 Q34 56 38 50 Q52 38 52 30 Z',
+    outline: 'M50 10 L70 10 L70 30 Q70 36 84 48 Q90 55 90 64 L90 134 Q90 140 84 140 L36 140 Q30 140 30 134 L30 64 Q30 55 36 48 Q50 36 50 30 Z',
+  },
+  // Druppel: spits aan de top, bolle bodem.
+  drop: {
+    yTop: 30,
+    yBottom: 126,
+    cavity: 'M60 18 C60 18 90 64 90 96 A30 30 0 1 1 30 96 C30 64 60 18 60 18 Z',
+    outline: 'M60 12 C60 12 94 63 94 96 A34 34 0 1 1 26 96 C26 63 60 12 60 12 Z',
+  },
 };
 
 export default function LiquidGlass({
