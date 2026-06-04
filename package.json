@@ -1,7 +1,7 @@
 {
   "name": "ritmo",
   "private": true,
-  "version": "0.17.1",
+  "version": "0.18.0",
   "type": "module",
   "description": "Ritmo - jouw dag, jouw ritme.",
   "repository": {

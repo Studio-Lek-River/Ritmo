@@ -1,3 +1,13 @@
+# [0.18.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.17.1...v0.18.0) (2026-06-04)
+
+
+### Features
+
+* **app:** acht-weergave kiezer in counter-editor, losgekoppeld van unit ([9e51767](https://github.com/Studio-Lek-River/Ritmo/commit/9e5176770c0e5a0ff3bf8cfbde1bf62157688105))
+* **counter:** CounterDisplay-component met acht weergaves, gewired in counter-module ([6768186](https://github.com/Studio-Lek-River/Ritmo/commit/67681867d27a4b056d3858b298c80e8673e03603))
+* **glass:** fles- en druppelvorm in LiquidGlass ([fc0f189](https://github.com/Studio-Lek-River/Ritmo/commit/fc0f189c1b213f0eea9084270671e80b2caef453))
+* **i18n:** weergave-labels (fles, druppel, plant, ring, meter, segmenten); glasvorm-strings vervallen ([dcc9b6b](https://github.com/Studio-Lek-River/Ritmo/commit/dcc9b6b2cfe8617793db96eb65b27aaadaaea4ca))
+
 ## [0.17.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.17.0...v0.17.1) (2026-06-03)
 
 
