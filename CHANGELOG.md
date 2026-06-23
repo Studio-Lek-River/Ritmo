@@ -1,3 +1,14 @@
+# [0.19.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.18.0...v0.19.0) (2026-06-23)
+
+
+### Features
+
+* **backup:** household-keys mee in export/import ([29fbf31](https://github.com/Studio-Lek-River/Ritmo/commit/29fbf31c3dc8c8fe3b1bd0d4a77a1b6b46392b42))
+* **chart:** optionele formatValue- en series-props op LineChart ([21ddd7c](https://github.com/Studio-Lek-River/Ritmo/commit/21ddd7cc6525519d3bdd5425071f694017b48b1a))
+* **household:** Aandelen-sectie met totaal- en per-aandeel-modus ([badcb53](https://github.com/Studio-Lek-River/Ritmo/commit/badcb53e457bd1aa6f097e454838d6ae7308bdbf))
+* **i18n:** household.investments labels (nl/en) ([f8853b1](https://github.com/Studio-Lek-River/Ritmo/commit/f8853b124bd842dd0c628039d72ecb380d76faa2))
+* **investments:** pure helpers voor aandelenreeks en forward-fill ([d7c369e](https://github.com/Studio-Lek-River/Ritmo/commit/d7c369e197308551b998da2fd89fe6c24c09b0fd))
+
 # [0.18.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.17.1...v0.18.0) (2026-06-04)
 
 
