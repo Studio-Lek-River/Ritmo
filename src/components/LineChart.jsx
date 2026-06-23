@@ -18,6 +18,14 @@ import {
 //  - target: number | null — toont een gestippelde doellijn
 //  - unit: MEASUREMENT_UNITS-key — alleen voor het label naast de doellijn
 //  - height: optionele SVG-hoogte; default 200
+//  - formatValue: optionele (value:number)=>string voor as- en target-labels.
+//      Afwezig → formatMeasurementValue(value, decimals, locale) + unit-symbool.
+//  - series: optioneel [{ name, color, events }]. Indien aanwezig worden meerdere
+//      lijnen getekend i.p.v. de enkele `events`-prop. De eerste serie is primair
+//      (dikker, met area-fill en de target-lijn); volgende series zijn dunner
+//      zonder area. De y-range wordt over alle series samen bepaald. `color` per
+//      serie blijft een COLOR_OPTIONS-key (omgezet via getColorHex). Afwezig →
+//      exact het bestaande gedrag op basis van `events`/`color`.
 export default function LineChart({
   events,
   color,
@@ -25,14 +33,31 @@ export default function LineChart({
   target = null,
   unit,
   height = 200,
+  formatValue,
+  series,
 }) {
-  const data = sortedAsc(events).filter(
-    e => typeof e?.value === 'number' && Number.isFinite(e.value),
-  );
-  const stroke = getColorHex(color);
   const locale = getLocale();
+  // Default formatter (measurements-pad): kale waarde zonder unit, net als
+  // voorheen. De unit hangt alleen aan het target-label (zie hieronder).
+  const fmtVal = formatValue || ((v) => formatMeasurementValue(v, decimals, locale));
 
-  if (data.length === 0) {
+  const seriesInput = (Array.isArray(series) && series.length > 0)
+    ? series
+    : [{ name: undefined, color, events }];
+
+  const norm = seriesInput.map(s => ({
+    name: s.name,
+    color: s.color,
+    stroke: getColorHex(s.color),
+    data: sortedAsc(s.events).filter(
+      e => typeof e?.value === 'number' && Number.isFinite(e.value),
+    ),
+  }));
+
+  const primary = norm[0];
+  const allData = norm.flatMap(s => s.data);
+
+  if (allData.length === 0) {
     return null;
   }
 
@@ -42,8 +67,9 @@ export default function LineChart({
   const innerW = W - PAD.left - PAD.right;
   const innerH = H - PAD.top - PAD.bottom;
 
-  const values = data.map(d => d.value);
-  if (target !== null && target !== undefined && Number.isFinite(target)) {
+  const values = allData.map(d => d.value);
+  const hasTarget = target !== null && target !== undefined && Number.isFinite(target);
+  if (hasTarget) {
     values.push(target);
   }
   const minV = Math.min(...values);
@@ -53,18 +79,20 @@ export default function LineChart({
   const yMax = maxV + range * 0.1;
   const yRange = yMax - yMin;
 
-  const firstDate = new Date(data[0].date).getTime();
-  const lastDate = new Date(data[data.length - 1].date).getTime();
+  const allTimes = allData.map(d => new Date(d.date).getTime());
+  const firstDate = Math.min(...allTimes);
+  const lastDate = Math.max(...allTimes);
   const xRange = Math.max(lastDate - firstDate, 1);
+  const singleX = lastDate === firstDate;
 
   const xFor = (iso) => {
-    if (data.length === 1) return PAD.left + innerW / 2;
+    if (singleX) return PAD.left + innerW / 2;
     const t = new Date(iso).getTime();
     return PAD.left + ((t - firstDate) / xRange) * innerW;
   };
   const yFor = (v) => PAD.top + innerH - ((v - yMin) / yRange) * innerH;
 
-  const pathD = data
+  const pathFor = (data) => data
     .map((d, i) => {
       const x = xFor(d.date);
       const y = yFor(d.value);
@@ -72,8 +100,9 @@ export default function LineChart({
     })
     .join(' ');
 
-  const areaD = data.length > 1
-    ? `${pathD} L ${xFor(data[data.length - 1].date).toFixed(1)} ${(PAD.top + innerH).toFixed(1)} L ${xFor(data[0].date).toFixed(1)} ${(PAD.top + innerH).toFixed(1)} Z`
+  const primaryPath = pathFor(primary.data);
+  const areaD = primary.data.length > 1
+    ? `${primaryPath} L ${xFor(primary.data[primary.data.length - 1].date).toFixed(1)} ${(PAD.top + innerH).toFixed(1)} L ${xFor(primary.data[0].date).toFixed(1)} ${(PAD.top + innerH).toFixed(1)} Z`
     : '';
 
   const yTicks = [];
@@ -82,24 +111,24 @@ export default function LineChart({
     yTicks.push({ v, y: yFor(v) });
   }
 
+  const labelData = primary.data;
   const xLabels = [];
-  if (data.length === 1) {
-    xLabels.push({ date: data[0].date, x: xFor(data[0].date) });
-  } else {
-    xLabels.push({ date: data[0].date, x: xFor(data[0].date) });
-    if (data.length > 3) {
-      const mid = data[Math.floor(data.length / 2)];
+  if (labelData.length === 1) {
+    xLabels.push({ date: labelData[0].date, x: xFor(labelData[0].date) });
+  } else if (labelData.length > 1) {
+    xLabels.push({ date: labelData[0].date, x: xFor(labelData[0].date) });
+    if (labelData.length > 3) {
+      const mid = labelData[Math.floor(labelData.length / 2)];
       xLabels.push({ date: mid.date, x: xFor(mid.date) });
     }
     xLabels.push({
-      date: data[data.length - 1].date,
-      x: xFor(data[data.length - 1].date),
+      date: labelData[labelData.length - 1].date,
+      x: xFor(labelData[labelData.length - 1].date),
     });
   }
 
-  const hasTarget = target !== null && target !== undefined && Number.isFinite(target);
   const targetY = hasTarget ? yFor(target) : null;
-  const gradientId = `lc-grad-${color || 'default'}-${data.length}`;
+  const gradientId = `lc-grad-${primary.color || 'default'}-${allData.length}`;
 
   const dateFmt = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' });
   const fmtDate = (iso) => {
@@ -111,8 +140,8 @@ export default function LineChart({
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-hidden="true">
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={stroke} stopOpacity="0.25" />
-          <stop offset="100%" stopColor={stroke} stopOpacity="0" />
+          <stop offset="0%" stopColor={primary.stroke} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={primary.stroke} stopOpacity="0" />
         </linearGradient>
       </defs>
       {yTicks.map((t, i) => (
@@ -135,7 +164,7 @@ export default function LineChart({
             y1={targetY}
             x2={W - PAD.right}
             y2={targetY}
-            stroke={stroke}
+            stroke={primary.stroke}
             strokeWidth="1.5"
             strokeDasharray="4,4"
             opacity="0.6"
@@ -144,12 +173,12 @@ export default function LineChart({
             x={W - PAD.right - 4}
             y={targetY - 4}
             textAnchor="end"
-            fill={stroke}
+            fill={primary.stroke}
             fontSize="11"
             fontWeight="500"
             opacity="0.85"
           >
-            {formatMeasurementValue(target, decimals, locale)}{unitSymbol(unit)}
+            {formatValue ? fmtVal(target) : `${fmtVal(target)}${unitSymbol(unit)}`}
           </text>
         </g>
       )}
@@ -163,7 +192,7 @@ export default function LineChart({
           className="text-stone-500 dark:text-stone-400"
           fontSize="10"
         >
-          {formatMeasurementValue(t.v, decimals, locale)}
+          {fmtVal(t.v)}
         </text>
       ))}
       {xLabels.map((l, i) => (
@@ -180,22 +209,36 @@ export default function LineChart({
         </text>
       ))}
       {areaD && <path d={areaD} fill={`url(#${gradientId})`} />}
+      {norm.slice(1).map((s, i) => (
+        s.data.length > 0 && (
+          <path
+            key={`series-${i}`}
+            d={pathFor(s.data)}
+            fill="none"
+            stroke={s.stroke}
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            opacity="0.85"
+          />
+        )
+      ))}
       <path
-        d={pathD}
+        d={primaryPath}
         fill="none"
-        stroke={stroke}
+        stroke={primary.stroke}
         strokeWidth="2.5"
         strokeLinejoin="round"
         strokeLinecap="round"
       />
-      {data.map((d) => (
+      {primary.data.map((d) => (
         <circle
           key={d.id || `${d.date}-${d.value}`}
           cx={xFor(d.date)}
           cy={yFor(d.value)}
           r="4"
           fill="white"
-          stroke={stroke}
+          stroke={primary.stroke}
           strokeWidth="2"
         />
       ))}
