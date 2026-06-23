@@ -1,22 +1,29 @@
 import { storage } from '../storage';
 
-const BACKUP_VERSION = 1;
+const BACKUP_VERSION = 2;
 const SETTINGS_KEY = 'settings';
 const DAY_PREFIX = 'day:';
+const HOUSEHOLD_PREFIX = 'household:';
 
-export async function exportData() {
-  const settingsResult = await storage.get(SETTINGS_KEY);
-  const dayKeys = await storage.list(DAY_PREFIX);
-
-  const days = {};
-  if (dayKeys && Array.isArray(dayKeys.keys)) {
-    for (const key of dayKeys.keys) {
+// Verzamelt alle key/value-paren onder een prefix als plain object.
+async function collectByPrefix(prefix) {
+  const out = {};
+  const listed = await storage.list(prefix);
+  if (listed && Array.isArray(listed.keys)) {
+    for (const key of listed.keys) {
       const result = await storage.get(key);
       if (result && result.value !== undefined) {
-        days[key] = result.value;
+        out[key] = result.value;
       }
     }
   }
+  return out;
+}
+
+export async function exportData() {
+  const settingsResult = await storage.get(SETTINGS_KEY);
+  const days = await collectByPrefix(DAY_PREFIX);
+  const household = await collectByPrefix(HOUSEHOLD_PREFIX);
 
   const payload = {
     app: 'ritmo',
@@ -25,6 +32,7 @@ export async function exportData() {
     data: {
       settings: settingsResult ? settingsResult.value : null,
       days,
+      household,
     },
   };
 
@@ -71,13 +79,15 @@ export async function importData(jsonString, { mode = 'replace' } = {}) {
     throw new Error(validationError);
   }
 
-  const { settings, days } = parsed.data;
+  const { settings, days, household } = parsed.data;
 
   if (mode === 'replace') {
-    const existingDayKeys = await storage.list(DAY_PREFIX);
-    if (existingDayKeys && Array.isArray(existingDayKeys.keys)) {
-      for (const key of existingDayKeys.keys) {
-        await storage.delete(key);
+    for (const prefix of [DAY_PREFIX, HOUSEHOLD_PREFIX]) {
+      const existing = await storage.list(prefix);
+      if (existing && Array.isArray(existing.keys)) {
+        for (const key of existing.keys) {
+          await storage.delete(key);
+        }
       }
     }
     await storage.delete(SETTINGS_KEY);
@@ -94,9 +104,17 @@ export async function importData(jsonString, { mode = 'replace' } = {}) {
     }
   }
 
+  if (household && typeof household === 'object') {
+    for (const [key, value] of Object.entries(household)) {
+      if (typeof key !== 'string' || !key.startsWith(HOUSEHOLD_PREFIX)) continue;
+      await storage.set(key, value);
+    }
+  }
+
   return {
     settingsRestored: settings !== null && settings !== undefined,
     daysRestored: days ? Object.keys(days).length : 0,
+    householdRestored: household ? Object.keys(household).length : 0,
   };
 }
 
