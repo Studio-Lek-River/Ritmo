@@ -3,9 +3,10 @@ import {
   Home, ChevronDown, ChevronUp,
   Plus, Trash2, Check, Star, ChevronLeft, ChevronRight, Edit3, X, Info, Lightbulb,
   ShoppingCart, Coffee, Utensils, Zap, Droplet, Wifi, Phone, Car, Film, Music, Book, Heart, Gift, Dumbbell, Flame, Plane, Fuel, BadgeEuro, GraduationCap, Briefcase,
-  UtensilsCrossed, Users, UserPlus, LogOut,
+  UtensilsCrossed, Users, UserPlus, LogOut, TrendingUp,
 } from 'lucide-react';
 import MealPlanSection from './household/MealPlanSection';
+import InvestmentsSection from './household/InvestmentsSection';
 import useStoredState from '../hooks/useStoredState';
 import { STORAGE_KEYS } from '../storage';
 import {
@@ -17,6 +18,7 @@ import {
   eventsForMonth, netForDay, netForMonth,
   UTILITY_TYPES,
 } from '../utils/household';
+import { activeSeries, seriesStats } from '../utils/investments';
 import { migrateHousehold } from '../utils/migrate';
 import { useTranslation, getLocale } from '../i18n/useTranslation';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -77,7 +79,7 @@ export default function HouseholdView({ theme, darkMode, currentUser, onConflict
   const utilityLabel = (k) => t(`household.utilities.types.${k}`);
 
   const [expanded, setExpanded] = useState({
-    chores: true, groceries: false, mealPlan: false, fixedCosts: false, utilities: false,
+    chores: true, groceries: false, mealPlan: false, fixedCosts: false, utilities: false, investments: false,
   });
   const toggle = (key) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -89,6 +91,9 @@ export default function HouseholdView({ theme, darkMode, currentUser, onConflict
   const [mealPlanConfig, setMealPlanConfig] = useStoredState('household:mealplan:config', DEFAULT_MEALPLAN_CONFIG);
   const [mealPlanMembers, setMealPlanMembers] = useStoredState('household:mealplan:members', [createSelfMember()]);
   const [mealPlanPlan, setMealPlanPlan] = useStoredState('household:mealplan:plan', {});
+  const [investments, setInvestments] = useStoredState('household:investments', {
+    mode: 'total', total: { events: [] }, holdings: [],
+  });
 
   // Sync / household state
   const [currentHousehold, setCurrentHousehold] = useState(null);
@@ -230,6 +235,10 @@ export default function HouseholdView({ theme, darkMode, currentUser, onConflict
   const monthlyExpenses = monthlyExpenseTotal(budget.expenses, currentMonthKey);
   const monthlyNetValue = monthlyIncome - monthlyExpenses;
   const utilitiesYearActual = yearActualTotal(utilities.actuals, today.getFullYear());
+  const investmentsStats = seriesStats(activeSeries(investments));
+  const investmentsMeta = investmentsStats
+    ? t('household.investments.metaValue', { value: formatEuro(investmentsStats.current) })
+    : t('household.investments.metaEmpty');
 
   const isShared = mealPlanConfig.shared?.enabled;
   const sharedMembers = isShared ? householdMembers.map(m => ({
@@ -408,6 +417,17 @@ export default function HouseholdView({ theme, darkMode, currentUser, onConflict
           monthlyExpenses={monthlyExpenses}
           monthlyNetValue={monthlyNetValue}
         />
+      </Section>
+
+      <Section
+        theme={theme}
+        icon={<TrendingUp className="w-4 h-4 text-blue-500" />}
+        title={t('household.investments.title')}
+        meta={investmentsMeta}
+        expanded={expanded.investments}
+        onToggle={() => toggle('investments')}
+      >
+        <InvestmentsSection investments={investments} setInvestments={setInvestments} theme={theme} />
       </Section>
 
       <Section
