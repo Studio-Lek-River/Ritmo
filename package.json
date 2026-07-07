@@ -11,7 +11,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:i18n": "node scripts/check-i18n.mjs",
+    "prepare": "husky"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.0",
@@ -28,6 +30,7 @@
     "@semantic-release/git": "^10.0.1",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
+    "husky": "^9.1.7",
     "postcss": "^8.4.39",
     "semantic-release": "^25.0.3",
     "tailwindcss": "^3.4.6",
