@@ -21,9 +21,9 @@ die ze delen met generieke modules. Een pure type-filter zou beweging + bijwerki
   `type ∈ {measurements,medication,bodymap}` **OF** `m.health === true`. De beweging- en
   bijwerkingen-presets krijgen `health: true`; `applyModulePreset` spreidt dat verbatim op de
   aangemaakte module (`{ ...prev, ...preset }`).
-- **(b) Menubalk in Health-modus** = **Gezondheid, Vandaag, Week, Maand**, met **Gezondheid eerst**.
-  Verberg Reflectie, Huishouden, Projecten, Collecties. De Trends-knop en de instellingen-gear zijn
-  header-knoppen en blijven altijd bereikbaar.
+- **(b) Menubalk in Health-modus** = **Gezondheid, Vandaag, Week, Maand, Huishouden**, met
+  **Gezondheid eerst**. Verberg Reflectie, Projecten, Collecties. De Trends-knop en de
+  instellingen-gear zijn header-knoppen en blijven altijd bereikbaar.
 - **(c) Modulefilter.** Vandaag/Week/Maand tonen in Health-modus alleen modules waarvoor
   `isHealthModule(m)` waar is (in de praktijk: beweging + bijwerkingen; measurements/medication/bodymap
   staan op de Gezondheid-tab).
@@ -85,9 +85,9 @@ De verifier toetst deze punt voor punt.
       settings valt terug op `'standard'` (backward-compatible via `migrateSettings`).
 - [ ] In Instellingen → Thema staat een Standaard/Health-schakelaar; wisselen werkt live zonder
       herladen.
-- [ ] In Health-modus toont de menubalk exact: Gezondheid, Vandaag, Week, Maand (Gezondheid eerst).
-      Reflectie, Huishouden, Projecten, Collecties zijn verborgen. In Standaard-modus is de menubalk
-      ongewijzigd (twee rijen, alles).
+- [ ] In Health-modus toont de menubalk exact: Gezondheid, Vandaag, Week, Maand, Huishouden
+      (Gezondheid eerst). Reflectie, Projecten, Collecties zijn verborgen. In Standaard-modus is de
+      menubalk ongewijzigd (twee rijen, alles).
 - [ ] De Trends-knop en de instellingen-gear blijven in beide modi bereikbaar.
 - [ ] In Health-modus tonen Vandaag/Week/Maand alleen health-modules (`isHealthModule` waar): beweging
       + bijwerkingen verschijnen, generieke counters/checklists niet. In Standaard-modus tonen ze alles

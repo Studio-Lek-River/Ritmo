@@ -22,6 +22,7 @@ export default function TabBar({ view, setView, theme, appMode }) {
     { id: 'today',        label: t('nav.today') },
     { id: 'week',         label: t('nav.week') },
     { id: 'month',        label: t('nav.month') },
+    { id: 'household',    label: t('nav.household') },
   ];
 
   const tabBtnClass = (active) =>

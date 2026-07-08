@@ -294,7 +294,7 @@ export default function Ritmo() {
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
   useEffect(() => {
-    const allowed = ['measurements', 'today', 'week', 'month', 'insight'];
+    const allowed = ['measurements', 'today', 'week', 'month', 'household', 'insight'];
     if (appMode === 'health' && !allowed.includes(view)) setView('today');
   }, [appMode, view]);
 
