@@ -21,5 +21,6 @@ supabase/.temp/
 supabase/.branches/
 supabase/.env
 
-# Supabase live-backups (bevatten data, nooit committen)
+# Supabase live-backups en ad-hoc schema-dumps (nooit committen)
 backup-pre-S01b.sql
+post-push-verify.sql
