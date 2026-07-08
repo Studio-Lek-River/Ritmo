@@ -20,6 +20,7 @@ import OnboardingView from './views/OnboardingView';
 import SplashScreen from './components/SplashScreen';
 import RitmoLogo from './components/RitmoLogo';
 import TabBar from './components/TabBar';
+import ErrorBoundary from './components/ErrorBoundary';
 import HelpOverlay from './components/help/HelpOverlay';
 import InstallGuide from './components/help/InstallGuide';
 import BackupSection from './components/BackupSection';
@@ -995,6 +996,7 @@ export default function Ritmo() {
 
         <TabBar view={view} setView={setView} theme={theme} />
 
+        <ErrorBoundary key={view} onReset={() => setView('today')}>
         {view === 'today' && (
           <TodayView
             t={t}
@@ -1139,6 +1141,7 @@ export default function Ritmo() {
             darkMode={darkMode}
           />
         )}
+        </ErrorBoundary>
 
         <div className={`text-center text-xs ${theme.textMuted} mt-6 pb-4`}>
           {t('app.autosave')}

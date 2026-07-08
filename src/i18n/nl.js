@@ -9,6 +9,14 @@ export default {
     autosave: 'Je voortgang wordt automatisch opgeslagen',
   },
 
+  errorBoundary: {
+    title: 'Er ging iets mis',
+    reassurance: 'Geen zorgen, je gegevens staan veilig opgeslagen. Je kunt de app herladen of teruggaan naar Vandaag.',
+    detailsToggle: 'Technische details',
+    reload: 'Herladen',
+    backToToday: 'Terug naar Vandaag',
+  },
+
   common: {
     save: 'Opslaan',
     cancel: 'Annuleren',
