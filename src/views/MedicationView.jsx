@@ -7,11 +7,6 @@ import EmptyState from '../components/EmptyState';
 import { useToast } from '../hooks/useToast';
 import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 
-// Vaste bijbestelling voor de "besteld"-actie in H03. Een invoerveld voor een
-// vrije hoeveelheid is bewust uitgesteld (houdt de actie 1 tik); de gebruiker
-// kan de voorraad ook rechtstreeks aanpassen via het bewerk-formulier.
-const MED_REFILL_AMOUNT = 30;
-
 const FREQ_LABEL_KEYS = {
   daily: 'freqDaily',
   everyOther: 'freqEveryOther',
@@ -223,6 +218,92 @@ function MedFormModal({ open, mode = 'edit', module: mod, med, onClose, onSave, 
   );
 }
 
+function OrderModal({ open, module: mod, med, onClose, onConfirm, theme }) {
+  const { t } = useTranslation();
+  const [amount, setAmount] = useState('');
+
+  useEffect(() => {
+    if (open) setAmount('');
+  }, [open, med]);
+
+  if (!open || !mod || !med) return null;
+
+  const value = Number(amount);
+  const canConfirm = amount !== '' && value > 0;
+
+  const confirm = () => {
+    if (!canConfirm) return;
+    onConfirm?.(value);
+    onClose?.();
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className={`${theme.card} rounded-2xl p-5 max-w-sm w-full shadow-xl slide-in`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className={`text-base font-semibold ${theme.textSecondary}`}>
+            {t('medication.orderTitle')}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className={`p-2 ${theme.hover} rounded-lg ${theme.textMuted} transition`}
+            aria-label={t('common.close')}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <p className={`text-xs ${theme.textMuted} mb-3`}>
+          {t('medication.orderCurrentSupply', { name: med.name, count: med.supply || 0 })}
+        </p>
+
+        <div className="mb-4">
+          <p className={`text-xs ${theme.textMuted} mb-1`}>{t('medication.orderAmountLabel')}</p>
+          <input
+            type="number"
+            value={amount}
+            autoFocus
+            min="0"
+            step="any"
+            onChange={(e) => setAmount(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') confirm();
+            }}
+            placeholder={t('medication.orderAmountPlaceholder')}
+            className={`w-full px-3 py-2 rounded-lg text-sm ${theme.input} ${theme.textSecondary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          />
+        </div>
+
+        <div className="flex items-center gap-2 mt-5">
+          <div className="flex-1" />
+          <button
+            type="button"
+            onClick={onClose}
+            className={`px-3 py-2 ${theme.cardSecondary} ${theme.textSecondary} rounded-lg text-sm font-medium transition`}
+          >
+            {t('common.cancel')}
+          </button>
+          <button
+            type="button"
+            onClick={confirm}
+            disabled={!canConfirm}
+            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition"
+          >
+            {t('medication.orderSubmit')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MedicationView({
   modules,
   iconOptions,
@@ -244,6 +325,7 @@ export default function MedicationView({
 
   const [addingModuleId, setAddingModuleId] = useState(null);
   const [editingMed, setEditingMed] = useState(null); // { moduleId, med }
+  const [orderingMed, setOrderingMed] = useState(null); // { moduleId, med }
 
   if (medModules.length === 0) {
     return (
@@ -263,6 +345,9 @@ export default function MedicationView({
     : null;
   const editingModuleForMed = editingMed
     ? medModules.find((m) => m.id === editingMed.moduleId) || null
+    : null;
+  const orderingModuleForMed = orderingMed
+    ? medModules.find((m) => m.id === orderingMed.moduleId) || null
     : null;
 
   const handleDeleteEditingMed = () => {
@@ -374,7 +459,7 @@ export default function MedicationView({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onOrderMed?.(mod.id, med.id, MED_REFILL_AMOUNT);
+                            setOrderingMed({ moduleId: mod.id, med });
                           }}
                           className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${theme.cardSecondary} ${theme.textSecondary} transition`}
                         >
@@ -422,6 +507,17 @@ export default function MedicationView({
           if (editingMed) onUpdateMed?.(editingMed.moduleId, editingMed.med.id, updated);
         }}
         onDelete={handleDeleteEditingMed}
+        theme={theme}
+      />
+
+      <OrderModal
+        open={!!orderingMed}
+        module={orderingModuleForMed}
+        med={orderingMed?.med}
+        onClose={() => setOrderingMed(null)}
+        onConfirm={(amount) => {
+          if (orderingMed) onOrderMed?.(orderingMed.moduleId, orderingMed.med.id, amount);
+        }}
         theme={theme}
       />
     </div>
