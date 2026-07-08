@@ -1200,6 +1200,7 @@ export default {
     eveningRoutine: { name: 'Evening routine', items: ['Phone away', 'Brush teeth', 'Read'] },
     physio: { name: 'Physio exercises', items: ['Exercise 1', 'Exercise 2'] },
     meals: { name: 'Meals', items: ['Breakfast', 'Lunch', 'Dinner'] },
+    bijwerkingen: { name: 'Side effects', items: ['Headache', 'Nausea', 'Fatigue', 'Dizziness', 'Insomnia', 'Reduced appetite'] },
     outdoorMovement: { name: 'Outdoor movement', options: ['Walking', 'Cycling', 'Running'] },
     mood: { name: 'Mood', options: ['Good', 'OK', 'Meh'] },
     productiveWork: { name: 'Productive work' },

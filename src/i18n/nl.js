@@ -1209,6 +1209,7 @@ export default {
     eveningRoutine: { name: 'Avondroutine', items: ['Telefoon weg', 'Tanden poetsen', 'Lezen'] },
     physio: { name: 'Fysio-oefeningen', items: ['Oefening 1', 'Oefening 2'] },
     meals: { name: 'Maaltijden', items: ['Ontbijt', 'Lunch', 'Diner'] },
+    bijwerkingen: { name: 'Bijwerkingen', items: ['Hoofdpijn', 'Misselijkheid', 'Vermoeidheid', 'Duizeligheid', 'Slapeloosheid', 'Verminderde eetlust'] },
     outdoorMovement: { name: 'Beweging buiten', options: ['Wandelen', 'Fietsen', 'Hardlopen'] },
     mood: { name: 'Stemming', options: ['Goed', 'Oké', 'Mwah'] },
     productiveWork: { name: 'Productief werk' },

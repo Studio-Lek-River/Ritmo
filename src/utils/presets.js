@@ -39,6 +39,12 @@ function buildPresets(t) {
         allowNotes: true,
         items: t('presets.meals.items'),
       },
+      {
+        nameKey: 'presets.bijwerkingen.name',
+        icon: 'HeartPulse',
+        color: 'rose',
+        items: t('presets.bijwerkingen.items'),
+      },
     ],
     choice: [
       {
