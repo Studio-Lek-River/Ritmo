@@ -8,7 +8,7 @@ import {
 import { supabase, isSyncEnabled } from './supabase';
 import { onAuthChange, getCurrentUser } from './auth';
 import { enqueue, getQueue } from './syncQueue';
-import { flushQueue } from './householdStorage';
+import { flushQueue } from './flush';
 import { markSyncing, markSynced, markError, refreshPending } from './syncStatus';
 
 const store = createStore('ritmo-db', 'ritmo-store');

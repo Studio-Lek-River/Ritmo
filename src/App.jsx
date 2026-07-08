@@ -6,7 +6,6 @@ import './storage';
 import { isSyncEnabled } from './sync/supabase';
 import { onAuthChange, getCurrentUser } from './sync/auth';
 import { pullUserData } from './sync/userDataStorage';
-import ConflictToast from './components/ConflictToast';
 import SyncConflictDialog from './components/SyncConflictDialog';
 import ProjectsModule from './modules/ProjectsModule';
 import CounterModule from './modules/CounterModule';
@@ -102,7 +101,6 @@ export default function Ritmo() {
   const [celebrationOverlay, setCelebrationOverlay] = useState(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [currentUser, setCurrentUser] = useState(null);
-  const [conflictInfo, setConflictInfo] = useState(null);
   const [pendingConflicts, setPendingConflicts] = useState(null);
   const conflictResolverRef = useRef(null);
 
@@ -114,15 +112,9 @@ export default function Ritmo() {
     setDarkMode(isDark);
   }, []);
 
-  // Auth state + join-route detection
+  // Auth state
   useEffect(() => {
     if (!isSyncEnabled()) return;
-
-    // Detect /join/:token in the URL and persist for after auth
-    const pathMatch = window.location.pathname.match(/^\/join\/([A-Z0-9]{8})$/i);
-    if (pathMatch) {
-      sessionStorage.setItem('pendingInvite', pathMatch[1].toUpperCase());
-    }
 
     getCurrentUser().then(user => setCurrentUser(user));
     const unsub = onAuthChange(user => setCurrentUser(user));
@@ -909,12 +901,6 @@ export default function Ritmo() {
     <ToastProvider>
     <div className={`min-h-screen ${theme.bg} p-4 transition-colors duration-300 relative overflow-hidden`}>
       <Toast theme={theme} />
-      {conflictInfo && (
-        <ConflictToast
-          name={conflictInfo.displayName || conflictInfo.updatedBy}
-          onDismiss={() => setConflictInfo(null)}
-        />
-      )}
       <SyncConflictDialog
         open={Boolean(pendingConflicts && pendingConflicts.length > 0)}
         conflicts={pendingConflicts || []}
@@ -1129,9 +1115,6 @@ export default function Ritmo() {
           <HouseholdView
             theme={theme}
             darkMode={darkMode}
-            currentUser={currentUser}
-            onConflict={setConflictInfo}
-            onOpenSettings={() => { setSettingsInitialTab('install'); setShowSettings(true); }}
           />
         )}
 
@@ -1167,7 +1150,6 @@ export default function Ritmo() {
           onClose={() => { setShowSettings(false); setSettingsInitialTab(null); }}
           initialTab={settingsInitialTab}
           currentUser={currentUser}
-          onNavigateHousehold={() => { setShowSettings(false); setSettingsInitialTab(null); setView('household'); }}
           modules={modules}
           setModules={setModules}
           reflectionQuestions={reflectionQuestions}
@@ -1778,7 +1760,7 @@ function ReflectionView({ reflectionQuestions, reflectionAnswers, setReflectionA
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, showReflectionOnToday, setShowReflectionOnToday, theme, dayNames, setEditingModule, initialTab, currentUser, onNavigateHousehold }) {
+function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, showReflectionOnToday, setShowReflectionOnToday, theme, dayNames, setEditingModule, initialTab, currentUser }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
   const [helpView, setHelpView] = useState(null); // null | 'list' | 'install' | 'feedback'
@@ -2379,7 +2361,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
         {activeTab === 'account' && (
           <div className="space-y-4">
             {isSyncEnabled() && (
-              <AuthSection theme={theme} onNavigateHousehold={onNavigateHousehold} />
+              <AuthSection theme={theme} />
             )}
             <SyncStatusRow theme={theme} signedIn={!!currentUser} userId={currentUser?.id} />
           </div>

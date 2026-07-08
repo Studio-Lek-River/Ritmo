@@ -24,7 +24,7 @@ import {
   sameDay,
 } from '../../utils/dates';
 
-export default function MealPlanSection({ theme, config, setConfig, members, setMembers, plan, setPlan, sharedMode, householdId, currentUserId }) {
+export default function MealPlanSection({ theme, config, setConfig, members, setMembers, plan, setPlan }) {
   const { t } = useTranslation();
 
   const [weekOffset, setWeekOffset] = useState(0);
@@ -33,10 +33,10 @@ export default function MealPlanSection({ theme, config, setConfig, members, set
   const [pendingSkip, setPendingSkip] = useState(null);
   const [guestInputs, setGuestInputs] = useState({});
 
-  const effectiveUserId = (sharedMode && currentUserId) ? currentUserId : CURRENT_USER_ID;
+  const effectiveUserId = CURRENT_USER_ID;
   const selfMember = members.find(m => m.id === effectiveUserId) ?? createSelfMember();
   const selfRole = selfMember.role;
-  const isActive = sharedMode ? true : !!config.householdName;
+  const isActive = !!config.householdName;
 
   const today = new Date();
   const weekStart = startOfWeek(addDays(today, weekOffset * 7));
@@ -48,12 +48,6 @@ export default function MealPlanSection({ theme, config, setConfig, members, set
 
   // Helpers voor plan-mutaties
   function updateEntry(dateKey, memberId, patch) {
-    // In shared mode: write to cloud storage for own entries
-    if (sharedMode && memberId === effectiveUserId && householdId) {
-      const current = plan[dateKey]?.[memberId] ?? { status: null, guests: [] };
-      const newEntry = { ...current, ...patch };
-      window.storage.set(`shared:${householdId}:mealplan:${memberId}:${dateKey}`, JSON.stringify(newEntry));
-    }
     setPlan(prev => {
       const dayData = prev[dateKey] ?? {};
       const memberEntry = dayData[memberId] ?? { status: null, guests: [] };
