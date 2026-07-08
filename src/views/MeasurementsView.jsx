@@ -69,7 +69,7 @@ function TrendPill({ change, decimals, unit, lowerIsBetter, label, locale }) {
 }
 
 function MetricCard({ metric, color, theme, onOpen, t, locale }) {
-  const Icon = ICON_OPTIONS[metric.icon] || Activity;
+  const Icon = ICON_OPTIONS[metric?.icon] || Activity;
   const stats = metricStats(metric);
   const colorCls = getColorClasses(color);
   const name = resolveMetricName(metric, t);
@@ -279,7 +279,7 @@ function MeasurementForm({
 function MetricDetail({ metric, color, theme, t, locale, onBack, onUpdateMetric }) {
   const [editingEvent, setEditingEvent] = useState(null);
   const [adding, setAdding] = useState(false);
-  const Icon = ICON_OPTIONS[metric.icon] || Activity;
+  const Icon = ICON_OPTIONS[metric?.icon] || Activity;
   const colorCls = getColorClasses(color);
   const colorHex = getColorHex(color);
   const stats = metricStats(metric);
@@ -661,7 +661,7 @@ function ModuleDetail({
   t,
   locale,
 }) {
-  const metrics = mod.metrics || [];
+  const metrics = (mod.metrics || []).filter(Boolean);
   const colorCls = getColorClasses(mod.color);
   const ModuleIcon = ICON_OPTIONS[mod.icon] || Activity;
 

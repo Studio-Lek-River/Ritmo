@@ -8,6 +8,14 @@ export default {
     autosave: 'Your progress is saved automatically',
   },
 
+  errorBoundary: {
+    title: 'Something went wrong',
+    reassurance: 'No worries, your data is safely stored. You can reload the app or go back to Today.',
+    detailsToggle: 'Technical details',
+    reload: 'Reload',
+    backToToday: 'Back to Today',
+  },
+
   common: {
     save: 'Save',
     cancel: 'Cancel',

@@ -126,6 +126,42 @@ Het sluitstuk van de one-stop-shop: Claude pakt items uit Ritmo op en voert ze u
 
 ---
 
+## Epic H, Ritmo Health
+
+Een gezondheids-startpreset (prikschema, priklocatie, medicatie, gewicht, omvang, bijwerkingen, beweging), plus een concrete bugfix en een ErrorBoundary-vangnet. Health is een **startpreset, geen gesloten aparte app**: alle modules blijven toevoegbaar, uitschakelbaar en verwijderbaar (principe 2).
+
+**Stap 0-bevinding (leidend):** de "gezondheidsmeting" bestaat al als module-type `measurements` (preset `presets.health` = gewicht/spier/vet/omvang). Grote delen zijn dus configuratie van bestaande types, geen nieuwbouw. Echt nieuw: de priklocatie-bodymap, het medicatie-register + prik-log, en twee Trends-visualisaties.
+
+Volgorde: **H01 → H03 → H04 → H05 → H06**; **H02** inpasbaar zodra H03/H05 de te-activeren module-set definiëren.
+
+#### H01, Bugfix + ErrorBoundary. TODO
+- **Doel:** het wit-schermdefect bij het openen van de gezondheidsmeting-instellingen dichten (null-metric read zonder guard in de measurements-editor), plus een app-brede en view-brede ErrorBoundary zodat een volgende crash zichtbaar wordt i.p.v. onzichtbaar.
+- **Afhankelijk van:** niets. Gaat eerst.
+
+#### H02, Onboarding health-profiel. TODO
+- **Doel:** een startprofiel-keuze (`onboardingProfile: 'full' | 'health'`, default `'full'`) die uitsluitend bepaalt welke modules bij eerste start aan staan. Backward compatible: ontbrekend veld valt terug op `'full'`.
+- **Afhankelijk van:** de module-set uit H03/H05 (welke modules "health" aanzet).
+
+#### H03, Medicatie-register (`medication`). TODO
+- **Doel:** een medicijn als centraal object: naam, dosering, eenheid, voorraad, frequentie, injecteerbaar-vlag, kleur. Afgeleide `daysLeft`, "bijna op", "besteld". Nieuw type; hergebruikt het collection-opslagpatroon (langlevende data in `settings.modules`).
+- **Afhankelijk van:** niets.
+
+#### H04, Priklocatie-bodymap (`bodymap`) + prik-log. TODO
+- **Doel:** een klikbare 6-zone bodymap (SVG met hex-kleuren) met medicijnkiezer voor injecteerbare medicijnen. Prikken logt en verlaagt de voorraad; undo/verwijderen herstelt de voorraad. Auto-suggestie voor de volgende zone (minst/langst-geleden gebruikt) plus legenda.
+- **Afhankelijk van:** H03.
+
+#### H05, Beweging + bijwerkingen (dag-logs). TODO
+- **Doel:** beweging via `counter` (minuten, categorieën, dagdoel 30) en bijwerkingen via `checklist`/`collection` met notitie, per dag terugleesbaar zodat de Trends erop kunnen bouwen. Plus health-preset wiring.
+- **Afhankelijk van:** niets.
+
+#### H06, Trends-visualisaties. TODO
+- **Doel:** een bijwerkingen-heatmap (dot-matrix, ~14 dagen, horizontaal scrollbaar) en een beweging-staafdiagram (minuten per dag met referentielijn op het dagdoel).
+- **Afhankelijk van:** H05.
+
+> Gewicht en omvang krijgen geen eigen slice: dat is de bestaande `measurements`-module, meegenomen in de health-preset van H02/H05.
+
+---
+
 ## Hoe je de volgende stap zet
 
 1. In Claude.ai (met de PO): vraag om de kickoff-bundel voor de eerstvolgende slice met status Todo. Dat is de spec plus de uitvoerinstructie in één. Dit is Poort 1.
