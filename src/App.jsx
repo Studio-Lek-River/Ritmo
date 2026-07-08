@@ -3386,7 +3386,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
           })()}
 
           {editing.type === 'measurements' && (() => {
-            const metrics = editing.metrics || [];
+            const metrics = (editing.metrics || []).filter(Boolean);
             const updateMetric = (id, patch) => {
               setEditing(prev => ({
                 ...prev,
