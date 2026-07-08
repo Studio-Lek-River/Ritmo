@@ -18,6 +18,17 @@ De kickoff ging uit van repo-inhoud die niet bestaat. Twee criteria zijn daarop 
 
 De overige criteria (1–5, 8) zijn ongewijzigd overgenomen uit de kickoff.
 
+3. **AC3 read-only geverifieerd via `db dump`-diff.** Het schema is met `supabase db dump`
+   opgehaald (de CLI draait pg_dump in Docker; dat vereiste dat Docker Desktop is geïnstalleerd).
+   Een verse `supabase db pull` stopt op een mismatch in de migration-history-boekhouding, omdat
+   het project historisch niet migration-gedreven is opgezet; die boekhouding rechtzetten
+   (`supabase migration repair`) schrijft naar de live database en valt buiten scope. AC3's intentie
+   (repo-schema gelijk aan live) is daarom bevestigd door een verse `db dump` byte-voor-byte te
+   vergelijken met de gecommitte baseline: geen verschil. Zie de noot onderaan `docs/rls-verificatie.md`.
+
+**Extra bevinding:** het `public`-schema bevat 7 tabellen, niet 5. Naast de vijf genoemde staan er
+`profiles` en `household_modules`. Alle zeven zijn in de baseline en het RLS-rapport opgenomen.
+
 ## Doel
 
 Het volledige live Supabase-schema en de RLS-policies uit de database halen en als
