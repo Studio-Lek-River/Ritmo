@@ -1,3 +1,11 @@
+# [0.28.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.27.0...v0.28.0) (2026-07-08)
+
+
+### Features
+
+* **health:** add Weight Loss setup and prikschema module type ([e92cbd6](https://github.com/Studio-Lek-River/Ritmo/commit/e92cbd6e43f70b56f3f6c1b4954a2347c9ac0049))
+* **modules:** add first medicine inline when creating a medication module ([08d04fa](https://github.com/Studio-Lek-River/Ritmo/commit/08d04fac29598565ac353c5dbfaa1cd9bd1eeabd))
+
 # [0.27.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.26.0...v0.27.0) (2026-07-08)
 
 
