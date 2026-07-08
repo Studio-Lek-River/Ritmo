@@ -1,4 +1,4 @@
-# RLS-verificatie (S01)
+# RLS-verificatie (S01, bijgewerkt in S01b)
 
 Verificatie van de Row Level Security op het `public`-schema van de live Supabase-database,
 zoals vastgelegd in de baseline-migration `supabase/migrations/20260708084246_baseline_schema.sql`.
@@ -19,6 +19,7 @@ uit die dump gelezen. Er is geen `db push` of `migration repair` uitgevoerd.
   huishoud-lidmaatschap via de helper-functies hieronder.
 - **Eén reeel risico gevonden:** de SELECT-policy op `household_invites` stelt de hele
   invites-tabel open voor elke ingelogde gebruiker (zie Bevindingen). De rest is correct afgedicht.
+  **Opgelost in S01b** (migration `20260708090000_redeem_invite_rls_fix.sql`), zie B1 hieronder.
 
 ## Helper-functies (fundament van de membership-checks)
 
@@ -60,24 +61,29 @@ Daarnaast:
 - **Binding:** lezen alleen als lid, muteren alleen als admin, aanmaken alleen op eigen naam.
 - **Verdict:** correct.
 
-### `household_members`
-- **Policies:** SELECT `is_household_member`, INSERT (`is_household_admin` OR self-join met een geldig
-  ingewisselde invite), UPDATE (eigen rij OR admin), DELETE (admin OR eigen rij = zelf vertrekken).
-- **Binding:** membership/admin plus `auth.uid()`. De self-join-tak vereist een `household_invites`-rij
-  die door `auth.uid()` is ingewisseld (`used_by = auth.uid() AND used_at IS NOT NULL`).
-- **Verdict:** correct van opzet. De veiligheid van de self-join hangt af van de geheimhouding van het
-  invite-token; zie de bevinding bij `household_invites`.
+### `household_members` (INSERT bijgewerkt in S01b)
+- **Policies:** SELECT `is_household_member`, INSERT `is_household_admin(household_id)` (de
+  self-join-tak op een ingewisselde invite is in S01b verwijderd; het lid toevoegen via een invite
+  gebeurt nu binnen de `redeem_invite`-RPC als definer, buiten RLS om), UPDATE (eigen rij OR admin),
+  DELETE (admin OR eigen rij = zelf vertrekken).
+- **Binding:** membership/admin plus `auth.uid()`.
+- **Verdict:** correct. De join-via-invite loopt niet meer via een RLS-tak die op tabel-inhoud leunde,
+  maar via de RPC; zie de bevinding bij `household_invites`.
 
-### `household_invites`
-- **Policies:**
-  - SELECT: `is_household_admin(household_id) OR (auth.uid() IS NOT NULL)`.
-  - INSERT: `is_household_admin(household_id) AND created_by = auth.uid()`.
-  - UPDATE (inwisselen): `auth.uid() IS NOT NULL AND used_by IS NULL AND expires_at > now()`
-    `with check (used_by = auth.uid())`.
-  - DELETE: `is_household_admin(household_id)`.
-- **Binding:** aanmaken/verwijderen correct admin-gebonden. Maar de **SELECT** is door de tak
-  `OR (auth.uid() IS NOT NULL)` open voor elke ingelogde gebruiker.
-- **Verdict:** **risico, zie Bevindingen.**
+### `household_invites` (bijgewerkt in S01b)
+- **Policies (na S01b):**
+  - SELECT: `is_household_admin(household_id)` (de tak `OR (auth.uid() IS NOT NULL)` is verwijderd).
+  - INSERT: `is_household_admin(household_id) AND created_by = auth.uid()` (ongewijzigd).
+  - UPDATE (inwisselen): **verwijderd.** Inwisselen loopt niet meer via een directe UPDATE-policy,
+    maar uitsluitend via de `public.redeem_invite(p_token, p_display_name)`-RPC (`SECURITY DEFINER`,
+    draait dus buiten RLS om). De RPC zoekt op exact token, geeft drie onderscheidbare foutcodes
+    (`invite_not_found`, `invite_used`, `invite_expired`) en markeert de invite plus voegt het lid
+    atomair toe.
+  - DELETE: `is_household_admin(household_id)` (ongewijzigd).
+- **Binding:** aanmaken/verwijderen correct admin-gebonden. De SELECT is nu ook admin-only; een
+  niet-admin kan de tabel niet meer direct lezen. Joinen met een geldig token werkt nog steeds, maar
+  loopt via de RPC, die het token nodig heeft (geen tabel-scan meer mogelijk).
+- **Verdict:** **B1 opgelost in S01b.**
 
 ### `household_modules`
 - **Policies:** SELECT `is_household_member`, INSERT/UPDATE/DELETE `is_household_admin`.
@@ -93,19 +99,35 @@ Daarnaast:
 
 ## Bevindingen (gaten en risico's)
 
-### B1 - `household_invites` SELECT is te ruim (middel/hoog)
-De SELECT-policy `is_household_admin(household_id) OR (auth.uid() IS NOT NULL)` laat **elke
+### B1 - `household_invites` SELECT is te ruim (middel/hoog) — **OPGELOST in S01b**
+De SELECT-policy `is_household_admin(household_id) OR (auth.uid() IS NOT NULL)` liet **elke
 ingelogde gebruiker de volledige invites-tabel lezen**, inclusief alle tokens van alle huishoudens.
-In combinatie met de inwissel-policy (elke ingelogde gebruiker mag een niet-verlopen, ongebruikte
-invite op zijn naam zetten) en de self-join-tak op `household_members`, betekent dit dat een ingelogde
-gebruiker in principe elk openstaand invite-token kan uitlezen en inwisselen, en zo kan toetreden tot
-een willekeurig huishouden. De beveiliging leunt volledig op de geheimhouding van het token, terwijl
-de policy die geheimhouding juist opheft.
+In combinatie met de inwissel-policy (elke ingelogde gebruiker mocht een niet-verlopen, ongebruikte
+invite op zijn naam zetten) en de self-join-tak op `household_members`, betekende dit dat een
+ingelogde gebruiker in principe elk openstaand invite-token kon uitlezen en inwisselen, en zo kon
+toetreden tot een willekeurig huishouden. De beveiliging leunde volledig op de geheimhouding van het
+token, terwijl de policy die geheimhouding juist ophief.
 
-**Aanbeveling (buiten scope van S01, voorstel voor vervolgslice):** het opzoeken/inwisselen van een
-invite via een `SECURITY DEFINER` RPC laten lopen die op exact token matcht, en de directe SELECT
-beperken tot `is_household_admin(household_id)`. Zo blijft het token nodig om te joinen, zonder dat de
-hele tabel leesbaar is.
+**Oplossing (migration `supabase/migrations/20260708090000_redeem_invite_rls_fix.sql`, slice S01b):**
+- De `household_invites` SELECT-policy is beperkt tot `is_household_admin(household_id)`; de open
+  `OR (auth.uid() IS NOT NULL)`-tak is verwijderd.
+- De open UPDATE-inwissel-policy op `household_invites` is verwijderd.
+- De self-join-tak op de `household_members` INSERT-policy is verwijderd; alleen de admin-insert-tak
+  blijft.
+- Inwisselen loopt voortaan uitsluitend via `public.redeem_invite(p_token, p_display_name)`
+  (`SECURITY DEFINER`, atomair): exacte token-match, drie onderscheidbare foutcodes
+  (`invite_not_found`, `invite_used`, `invite_expired`), markeert de invite als gebruikt en voegt het
+  lid toe in dezelfde transactie.
+
+Het token blijft dus nodig om te joinen, zonder dat de hele tabel leesbaar is voor niet-admins.
+
+**Hardening (migration `supabase/migrations/20260708093000_redeem_invite_revoke_anon.sql`):** de
+Supabase default-privileges (`ALTER DEFAULT PRIVILEGES ... GRANT ALL ON FUNCTIONS TO anon,
+authenticated, service_role`) gaven de nieuwe RPC bij aanmaak ongewild EXECUTE voor de `anon`-rol. Een
+anonieme caller kon niet joinen (`auth.uid()` is NULL -> NOT NULL-violatie op
+`household_members.user_id`, waardoor de atomaire functie terugrolt), maar EXECUTE is alsnog
+ingetrokken voor `anon` en `PUBLIC` zodat inwisselen enkel voor `authenticated` (en `service_role`)
+mogelijk is. Ontdekt bij live-verificatie via `db dump --schema public`.
 
 ### B2 - `profiles` zonder INSERT/DELETE-policy (informatief, geen gat)
 Bewust: inserts via trigger, deletes via cascade. RLS weigert directe mutatie. Geen actie nodig.
@@ -114,8 +136,8 @@ Bewust: inserts via trigger, deletes via cascade. RLS weigert directe mutatie. G
 
 - Geen `supabase db push` of `supabase migration repair`. De live database is niet gewijzigd, ook
   niet de `supabase_migrations.schema_migrations`-boekhouding.
-- B1 is gerapporteerd, niet gedicht. Corrigeren vereist een policy-wijziging op de live database en
-  hoort in een aparte slice met eigen review.
+- B1 is in S01 gerapporteerd, niet gedicht. Corrigeren vereist een policy-wijziging op de live
+  database en hoort in een aparte slice met eigen review. **Dit is gebeurd in S01b**, zie B1 hierboven.
 
 ## Noot over `supabase db pull` en AC3
 
