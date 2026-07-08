@@ -996,7 +996,7 @@ export default function Ritmo() {
 
         <TabBar view={view} setView={setView} theme={theme} />
 
-        <ErrorBoundary key={view} onReset={() => setView('today')}>
+        <ErrorBoundary key={view} darkMode={darkMode} onReset={() => setView('today')}>
         {view === 'today' && (
           <TodayView
             t={t}
