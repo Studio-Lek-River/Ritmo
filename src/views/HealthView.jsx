@@ -1,18 +1,16 @@
 import React, { useState } from 'react';
-import { Plus, ChevronLeft, ChevronRight, Activity } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Activity, Sparkles } from 'lucide-react';
 import { ICON_OPTIONS } from '../utils/icons';
 import { getColorClasses } from '../utils/colors';
 import { injectableMeds } from '../utils/bodymap';
 import { useTranslation, getLocale, resolveModuleName } from '../i18n/useTranslation';
-import {
-  ModuleDetail,
-  PresetPickerModal,
-  TargetPickerModal,
-} from './MeasurementsView';
+import { useToast } from '../hooks/useToast';
+import { ModuleDetail } from './MeasurementsView';
 import { MedicationModuleCard } from './MedicationView';
 import { BodymapModuleCard } from './BodymapView';
+import { InjectionScheduleModuleCard } from './InjectionScheduleView';
 
-const HEALTH_TYPES = ['measurements', 'medication', 'bodymap'];
+const HEALTH_TYPES = ['measurements', 'medication', 'bodymap', 'injectionSchedule'];
 
 // Korte samenvatting per module, afhankelijk van het type.
 function moduleSummary(mod, t) {
@@ -26,106 +24,73 @@ function moduleSummary(mod, t) {
   if (mod.type === 'bodymap') {
     return t('modules.summary.bodymap', { count: (mod.log || []).length });
   }
+  if (mod.type === 'injectionSchedule') {
+    return t('modules.summary.injectionSchedule', { count: (mod.entries || []).length });
+  }
   return '';
 }
 
-// Eén gezondheids-tab die metingen-, medicatie- en priklocatie-modules samen in
-// één lijst toont. Tikken opent het type-specifieke detail.
+// Eén gezondheids-tab die metingen-, medicatie-, priklocatie- en
+// prikschema-modules samen in één lijst toont. Tikken opent het
+// type-specifieke detail.
 export default function HealthView({
   modules,
   onUpdateMeasurementsModule,
-  onCreateFromPreset,
   onAddModule,
   onEditModule,
+  onSetupWeightLoss,
   onAddMed,
   onUpdateMed,
   onDeleteMed,
   onOrderMed,
   onLogInjection,
   onRemoveInjection,
+  onAddScheduleEntry,
+  onUpdateScheduleEntry,
+  onDeleteScheduleEntry,
   theme,
 }) {
   const { t } = useTranslation();
   const locale = getLocale();
+  const { showToast } = useToast();
   const [selectedId, setSelectedId] = useState(null);
   const [openMetricId, setOpenMetricId] = useState(null);
-  const [presetPickerOpen, setPresetPickerOpen] = useState(false);
-  const [pendingPreset, setPendingPreset] = useState(null);
 
   const healthModules = modules.filter(
     (m) => m.enabled && HEALTH_TYPES.includes(m.type)
   );
-  const measurementModules = healthModules.filter((m) => m.type === 'measurements');
   const meds = injectableMeds(modules);
 
   const selected = selectedId
     ? healthModules.find((m) => m.id === selectedId) || null
     : null;
 
-  const handlePresetPick = (preset) => {
-    setPresetPickerOpen(false);
-    if (measurementModules.length === 0) {
-      onCreateFromPreset(preset, null);
-      return;
-    }
-    setPendingPreset(preset);
-  };
-
-  const handleTargetPick = (targetModuleId) => {
-    if (!pendingPreset) return;
-    onCreateFromPreset(pendingPreset, targetModuleId);
-    setPendingPreset(null);
-    if (targetModuleId) setSelectedId(targetModuleId);
-  };
-
   const backToList = () => {
     setSelectedId(null);
     setOpenMetricId(null);
   };
 
-  const modals = (
-    <>
-      {presetPickerOpen && (
-        <PresetPickerModal
-          theme={theme}
-          t={t}
-          onClose={() => setPresetPickerOpen(false)}
-          onPick={handlePresetPick}
-        />
-      )}
-      {pendingPreset && (
-        <TargetPickerModal
-          preset={pendingPreset}
-          modules={measurementModules}
-          theme={theme}
-          t={t}
-          onClose={() => setPendingPreset(null)}
-          onPick={handleTargetPick}
-        />
-      )}
-    </>
-  );
+  const handleSetupWeightLoss = () => {
+    onSetupWeightLoss?.();
+    showToast({ message: t('modules.measurements.weightLossSetupToast') });
+  };
 
   // Detailweergave van de gekozen module.
   if (selected) {
     if (selected.type === 'measurements') {
       return (
-        <>
-          <ModuleDetail
-            module={selected}
-            canGoBack
-            onBack={backToList}
-            onUpdateModule={onUpdateMeasurementsModule}
-            onEditModule={onEditModule}
-            onOpenPresetPicker={() => setPresetPickerOpen(true)}
-            openMetricId={openMetricId}
-            setOpenMetricId={setOpenMetricId}
-            theme={theme}
-            t={t}
-            locale={locale}
-          />
-          {modals}
-        </>
+        <ModuleDetail
+          module={selected}
+          canGoBack
+          onBack={backToList}
+          onUpdateModule={onUpdateMeasurementsModule}
+          onEditModule={onEditModule}
+          openMetricId={openMetricId}
+          setOpenMetricId={setOpenMetricId}
+          theme={theme}
+          t={t}
+          locale={locale}
+        />
       );
     }
 
@@ -162,6 +127,18 @@ export default function HealthView({
             theme={theme}
           />
         )}
+        {selected.type === 'injectionSchedule' && (
+          <InjectionScheduleModuleCard
+            module={selected}
+            meds={meds}
+            iconOptions={ICON_OPTIONS}
+            onAddEntry={onAddScheduleEntry}
+            onUpdateEntry={onUpdateScheduleEntry}
+            onDeleteEntry={onDeleteScheduleEntry}
+            onEditModule={onEditModule}
+            theme={theme}
+          />
+        )}
       </div>
     );
   }
@@ -172,13 +149,16 @@ export default function HealthView({
       <div className="flex items-center justify-between mb-4 gap-2">
         <h1 className={`text-xl font-semibold ${theme.text}`}>{t('nav.measurements')}</h1>
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setPresetPickerOpen(true)}
-            className={`px-3 py-1.5 ${theme.cardSecondary} ${theme.hover} ${theme.textSecondary} rounded-lg text-sm font-medium`}
-          >
-            {t('modules.measurements.addPresetShort')}
-          </button>
+          {onSetupWeightLoss && (
+            <button
+              type="button"
+              onClick={handleSetupWeightLoss}
+              className={`flex items-center gap-1.5 px-3 py-1.5 ${theme.cardSecondary} ${theme.hover} ${theme.textSecondary} rounded-lg text-sm font-medium`}
+            >
+              <Sparkles className="w-4 h-4" />
+              {t('modules.measurements.weightLossSetup')}
+            </button>
+          )}
           <button
             type="button"
             onClick={onAddModule}
@@ -224,8 +204,6 @@ export default function HealthView({
           })}
         </div>
       )}
-
-      {modals}
     </div>
   );
 }

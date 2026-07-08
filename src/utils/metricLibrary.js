@@ -6,6 +6,8 @@ export const METRIC_LIBRARY = [
   { key: 'bodyfat',     nameKey: 'metricLibrary.bodyFat',     unit: 'pct',     icon: 'Droplet',  decimals: 1, lowerIsBetter: true  },
   { key: 'muscle',      nameKey: 'metricLibrary.muscleMass',  unit: 'kg',      icon: 'Zap',      decimals: 1, lowerIsBetter: false },
   { key: 'waist',       nameKey: 'metricLibrary.waist',       unit: 'cm',      icon: 'Ruler',    decimals: 0, lowerIsBetter: true  },
+  { key: 'leg',         nameKey: 'metricLibrary.leg',         unit: 'cm',      icon: 'Ruler',    decimals: 0, lowerIsBetter: true  },
+  { key: 'arm',         nameKey: 'metricLibrary.arm',         unit: 'cm',      icon: 'Ruler',    decimals: 0, lowerIsBetter: true  },
   { key: 'heartrate',   nameKey: 'metricLibrary.restingHr',   unit: 'bpm',     icon: 'Activity', decimals: 0, lowerIsBetter: true  },
   { key: 'systolic',    nameKey: 'metricLibrary.systolic',    unit: 'mmHg',    icon: 'Activity', decimals: 0, lowerIsBetter: true  },
   { key: 'diastolic',   nameKey: 'metricLibrary.diastolic',   unit: 'mmHg',    icon: 'Activity', decimals: 0, lowerIsBetter: true  },

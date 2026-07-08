@@ -13,6 +13,7 @@ import SleepModule from './modules/SleepModule';
 import ProjectsView from './views/ProjectsView';
 import CollectionsView from './views/CollectionsView';
 import HealthView from './views/HealthView';
+import { MedFormModal } from './views/MedicationView';
 import HouseholdView from './views/HouseholdView';
 import TodayView from './views/TodayView';
 import InsightView from './views/InsightView';
@@ -691,6 +692,38 @@ export default function Ritmo() {
     return removedEvent;
   };
 
+  // ---- injection schedule handlers ---------------------------------------
+
+  const updateInjectionScheduleModule = (moduleId, mutator) => {
+    setModules(prev => prev.map(m => {
+      if (m.id !== moduleId || m.type !== 'injectionSchedule') return m;
+      return mutator(m);
+    }));
+  };
+
+  const addScheduleEntry = (moduleId, entry) => {
+    if (!entry) return null;
+    updateInjectionScheduleModule(moduleId, (m) => ({
+      ...m,
+      entries: [...(m.entries || []), entry],
+    }));
+    return entry;
+  };
+
+  const updateScheduleEntry = (moduleId, entryId, patch) => {
+    updateInjectionScheduleModule(moduleId, (m) => ({
+      ...m,
+      entries: (m.entries || []).map((e) => (e.id === entryId ? { ...e, ...patch } : e)),
+    }));
+  };
+
+  const deleteScheduleEntry = (moduleId, entryId) => {
+    updateInjectionScheduleModule(moduleId, (m) => ({
+      ...m,
+      entries: (m.entries || []).filter((e) => e.id !== entryId),
+    }));
+  };
+
   // ---- measurements handlers --------------------------------------------
 
   const updateMeasurementsModule = (updatedModule) => {
@@ -699,24 +732,53 @@ export default function Ritmo() {
     ));
   };
 
-  const createMeasurementsFromPreset = useCallback((preset, targetModuleId) => {
-    if (targetModuleId) {
-      setModules(prev => prev.map(m => {
-        if (m.id !== targetModuleId) return m;
-        const newMetrics = (preset.metrics || []).map(metric => ({
-          ...metric,
-          id: genId('metric'),
-          events: [],
-        }));
-        return { ...m, metrics: [...(m.metrics || []), ...newMetrics] };
-      }));
-      return;
-    }
-    const newModule = applyModulePreset(
-      { type: 'measurements', id: genId('measurements'), enabled: true, countInStreak: false },
-      preset
-    );
-    setModules(prev => [...prev, newModule]);
+  // Eén-klik bundel: measurements (Weight Loss preset) + medication + bijwerkingen
+  // (checklist-preset, health) + beweging (counter-preset, health). Bestaande
+  // modules van hetzelfde type/preset blijven ongemoeid, geen duplicaten.
+  const setupWeightLossBundle = useCallback(() => {
+    setModules(prev => {
+      const next = [...prev];
+      const hasPresetModule = (type, nameKey) => next.some(m => m.type === type && m.nameKey === nameKey);
+
+      const weightLossPreset = (MODULE_PRESETS.measurements || []).find(p => p.nameKey === 'presets.weightLoss.name');
+      if (weightLossPreset && !hasPresetModule('measurements', weightLossPreset.nameKey)) {
+        next.push(applyModulePreset(
+          { type: 'measurements', id: genId('measurements'), enabled: true, countInStreak: false },
+          weightLossPreset
+        ));
+      }
+
+      if (!next.some(m => m.type === 'medication')) {
+        next.push({
+          id: genId('medication'),
+          nameKey: 'modules.types.medication',
+          icon: 'Cross',
+          color: 'blue',
+          enabled: true,
+          countInStreak: false,
+          type: 'medication',
+          meds: [],
+        });
+      }
+
+      const bijwerkingenPreset = (MODULE_PRESETS.checklist || []).find(p => p.nameKey === 'presets.bijwerkingen.name');
+      if (bijwerkingenPreset && !hasPresetModule('checklist', bijwerkingenPreset.nameKey)) {
+        next.push(applyModulePreset(
+          { type: 'checklist', id: genId('checklist'), enabled: true, countInStreak: false },
+          bijwerkingenPreset
+        ));
+      }
+
+      const bewegingPreset = (MODULE_PRESETS.counter || []).find(p => p.nameKey === 'presets.beweging.name');
+      if (bewegingPreset && !hasPresetModule('counter', bewegingPreset.nameKey)) {
+        next.push(applyModulePreset(
+          { type: 'counter', id: genId('counter'), enabled: true, countInStreak: false },
+          bewegingPreset
+        ));
+      }
+
+      return next;
+    });
   }, [setModules]);
 
   const openModuleEditor = (type) => {
@@ -728,7 +790,9 @@ export default function Ritmo() {
           ? 'Cross'
           : type === 'bodymap'
             ? 'Target'
-            : 'Star';
+            : type === 'injectionSchedule'
+              ? 'CalendarClock'
+              : 'Star';
     setEditingModule({
       id: `mod_${Date.now()}`,
       name: '',
@@ -752,6 +816,9 @@ export default function Ritmo() {
       } : {}),
       ...(type === 'bodymap' ? {
         log: [],
+      } : {}),
+      ...(type === 'injectionSchedule' ? {
+        entries: [],
       } : {}),
     });
   };
@@ -944,7 +1011,7 @@ export default function Ritmo() {
     }} theme={theme} darkMode={darkMode} />;
   }
 
-  const baseEnabledModules = modules.filter(m => m.enabled && m.type !== 'collection' && m.type !== 'measurements' && m.type !== 'medication' && m.type !== 'bodymap');
+  const baseEnabledModules = modules.filter(m => m.enabled && m.type !== 'collection' && m.type !== 'measurements' && m.type !== 'medication' && m.type !== 'bodymap' && m.type !== 'injectionSchedule');
   const enabledModules = appMode === 'health' ? baseEnabledModules.filter(isHealthModule) : baseEnabledModules;
 
   const todayVisibleModules = editable
@@ -1219,15 +1286,18 @@ export default function Ritmo() {
           <HealthView
             modules={modules}
             onUpdateMeasurementsModule={updateMeasurementsModule}
-            onCreateFromPreset={createMeasurementsFromPreset}
             onAddModule={openBlankModuleEditor}
             onEditModule={(mod) => setEditingModule(mod)}
+            onSetupWeightLoss={setupWeightLossBundle}
             onAddMed={addMed}
             onUpdateMed={updateMed}
             onDeleteMed={deleteMed}
             onOrderMed={orderMed}
             onLogInjection={logInjectionEvent}
             onRemoveInjection={removeInjectionEvent}
+            onAddScheduleEntry={addScheduleEntry}
+            onUpdateScheduleEntry={updateScheduleEntry}
+            onDeleteScheduleEntry={deleteScheduleEntry}
             theme={theme}
           />
         )}
@@ -2120,7 +2190,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                 {[
                   { key: 'today', types: ['checklist', 'choice', 'counter', 'tasks', 'sleep', 'projects'] },
                   { key: 'collections', types: ['collection'] },
-                  { key: 'measurements', types: ['measurements', 'medication', 'bodymap'] },
+                  { key: 'measurements', types: ['measurements', 'medication', 'bodymap', 'injectionSchedule'] },
                 ].map(group => {
                   const groupMods = modules.filter(m => group.types.includes(m.type));
                   return (
@@ -2164,6 +2234,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                                     {mod.type === 'tasks' && t('modules.summary.tasks')}
                                     {mod.type === 'medication' && t('modules.summary.medication', { count: (mod.meds || []).length })}
                                     {mod.type === 'bodymap' && t('modules.summary.bodymap', { count: (mod.log || []).length })}
+                                    {mod.type === 'injectionSchedule' && t('modules.summary.injectionSchedule', { count: (mod.entries || []).length })}
                                   </div>
                                 </div>
                               </div>
@@ -2571,6 +2642,7 @@ function getTypeOptions(t) {
     { id: 'measurements', label: t('modules.types.measurements'), desc: t('modules.types.measurementsDesc') },
     { id: 'medication', label: t('modules.types.medication'), desc: t('modules.types.medicationDesc') },
     { id: 'bodymap', label: t('modules.types.bodymap'), desc: t('modules.types.bodymapDesc') },
+    { id: 'injectionSchedule', label: t('modules.types.injectionSchedule'), desc: t('modules.types.injectionScheduleDesc') },
   ];
 }
 
@@ -2758,6 +2830,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
   const [expandedItemId, setExpandedItemId] = useState(null);
   const [removingMetric, setRemovingMetric] = useState(null);
   const [metricLibraryOpen, setMetricLibraryOpen] = useState(false);
+  const [addingMedInline, setAddingMedInline] = useState(false);
   const isNew = !mod.name && !mod.nameKey;
   const [step, setStep] = useState(
     isNew ? (mod.type ? 'preset' : 'type') : 'config'
@@ -2827,9 +2900,20 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
         log: Array.isArray(prev.log) ? prev.log : [],
         countInStreak: false,
       } : {}),
+      ...(typeId === 'injectionSchedule' ? {
+        entries: Array.isArray(prev.entries) ? prev.entries : [],
+        countInStreak: false,
+      } : {}),
     }));
-    setStep('preset');
-    setPresetTab('suggestions');
+    // Types zonder suggesties (bv. medication/bodymap/injectionSchedule) slaan
+    // de suggesties-stap over en gaan direct naar "Zelf maken".
+    const hasPresets = (MODULE_PRESETS[typeId] || []).length > 0;
+    if (hasPresets) {
+      setStep('preset');
+      setPresetTab('suggestions');
+    } else {
+      setStep('config');
+    }
   };
 
   const applyPreset = (preset) => {
@@ -2861,7 +2945,10 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
           <div className="flex items-center gap-2">
             {isNew && step !== 'type' && (
               <button
-                onClick={() => setStep(step === 'config' ? 'preset' : 'type')}
+                onClick={() => {
+                  const hasPresets = (MODULE_PRESETS[editing.type] || []).length > 0;
+                  setStep(step === 'config' && hasPresets ? 'preset' : 'type');
+                }}
                 className={`p-1.5 ${theme.hover} rounded-lg ${theme.textMuted}`}
                 aria-label={t('common.back')}
               >
@@ -2952,11 +3039,6 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
                     </button>
                   );
                 })}
-                {(!MODULE_PRESETS[editing.type] || MODULE_PRESETS[editing.type].length === 0) && (
-                  <p className={`text-sm ${theme.textMuted} text-center py-4`}>
-                    {t('modules.noSuggestions')}
-                  </p>
-                )}
               </div>
             )}
 
@@ -3775,14 +3857,63 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
           })()}
 
           {editing.type === 'medication' && (
-            <p className={`text-xs ${theme.textMuted}`}>
-              {t('modules.medicationEditorNote')}
-            </p>
+            <div>
+              <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                {t('medication.myMeds')}
+              </label>
+              {(editing.meds || []).length > 0 && (
+                <ul className="space-y-2 mb-2">
+                  {(editing.meds || []).map((med) => (
+                    <li key={med.id} className={`flex items-center gap-2 p-2 ${theme.cardSecondary} rounded-lg`}>
+                      <span
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: getColorHex(med.color) }}
+                        aria-hidden="true"
+                      />
+                      <span className={`flex-1 text-sm ${theme.textSecondary} truncate`}>{med.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditing(prev => ({ ...prev, meds: (prev.meds || []).filter(m => m.id !== med.id) }))}
+                        className="text-slate-400 hover:text-red-500 p-1.5"
+                        aria-label={t('common.delete')}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <button
+                type="button"
+                onClick={() => setAddingMedInline(true)}
+                className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 ${theme.cardSecondary} ${theme.hover} ${theme.textSecondary} rounded-lg text-sm font-medium`}
+              >
+                <Plus className="w-4 h-4" />
+                {t('medication.addMed')}
+              </button>
+              <p className={`text-xs ${theme.textMuted} mt-2`}>
+                {t('modules.medicationEditorNote')}
+              </p>
+              <MedFormModal
+                open={addingMedInline}
+                mode="add"
+                module={editing}
+                onClose={() => setAddingMedInline(false)}
+                onSave={(med) => setEditing(prev => ({ ...prev, meds: [...(prev.meds || []), med] }))}
+                theme={theme}
+              />
+            </div>
           )}
 
           {editing.type === 'bodymap' && (
             <p className={`text-xs ${theme.textMuted}`}>
               {t('modules.bodymapEditorNote')}
+            </p>
+          )}
+
+          {editing.type === 'injectionSchedule' && (
+            <p className={`text-xs ${theme.textMuted}`}>
+              {t('modules.injectionScheduleEditorNote')}
             </p>
           )}
         </div>

@@ -40,3 +40,13 @@ export const FREQUENCY_OPTIONS = [
   { id: 'biweekly', perWeek: 0.5 },
   { id: 'triweekly', perWeek: 1 / 3 },
 ];
+
+// i18n-keys (onder `medication.*`) per FREQUENCY_OPTIONS-id. Gedeeld tussen
+// medicatie- en prikschema-UI zodat beide dezelfde frequentie-labels tonen.
+export const FREQUENCY_LABEL_KEYS = {
+  daily: 'freqDaily',
+  everyOther: 'freqEveryOther',
+  weekly: 'freq1w',
+  biweekly: 'freq2w',
+  triweekly: 'freq3w',
+};

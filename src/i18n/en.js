@@ -757,6 +757,22 @@ export default {
     confirmRemove: 'This will delete the log entry and restore the medicine supply by 1. This action cannot be undone.',
   },
 
+  injectionSchedule: {
+    newEntry: 'New planned injection',
+    editEntry: 'Edit planned injection',
+    chooseMed: 'Choose medicine',
+    chooseMedPlaceholder: 'Choose a medicine',
+    chooseZone: 'Choose zone',
+    chooseZonePlaceholder: 'Choose a zone',
+    submitAdd: 'Add',
+    entryCount: '{count} planned injections',
+    unknownMed: 'Unknown medicine',
+    emptyEntries: 'No planned injections yet.',
+    addEntry: 'Plan an injection',
+    deleteEntryTitle: 'Delete planned injection?',
+    deleteEntryDesc: 'This will delete this planned injection. This action cannot be undone.',
+  },
+
   projectsView: {
     deleteSubjectTitle: 'Delete "{name}"?',
     deleteSubjectDesc: 'This deletes the subject and all its subgoals. This action cannot be undone.',
@@ -988,6 +1004,8 @@ export default {
       addPreset: 'Add preset',
       addPresetShort: '+ Preset',
       addModuleShort: '+ Module',
+      weightLossSetup: 'Set up Weight Loss',
+      weightLossSetupToast: 'Weight Loss set up: measurements, medication, side effects and movement are ready.',
       pickPresetTitle: 'Pick a preset',
       pickPresetIntro: 'A preset adds a complete set of metrics.',
       addPresetTo: 'Add {preset}',
@@ -1020,6 +1038,8 @@ export default {
       medicationDesc: 'Medicines with dose, supply and frequency',
       bodymap: 'Injection site',
       bodymapDesc: 'Clickable body map to log injections and track supply',
+      injectionSchedule: 'Injection schedule',
+      injectionScheduleDesc: 'Plan when you inject: medicine, zone and frequency',
     },
 
     summary: {
@@ -1032,10 +1052,12 @@ export default {
       projects: 'Projects',
       medication: '{count} medicines',
       bodymap: '{count} injections',
+      injectionSchedule: '{count} planned injections',
     },
 
-    medicationEditorNote: 'Manage medicines in the Medication tab, not here.',
+    medicationEditorNote: 'You can manage further medicines in the Medication tab.',
     bodymapEditorNote: 'You log injections yourself in the Injection site tab, not here.',
+    injectionScheduleEditorNote: 'You manage planned injections further in the Injection schedule tab of Health.',
 
     addOptionsHint: 'Add options via settings ⚙️',
     chosenHint: '✓ {label} chosen, click again to reset',
@@ -1192,6 +1214,8 @@ export default {
     bodyFat: 'Body fat',
     muscleMass: 'Muscle mass',
     waist: 'Waist',
+    leg: 'Leg circumference',
+    arm: 'Arm circumference',
     restingHr: 'Resting heart rate',
     systolic: 'Systolic',
     diastolic: 'Diastolic',
@@ -1235,6 +1259,15 @@ export default {
         muscle: 'Muscle mass',
         fat: 'Body fat',
         waist: 'Waist circumference',
+      },
+    },
+    weightLoss: {
+      name: 'Weight Loss',
+      metrics: {
+        weight: 'Weight',
+        waist: 'Waist',
+        leg: 'Leg',
+        arm: 'Arm',
       },
     },
     bloodpressure: {
