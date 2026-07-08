@@ -37,9 +37,16 @@ BEGIN
     RAISE EXCEPTION 'invite_expired';
   END IF;
 
+  -- Guard tegen gelijktijdige inwisseling van hetzelfde token: de UPDATE claimt de
+  -- rij atomair (rij-lock op `used_by IS NULL`). Raakt hij 0 rijen, dan heeft een
+  -- parallelle transactie het token net ingewisseld -> invite_used.
   UPDATE public.household_invites
   SET used_by = auth.uid(), used_at = now()
-  WHERE token = p_token;
+  WHERE token = p_token AND used_by IS NULL;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'invite_used';
+  END IF;
 
   INSERT INTO public.household_members (household_id, user_id, role, display_name)
   VALUES (v_invite.household_id, auth.uid(), 'member', p_display_name);
