@@ -160,7 +160,7 @@ Volgorde: **H01 → H03 → H04 → H05 → H06 → H07 → H02**; **H02** en **
 - **Doel:** een bijwerkingen-heatmap (dot-matrix, gekoppeld aan de periode-selector, horizontaal scrollbaar) en een beweging-staafdiagram (minuten per dag met referentielijn op het dagdoel). Generieke verbeteringen van de counter- en checklist-insight-kaarten; leest bestaande history-data.
 - **Afhankelijk van:** H05.
 
-#### H07, App-modus-schakelaar (Health/Standaard). TODO (#56)
+#### H07, App-modus-schakelaar (Health/Standaard). IN REVIEW (#56)
 - **Doel:** een instelling die de zichtbare modules en de menubalk omschakelt tussen Standaard (alles) en Health (alleen de gezondheidsmodules), zodat de app efficiënt op één gebruiksdoel te richten is.
 - **Afhankelijk van:** de module-set uit H03/H05; verwant aan H02 (onboarding-profiel).
 
