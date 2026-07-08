@@ -183,6 +183,7 @@ export function migrateSettings(settings) {
   if (out.language === undefined) {
     out.language = 'auto';
   }
+  if (out.appMode === undefined) out.appMode = 'standard';
   return out;
 }
 

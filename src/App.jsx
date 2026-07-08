@@ -44,6 +44,7 @@ import { genId } from './utils/genId';
 import { applyModulePreset } from './utils/applyModulePreset';
 import { MEASUREMENT_UNITS, unitSymbol, createMetric } from './utils/measurements';
 import { ICON_OPTIONS } from './utils/icons';
+import { isHealthModule } from './utils/healthModules';
 import { instantiateMetric } from './utils/metricLibrary';
 import MetricLibraryModal from './components/MetricLibraryModal';
 import {
@@ -94,6 +95,7 @@ export default function Ritmo() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [soundVolume, setSoundVolume] = useState(80);
   const [goldenBorderEnabled, setGoldenBorderEnabled] = useState(true);
+  const [appMode, setAppMode] = useState('standard');
   const [showReflectionOnToday, setShowReflectionOnToday] = useState(false);
   const [hasUsedSwipe, setHasUsedSwipe] = useState(false);
   const [hasDismissedInstallBanner, setHasDismissedInstallBanner] = useState(false);
@@ -140,6 +142,7 @@ export default function Ritmo() {
         if (settings.soundEnabled !== undefined) setSoundEnabled(settings.soundEnabled);
         if (settings.soundVolume !== undefined) setSoundVolume(settings.soundVolume);
         if (settings.goldenBorderEnabled !== undefined) setGoldenBorderEnabled(settings.goldenBorderEnabled);
+        if (settings.appMode !== undefined) setAppMode(settings.appMode);
         if (settings.showReflectionOnToday !== undefined) setShowReflectionOnToday(settings.showReflectionOnToday);
         if (settings.hasUsedSwipe !== undefined) setHasUsedSwipe(settings.hasUsedSwipe);
         if (settings.hasDismissedInstallBanner !== undefined) setHasDismissedInstallBanner(settings.hasDismissedInstallBanner);
@@ -275,6 +278,7 @@ export default function Ritmo() {
           soundEnabled,
           soundVolume,
           goldenBorderEnabled,
+          appMode,
           showReflectionOnToday,
           hasUsedSwipe,
           hasDismissedInstallBanner,
@@ -285,7 +289,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, showReflectionOnToday, hasUsedSwipe, hasDismissedInstallBanner, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, showReflectionOnToday, hasUsedSwipe, hasDismissedInstallBanner, modules, hasOnboarded, languageSetting, loading]);
 
   // Recurring tasks. Only inject into today's task list, never into a
   // historical day the user is just viewing.
