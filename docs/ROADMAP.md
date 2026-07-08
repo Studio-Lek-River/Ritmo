@@ -134,7 +134,7 @@ Een gezondheids-startpreset (prikschema, priklocatie, medicatie, gewicht, omvang
 
 Volgorde: **H01 → H03 → H04 → H05 → H06**; **H02** inpasbaar zodra H03/H05 de te-activeren module-set definiëren.
 
-#### H01, Bugfix + ErrorBoundary. TODO
+#### H01, Bugfix + ErrorBoundary. KLAAR (gemerged)
 - **Doel:** het wit-schermdefect bij het openen van de gezondheidsmeting-instellingen dichten (null-metric read zonder guard in de measurements-editor), plus een app-brede en view-brede ErrorBoundary zodat een volgende crash zichtbaar wordt i.p.v. onzichtbaar.
 - **Afhankelijk van:** niets. Gaat eerst.
 
