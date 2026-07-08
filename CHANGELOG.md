@@ -1,3 +1,15 @@
+# [0.24.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.23.0...v0.24.0) (2026-07-08)
+
+
+### Bug Fixes
+
+* **modules:** verhelp metricLibraryOpen-crash in module-editor ([35a7c33](https://github.com/Studio-Lek-River/Ritmo/commit/35a7c3358da4648ffa52462c54013c02d6f8f161))
+
+
+### Features
+
+* **health:** één Gezondheid-tab met alle gezondheidsmodules ([97fa710](https://github.com/Studio-Lek-River/Ritmo/commit/97fa710fd1bed66b45729382a23ba8b5eb1d7a0b))
+
 # [0.23.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.22.0...v0.23.0) (2026-07-08)
 
 
