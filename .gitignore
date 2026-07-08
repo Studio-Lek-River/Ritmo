@@ -20,3 +20,6 @@ dist-ssr
 supabase/.temp/
 supabase/.branches/
 supabase/.env
+
+# Supabase live-backups (bevatten data, nooit committen)
+backup-pre-S01b.sql
