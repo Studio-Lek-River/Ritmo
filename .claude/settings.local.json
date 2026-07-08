@@ -26,6 +26,9 @@
       "Bash(git commit *)",
       "Bash(git push *)",
       "Bash(git diff *)",
+      "Bash(gh issue view *)",
+      "Bash(gh issue list *)",
+      "Bash(gh pr create *)",
       "Read(//dev/**)"
     ],
     "additionalDirectories": [
