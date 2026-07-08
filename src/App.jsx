@@ -14,6 +14,7 @@ import ProjectsView from './views/ProjectsView';
 import CollectionsView from './views/CollectionsView';
 import MeasurementsView from './views/MeasurementsView';
 import MedicationView from './views/MedicationView';
+import BodymapView from './views/BodymapView';
 import HouseholdView from './views/HouseholdView';
 import TodayView from './views/TodayView';
 import InsightView from './views/InsightView';
@@ -36,6 +37,7 @@ import { CELEBRATION_ANIMATIONS, CONFETTI_CONFIG, buildConfetti } from './utils/
 import { migrateModuleConfig, migrateDayModuleData, migrateSettings } from './utils/migrate';
 import { useTranslation, resolveModuleName } from './i18n/useTranslation';
 import { logEvent, removeEvent, generateTagId, generateTagGroupId } from './utils/collections';
+import { logInjection, removeInjection } from './utils/bodymap';
 import { ToastProvider } from './hooks/useToast';
 import Toast from './components/Toast';
 import { formatAmount, formatDuration } from './utils/format';
@@ -626,6 +628,61 @@ export default function Ritmo() {
     }));
   };
 
+  // ---- bodymap handlers ---------------------------------------------------
+
+  const updateBodymapModule = (moduleId, mutator) => {
+    setModules(prev => prev.map(m => {
+      if (m.id !== moduleId || m.type !== 'bodymap') return m;
+      return mutator(m);
+    }));
+  };
+
+  // Eén pass die atomair de prik logt én de voorraad van het bronmedicijn
+  // verlaagt (geklemd op 0), zodat log en voorraad nooit uit de pas lopen.
+  // `date` mag worden meegegeven (undo van een verwijdering herstelt zo de
+  // oorspronkelijke datum); zonder `date` wordt vandaag gebruikt.
+  const logInjectionEvent = (bodymapModuleId, { zoneId, medId, medModuleId, medName, date } = {}) => {
+    const event = { date: date || todayKey, zoneId, medId, medModuleId, medName };
+    setModules(prev => prev.map(m => {
+      if (m.id === bodymapModuleId && m.type === 'bodymap') {
+        return logInjection(m, event);
+      }
+      if (m.id === medModuleId && m.type === 'medication') {
+        return {
+          ...m,
+          meds: (m.meds || []).map((med) =>
+            med.id === medId ? { ...med, supply: Math.max(0, (med.supply || 0) - 1) } : med
+          ),
+        };
+      }
+      return m;
+    }));
+    return event;
+  };
+
+  // Verwijdert de logregel én herstelt de voorraad van het bronmedicijn met 1.
+  // Als het event of het bronmedicijn niet meer bestaat: alleen de logregel
+  // verwijderen, voorraad met rust laten (defensief).
+  const removeInjectionEvent = (bodymapModuleId, index) => {
+    const bodymapModule = modules.find(m => m.id === bodymapModuleId && m.type === 'bodymap');
+    const removedEvent = bodymapModule?.log?.[index] || null;
+    setModules(prev => prev.map(m => {
+      if (m.id === bodymapModuleId && m.type === 'bodymap') {
+        return removeInjection(m, index);
+      }
+      if (removedEvent && m.id === removedEvent.medModuleId && m.type === 'medication') {
+        return {
+          ...m,
+          meds: (m.meds || []).map((med) =>
+            med.id === removedEvent.medId ? { ...med, supply: (med.supply || 0) + 1 } : med
+          ),
+        };
+      }
+      return m;
+    }));
+    return removedEvent;
+  };
+
   // ---- measurements handlers --------------------------------------------
 
   const updateMeasurementsModule = (updatedModule) => {
@@ -1157,6 +1214,18 @@ export default function Ritmo() {
             onDeleteMed={deleteMed}
             onOrderMed={orderMed}
             onCreate={() => openModuleEditor('medication')}
+            onEditModule={(mod) => setEditingModule(mod)}
+            theme={theme}
+          />
+        )}
+
+        {view === 'bodymap' && (
+          <BodymapView
+            modules={modules}
+            iconOptions={ICON_OPTIONS}
+            onLogInjection={logInjectionEvent}
+            onRemoveInjection={removeInjectionEvent}
+            onCreate={() => openModuleEditor('bodymap')}
             onEditModule={(mod) => setEditingModule(mod)}
             theme={theme}
           />
