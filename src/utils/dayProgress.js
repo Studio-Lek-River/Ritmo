@@ -80,7 +80,7 @@ export function buildDayCellBackground(modules, dayData, date) {
 
 const GLOW_TRACKABLE_TYPES = new Set(['checklist', 'choice', 'counter', 'sleep']);
 
-export const NON_TRACKABLE_TYPES = new Set(['projects', 'collection', 'tasks', 'measurements']);
+export const NON_TRACKABLE_TYPES = new Set(['projects', 'collection', 'tasks', 'measurements', 'medication']);
 
 export function canCountInStreak(moduleType) {
   return !NON_TRACKABLE_TYPES.has(moduleType);
