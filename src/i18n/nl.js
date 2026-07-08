@@ -1408,6 +1408,9 @@ export default {
     checklist: {
       summary: 'Gemiddeld {avg}% voltooid over {days} dagen',
       itemPct: '{pct}% van {days} dagen',
+      matrixHeading: 'Per dag',
+      dayChecked: '{item} op {date}: aangevinkt',
+      dayUnchecked: '{item} op {date}: niet aangevinkt',
     },
     choice: {
       summary: 'Meest gekozen: {top} ({count}x)',

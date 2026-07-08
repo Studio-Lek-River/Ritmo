@@ -40,14 +40,12 @@ export default function CounterInsightCard({ mod, days, theme, darkMode, t }) {
     ...agg.series.map(p => p.value),
     1,
   );
-  const xFor = (i) => padX + (agg.series.length === 1
-    ? innerW / 2
-    : (i / (agg.series.length - 1)) * innerW);
   const yFor = (v) => padY + innerH - (v / maxValue) * innerH;
 
-  const points = agg.series.map((p, i) => `${xFor(i)},${yFor(p.value)}`).join(' ');
   const stroke = getColorHex(mod.color);
   const goalY = agg.goal > 0 ? yFor(agg.goal) : null;
+  const slot = innerW / agg.series.length;
+  const barW = slot * 0.7;
 
   return (
     <InsightCardShell
@@ -67,23 +65,22 @@ export default function CounterInsightCard({ mod, days, theme, darkMode, t }) {
             opacity="0.6"
           />
         )}
-        <polyline
-          fill="none"
-          stroke={stroke}
-          strokeWidth="2"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          points={points}
-        />
-        {agg.series.map((p, i) => (
-          <circle
-            key={p.key}
-            cx={xFor(i)}
-            cy={yFor(p.value)}
-            r={p.value > 0 ? 2.5 : 1.5}
-            fill={p.value > 0 ? stroke : (darkMode ? '#475569' : '#cbd5e1')}
-          />
-        ))}
+        {agg.series.map((p, i) => {
+          const barH = p.value > 0 ? (p.value / maxValue) * innerH : 1;
+          const x = padX + i * slot + (slot - barW) / 2;
+          const y = padY + innerH - barH;
+          return (
+            <rect
+              key={p.key}
+              x={x}
+              y={y}
+              width={barW}
+              height={barH}
+              rx="1"
+              fill={p.value > 0 ? stroke : (darkMode ? '#475569' : '#cbd5e1')}
+            />
+          );
+        })}
       </svg>
       {agg.goal > 0 && (
         <p className={`text-xs ${theme.textMuted} mt-1`}>

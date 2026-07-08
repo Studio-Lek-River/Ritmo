@@ -1,6 +1,8 @@
 import React from 'react';
 import InsightCardShell from './InsightCardShell';
-import { aggregateChecklist } from '../../utils/insights';
+import { aggregateChecklist, checklistDayMatrix } from '../../utils/insights';
+import { getColorHex } from '../../utils/colors';
+import { monthNameShort } from '../../utils/dates';
 
 export default function ChecklistInsightCard({ mod, days, theme, darkMode, t }) {
   const agg = aggregateChecklist(mod, days);
@@ -19,6 +21,8 @@ export default function ChecklistInsightCard({ mod, days, theme, darkMode, t }) 
     avg: agg.avgPct,
     days: agg.daysWithEntry,
   });
+  const matrix = checklistDayMatrix(mod, days);
+  const formatCellDate = (date) => `${date.getDate()} ${monthNameShort(date)}`;
   return (
     <InsightCardShell
       mod={mod}
@@ -43,6 +47,41 @@ export default function ChecklistInsightCard({ mod, days, theme, darkMode, t }) 
           </li>
         ))}
       </ul>
+      {matrix.length > 0 && (
+        <>
+          <p className={`text-xs ${theme.textMuted} mt-4 mb-2`}>
+            {t('insight.checklist.matrixHeading')}
+          </p>
+          <div className="overflow-x-auto">
+            <div className="space-y-1">
+              {matrix.map(row => (
+                <div key={row.id} className="flex items-center gap-1">
+                  <span className={`w-20 shrink-0 text-xs truncate ${theme.textSecondary}`}>
+                    {row.label}
+                  </span>
+                  <div className="flex gap-1">
+                    {row.cells.map(cell => {
+                      const dateLabel = formatCellDate(cell.date);
+                      const label = cell.complete
+                        ? t('insight.checklist.dayChecked', { item: row.label, date: dateLabel })
+                        : t('insight.checklist.dayUnchecked', { item: row.label, date: dateLabel });
+                      return (
+                        <div
+                          key={cell.key}
+                          title={label}
+                          aria-label={label}
+                          className="w-3 h-3 rounded-sm shrink-0"
+                          style={{ background: cell.complete ? getColorHex(mod.color) : (darkMode ? '#334155' : '#e2e8f0') }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </InsightCardShell>
   );
 }
