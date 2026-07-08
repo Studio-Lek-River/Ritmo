@@ -1,3 +1,19 @@
+# [0.27.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.26.0...v0.27.0) (2026-07-08)
+
+
+### Bug Fixes
+
+* **settings:** verhelp crash bij openen Instellingen (openBlankModuleEditor buiten scope in SettingsModal) ([0051058](https://github.com/Studio-Lek-River/Ritmo/commit/0051058d0a78562d9ef9e6b19f562935059be666))
+
+
+### Features
+
+* **health:** health-module helper + health-vlag op beweging/bijwerkingen-presets ([f3148f5](https://github.com/Studio-Lek-River/Ritmo/commit/f3148f5e47a94606ace64634213c10a3645241ea))
+* **health:** houd Huishouden-tab beschikbaar in Health-modus ([f2688f2](https://github.com/Studio-Lek-River/Ritmo/commit/f2688f2bd96e744250aa873ba8fa42572e3acb8e))
+* **health:** menubalk en modulefilter schakelen op appMode ([89d8bdd](https://github.com/Studio-Lek-River/Ritmo/commit/89d8bdde97ddd00bd8fe9dc874d368718d156702))
+* **settings:** Health/Standaard-schakelaar in instellingen ([6419da2](https://github.com/Studio-Lek-River/Ritmo/commit/6419da27a89bae6a87e9ea1373ca869ad1d1e963))
+* **settings:** persistente appMode-instelling (standard/health) ([6d1ad50](https://github.com/Studio-Lek-River/Ritmo/commit/6d1ad50100ba5e4fa3b2c0f7f5e9e7d77b147392))
+
 # [0.26.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.25.0...v0.26.0) (2026-07-08)
 
 
