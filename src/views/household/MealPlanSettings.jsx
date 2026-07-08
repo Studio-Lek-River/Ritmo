@@ -222,8 +222,6 @@ export default function MealPlanSettings({ theme, config, setConfig, members, se
                 <Plus className="w-4 h-4" />
               </button>
             </div>
-
-            <p className={`text-xs ${theme.textMuted}`}>{t('household.mealPlan.settings.inviteFutureNote')}</p>
           </div>
         </div>
 

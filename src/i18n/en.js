@@ -391,7 +391,6 @@ export default {
         roleAdmin: 'Admin',
         roleMember: 'Member',
         youSuffix: '(you)',
-        inviteFutureNote: 'Inviting remote housemates is coming in a future version.',
         save: 'Save',
       },
     },

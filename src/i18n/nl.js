@@ -392,7 +392,6 @@ export default {
         roleAdmin: 'Beheerder',
         roleMember: 'Lid',
         youSuffix: '(jij)',
-        inviteFutureNote: 'Uitnodiging voor huisgenoten op afstand komt in een toekomstige versie.',
         save: 'Opslaan',
       },
     },
