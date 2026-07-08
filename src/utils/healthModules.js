@@ -5,7 +5,7 @@
 // bv. measurements/medication/bodymap), andere zijn generieke module-types
 // (counter/checklist) die alleen via een expliciete `health: true`-vlag op de
 // module meetellen (zie presets.js: beweging- en bijwerkingen-preset).
-export const HEALTH_MODULE_TYPES = ['measurements', 'medication', 'bodymap'];
+export const HEALTH_MODULE_TYPES = ['measurements', 'medication', 'bodymap', 'injectionSchedule'];
 
 export function isHealthModule(m) {
   return HEALTH_MODULE_TYPES.includes(m.type) || m.health === true;

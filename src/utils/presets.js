@@ -201,6 +201,17 @@ function buildPresets(t) {
         ],
       },
       {
+        nameKey: 'presets.weightLoss.name',
+        icon: 'Scale',
+        color: 'teal',
+        metrics: [
+          { nameKey: 'presets.weightLoss.metrics.weight', unit: 'kg', icon: 'Scale', decimals: 1, lowerIsBetter: true, target: null },
+          { nameKey: 'presets.weightLoss.metrics.waist',  unit: 'cm', icon: 'Ruler', decimals: 0, lowerIsBetter: true, target: null },
+          { nameKey: 'presets.weightLoss.metrics.leg',    unit: 'cm', icon: 'Ruler', decimals: 0, lowerIsBetter: true, target: null },
+          { nameKey: 'presets.weightLoss.metrics.arm',    unit: 'cm', icon: 'Ruler', decimals: 0, lowerIsBetter: true, target: null },
+        ],
+      },
+      {
         nameKey: 'presets.bloodpressure.name',
         icon: 'HeartPulse',
         color: 'red',

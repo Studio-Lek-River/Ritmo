@@ -45,6 +45,8 @@ export function emptyDefaultsForType(typeId) {
       return { meds: [], countInStreak: false };
     case 'bodymap':
       return { log: [], countInStreak: false };
+    case 'injectionSchedule':
+      return { entries: [], countInStreak: false };
     case 'sleep':
       return {
         goals: DEFAULT_SLEEP_GOALS,

@@ -136,6 +136,13 @@ export function migrateModuleConfig(module) {
     };
   }
 
+  if (m.type === 'injectionSchedule') {
+    m = {
+      ...m,
+      entries: Array.isArray(m.entries) ? m.entries.filter(Boolean) : [],
+    };
+  }
+
   if (m.type === 'collection' && !m.tagGroups) {
     const oldTags = Array.isArray(m.tags) ? m.tags : [];
     const tagGroups = oldTags.length === 0

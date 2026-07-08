@@ -563,7 +563,6 @@ export function ModuleDetail({
   onBack,
   onUpdateModule,
   onEditModule,
-  onOpenPresetPicker,
   openMetricId,
   setOpenMetricId,
   theme,
@@ -621,15 +620,6 @@ export function ModuleDetail({
             {t(metrics.length === 1 ? 'modules.measurements.metricCountOne' : 'modules.measurements.metricCount', { count: metrics.length })}
           </div>
         </div>
-        {onOpenPresetPicker && (
-          <button
-            type="button"
-            onClick={onOpenPresetPicker}
-            className={`px-2.5 py-1.5 ${theme.cardSecondary} ${theme.hover} ${theme.textMuted} rounded-lg text-xs font-medium`}
-          >
-            {t('modules.measurements.addPresetShort')}
-          </button>
-        )}
         {onEditModule && (
           <button
             type="button"

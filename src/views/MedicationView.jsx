@@ -1,18 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, X, Pill } from 'lucide-react';
 import { getColorHex, COLOR_OPTIONS } from '../utils/colors';
-import { createMed, medDaysLeft, medIsLow, FREQUENCY_OPTIONS } from '../utils/medication';
+import { createMed, medDaysLeft, medIsLow, FREQUENCY_OPTIONS, FREQUENCY_LABEL_KEYS } from '../utils/medication';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useToast } from '../hooks/useToast';
 import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
-
-const FREQ_LABEL_KEYS = {
-  daily: 'freqDaily',
-  everyOther: 'freqEveryOther',
-  weekly: 'freq1w',
-  biweekly: 'freq2w',
-  triweekly: 'freq3w',
-};
 
 function closestFrequencyId(perWeek) {
   if (perWeek == null) return null;
@@ -139,7 +131,7 @@ function MedFormModal({ open, mode = 'edit', module: mod, med, onClose, onSave, 
                   selectedFreqId === opt.id ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
                 }`}
               >
-                {t(`medication.${FREQ_LABEL_KEYS[opt.id]}`)}
+                {t(`medication.${FREQUENCY_LABEL_KEYS[opt.id]}`)}
               </button>
             ))}
           </div>

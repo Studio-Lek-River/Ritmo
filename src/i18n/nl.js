@@ -758,6 +758,22 @@ export default {
     confirmRemove: 'Dit verwijdert de logregel en herstelt de voorraad van het medicijn met 1. Deze actie kan niet ongedaan worden gemaakt.',
   },
 
+  injectionSchedule: {
+    newEntry: 'Nieuwe geplande prik',
+    editEntry: 'Geplande prik bewerken',
+    chooseMed: 'Kies medicijn',
+    chooseMedPlaceholder: 'Kies een medicijn',
+    chooseZone: 'Kies zone',
+    chooseZonePlaceholder: 'Kies een zone',
+    submitAdd: 'Toevoegen',
+    entryCount: '{count} geplande prikken',
+    unknownMed: 'Onbekend medicijn',
+    emptyEntries: 'Nog geen geplande prikken.',
+    addEntry: 'Prik inplannen',
+    deleteEntryTitle: 'Geplande prik verwijderen?',
+    deleteEntryDesc: 'Dit verwijdert deze geplande prik. Deze actie kan niet ongedaan worden gemaakt.',
+  },
+
   projectsView: {
     deleteSubjectTitle: '"{name}" verwijderen?',
     deleteSubjectDesc: 'Dit verwijdert het onderwerp en alle subdoelen. Deze actie kan niet ongedaan worden gemaakt.',
@@ -994,6 +1010,8 @@ export default {
       addPreset: 'Preset toevoegen',
       addPresetShort: '+ Preset',
       addModuleShort: '+ Module',
+      weightLossSetup: 'Weight Loss opzetten',
+      weightLossSetupToast: 'Weight Loss ingesteld: metingen, medicatie, bijwerkingen en beweging staan klaar.',
       pickPresetTitle: 'Kies een preset',
       pickPresetIntro: 'Een preset voegt een complete set metrics toe.',
       addPresetTo: '{preset} toevoegen',
@@ -1027,6 +1045,8 @@ export default {
       medicationDesc: 'Medicijnen met dosering, voorraad en frequentie',
       bodymap: 'Priklocatie',
       bodymapDesc: 'Klikbare lichaamskaart om injecties te loggen en de voorraad bij te houden',
+      injectionSchedule: 'Prikschema',
+      injectionScheduleDesc: 'Plan wanneer je prikt: medicijn, zone en frequentie',
     },
 
     // module summaries / hints
@@ -1040,10 +1060,12 @@ export default {
       projects: 'Projecten',
       medication: '{count} medicijnen',
       bodymap: '{count} prikken',
+      injectionSchedule: '{count} geplande prikken',
     },
 
-    medicationEditorNote: 'Medicijnen zelf beheer je in de Medicatie-tab, niet hier.',
+    medicationEditorNote: 'Medicijnen beheer je verder in de Medicatie-tab.',
     bodymapEditorNote: 'Prikken registreer je zelf in de Priklocatie-tab, niet hier.',
+    injectionScheduleEditorNote: 'Geplande prikken beheer je verder in de Prikschema-tab van Gezondheid.',
 
     // generic / display
     addOptionsHint: 'Voeg opties toe via instellingen ⚙️',
@@ -1201,6 +1223,8 @@ export default {
     bodyFat: 'Vetpercentage',
     muscleMass: 'Spiermassa',
     waist: 'Buikomvang',
+    leg: 'Beenomvang',
+    arm: 'Armomvang',
     restingHr: 'Rusthartslag',
     systolic: 'Bovendruk',
     diastolic: 'Onderdruk',
@@ -1244,6 +1268,15 @@ export default {
         muscle: 'Spiermassa',
         fat: 'Vetpercentage',
         waist: 'Buikomvang',
+      },
+    },
+    weightLoss: {
+      name: 'Weight Loss',
+      metrics: {
+        weight: 'Gewicht',
+        waist: 'Buik',
+        leg: 'Been',
+        arm: 'Arm',
       },
     },
     bloodpressure: {

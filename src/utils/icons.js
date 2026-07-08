@@ -48,6 +48,7 @@ import {
   Scale,
   Ruler,
   Cross,
+  CalendarClock,
 } from 'lucide-react';
 
 export const ICON_OPTIONS = {
@@ -100,4 +101,5 @@ export const ICON_OPTIONS = {
   Scale,
   Ruler,
   Cross,
+  CalendarClock,
 };
