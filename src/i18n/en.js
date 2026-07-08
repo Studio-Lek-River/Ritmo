@@ -1397,6 +1397,9 @@ export default {
     checklist: {
       summary: 'Average {avg}% completed over {days} days',
       itemPct: '{pct}% of {days} days',
+      matrixHeading: 'By day',
+      dayChecked: '{item} on {date}: checked',
+      dayUnchecked: '{item} on {date}: not checked',
     },
     choice: {
       summary: 'Most chosen: {top} ({count}x)',

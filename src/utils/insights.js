@@ -76,6 +76,20 @@ export function aggregateChecklist(mod, days) {
   return { perItem, avgPct, daysWithEntry };
 }
 
+// Bouwt een per-item/per-dag matrix voor de checklist-heatmap: één rij per item,
+// per dag een cel met of dat item die dag als voltooid geldt.
+export function checklistDayMatrix(mod, days) {
+  const items = mod.items || [];
+  return items.map(item => ({
+    id: item.id,
+    label: item.text || item.label || item.name || item.id,
+    cells: days.map(({ key, date, dayData }) => {
+      const md = dayData?.moduleData?.[mod.id];
+      return { key, date, complete: md ? isChecklistItemComplete(item, md[item.id]) : false };
+    }),
+  }));
+}
+
 // --- Choice ----------------------------------------------------------------
 
 export function aggregateChoice(mod, days) {
