@@ -44,6 +44,7 @@ import { genId } from './utils/genId';
 import { applyModulePreset } from './utils/applyModulePreset';
 import { MEASUREMENT_UNITS, unitSymbol, createMetric } from './utils/measurements';
 import { ICON_OPTIONS } from './utils/icons';
+import { isHealthModule } from './utils/healthModules';
 import { instantiateMetric } from './utils/metricLibrary';
 import MetricLibraryModal from './components/MetricLibraryModal';
 import {
@@ -94,6 +95,7 @@ export default function Ritmo() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [soundVolume, setSoundVolume] = useState(80);
   const [goldenBorderEnabled, setGoldenBorderEnabled] = useState(true);
+  const [appMode, setAppMode] = useState('standard');
   const [showReflectionOnToday, setShowReflectionOnToday] = useState(false);
   const [hasUsedSwipe, setHasUsedSwipe] = useState(false);
   const [hasDismissedInstallBanner, setHasDismissedInstallBanner] = useState(false);
@@ -140,6 +142,7 @@ export default function Ritmo() {
         if (settings.soundEnabled !== undefined) setSoundEnabled(settings.soundEnabled);
         if (settings.soundVolume !== undefined) setSoundVolume(settings.soundVolume);
         if (settings.goldenBorderEnabled !== undefined) setGoldenBorderEnabled(settings.goldenBorderEnabled);
+        if (settings.appMode !== undefined) setAppMode(settings.appMode);
         if (settings.showReflectionOnToday !== undefined) setShowReflectionOnToday(settings.showReflectionOnToday);
         if (settings.hasUsedSwipe !== undefined) setHasUsedSwipe(settings.hasUsedSwipe);
         if (settings.hasDismissedInstallBanner !== undefined) setHasDismissedInstallBanner(settings.hasDismissedInstallBanner);
@@ -275,6 +278,7 @@ export default function Ritmo() {
           soundEnabled,
           soundVolume,
           goldenBorderEnabled,
+          appMode,
           showReflectionOnToday,
           hasUsedSwipe,
           hasDismissedInstallBanner,
@@ -285,7 +289,14 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, showReflectionOnToday, hasUsedSwipe, hasDismissedInstallBanner, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, showReflectionOnToday, hasUsedSwipe, hasDismissedInstallBanner, modules, hasOnboarded, languageSetting, loading]);
+
+  // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
+  // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
+  useEffect(() => {
+    const allowed = ['measurements', 'today', 'week', 'month', 'household', 'insight'];
+    if (appMode === 'health' && !allowed.includes(view)) setView('today');
+  }, [appMode, view]);
 
   // Recurring tasks. Only inject into today's task list, never into a
   // historical day the user is just viewing.
@@ -933,7 +944,8 @@ export default function Ritmo() {
     }} theme={theme} darkMode={darkMode} />;
   }
 
-  const enabledModules = modules.filter(m => m.enabled && m.type !== 'collection' && m.type !== 'measurements' && m.type !== 'medication' && m.type !== 'bodymap');
+  const baseEnabledModules = modules.filter(m => m.enabled && m.type !== 'collection' && m.type !== 'measurements' && m.type !== 'medication' && m.type !== 'bodymap');
+  const enabledModules = appMode === 'health' ? baseEnabledModules.filter(isHealthModule) : baseEnabledModules;
 
   const todayVisibleModules = editable
     ? enabledModules
@@ -1112,7 +1124,7 @@ export default function Ritmo() {
           </div>
         </div>
 
-        <TabBar view={view} setView={setView} theme={theme} />
+        <TabBar view={view} setView={setView} theme={theme} appMode={appMode} />
 
         <ErrorBoundary key={view} darkMode={darkMode} onReset={() => setView('today')}>
         {view === 'today' && (
@@ -1158,6 +1170,7 @@ export default function Ritmo() {
             theme={theme}
             darkMode={darkMode}
             goldenBorderEnabled={goldenBorderEnabled}
+            appMode={appMode}
           />
         )}
 
@@ -1234,6 +1247,7 @@ export default function Ritmo() {
             monthNames={monthNames}
             dayNames={dayNames}
             goldenBorderEnabled={goldenBorderEnabled}
+            appMode={appMode}
           />
         )}
 
@@ -1293,6 +1307,8 @@ export default function Ritmo() {
           setSoundVolume={setSoundVolume}
           goldenBorderEnabled={goldenBorderEnabled}
           setGoldenBorderEnabled={setGoldenBorderEnabled}
+          appMode={appMode}
+          setAppMode={setAppMode}
           showReflectionOnToday={showReflectionOnToday}
           setShowReflectionOnToday={setShowReflectionOnToday}
           theme={theme}
@@ -1508,9 +1524,9 @@ function StreakBadge({ label, days, color, theme }) {
 // =============================================
 // WEEK VIEW
 // =============================================
-function WeekView({ modules, history, today, activeDateKey, moduleData, activeWeekStart, setActiveWeekStart, weekDates, dayNames, onPickDay, theme, darkMode, goldenBorderEnabled }) {
+function WeekView({ modules, history, today, activeDateKey, moduleData, activeWeekStart, setActiveWeekStart, weekDates, dayNames, onPickDay, theme, darkMode, goldenBorderEnabled, appMode }) {
   const { t } = useTranslation();
-  const enabledNonTaskModules = modules.filter(m => m.enabled && canCountInStreak(m.type));
+  const enabledNonTaskModules = modules.filter(m => m.enabled && canCountInStreak(m.type) && (appMode !== 'health' || isHealthModule(m)));
   const atCurrentWeek = sameDay(activeWeekStart, startOfWeek(new Date()));
 
   const dayDataFor = (dateStr) => (
@@ -1642,7 +1658,7 @@ function WeekView({ modules, history, today, activeDateKey, moduleData, activeWe
 // =============================================
 // MONTH VIEW
 // =============================================
-function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDateKey, moduleData, modules, onPickDay, theme, darkMode, monthNames, dayNames, goldenBorderEnabled }) {
+function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDateKey, moduleData, modules, onPickDay, theme, darkMode, monthNames, dayNames, goldenBorderEnabled, appMode }) {
   const { t } = useTranslation();
   const [filterModuleId, setFilterModuleId] = useState('all');
   const year = calendarMonth.getFullYear();
@@ -1685,11 +1701,11 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDate
     if (filterModule) {
       return moduleStatusForDay(filterModule, data, dateObj) === 'partial';
     }
-    return modules.some(m => m.enabled && canCountInStreak(m.type) &&
+    return modules.some(m => m.enabled && canCountInStreak(m.type) && (appMode !== 'health' || isHealthModule(m)) &&
       moduleStatusForDay(m, data, dateObj) !== 'none');
   }).length;
 
-  const filterableModules = modules.filter(m => m.enabled && canCountInStreak(m.type));
+  const filterableModules = modules.filter(m => m.enabled && canCountInStreak(m.type) && (appMode !== 'health' || isHealthModule(m)));
 
   return (
     <div className={`${theme.card} rounded-2xl p-5 shadow-sm slide-in`}>
@@ -1887,7 +1903,7 @@ function ReflectionView({ reflectionQuestions, reflectionAnswers, setReflectionA
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, showReflectionOnToday, setShowReflectionOnToday, theme, dayNames, setEditingModule, initialTab, currentUser }) {
+function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, showReflectionOnToday, setShowReflectionOnToday, theme, dayNames, setEditingModule, initialTab, currentUser }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
   const [helpView, setHelpView] = useState(null); // null | 'list' | 'install' | 'feedback'
@@ -1919,6 +1935,17 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
       const [moved] = next.splice(from, 1);
       next.splice(to, 0, moved);
       return next;
+    });
+  };
+
+  const openBlankModuleEditor = () => {
+    setEditingModule({
+      id: `mod_${Date.now()}`,
+      name: '',
+      icon: 'Star',
+      color: 'blue',
+      enabled: true,
+      countInStreak: false,
     });
   };
 
@@ -2328,6 +2355,29 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
               >
                 <Moon className="w-4 h-4" /> {t('settings.themeDark')}
               </button>
+            </div>
+
+            <div className={`mt-6 pt-6 border-t ${theme.border}`}>
+              <h3 className={`font-semibold ${theme.textSecondary} mb-1`}>{t('settings.appMode')}</h3>
+              <p className={`text-xs ${theme.textMuted} mb-3`}>{t('settings.appModeHint')}</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setAppMode('standard')}
+                  className={`flex-1 py-3 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 ${
+                    appMode !== 'health' ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
+                  }`}
+                >
+                  {t('settings.appModeStandard')}
+                </button>
+                <button
+                  onClick={() => setAppMode('health')}
+                  className={`flex-1 py-3 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 ${
+                    appMode === 'health' ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
+                  }`}
+                >
+                  {t('settings.appModeHealth')}
+                </button>
+              </div>
             </div>
 
             <div className={`mt-6 pt-6 border-t ${theme.border}`}>
