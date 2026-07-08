@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, X, Pill } from 'lucide-react';
 import { getColorHex, COLOR_OPTIONS } from '../utils/colors';
 import { createMed, medDaysLeft, medIsLow, FREQUENCY_OPTIONS } from '../utils/medication';
 import ConfirmDialog from '../components/ConfirmDialog';
-import EmptyState from '../components/EmptyState';
 import { useToast } from '../hooks/useToast';
 import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 
@@ -319,90 +318,45 @@ function OrderModal({ open, module: mod, med, onClose, onConfirm, theme }) {
   );
 }
 
-export default function MedicationView({
-  modules,
+// Zelfstandige kaart voor één medicatie-module. Beheert eigen add/edit/order-
+// state, zodat de kaart zowel in de Gezondheid-lijst als los herbruikbaar is.
+export function MedicationModuleCard({
+  module: mod,
   iconOptions,
   onAddMed,
   onUpdateMed,
   onDeleteMed,
   onOrderMed,
-  onCreate,
   onEditModule,
   theme,
 }) {
   const { t } = useTranslation();
   const { showToast } = useToast();
 
-  const medModules = useMemo(
-    () => modules.filter((m) => m.type === 'medication' && m.enabled),
-    [modules]
-  );
-
-  const [addingModuleId, setAddingModuleId] = useState(null);
-  const [editingMed, setEditingMed] = useState(null); // { moduleId, med }
-  const [orderingMed, setOrderingMed] = useState(null); // { moduleId, med }
-
-  if (medModules.length === 0) {
-    return (
-      <EmptyState
-        icon={Pill}
-        title={t('medication.emptyTitle')}
-        description={t('medication.emptyDesc')}
-        buttonLabel={onCreate ? t('medication.emptyButton') : null}
-        onClick={onCreate}
-        theme={theme}
-      />
-    );
-  }
-
-  const addingModule = addingModuleId
-    ? medModules.find((m) => m.id === addingModuleId) || null
-    : null;
-  const editingModuleForMed = editingMed
-    ? medModules.find((m) => m.id === editingMed.moduleId) || null
-    : null;
-  const orderingModuleForMed = orderingMed
-    ? medModules.find((m) => m.id === orderingMed.moduleId) || null
-    : null;
+  const [adding, setAdding] = useState(false);
+  const [editingMed, setEditingMed] = useState(null); // med
+  const [orderingMed, setOrderingMed] = useState(null); // med
 
   const handleDeleteEditingMed = () => {
     if (!editingMed) return;
-    const { moduleId, med } = editingMed;
-    onDeleteMed?.(moduleId, med.id);
+    const med = editingMed;
+    onDeleteMed?.(mod.id, med.id);
     setEditingMed(null);
     showToast({
       message: t('medication.toastDeleted'),
       actionLabel: t('common.undo'),
       onAction: () => {
-        onAddMed?.(moduleId, med);
+        onAddMed?.(mod.id, med);
       },
     });
   };
 
-  return (
-    <div className="slide-in space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className={`text-base font-semibold ${theme.textSecondary}`}>
-          {t('medication.myMeds')}
-        </h2>
-        {onCreate && (
-          <button
-            type="button"
-            onClick={onCreate}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition"
-            aria-label={t('medication.newModuleAria')}
-          >
-            <Plus className="w-4 h-4" />
-            {t('medication.newModuleLabel')}
-          </button>
-        )}
-      </div>
+  const Icon = iconOptions?.[mod.icon] || Pill;
+  const meds = mod.meds || [];
 
-      {medModules.map((mod) => {
-        const Icon = iconOptions?.[mod.icon] || Pill;
-        const meds = mod.meds || [];
-        return (
-          <div key={mod.id} className={`${theme.card} rounded-2xl shadow-sm overflow-hidden`}>
+  return (
+    <>
+      <div className={`${theme.card} rounded-2xl shadow-sm overflow-hidden`}>
             <div className="flex items-center gap-3 p-4 pb-3">
               <div
                 className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white"
@@ -440,11 +394,11 @@ export default function MedicationView({
                       <div
                         role="button"
                         tabIndex={0}
-                        onClick={() => setEditingMed({ moduleId: mod.id, med })}
+                        onClick={() => setEditingMed(med)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            setEditingMed({ moduleId: mod.id, med });
+                            setEditingMed(med);
                           }
                         }}
                         className={`flex items-center gap-2.5 py-2.5 px-2 rounded-xl ${theme.hover} cursor-pointer`}
@@ -474,7 +428,7 @@ export default function MedicationView({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setOrderingMed({ moduleId: mod.id, med });
+                            setOrderingMed(med);
                           }}
                           className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${theme.cardSecondary} ${theme.textSecondary} transition`}
                         >
@@ -490,36 +444,32 @@ export default function MedicationView({
             <div className="px-4 pb-4 pt-1">
               <button
                 type="button"
-                onClick={() => setAddingModuleId(mod.id)}
+                onClick={() => setAdding(true)}
                 className={`text-sm ${theme.textMuted} ${theme.hover} px-2 py-1.5 rounded-lg transition flex items-center gap-1.5 w-full`}
               >
                 <Plus className="w-3.5 h-3.5" />
                 {t('medication.addMed')}
               </button>
             </div>
-          </div>
-        );
-      })}
+      </div>
 
       <MedFormModal
-        open={!!addingModule}
+        open={adding}
         mode="add"
-        module={addingModule}
-        onClose={() => setAddingModuleId(null)}
-        onSave={(med) => {
-          if (addingModuleId) onAddMed?.(addingModuleId, med);
-        }}
+        module={mod}
+        onClose={() => setAdding(false)}
+        onSave={(med) => onAddMed?.(mod.id, med)}
         theme={theme}
       />
 
       <MedFormModal
         open={!!editingMed}
         mode="edit"
-        module={editingModuleForMed}
-        med={editingMed?.med}
+        module={mod}
+        med={editingMed}
         onClose={() => setEditingMed(null)}
         onSave={(updated) => {
-          if (editingMed) onUpdateMed?.(editingMed.moduleId, editingMed.med.id, updated);
+          if (editingMed) onUpdateMed?.(mod.id, editingMed.id, updated);
         }}
         onDelete={handleDeleteEditingMed}
         theme={theme}
@@ -527,14 +477,14 @@ export default function MedicationView({
 
       <OrderModal
         open={!!orderingMed}
-        module={orderingModuleForMed}
-        med={orderingMed?.med}
+        module={mod}
+        med={orderingMed}
         onClose={() => setOrderingMed(null)}
         onConfirm={(amount) => {
-          if (orderingMed) onOrderMed?.(orderingMed.moduleId, orderingMed.med.id, amount);
+          if (orderingMed) onOrderMed?.(mod.id, orderingMed.id, amount);
         }}
         theme={theme}
       />
-    </div>
+    </>
   );
 }
