@@ -1307,6 +1307,8 @@ export default function Ritmo() {
           setSoundVolume={setSoundVolume}
           goldenBorderEnabled={goldenBorderEnabled}
           setGoldenBorderEnabled={setGoldenBorderEnabled}
+          appMode={appMode}
+          setAppMode={setAppMode}
           showReflectionOnToday={showReflectionOnToday}
           setShowReflectionOnToday={setShowReflectionOnToday}
           theme={theme}
@@ -1901,7 +1903,7 @@ function ReflectionView({ reflectionQuestions, reflectionAnswers, setReflectionA
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, showReflectionOnToday, setShowReflectionOnToday, theme, dayNames, setEditingModule, initialTab, currentUser }) {
+function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, showReflectionOnToday, setShowReflectionOnToday, theme, dayNames, setEditingModule, initialTab, currentUser }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
   const [helpView, setHelpView] = useState(null); // null | 'list' | 'install' | 'feedback'
@@ -2342,6 +2344,29 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
               >
                 <Moon className="w-4 h-4" /> {t('settings.themeDark')}
               </button>
+            </div>
+
+            <div className={`mt-6 pt-6 border-t ${theme.border}`}>
+              <h3 className={`font-semibold ${theme.textSecondary} mb-1`}>{t('settings.appMode')}</h3>
+              <p className={`text-xs ${theme.textMuted} mb-3`}>{t('settings.appModeHint')}</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setAppMode('standard')}
+                  className={`flex-1 py-3 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 ${
+                    appMode !== 'health' ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
+                  }`}
+                >
+                  {t('settings.appModeStandard')}
+                </button>
+                <button
+                  onClick={() => setAppMode('health')}
+                  className={`flex-1 py-3 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 ${
+                    appMode === 'health' ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
+                  }`}
+                >
+                  {t('settings.appModeHealth')}
+                </button>
+              </div>
             </div>
 
             <div className={`mt-6 pt-6 border-t ${theme.border}`}>
