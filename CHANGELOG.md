@@ -1,3 +1,11 @@
+# [0.26.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.25.0...v0.26.0) (2026-07-08)
+
+
+### Features
+
+* **insight:** dot-matrix helper + bijwerkingen-heatmap + i18n ([0a66dc6](https://github.com/Studio-Lek-River/Ritmo/commit/0a66dc6db3ebfca0b7d7a4959d98928388d944dc))
+* **insight:** staafgrafiek vervangt lijngrafiek in beweging-trends ([4099647](https://github.com/Studio-Lek-River/Ritmo/commit/4099647067f64c4c4558165b8b13c90eb6c115af))
+
 # [0.25.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.24.0...v0.25.0) (2026-07-08)
 
 
