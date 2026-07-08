@@ -1,3 +1,13 @@
+# [0.22.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.21.0...v0.22.0) (2026-07-08)
+
+
+### Features
+
+* **health:** add medication module type with view and mutators ([58da059](https://github.com/Studio-Lek-River/Ritmo/commit/58da05993c9b1e984f4ab3c4481fa027f8103718))
+* **health:** add medication utility and type-plumbing ([40c89e3](https://github.com/Studio-Lek-River/Ritmo/commit/40c89e373f97aa45bacc6cfb7e4a57555f78ea4f))
+* **medication:** laat besteld-hoeveelheid via invoerveld kiezen ([4ae04af](https://github.com/Studio-Lek-River/Ritmo/commit/4ae04af558803a21639133b71c47449c20b3bc23))
+* **medication:** voeg vrij frequentie-interval naast presets toe ([19cb3b3](https://github.com/Studio-Lek-River/Ritmo/commit/19cb3b3d96f736da6d6d2469817f2c5bfd609ccb))
+
 # [0.21.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.20.0...v0.21.0) (2026-07-08)
 
 
