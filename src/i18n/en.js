@@ -715,6 +715,8 @@ export default {
     freq1w: 'Weekly',
     freq2w: 'Every 2 weeks',
     freq3w: 'Every 3 weeks',
+    freqCustomLabel: 'Custom interval (every x days)',
+    freqCustomPlaceholder: 'E.g. 10',
     injectable: 'Injectable',
     color: 'Colour',
     daysLeft: '{count} days left',

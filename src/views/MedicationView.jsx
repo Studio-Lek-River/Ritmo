@@ -144,6 +144,21 @@ function MedFormModal({ open, mode = 'edit', module: mod, med, onClose, onSave, 
               </button>
             ))}
           </div>
+          <div className="mt-2">
+            <p className={`text-xs ${theme.textMuted} mb-1`}>{t('medication.freqCustomLabel')}</p>
+            <input
+              type="number"
+              min="0"
+              step="any"
+              value={draft.perWeek > 0 ? Math.round((7 / draft.perWeek) * 100) / 100 : ''}
+              onChange={(e) => {
+                const days = Number(e.target.value);
+                setDraft({ ...draft, perWeek: days > 0 ? 7 / days : 0 });
+              }}
+              placeholder={t('medication.freqCustomPlaceholder')}
+              className={`w-full px-3 py-2 rounded-lg text-sm ${theme.input} ${theme.textSecondary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+            />
+          </div>
         </div>
 
         <label className={`flex items-center gap-2 text-sm ${theme.textSecondary} mb-4`}>

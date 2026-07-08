@@ -716,6 +716,8 @@ export default {
     freq1w: 'Wekelijks',
     freq2w: 'Elke 2 weken',
     freq3w: 'Elke 3 weken',
+    freqCustomLabel: 'Eigen interval (om de x dagen)',
+    freqCustomPlaceholder: 'Bijv. 10',
     injectable: 'Injecteerbaar',
     color: 'Kleur',
     daysLeft: '{count} dagen over',
