@@ -12,6 +12,8 @@ Het einddoel is Ritmo als **integrale planner**: één geïntegreerd toegangspun
 
 De integrale planner is bereikt wanneer Fase 3 staat: de Vandaag-feed (S06) brengt alle bronnen op één plek, "deel mijn dag in" (S07) plant je taken rond je afspraken, en de write-back (S08) legt die indeling vast in je agenda. De slices hieronder zijn de route naar dat einddoel; de fasering loopt van het fundament naar de volledige planner.
 
+Het volgende einddoel na de Planner: Ritmo wordt je one-stop-shop voor productiviteit, waar Claude een kaartje niet alleen inplant maar ook uitvoert. Vanuit één plek pak je een GitHub-issue, een Trello-kaartje, een mod-wijziging of een afspraak op, en Claude doet het werk met zijn eigen gereedschap. Bereikt wanneer Fase 4 staat.
+
 ## Waar we nu staan
 
 - **Fundament en delen zijn klaar.** Account plus login, persoonlijke sync over apparaten, sync-status, en deelbare huishoudens met leden en invite-tokens werken.
@@ -31,6 +33,7 @@ De integrale planner is bereikt wanneer Fase 3 staat: de Vandaag-feed (S06) bren
 - **Genormaliseerd item:** `source`, `account` of `household`, `project`, `title`, `status`, `due`, `priority`, `progress`, `url`. Alle bronnen mappen hierop; voortgang per project is een aggregatie over `(source, project)`.
 - **Outlook:** eigen Azure-app die persoonlijke Microsoft-accounts ondersteunt, OAuth-authority `consumers`, plus `offline_access`. In twee stappen: eerst lezen om omheen te plannen (S03, scope `Calendars.Read`), later schrijven naar een instelbare bestemming (S08, scope `Calendars.ReadWrite`; Ritmo-agenda en/of hoofdagenda, beide mag).
 - **Planner:** de LLM plant rond de Outlook-afspraken; de write-back naar de agenda is deterministisch via directe Graph-calls, niet via de LLM.
+- **Claude als uitvoerder (MCP-first):** de koppeling tussen Ritmo en Claude loopt via een Ritmo-eigen MCP-server bovenop het genormaliseerde items-model (S02). Claude leest en muteert items via MCP; het echte werk (code en mods, issues, research) draait in Claude's eigen runtime, niet in de PWA. Write-back is deterministisch en standaard achter een bevestiging, zelfde filosofie als de agenda-write-back in S07/S08. Autonome of geplande uitvoering is een optionele laag (Claude Agent SDK) bovenop dezelfde MCP-surface, opt-in per bron. Een deep-link kan als lichte start-knop dienen, maar is niet de ruggengraat.
 
 ---
 
@@ -88,6 +91,34 @@ Een `redeem_invite`-RPC (`SECURITY DEFINER`) plus strakke policies, zodat invite
 - **Doel:** de gegenereerde indeling naar Outlook schrijven.
 - **Oplevering:** `Calendars.ReadWrite`, een aparte "Ritmo"-agenda die via Graph wordt aangemaakt, getagde en regenereerbare blokken, en een instelbare bestemming (Ritmo-agenda en/of hoofdagenda). De write is deterministisch via directe Graph-calls.
 - **Afhankelijk van:** S07.
+
+### Fase 4, Uitvoeren (Claude als uitvoerder)
+
+Het sluitstuk van de one-stop-shop: Claude pakt items uit Ritmo op en voert ze uit. Bouwt voort op het items-model (S02) en de Vandaag-feed (S06).
+
+#### S09, Ritmo MCP-server (lezen)
+- **Doel:** Claude toegang geven tot je Ritmo-items vanuit elke Claude-surface (Code, desktop, claude.ai).
+- **Oplevering:** een MCP-server die genormaliseerde items als resources of tools aanbiedt: lijst met filters (bron, status, due) en item-detail met context (gekoppeld project of repo of bord, url, notities). Read-only. Per-gebruiker token, alleen je eigen items (RLS).
+- **Afhankelijk van:** S02 (items-model), S06 (feed-aggregatie).
+- **Aandacht:** hergebruik het bestaande items-model, geen nieuw model (principe 1); token-scoping en dataveiligheid; docs voor het registreren in Claude Code of desktop.
+
+#### S10, Uitvoer-context per bron
+- **Doel:** elk item genoeg meegeven zodat Claude het werk echt kan doen.
+- **Oplevering:** per bron een actionable context-blob: GitHub-issue naar repo plus body plus labels; Trello-kaart naar bord of lijst plus beschrijving plus checklists; mod-taak naar project- en mod-pad; afspraak naar agenda-doel. Mapping-laag bovenop de bron-connecties.
+- **Afhankelijk van:** S03/S04/S05 (leesbronnen), S09.
+- **Aandacht:** geen secrets in de context lekken; consistente normalisatie met S02.
+
+#### S11, MCP write-back (status plus resultaat)
+- **Doel:** de lus sluiten nadat Claude werk heeft gedaan.
+- **Oplevering:** MCP-tools om een item te muteren: status zetten (bezig of klaar), resultaat koppelen (PR-url, agenda-event, notitie). Deterministisch, standaard achter bevestiging.
+- **Afhankelijk van:** S09, S08 (agenda-write-back voor afspraken).
+- **Aandacht:** write-back nooit via een LLM-gok maar via expliciete tool-calls; approval-gate; audit-spoor in Ritmo (principe 2).
+
+#### S12, Autonome en geplande uitvoering (optioneel)
+- **Doel:** Claude proactief items laten oppakken zonder dat je een sessie opent.
+- **Oplevering:** een headless runner (Claude Agent SDK) die op schema of trigger draait ("pak nieuwe issues elke ochtend"), met dry-run of approval, scope-limieten en audit-log terug in Ritmo. Opt-in per gebruiker en per bron.
+- **Afhankelijk van:** S09, S10, S11.
+- **Aandacht:** guardrails en gebruikerskeuze (principe 2) wegen hier het zwaarst; kosten- en runtime-bewaking.
 
 ### Optioneel of later
 - Household bulk-pull.
