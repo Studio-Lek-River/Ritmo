@@ -1,3 +1,12 @@
+# [0.20.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.19.1...v0.20.0) (2026-07-08)
+
+
+### Features
+
+* **auth:** verwijder huishoud-sharing uit accountpaneel en app-wiring ([932788b](https://github.com/Studio-Lek-River/Ritmo/commit/932788b531790f0d56f610568892b4b9d8587e8c))
+* **household:** verwijder belofte over toekomstig uitnodigen uit maaltijdplan ([4e77332](https://github.com/Studio-Lek-River/Ritmo/commit/4e77332268980bf6260e7a890a9019e8365c641f))
+* **household:** verwijder deel-functionaliteit uit de Huishouden-tab ([938fdd2](https://github.com/Studio-Lek-River/Ritmo/commit/938fdd229536071f9a6d83c4165c62076e51f6ed))
+
 ## [0.19.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.19.0...v0.19.1) (2026-07-08)
 
 
