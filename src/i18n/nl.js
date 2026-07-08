@@ -106,6 +106,7 @@ export default {
     collections: 'Collecties',
     measurements: 'Metingen',
     medication: 'Medicatie',
+    bodymap: 'Priklocatie',
     household: 'Huishouden',
     settings: 'Instellingen',
     more: 'Meer',
@@ -733,6 +734,32 @@ export default {
     toastDeleted: 'Medicijn verwijderd',
   },
 
+  bodymap: {
+    zoneAbdomenL: 'Buik links',
+    zoneAbdomenR: 'Buik rechts',
+    zoneArmL: 'Bovenarm links',
+    zoneArmR: 'Bovenarm rechts',
+    zoneThighL: 'Dij links',
+    zoneThighR: 'Dij rechts',
+    title: 'Priklocatie',
+    newModuleLabel: 'Nieuwe module',
+    newModuleAria: 'Nieuwe priklocatie-module aanmaken',
+    chooseMed: 'Kies medicijn',
+    noInjectableMeds: 'Voeg eerst een injecteerbaar medicijn toe in een medicatie-module.',
+    suggestedZone: 'Volgende zone',
+    legendSuggested: 'Volgende zone (suggestie)',
+    lastUsed: 'laatst {count} d geleden',
+    neverUsed: 'nog niet geprikt',
+    recentInjections: 'Recente prikken',
+    logged: 'Prik geregistreerd',
+    removeInjection: 'Prik verwijderen',
+    injectionRemoved: 'Prik verwijderd',
+    emptyTitle: 'Nog geen priklocatie-module',
+    emptyDesc: 'Houd bij waar en wanneer je een injecteerbaar medicijn hebt toegediend, zodat je automatisch de volgende zone krijgt gesuggereerd.',
+    emptyButton: 'Maak een priklocatie-module',
+    confirmRemove: 'Dit verwijdert de logregel en herstelt de voorraad van het medicijn met 1. Deze actie kan niet ongedaan worden gemaakt.',
+  },
+
   projectsView: {
     deleteSubjectTitle: '"{name}" verwijderen?',
     deleteSubjectDesc: 'Dit verwijdert het onderwerp en alle subdoelen. Deze actie kan niet ongedaan worden gemaakt.',
@@ -1000,6 +1027,8 @@ export default {
       measurementsDesc: 'Numerieke waarden bijhouden over tijd',
       medication: 'Medicatie',
       medicationDesc: 'Medicijnen met dosering, voorraad en frequentie',
+      bodymap: 'Priklocatie',
+      bodymapDesc: 'Klikbare lichaamskaart om injecties te loggen en de voorraad bij te houden',
     },
 
     // module summaries / hints
@@ -1012,9 +1041,11 @@ export default {
       collection: 'Collectie · {n} items',
       projects: 'Projecten',
       medication: '{count} medicijnen',
+      bodymap: '{count} prikken',
     },
 
     medicationEditorNote: 'Medicijnen zelf beheer je in de Medicatie-tab, niet hier.',
+    bodymapEditorNote: 'Prikken registreer je zelf in de Priklocatie-tab, niet hier.',
 
     // generic / display
     addOptionsHint: 'Voeg opties toe via instellingen ⚙️',
@@ -1053,6 +1084,8 @@ export default {
       measurementsEmpty: 'Geen metingen',
       medication: 'Medicatie',
       medicationEmpty: 'Geen medicatie-modules',
+      bodymap: 'Priklocatie',
+      bodymapEmpty: 'Geen priklocatie-modules',
       householdNote: 'Huishoud-secties (klusjes, boodschappen, mee-eten) staan altijd in het Huishouden-tabblad.',
     },
     resetModules: 'Reset modules naar standaard',

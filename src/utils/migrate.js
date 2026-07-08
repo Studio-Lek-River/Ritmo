@@ -129,6 +129,13 @@ export function migrateModuleConfig(module) {
     };
   }
 
+  if (m.type === 'bodymap') {
+    m = {
+      ...m,
+      log: Array.isArray(m.log) ? m.log : [],
+    };
+  }
+
   if (m.type === 'collection' && !m.tagGroups) {
     const oldTags = Array.isArray(m.tags) ? m.tags : [];
     const tagGroups = oldTags.length === 0
