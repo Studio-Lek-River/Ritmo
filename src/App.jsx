@@ -1938,6 +1938,17 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
     });
   };
 
+  const openBlankModuleEditor = () => {
+    setEditingModule({
+      id: `mod_${Date.now()}`,
+      name: '',
+      icon: 'Star',
+      color: 'blue',
+      enabled: true,
+      countInStreak: false,
+    });
+  };
+
   const helpTitles = {
     list: t('help.title'),
     install: t('help.install'),
