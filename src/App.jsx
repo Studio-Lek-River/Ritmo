@@ -13,6 +13,7 @@ import SleepModule from './modules/SleepModule';
 import ProjectsView from './views/ProjectsView';
 import CollectionsView from './views/CollectionsView';
 import MeasurementsView from './views/MeasurementsView';
+import MedicationView from './views/MedicationView';
 import HouseholdView from './views/HouseholdView';
 import TodayView from './views/TodayView';
 import InsightView from './views/InsightView';
@@ -583,6 +584,48 @@ export default function Ritmo() {
     }));
   };
 
+  // ---- medication handlers -----------------------------------------------
+
+  const updateMedicationModule = (moduleId, mutator) => {
+    setModules(prev => prev.map(m => {
+      if (m.id !== moduleId || m.type !== 'medication') return m;
+      return mutator(m);
+    }));
+  };
+
+  const addMed = (moduleId, med) => {
+    if (!med || !med.name || !med.name.trim()) return null;
+    updateMedicationModule(moduleId, (m) => ({
+      ...m,
+      meds: [...(m.meds || []), med],
+    }));
+    return med;
+  };
+
+  const updateMed = (moduleId, medId, patch) => {
+    updateMedicationModule(moduleId, (m) => ({
+      ...m,
+      meds: (m.meds || []).map((med) => (med.id === medId ? { ...med, ...patch } : med)),
+    }));
+  };
+
+  const deleteMed = (moduleId, medId) => {
+    updateMedicationModule(moduleId, (m) => ({
+      ...m,
+      meds: (m.meds || []).filter((med) => med.id !== medId),
+    }));
+  };
+
+  // "besteld": verhoogt de voorraad van dat medicijn.
+  const orderMed = (moduleId, medId, amount) => {
+    updateMedicationModule(moduleId, (m) => ({
+      ...m,
+      meds: (m.meds || []).map((med) =>
+        med.id === medId ? { ...med, supply: (med.supply || 0) + (Number(amount) || 0) } : med
+      ),
+    }));
+  };
+
   // ---- measurements handlers --------------------------------------------
 
   const updateMeasurementsModule = (updatedModule) => {
@@ -616,7 +659,9 @@ export default function Ritmo() {
       ? 'GraduationCap'
       : type === 'measurements'
         ? 'Heart'
-        : 'Star';
+        : type === 'medication'
+          ? 'Cross'
+          : 'Star';
     setEditingModule({
       id: `mod_${Date.now()}`,
       name: '',
@@ -634,6 +679,9 @@ export default function Ritmo() {
       } : {}),
       ...(type === 'measurements' ? {
         metrics: [],
+      } : {}),
+      ...(type === 'medication' ? {
+        meds: [],
       } : {}),
     });
   };
@@ -815,7 +863,7 @@ export default function Ritmo() {
     }} theme={theme} darkMode={darkMode} />;
   }
 
-  const enabledModules = modules.filter(m => m.enabled && m.type !== 'collection' && m.type !== 'measurements');
+  const enabledModules = modules.filter(m => m.enabled && m.type !== 'collection' && m.type !== 'measurements' && m.type !== 'medication');
 
   const todayVisibleModules = editable
     ? enabledModules
@@ -1090,6 +1138,20 @@ export default function Ritmo() {
             onUpdateModule={updateMeasurementsModule}
             onCreate={() => openModuleEditor('measurements')}
             onCreateFromPreset={createMeasurementsFromPreset}
+            onEditModule={(mod) => setEditingModule(mod)}
+            theme={theme}
+          />
+        )}
+
+        {view === 'medication' && (
+          <MedicationView
+            modules={modules}
+            iconOptions={ICON_OPTIONS}
+            onAddMed={addMed}
+            onUpdateMed={updateMed}
+            onDeleteMed={deleteMed}
+            onOrderMed={orderMed}
+            onCreate={() => openModuleEditor('medication')}
             onEditModule={(mod) => setEditingModule(mod)}
             theme={theme}
           />
@@ -1970,6 +2032,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                   { key: 'today', types: ['checklist', 'choice', 'counter', 'tasks', 'sleep', 'projects'] },
                   { key: 'collections', types: ['collection'] },
                   { key: 'measurements', types: ['measurements'] },
+                  { key: 'medication', types: ['medication'] },
                 ].map(group => {
                   const groupMods = modules.filter(m => group.types.includes(m.type));
                   return (
@@ -2011,6 +2074,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                                     {mod.type === 'choice' && t('modules.summary.choice')}
                                     {mod.type === 'counter' && t('modules.summary.counter', { goal: formatAmount(mod.dailyGoal ?? mod.dailyGoalMinutes ?? 0, mod.unit || 'minutes') })}
                                     {mod.type === 'tasks' && t('modules.summary.tasks')}
+                                    {mod.type === 'medication' && t('modules.summary.medication', { count: (mod.meds || []).length })}
                                   </div>
                                 </div>
                               </div>
@@ -2400,6 +2464,7 @@ function getTypeOptions(t) {
     { id: 'sleep', label: t('modules.types.sleep'), desc: t('modules.types.sleepDesc') },
     { id: 'collection', label: t('modules.types.collection'), desc: t('modules.types.collectionDesc') },
     { id: 'measurements', label: t('modules.types.measurements'), desc: t('modules.types.measurementsDesc') },
+    { id: 'medication', label: t('modules.types.medication'), desc: t('modules.types.medicationDesc') },
   ];
 }
 
@@ -2645,6 +2710,10 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
       } : {}),
       ...(typeId === 'measurements' ? {
         metrics: Array.isArray(prev.metrics) ? prev.metrics : [],
+        countInStreak: false,
+      } : {}),
+      ...(typeId === 'medication' ? {
+        meds: Array.isArray(prev.meds) ? prev.meds : [],
         countInStreak: false,
       } : {}),
     }));
@@ -3593,6 +3662,12 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
               </div>
             );
           })()}
+
+          {editing.type === 'medication' && (
+            <p className={`text-xs ${theme.textMuted}`}>
+              {t('modules.medicationEditorNote')}
+            </p>
+          )}
         </div>
         )}
 

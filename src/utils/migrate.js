@@ -112,6 +112,23 @@ export function migrateModuleConfig(module) {
     };
   }
 
+  if (m.type === 'medication') {
+    m = {
+      ...m,
+      meds: Array.isArray(m.meds)
+        ? m.meds.filter(Boolean).map((med) => ({
+            unit: '',
+            dose: 0,
+            supply: 0,
+            perWeek: 1,
+            injectable: false,
+            color: 'blue',
+            ...med,
+          }))
+        : [],
+    };
+  }
+
   if (m.type === 'collection' && !m.tagGroups) {
     const oldTags = Array.isArray(m.tags) ? m.tags : [];
     const tagGroups = oldTags.length === 0

@@ -47,6 +47,7 @@ import {
   Scissors,
   Scale,
   Ruler,
+  Cross,
 } from 'lucide-react';
 
 export const ICON_OPTIONS = {
@@ -98,4 +99,5 @@ export const ICON_OPTIONS = {
   Scissors,
   Scale,
   Ruler,
+  Cross,
 };

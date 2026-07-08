@@ -41,6 +41,8 @@ export function emptyDefaultsForType(typeId) {
       };
     case 'measurements':
       return { metrics: [], countInStreak: false };
+    case 'medication':
+      return { meds: [], countInStreak: false };
     case 'sleep':
       return {
         goals: DEFAULT_SLEEP_GOALS,
