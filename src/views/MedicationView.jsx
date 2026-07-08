@@ -20,7 +20,7 @@ function closestFrequencyId(perWeek) {
   return bestDiff < 0.01 ? best : null;
 }
 
-function MedFormModal({ open, mode = 'edit', module: mod, med, onClose, onSave, onDelete, theme }) {
+export function MedFormModal({ open, mode = 'edit', module: mod, med, onClose, onSave, onDelete, theme }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(() => createMed(''));
   const [confirmDelete, setConfirmDelete] = useState(false);

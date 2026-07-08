@@ -13,6 +13,7 @@ import SleepModule from './modules/SleepModule';
 import ProjectsView from './views/ProjectsView';
 import CollectionsView from './views/CollectionsView';
 import HealthView from './views/HealthView';
+import { MedFormModal } from './views/MedicationView';
 import HouseholdView from './views/HouseholdView';
 import TodayView from './views/TodayView';
 import InsightView from './views/InsightView';
@@ -2829,6 +2830,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
   const [expandedItemId, setExpandedItemId] = useState(null);
   const [removingMetric, setRemovingMetric] = useState(null);
   const [metricLibraryOpen, setMetricLibraryOpen] = useState(false);
+  const [addingMedInline, setAddingMedInline] = useState(false);
   const isNew = !mod.name && !mod.nameKey;
   const [step, setStep] = useState(
     isNew ? (mod.type ? 'preset' : 'type') : 'config'
@@ -3855,9 +3857,52 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
           })()}
 
           {editing.type === 'medication' && (
-            <p className={`text-xs ${theme.textMuted}`}>
-              {t('modules.medicationEditorNote')}
-            </p>
+            <div>
+              <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                {t('medication.myMeds')}
+              </label>
+              {(editing.meds || []).length > 0 && (
+                <ul className="space-y-2 mb-2">
+                  {(editing.meds || []).map((med) => (
+                    <li key={med.id} className={`flex items-center gap-2 p-2 ${theme.cardSecondary} rounded-lg`}>
+                      <span
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: getColorHex(med.color) }}
+                        aria-hidden="true"
+                      />
+                      <span className={`flex-1 text-sm ${theme.textSecondary} truncate`}>{med.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditing(prev => ({ ...prev, meds: (prev.meds || []).filter(m => m.id !== med.id) }))}
+                        className="text-slate-400 hover:text-red-500 p-1.5"
+                        aria-label={t('common.delete')}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <button
+                type="button"
+                onClick={() => setAddingMedInline(true)}
+                className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 ${theme.cardSecondary} ${theme.hover} ${theme.textSecondary} rounded-lg text-sm font-medium`}
+              >
+                <Plus className="w-4 h-4" />
+                {t('medication.addMed')}
+              </button>
+              <p className={`text-xs ${theme.textMuted} mt-2`}>
+                {t('modules.medicationEditorNote')}
+              </p>
+              <MedFormModal
+                open={addingMedInline}
+                mode="add"
+                module={editing}
+                onClose={() => setAddingMedInline(false)}
+                onSave={(med) => setEditing(prev => ({ ...prev, meds: [...(prev.meds || []), med] }))}
+                theme={theme}
+              />
+            </div>
           )}
 
           {editing.type === 'bodymap' && (
