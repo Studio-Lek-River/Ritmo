@@ -1206,6 +1206,7 @@ export default {
     drinking: { name: 'Drinking', categories: ['Water', 'Tea', 'Coffee', 'Soft drinks'] },
     reading: { name: 'Reading' },
     steps: { name: 'Steps' },
+    beweging: { name: 'Movement', categories: ['Walking', 'Cycling', 'Strength', 'Swimming'] },
     workTasks: { name: 'Work tasks' },
     groceries: { name: 'Groceries' },
     studyProjects: { name: 'Study' },

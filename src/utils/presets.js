@@ -96,6 +96,16 @@ function buildPresets(t) {
         categoriesEnabled: false,
         categories: [],
       },
+      {
+        nameKey: 'presets.beweging.name',
+        icon: 'Activity',
+        color: 'green',
+        unit: 'minutes',
+        dailyGoal: 30,
+        presets: [10, 20, 30],
+        categoriesEnabled: true,
+        categories: t('presets.beweging.categories'),
+      },
     ],
     tasks: [
       { nameKey: 'presets.workTasks.name', icon: 'Briefcase', color: 'blue' },
