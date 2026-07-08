@@ -8,9 +8,9 @@ Dit bestand bevat instructies voor Claude Code in deze repo. De projectinhoud (w
 
 **Bij twijfel: vragen.** Als er ambiguïteit is die tot verschillend correcte uitkomsten kan leiden (scope, locatie van een wijziging, naamgeving die elders gebruikt wordt, keuze tussen twee architectuur-opties), gebruik ik de `AskUserQuestion`-tool in plaats van te gokken. Bij keuzes die veilig te defaulten zijn → default kiezen en doorgaan, conform de bestaande "geen permissie-pauzes"-feedback.
 
-## Auto-commit: bij elke wijziging, nooit pushen
+## Auto-commit: bij elke wijziging; pushen op verzoek
 
-**Harde regel.** Elke wijziging die ik in deze repo maak commit ik zelf. Als ik een bestand bewerk, hoort de commit erbij — niet wachten tot de gebruiker het doet, niet bundelen tot een volgende sessie. De gebruiker pusht zelf; ik roep `git push` nooit aan, in geen enkele variant.
+**Harde regel.** Elke wijziging die ik in deze repo maak commit ik zelf. Als ik een bestand bewerk, hoort de commit erbij — niet wachten tot de gebruiker het doet, niet bundelen tot een volgende sessie.
 
 **Granulariteit:** één commit per logische stap. Een `feat:` en een `fix:` in dezelfde turn worden twee aparte commits, in de volgorde die het meest logisch reviewt. Eén feature die twee bestanden raakt is één commit. Bij twijfel: liever splitsen dan mengen — gemengde commits zijn nooit correct (zie Conventional Commits-regels hieronder).
 
@@ -25,10 +25,10 @@ Dit bestand bevat instructies voor Claude Code in deze repo. De projectinhoud (w
 - Als de gebruiker expliciet zegt "alleen wijzigen, niet committen" voor deze actie.
 - Bij een failing build/lint-hook: niet committen tot het werkt; fix eerst, dan commit (geen `--no-verify`).
 
-**Pushen — nooit.**
-- Geen `git push`, `git push --force`, `git push origin ...`, geen `gh pr create` met implicite push.
-- Niet via een hook of script dat ik zelf draai.
-- De gebruiker pusht. Punt.
+**Pushen — op verzoek.**
+- Committen blijft automatisch; pushen doe ik niet uit mezelf, maar wél zodra de gebruiker erom vraagt (`git push`, PR openen).
+- Als de gebruiker vraagt te pushen of een PR te openen, mag dat direct, zonder extra permissie-pauze.
+- Geen force-push (`git push --force`) tenzij de gebruiker daar expliciet om vraagt. Nooit rechtstreeks naar `main` pushen; werk via een branch en PR.
 
 **Format:** Conventional Commits per type, zoals hieronder beschreven. Geen `Co-Authored-By: Claude`-trailer.
 
