@@ -43,6 +43,8 @@ export function emptyDefaultsForType(typeId) {
       return { metrics: [], countInStreak: false };
     case 'medication':
       return { meds: [], countInStreak: false };
+    case 'bodymap':
+      return { log: [], countInStreak: false };
     case 'sleep':
       return {
         goals: DEFAULT_SLEEP_GOALS,

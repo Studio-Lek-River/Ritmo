@@ -661,7 +661,9 @@ export default function Ritmo() {
         ? 'Heart'
         : type === 'medication'
           ? 'Cross'
-          : 'Star';
+          : type === 'bodymap'
+            ? 'Target'
+            : 'Star';
     setEditingModule({
       id: `mod_${Date.now()}`,
       name: '',
@@ -682,6 +684,9 @@ export default function Ritmo() {
       } : {}),
       ...(type === 'medication' ? {
         meds: [],
+      } : {}),
+      ...(type === 'bodymap' ? {
+        log: [],
       } : {}),
     });
   };
@@ -863,7 +868,7 @@ export default function Ritmo() {
     }} theme={theme} darkMode={darkMode} />;
   }
 
-  const enabledModules = modules.filter(m => m.enabled && m.type !== 'collection' && m.type !== 'measurements' && m.type !== 'medication');
+  const enabledModules = modules.filter(m => m.enabled && m.type !== 'collection' && m.type !== 'measurements' && m.type !== 'medication' && m.type !== 'bodymap');
 
   const todayVisibleModules = editable
     ? enabledModules
@@ -2033,6 +2038,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                   { key: 'collections', types: ['collection'] },
                   { key: 'measurements', types: ['measurements'] },
                   { key: 'medication', types: ['medication'] },
+                  { key: 'bodymap', types: ['bodymap'] },
                 ].map(group => {
                   const groupMods = modules.filter(m => group.types.includes(m.type));
                   return (
@@ -2075,6 +2081,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                                     {mod.type === 'counter' && t('modules.summary.counter', { goal: formatAmount(mod.dailyGoal ?? mod.dailyGoalMinutes ?? 0, mod.unit || 'minutes') })}
                                     {mod.type === 'tasks' && t('modules.summary.tasks')}
                                     {mod.type === 'medication' && t('modules.summary.medication', { count: (mod.meds || []).length })}
+                                    {mod.type === 'bodymap' && t('modules.summary.bodymap', { count: (mod.log || []).length })}
                                   </div>
                                 </div>
                               </div>
@@ -2465,6 +2472,7 @@ function getTypeOptions(t) {
     { id: 'collection', label: t('modules.types.collection'), desc: t('modules.types.collectionDesc') },
     { id: 'measurements', label: t('modules.types.measurements'), desc: t('modules.types.measurementsDesc') },
     { id: 'medication', label: t('modules.types.medication'), desc: t('modules.types.medicationDesc') },
+    { id: 'bodymap', label: t('modules.types.bodymap'), desc: t('modules.types.bodymapDesc') },
   ];
 }
 
@@ -2714,6 +2722,10 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
       } : {}),
       ...(typeId === 'medication' ? {
         meds: Array.isArray(prev.meds) ? prev.meds : [],
+        countInStreak: false,
+      } : {}),
+      ...(typeId === 'bodymap' ? {
+        log: Array.isArray(prev.log) ? prev.log : [],
         countInStreak: false,
       } : {}),
     }));
@@ -3666,6 +3678,12 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
           {editing.type === 'medication' && (
             <p className={`text-xs ${theme.textMuted}`}>
               {t('modules.medicationEditorNote')}
+            </p>
+          )}
+
+          {editing.type === 'bodymap' && (
+            <p className={`text-xs ${theme.textMuted}`}>
+              {t('modules.bodymapEditorNote')}
             </p>
           )}
         </div>

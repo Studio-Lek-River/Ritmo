@@ -105,6 +105,7 @@ export default {
     collections: 'Collections',
     measurements: 'Measurements',
     medication: 'Medication',
+    bodymap: 'Injection site',
     household: 'Household',
     settings: 'Settings',
     more: 'More',
@@ -993,6 +994,8 @@ export default {
       measurementsDesc: 'Track numeric values over time',
       medication: 'Medication',
       medicationDesc: 'Medicines with dose, supply and frequency',
+      bodymap: 'Injection site',
+      bodymapDesc: 'Clickable body map to log injections and track supply',
     },
 
     summary: {
@@ -1004,9 +1007,11 @@ export default {
       collection: 'Collection · {n} items',
       projects: 'Projects',
       medication: '{count} medicines',
+      bodymap: '{count} injections',
     },
 
     medicationEditorNote: 'Manage medicines in the Medication tab, not here.',
+    bodymapEditorNote: 'You log injections yourself in the Injection site tab, not here.',
 
     addOptionsHint: 'Add options via settings ⚙️',
     chosenHint: '✓ {label} chosen, click again to reset',
@@ -1044,6 +1049,8 @@ export default {
       measurementsEmpty: 'No measurements',
       medication: 'Medication',
       medicationEmpty: 'No medication modules',
+      bodymap: 'Injection site',
+      bodymapEmpty: 'No injection site modules',
       householdNote: 'Household sections (chores, groceries, meal plan) always appear in the Household tab.',
     },
     resetModules: 'Reset modules to default',

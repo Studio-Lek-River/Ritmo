@@ -28,7 +28,7 @@ function CardForModule({ mod, days, theme, darkMode, t }) {
 export default function InsightView({ modules, history, theme, darkMode, t }) {
   const [period, setPeriod] = useState('7');
   const enabled = useMemo(
-    () => (modules || []).filter(m => m.enabled && m.type !== 'collection' && m.type !== 'medication'),
+    () => (modules || []).filter(m => m.enabled && m.type !== 'collection' && m.type !== 'medication' && m.type !== 'bodymap'),
     [modules],
   );
   const { dayKeys } = useMemo(() => rangeForPeriod(period), [period]);

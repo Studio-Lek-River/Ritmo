@@ -106,6 +106,7 @@ export default {
     collections: 'Collecties',
     measurements: 'Metingen',
     medication: 'Medicatie',
+    bodymap: 'Priklocatie',
     household: 'Huishouden',
     settings: 'Instellingen',
     more: 'Meer',
@@ -1000,6 +1001,8 @@ export default {
       measurementsDesc: 'Numerieke waarden bijhouden over tijd',
       medication: 'Medicatie',
       medicationDesc: 'Medicijnen met dosering, voorraad en frequentie',
+      bodymap: 'Priklocatie',
+      bodymapDesc: 'Klikbare lichaamskaart om injecties te loggen en de voorraad bij te houden',
     },
 
     // module summaries / hints
@@ -1012,9 +1015,11 @@ export default {
       collection: 'Collectie · {n} items',
       projects: 'Projecten',
       medication: '{count} medicijnen',
+      bodymap: '{count} prikken',
     },
 
     medicationEditorNote: 'Medicijnen zelf beheer je in de Medicatie-tab, niet hier.',
+    bodymapEditorNote: 'Prikken registreer je zelf in de Priklocatie-tab, niet hier.',
 
     // generic / display
     addOptionsHint: 'Voeg opties toe via instellingen ⚙️',
@@ -1053,6 +1058,8 @@ export default {
       measurementsEmpty: 'Geen metingen',
       medication: 'Medicatie',
       medicationEmpty: 'Geen medicatie-modules',
+      bodymap: 'Priklocatie',
+      bodymapEmpty: 'Geen priklocatie-modules',
       householdNote: 'Huishoud-secties (klusjes, boodschappen, mee-eten) staan altijd in het Huishouden-tabblad.',
     },
     resetModules: 'Reset modules naar standaard',
