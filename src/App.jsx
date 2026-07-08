@@ -83,7 +83,6 @@ export default function Ritmo() {
   const [showSettings, setShowSettings] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState(null);
   const [editingModule, setEditingModule] = useState(null);
-  const [metricLibraryOpen, setMetricLibraryOpen] = useState(false);
   const [hasOnboarded, setHasOnboarded] = useState(true);
   const [modules, setModules] = useState(() => instantiateDefaults(DEFAULT_MODULES));
   const [moduleData, setModuleData] = useState({}); // per-module daily state
@@ -2728,6 +2727,7 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
   const [newItem, setNewItem] = useState('');
   const [expandedItemId, setExpandedItemId] = useState(null);
   const [removingMetric, setRemovingMetric] = useState(null);
+  const [metricLibraryOpen, setMetricLibraryOpen] = useState(false);
   const isNew = !mod.name && !mod.nameKey;
   const [step, setStep] = useState(
     isNew ? (mod.type ? 'preset' : 'type') : 'config'
