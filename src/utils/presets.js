@@ -42,7 +42,7 @@ function buildPresets(t) {
       {
         nameKey: 'presets.bijwerkingen.name',
         icon: 'HeartPulse',
-        color: 'rose',
+        color: 'red',
         items: t('presets.bijwerkingen.items'),
       },
     ],
