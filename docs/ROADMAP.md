@@ -132,9 +132,9 @@ Een gezondheids-startpreset (prikschema, priklocatie, medicatie, gewicht, omvang
 
 **Stap 0-bevinding (leidend):** de "gezondheidsmeting" bestaat al als module-type `measurements` (preset `presets.health` = gewicht/spier/vet/omvang). Grote delen zijn dus configuratie van bestaande types, geen nieuwbouw. Echt nieuw: de priklocatie-bodymap, het medicatie-register + prik-log, en twee Trends-visualisaties.
 
-Volgorde: **H01 → H03 → H04 → H05 → H06**; **H02** inpasbaar zodra H03/H05 de te-activeren module-set definiëren.
+Volgorde: **H01 → H03 → H04 → H05 → H06 → H07 → H02**; **H02** en **H07** inpasbaar zodra H03/H05 de te-activeren module-set definiëren.
 
-**Tracking:** epic-issue #51, met sub-issues #52 (H02), #53 (H05) en #54 (H06) voor het resterende werk.
+**Tracking:** epic-issue #51, met sub-issues #52 (H02), #53 (H05), #54 (H06) en #56 (H07) voor het resterende werk.
 
 #### H01, Bugfix + ErrorBoundary. KLAAR (gemerged, PR #47)
 - **Doel:** het wit-schermdefect bij het openen van de gezondheidsmeting-instellingen dichten (null-metric read zonder guard in de measurements-editor), plus een app-brede en view-brede ErrorBoundary zodat een volgende crash zichtbaar wordt i.p.v. onzichtbaar.
@@ -148,17 +148,21 @@ Volgorde: **H01 → H03 → H04 → H05 → H06**; **H02** inpasbaar zodra H03/H
 - **Doel:** een medicijn als centraal object: naam, dosering, eenheid, voorraad, frequentie, injecteerbaar-vlag, kleur. Afgeleide `daysLeft`, "bijna op", "besteld". Nieuw type; hergebruikt het collection-opslagpatroon (langlevende data in `settings.modules`).
 - **Afhankelijk van:** niets.
 
-#### H04, Priklocatie-bodymap (`bodymap`) + prik-log. IN REVIEW (PR #49)
+#### H04, Priklocatie-bodymap (`bodymap`) + prik-log. KLAAR (gemerged, PR #49)
 - **Doel:** een klikbare 6-zone bodymap (SVG met hex-kleuren) met medicijnkiezer voor injecteerbare medicijnen. Prikken logt en verlaagt de voorraad; undo/verwijderen herstelt de voorraad. Auto-suggestie voor de volgende zone (minst/langst-geleden gebruikt) plus legenda.
 - **Afhankelijk van:** H03.
 
-#### H05, Beweging + bijwerkingen (dag-logs). TODO (#53)
+#### H05, Beweging + bijwerkingen (dag-logs). KLAAR (gemerged, PR #55)
 - **Doel:** beweging via `counter` (minuten, categorieën, dagdoel 30) en bijwerkingen via `checklist`/`collection` met notitie, per dag terugleesbaar zodat de Trends erop kunnen bouwen. Plus health-preset wiring.
 - **Afhankelijk van:** niets.
 
-#### H06, Trends-visualisaties. TODO (#54)
-- **Doel:** een bijwerkingen-heatmap (dot-matrix, ~14 dagen, horizontaal scrollbaar) en een beweging-staafdiagram (minuten per dag met referentielijn op het dagdoel).
+#### H06, Trends-visualisaties. IN REVIEW (#54)
+- **Doel:** een bijwerkingen-heatmap (dot-matrix, gekoppeld aan de periode-selector, horizontaal scrollbaar) en een beweging-staafdiagram (minuten per dag met referentielijn op het dagdoel). Generieke verbeteringen van de counter- en checklist-insight-kaarten; leest bestaande history-data.
 - **Afhankelijk van:** H05.
+
+#### H07, App-modus-schakelaar (Health/Standaard). TODO (#56)
+- **Doel:** een instelling die de zichtbare modules en de menubalk omschakelt tussen Standaard (alles) en Health (alleen de gezondheidsmodules), zodat de app efficiënt op één gebruiksdoel te richten is.
+- **Afhankelijk van:** de module-set uit H03/H05; verwant aan H02 (onboarding-profiel).
 
 > Gewicht en omvang krijgen geen eigen slice: dat is de bestaande `measurements`-module, meegenomen in de health-preset van H02/H05.
 
