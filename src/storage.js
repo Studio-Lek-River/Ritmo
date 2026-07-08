@@ -5,7 +5,6 @@ import {
   keys as idbKeys,
   createStore,
 } from 'idb-keyval';
-import { isSharedKey, getShared, setShared, deleteShared } from './sync/householdStorage';
 import { isUserSyncKey, getUserData, setUserData, deleteUserData } from './sync/userDataStorage';
 
 const PREFIX = 'ritmo:';
@@ -52,10 +51,6 @@ function ensureMigrated() {
 
 export const storage = {
   async get(key) {
-    if (isSharedKey(key)) {
-      const value = await getShared(key);
-      return value === null ? null : { key, value };
-    }
     if (isUserSyncKey(key)) {
       await ensureMigrated();
       const value = await getUserData(key);
@@ -68,10 +63,6 @@ export const storage = {
   },
 
   async set(key, value) {
-    if (isSharedKey(key)) {
-      await setShared(key, value);
-      return { key, value };
-    }
     if (isUserSyncKey(key)) {
       await ensureMigrated();
       await setUserData(key, value);
@@ -83,10 +74,6 @@ export const storage = {
   },
 
   async delete(key) {
-    if (isSharedKey(key)) {
-      await deleteShared(key);
-      return { key, deleted: true };
-    }
     if (isUserSyncKey(key)) {
       await ensureMigrated();
       await deleteUserData(key);

@@ -3,7 +3,7 @@ import { Check, RefreshCw, Clock, CloudOff, AlertTriangle, Smartphone } from 'lu
 import { useTranslation } from '../i18n/useTranslation';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 import { isSyncEnabled } from '../sync/supabase';
-import { flushQueue } from '../sync/householdStorage';
+import { flushQueue } from '../sync/flush';
 import { pullUserData } from '../sync/userDataStorage';
 
 const ICONS = {
