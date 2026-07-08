@@ -30,7 +30,7 @@ function cleanRecoveryUrl() {
   }
 }
 
-export default function AuthSection({ theme, onNavigateHousehold }) {
+export default function AuthSection({ theme }) {
   const [user, setUser] = useState(null);
   const [view, setView] = useState('signIn');
   const [pendingEmail, setPendingEmail] = useState(null);
@@ -114,7 +114,6 @@ export default function AuthSection({ theme, onNavigateHousehold }) {
         theme={theme}
         user={user}
         onChangePassword={() => setView('changePassword')}
-        onNavigateHousehold={onNavigateHousehold}
       />
     );
   }
