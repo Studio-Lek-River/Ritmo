@@ -2,6 +2,8 @@
 
 Grote changes lopen niet in één keer, maar opgeknipt in kleine, afgeronde **slices**. Elke slice heeft een eigen spec in `docs/slices/SXX-*.md` (op basis van `docs/slices/SXX-template.md`) en doorloopt vijf rollen met twee menselijke poorten.
 
+Dit document beschrijft de **werkwijze**. Het **wat**, de **volgorde** en de **actuele status** staan in `docs/ROADMAP.md` (leidend).
+
 ## Vijf rollen, twee poorten
 
 1. **Toetsen (PO, in Claude.ai).** Slice-spec met acceptatiecriteria in `docs/slices/SXX-*.md`.
@@ -21,26 +23,3 @@ De hoofdsessie orkestreert: roep implementer, dan reviewer, dan verifier, sequen
 - **Principe 2 — gebruikerskeuze.** Niets wordt de gebruiker opgelegd; nieuw gedrag is configureerbaar of uitschakelbaar.
 
 De volledige checklist voor deze principes (met concrete voorbeelden) staat in `.claude/skills/kwaliteitscheck/SKILL.md` (Dimensie 4). De reviewer let daarnaast op scope-discipline (geen wijzigingen buiten de slice) en dataveiligheid (veilige migraties).
-
-## Roadmap (herijkt na de nulmeting)
-
-De fasering hieronder is de actuele planning. Fase 0 en 1 zijn afgerond; Fase 2 is bezig.
-
-### Fase 0 - Fundament: KLAAR
-Account plus login, sync achter `window.storage`, sync-status.
-
-### Fase 1 - Delen: KLAAR
-Deelbare huishoudens, membership, invite-tokens. Klein openstaand, optioneel: household bulk-pull.
-
-### Fase 2 - Hygiëne plus Koppelingen
-- **S01** - DB-schema plus RLS in version control (deze slice).
-- **S01b** - RLS-fix household_invites: invite-inwisselen via redeem_invite RPC.
-- **S02** - Connections-infra plus genormaliseerd items-model (connections-tabel, server-side tokens via `api/`, normalisatie-laag).
-- **S03** - Outlook lezen (Microsoft Graph, persoonlijk account, authority `consumers`).
-- **S04** - Trello lezen (meerdere accounts en borden).
-- **S05** - GitHub lezen (issues naar items).
-
-### Fase 3 - Planner
-- **S06** - Vandaag-feed (aggregatie plus voortgang per project).
-- **S07** - "Deel mijn dag in" (planner rond Outlook-afspraken).
-- **S08** - Outlook wegschrijven (`Calendars.ReadWrite`, aparte Ritmo-agenda, instelbare bestemming).

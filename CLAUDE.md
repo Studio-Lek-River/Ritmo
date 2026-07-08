@@ -65,7 +65,7 @@ Elke commit bepaalt automatisch de version bump en een regel in CHANGELOG.md. VÃ
 
 ## Werkwijze: team en poorten
 
-Grote changes lopen via docs/PLAN.md, opgeknipt in kleine slices.
+Grote changes lopen via de werkwijze in docs/PLAN.md, opgeknipt in kleine slices. Het wat, de volgorde en de status staan in docs/ROADMAP.md (leidend).
 Per slice gelden vijf rollen en twee poorten:
 
 1. Toetsen (PO, in Claude.ai): slice-spec met acceptatiecriteria in docs/slices/SXX-*.md. Poort 1: Bas keurt de spec goed.

@@ -2,7 +2,7 @@
 
 ## Doel
 
-<Eén of twee zinnen: wat lost deze slice op, en waarom nu. Verwijs naar het bredere doel in docs/PLAN.md indien relevant.>
+<Eén of twee zinnen: wat lost deze slice op, en waarom nu. Verwijs naar het bredere doel in docs/ROADMAP.md indien relevant.>
 
 ## Scope
 
