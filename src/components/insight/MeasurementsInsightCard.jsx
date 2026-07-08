@@ -82,7 +82,7 @@ function MetricRow({ metric, color, days, theme, t, locale }) {
 
 export default function MeasurementsInsightCard({ mod, days, theme, darkMode, t }) {
   const locale = getLocale();
-  const metrics = mod.metrics || [];
+  const metrics = (mod.metrics || []).filter(Boolean);
 
   if (metrics.length === 0) {
     return (
