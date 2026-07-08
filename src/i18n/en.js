@@ -345,24 +345,6 @@ export default {
         removeAria: 'Remove',
       },
     },
-    setupTitle: 'Household',
-    startButton: 'Create household',
-    joinButton: 'Join with code',
-    startHouseholdName: 'Household name',
-    startDisplayName: 'Your name in this household',
-    joinTokenLabel: 'Invite code',
-    joinDisplayName: 'Your name in this household',
-    inviteTitle: 'Invite someone',
-    inviteShareText: 'Share this link, or let them scan the QR',
-    inviteCopyLink: 'Copy link',
-    inviteExpiresIn: 'Valid until {date}',
-    leaveButton: 'Leave household',
-    leaveConfirm: 'Are you sure? You will lose access to shared modules.',
-    conflictToast: 'Your change was overwritten by {name}',
-    syncDisabled: {
-      title: 'Account features are not configured',
-      description: 'This version of Ritmo runs without cloud sync. All household data is stored locally only.',
-    },
     mealPlan: {
       sectionTitle: 'Meal plan',
       sectionMeta: '{n} eating today',
@@ -415,17 +397,6 @@ export default {
     },
   },
 
-  share: {
-    share: 'Share with household',
-    unshare: 'Stop sharing',
-    sharedTitle: 'This module is shared with your household',
-    notSharedTitle: 'Personal module',
-    confirmShareTitle: 'Share module?',
-    confirmShareBody: 'Data will be synced to the cloud. Housemates will see changes.',
-    confirmUnshareTitle: 'Stop sharing?',
-    confirmUnshareBody: 'Cloud data stays for other members. You will only see your local copy.',
-  },
-
   sync: {
     conflict: {
       title: 'Sync conflict',
@@ -460,12 +431,10 @@ export default {
     sendLink: 'Send magic link',
     checkMailbox: 'Check your inbox',
     signOut: 'Sign out',
-    inviteInvalid: 'This invite link is invalid or expired',
-    inviteUsed: 'This invite link has already been used',
 
     sectionTitle: 'Sync with account',
     sectionTitleSignedIn: 'Signed in',
-    sectionDescription: 'Sign in to view your modules on multiple devices and share with housemates.',
+    sectionDescription: 'Sign in to view your modules on multiple devices.',
 
     signIn: 'Sign in',
     passwordLabel: 'Password',
@@ -529,24 +498,10 @@ export default {
     wrongCurrentPassword: 'Current password is incorrect',
 
     signedInAs: 'Signed in as',
-    householdSection: 'Household',
-    householdSectionPlural: 'Households',
-    noHouseholdYet: 'Create a household to share modules, or join an existing one.',
-    createHousehold: 'Create new household',
-    joinHousehold: 'Join a household',
-    addAnotherHousehold: 'Add another household',
-    roleAdmin: 'Admin',
-    roleMember: 'Member',
-    membersCount: '{count} members',
 
     signOutConfirmTitle: 'Sign out?',
-    signOutConfirmBody: 'Your synced data stays in the cloud. Modules you share with your household will not be visible until you sign in again.',
+    signOutConfirmBody: 'Your synced data stays in the cloud.',
     cancel: 'Cancel',
-
-    householdNoticeTitle: 'Want to share this household?',
-    householdNoticeBody: 'Sign in via Settings to use this household across devices.',
-    openSettings: 'Open Settings',
-    dismiss: 'Dismiss',
   },
 
   meeeten: {

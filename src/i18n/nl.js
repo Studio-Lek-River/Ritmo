@@ -346,24 +346,6 @@ export default {
         removeAria: 'Verwijder',
       },
     },
-    setupTitle: 'Huishouden',
-    startButton: 'Huishouden starten',
-    joinButton: 'Join met code',
-    startHouseholdName: 'Naam van je huishouden',
-    startDisplayName: 'Jouw naam in dit huishouden',
-    joinTokenLabel: 'Invite-code',
-    joinDisplayName: 'Jouw naam in dit huishouden',
-    inviteTitle: 'Nodig iemand uit',
-    inviteShareText: 'Deel deze link, of laat de QR scannen',
-    inviteCopyLink: 'Kopieer link',
-    inviteExpiresIn: 'Geldig tot {date}',
-    leaveButton: 'Huishouden verlaten',
-    leaveConfirm: 'Weet je het zeker? Je verliest toegang tot gedeelde modules.',
-    conflictToast: 'Je wijziging is overschreven door {name}',
-    syncDisabled: {
-      title: 'Account-functies zijn niet geconfigureerd',
-      description: 'Deze versie van Ritmo draait zonder cloud-sync. Alle huishoudgegevens worden alleen lokaal opgeslagen.',
-    },
     mealPlan: {
       sectionTitle: 'Mee-eten',
       sectionMeta: '{n} mee-eters vandaag',
@@ -416,17 +398,6 @@ export default {
     },
   },
 
-  share: {
-    share: 'Delen met huishouden',
-    unshare: 'Stoppen met delen',
-    sharedTitle: 'Deze module is gedeeld met je huishouden',
-    notSharedTitle: 'Persoonlijke module',
-    confirmShareTitle: 'Module delen?',
-    confirmShareBody: 'De data wordt naar de cloud gesynchroniseerd. Huisgenoten zien wijzigingen.',
-    confirmUnshareTitle: 'Stop delen?',
-    confirmUnshareBody: 'De cloud-data blijft voor andere leden. Jij ziet alleen je lokale kopie.',
-  },
-
   sync: {
     conflict: {
       title: 'Synchronisatie-conflict',
@@ -461,12 +432,10 @@ export default {
     sendLink: 'Stuur magic link',
     checkMailbox: 'Check je mailbox',
     signOut: 'Uitloggen',
-    inviteInvalid: 'Deze invite-link is ongeldig of verlopen',
-    inviteUsed: 'Deze invite-link is al gebruikt',
 
     sectionTitle: 'Synchroniseren met account',
     sectionTitleSignedIn: 'Ingelogd',
-    sectionDescription: 'Log in om je modules op meerdere apparaten te bekijken en te delen met huisgenoten.',
+    sectionDescription: 'Log in om je modules op meerdere apparaten te bekijken.',
 
     signIn: 'Inloggen',
     passwordLabel: 'Wachtwoord',
@@ -530,24 +499,10 @@ export default {
     wrongCurrentPassword: 'Huidig wachtwoord klopt niet',
 
     signedInAs: 'Ingelogd als',
-    householdSection: 'Huishouden',
-    householdSectionPlural: 'Huishoudens',
-    noHouseholdYet: 'Maak een huishouden aan om modules te delen, of voeg je toe aan een bestaand huishouden.',
-    createHousehold: 'Nieuw huishouden aanmaken',
-    joinHousehold: 'Aan huishouden toevoegen',
-    addAnotherHousehold: 'Nog een huishouden',
-    roleAdmin: 'Beheerder',
-    roleMember: 'Lid',
-    membersCount: '{count} leden',
 
     signOutConfirmTitle: 'Uitloggen?',
-    signOutConfirmBody: 'Je gesyncte data blijft in de cloud. Modules die je deelt met je huishouden zie je tot je weer inlogt niet.',
+    signOutConfirmBody: 'Je gesyncte data blijft in de cloud.',
     cancel: 'Annuleren',
-
-    householdNoticeTitle: 'Wil je dit huishouden delen?',
-    householdNoticeBody: 'Log in via Instellingen om dit huishouden op meerdere apparaten te gebruiken.',
-    openSettings: 'Naar Instellingen',
-    dismiss: 'Wegklikken',
   },
 
   meeeten: {
