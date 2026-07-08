@@ -121,6 +121,14 @@ token, terwijl de policy die geheimhouding juist ophief.
 
 Het token blijft dus nodig om te joinen, zonder dat de hele tabel leesbaar is voor niet-admins.
 
+**Hardening (migration `supabase/migrations/20260708093000_redeem_invite_revoke_anon.sql`):** de
+Supabase default-privileges (`ALTER DEFAULT PRIVILEGES ... GRANT ALL ON FUNCTIONS TO anon,
+authenticated, service_role`) gaven de nieuwe RPC bij aanmaak ongewild EXECUTE voor de `anon`-rol. Een
+anonieme caller kon niet joinen (`auth.uid()` is NULL -> NOT NULL-violatie op
+`household_members.user_id`, waardoor de atomaire functie terugrolt), maar EXECUTE is alsnog
+ingetrokken voor `anon` en `PUBLIC` zodat inwisselen enkel voor `authenticated` (en `service_role`)
+mogelijk is. Ontdekt bij live-verificatie via `db dump --schema public`.
+
 ### B2 - `profiles` zonder INSERT/DELETE-policy (informatief, geen gat)
 Bewust: inserts via trigger, deletes via cascade. RLS weigert directe mutatie. Geen actie nodig.
 
