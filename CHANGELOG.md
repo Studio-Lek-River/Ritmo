@@ -1,3 +1,17 @@
+# [0.21.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.20.0...v0.21.0) (2026-07-08)
+
+
+### Bug Fixes
+
+* **errors:** ErrorBoundary volgt in-app darkMode i.p.v. OS-thema ([4ee5f13](https://github.com/Studio-Lek-River/Ritmo/commit/4ee5f130beeee364bf7696b818c1066d92aba514))
+* **measurements:** guard null-metric ook in insight-kaart ([ec17205](https://github.com/Studio-Lek-River/Ritmo/commit/ec17205b258f9c05c9278067ce0ca99a52d94f5d))
+* **measurements:** voorkom wit scherm bij null-metric in editor en detailweergave ([cbe84e9](https://github.com/Studio-Lek-River/Ritmo/commit/cbe84e9bd447dc3f7e84a821cc3a5b60ac7ce7ed))
+
+
+### Features
+
+* **errors:** voeg ErrorBoundary toe rond app en view-switch ([b7fd656](https://github.com/Studio-Lek-River/Ritmo/commit/b7fd6562531e048286168c33bc9554182b7933d3))
+
 # [0.20.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.19.1...v0.20.0) (2026-07-08)
 
 
