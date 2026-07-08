@@ -291,6 +291,13 @@ export default function Ritmo() {
     saveSettings();
   }, [darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, showReflectionOnToday, hasUsedSwipe, hasDismissedInstallBanner, modules, hasOnboarded, languageSetting, loading]);
 
+  // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
+  // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
+  useEffect(() => {
+    const allowed = ['measurements', 'today', 'week', 'month', 'insight'];
+    if (appMode === 'health' && !allowed.includes(view)) setView('today');
+  }, [appMode, view]);
+
   // Recurring tasks. Only inject into today's task list, never into a
   // historical day the user is just viewing.
   useEffect(() => {
@@ -937,7 +944,8 @@ export default function Ritmo() {
     }} theme={theme} darkMode={darkMode} />;
   }
 
-  const enabledModules = modules.filter(m => m.enabled && m.type !== 'collection' && m.type !== 'measurements' && m.type !== 'medication' && m.type !== 'bodymap');
+  const baseEnabledModules = modules.filter(m => m.enabled && m.type !== 'collection' && m.type !== 'measurements' && m.type !== 'medication' && m.type !== 'bodymap');
+  const enabledModules = appMode === 'health' ? baseEnabledModules.filter(isHealthModule) : baseEnabledModules;
 
   const todayVisibleModules = editable
     ? enabledModules
@@ -1116,7 +1124,7 @@ export default function Ritmo() {
           </div>
         </div>
 
-        <TabBar view={view} setView={setView} theme={theme} />
+        <TabBar view={view} setView={setView} theme={theme} appMode={appMode} />
 
         <ErrorBoundary key={view} darkMode={darkMode} onReset={() => setView('today')}>
         {view === 'today' && (
@@ -1162,6 +1170,7 @@ export default function Ritmo() {
             theme={theme}
             darkMode={darkMode}
             goldenBorderEnabled={goldenBorderEnabled}
+            appMode={appMode}
           />
         )}
 
@@ -1238,6 +1247,7 @@ export default function Ritmo() {
             monthNames={monthNames}
             dayNames={dayNames}
             goldenBorderEnabled={goldenBorderEnabled}
+            appMode={appMode}
           />
         )}
 
@@ -1512,9 +1522,9 @@ function StreakBadge({ label, days, color, theme }) {
 // =============================================
 // WEEK VIEW
 // =============================================
-function WeekView({ modules, history, today, activeDateKey, moduleData, activeWeekStart, setActiveWeekStart, weekDates, dayNames, onPickDay, theme, darkMode, goldenBorderEnabled }) {
+function WeekView({ modules, history, today, activeDateKey, moduleData, activeWeekStart, setActiveWeekStart, weekDates, dayNames, onPickDay, theme, darkMode, goldenBorderEnabled, appMode }) {
   const { t } = useTranslation();
-  const enabledNonTaskModules = modules.filter(m => m.enabled && canCountInStreak(m.type));
+  const enabledNonTaskModules = modules.filter(m => m.enabled && canCountInStreak(m.type) && (appMode !== 'health' || isHealthModule(m)));
   const atCurrentWeek = sameDay(activeWeekStart, startOfWeek(new Date()));
 
   const dayDataFor = (dateStr) => (
@@ -1646,7 +1656,7 @@ function WeekView({ modules, history, today, activeDateKey, moduleData, activeWe
 // =============================================
 // MONTH VIEW
 // =============================================
-function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDateKey, moduleData, modules, onPickDay, theme, darkMode, monthNames, dayNames, goldenBorderEnabled }) {
+function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDateKey, moduleData, modules, onPickDay, theme, darkMode, monthNames, dayNames, goldenBorderEnabled, appMode }) {
   const { t } = useTranslation();
   const [filterModuleId, setFilterModuleId] = useState('all');
   const year = calendarMonth.getFullYear();
@@ -1689,11 +1699,11 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDate
     if (filterModule) {
       return moduleStatusForDay(filterModule, data, dateObj) === 'partial';
     }
-    return modules.some(m => m.enabled && canCountInStreak(m.type) &&
+    return modules.some(m => m.enabled && canCountInStreak(m.type) && (appMode !== 'health' || isHealthModule(m)) &&
       moduleStatusForDay(m, data, dateObj) !== 'none');
   }).length;
 
-  const filterableModules = modules.filter(m => m.enabled && canCountInStreak(m.type));
+  const filterableModules = modules.filter(m => m.enabled && canCountInStreak(m.type) && (appMode !== 'health' || isHealthModule(m)));
 
   return (
     <div className={`${theme.card} rounded-2xl p-5 shadow-sm slide-in`}>
