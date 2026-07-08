@@ -15,6 +15,7 @@ export default function TabBar({ view, setView, theme }) {
     { id: 'projects',     label: t('nav.projects') },
     { id: 'collections',  label: t('nav.collections') },
     { id: 'measurements', label: t('nav.measurements') },
+    { id: 'medication',   label: t('nav.medication') },
   ];
 
   const tabBtnClass = (active) =>
