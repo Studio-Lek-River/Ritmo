@@ -1,3 +1,11 @@
+# [0.23.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.22.0...v0.23.0) (2026-07-08)
+
+
+### Features
+
+* **bodymap:** add bodymap module type with view and mutators ([3f591f0](https://github.com/Studio-Lek-River/Ritmo/commit/3f591f03d91c0fd59e304b11f2a96b163c57750e))
+* **bodymap:** add injection utility and type-plumbing ([ae24061](https://github.com/Studio-Lek-River/Ritmo/commit/ae240611e61b4b62b091e6165c37e79136fe4d2d))
+
 # [0.22.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.21.0...v0.22.0) (2026-07-08)
 
 
