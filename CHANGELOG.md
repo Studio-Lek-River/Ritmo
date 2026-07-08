@@ -1,3 +1,12 @@
+## [0.19.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.19.0...v0.19.1) (2026-07-08)
+
+
+### Bug Fixes
+
+* **households:** race-safe token-inwisseling in redeem_invite ([1482596](https://github.com/Studio-Lek-River/Ritmo/commit/1482596564b12d176a887ae8f069818e2585625f))
+* **households:** sluit invite-RLS-gat via redeem_invite RPC (B1) ([9309c01](https://github.com/Studio-Lek-River/Ritmo/commit/9309c01f9211352de45a1805988cbe6e13408ffc))
+* **households:** trek EXECUTE op redeem_invite in voor anon ([112d03f](https://github.com/Studio-Lek-River/Ritmo/commit/112d03fa1ae7f6819b290b4f4380a3f77e654580))
+
 # [0.19.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.18.0...v0.19.0) (2026-06-23)
 
 
