@@ -66,35 +66,17 @@ export async function createInvite(householdId) {
 }
 
 export async function redeemInvite(token, displayName) {
-  const user = (await supabase.auth.getUser()).data.user;
-  if (!user) throw new Error('Not authenticated');
-
-  const { data: invite, error: inviteError } = await supabase
-    .from('household_invites')
-    .select('*')
-    .eq('token', token)
-    .single();
-  if (inviteError) throw new Error('invite_not_found');
-  if (invite.used_by) throw new Error('invite_used');
-  if (new Date(invite.expires_at) < new Date()) throw new Error('invite_expired');
-
-  const { error: updateError } = await supabase
-    .from('household_invites')
-    .update({ used_by: user.id, used_at: new Date().toISOString() })
-    .eq('token', token);
-  if (updateError) throw updateError;
-
-  const { error: memberError } = await supabase
-    .from('household_members')
-    .insert({
-      household_id: invite.household_id,
-      user_id: user.id,
-      role: 'member',
-      display_name: displayName,
-    });
-  if (memberError) throw memberError;
-
-  return invite.household_id;
+  const { data, error } = await supabase.rpc('redeem_invite', {
+    p_token: token,
+    p_display_name: displayName,
+  });
+  if (error) {
+    const code = ['invite_not_found', 'invite_used', 'invite_expired'].find((c) =>
+      error.message.includes(c),
+    );
+    throw new Error(code || error.message);
+  }
+  return data;
 }
 
 export async function leaveHousehold(householdId) {
