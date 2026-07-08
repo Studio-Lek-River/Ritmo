@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Plus, ChevronLeft, TrendingUp, TrendingDown, Minus,
   Pencil, X, Target, Activity, Settings, ChevronRight,
@@ -7,7 +7,7 @@ import LineChart from '../components/LineChart';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { ICON_OPTIONS } from '../utils/icons';
 import { getColorClasses, getColorHex } from '../utils/colors';
-import { useTranslation, getLocale, resolveModuleName } from '../i18n/useTranslation';
+import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 import {
   metricStats,
   sortedDesc,
@@ -457,7 +457,7 @@ function MetricDetail({ metric, color, theme, t, locale, onBack, onUpdateMetric 
   );
 }
 
-function PresetPickerModal({ theme, t, onClose, onPick }) {
+export function PresetPickerModal({ theme, t, onClose, onPick }) {
   const presets = getModulePresets(t).measurements || [];
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40">
@@ -502,7 +502,7 @@ function PresetPickerModal({ theme, t, onClose, onPick }) {
   );
 }
 
-function TargetPickerModal({ preset, modules, theme, t, onClose, onPick }) {
+export function TargetPickerModal({ preset, modules, theme, t, onClose, onPick }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40">
       <div className={`w-full max-w-sm ${theme.card} rounded-2xl shadow-xl`}>
@@ -557,98 +557,7 @@ function TargetPickerModal({ preset, modules, theme, t, onClose, onPick }) {
   );
 }
 
-function EmptyState({ theme, t, onCreate, onPickPreset }) {
-  return (
-    <div className={`${theme.card} rounded-2xl border ${theme.border} p-8 text-center`}>
-      <Activity className={`w-10 h-10 ${theme.textMuted} mx-auto mb-3 opacity-60`} />
-      <h3 className={`font-medium ${theme.text} mb-1`}>
-        {t('modules.measurements.emptyState.title')}
-      </h3>
-      <p className={`text-sm ${theme.textMuted} mb-4`}>
-        {t('modules.measurements.emptyState.description')}
-      </p>
-      <div className="flex flex-col items-center gap-2">
-        {onCreate && (
-          <button
-            type="button"
-            onClick={onCreate}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium"
-          >
-            <Plus className="w-4 h-4" />
-            {t('modules.measurements.createModule')}
-          </button>
-        )}
-        {onPickPreset && (
-          <button
-            type="button"
-            onClick={onPickPreset}
-            className={`inline-flex items-center gap-2 px-4 py-2 ${theme.cardSecondary} ${theme.hover} ${theme.textSecondary} rounded-lg text-sm font-medium`}
-          >
-            {t('modules.measurements.addPreset')}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ModuleList({ modules, onOpen, onCreate, onPickPreset, theme, t }) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className={`text-xl font-semibold ${theme.text}`}>{t('nav.measurements')}</h1>
-        <div className="flex gap-2">
-          {onPickPreset && (
-            <button
-              type="button"
-              onClick={onPickPreset}
-              className={`px-3 py-1.5 ${theme.cardSecondary} ${theme.hover} ${theme.textSecondary} rounded-lg text-sm font-medium`}
-            >
-              {t('modules.measurements.addPresetShort')}
-            </button>
-          )}
-          {onCreate && (
-            <button
-              type="button"
-              onClick={onCreate}
-              className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium"
-            >
-              {t('modules.measurements.addModuleShort')}
-            </button>
-          )}
-        </div>
-      </div>
-      <div className="space-y-3">
-        {modules.map(mod => {
-          const IconComp = ICON_OPTIONS[mod.icon] || Activity;
-          const colorCls = getColorClasses(mod.color);
-          const metricCount = (mod.metrics || []).length;
-          return (
-            <button
-              key={mod.id}
-              type="button"
-              onClick={() => onOpen(mod.id)}
-              className={`w-full flex items-center gap-3 ${theme.card} rounded-2xl border ${theme.border} p-4 hover:shadow-sm transition-all text-left`}
-            >
-              <div className={`w-10 h-10 rounded-xl ${colorCls.iconBg} flex items-center justify-center shrink-0`}>
-                <IconComp className={`w-5 h-5 ${colorCls.iconText}`} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`font-medium ${theme.text} truncate`}>{resolveModuleName(mod, t)}</p>
-                <p className={`text-xs ${theme.textMuted} mt-0.5`}>
-                  {t(metricCount === 1 ? 'modules.measurements.metricCountOne' : 'modules.measurements.metricCount', { count: metricCount })}
-                </p>
-              </div>
-              <ChevronRight className={`w-5 h-5 ${theme.textMuted}`} />
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function ModuleDetail({
+export function ModuleDetail({
   module: mod,
   canGoBack,
   onBack,
@@ -772,122 +681,3 @@ function ModuleDetail({
   );
 }
 
-export default function MeasurementsView({
-  modules,
-  onUpdateModule,
-  onCreate,
-  onCreateFromPreset,
-  onEditModule,
-  theme,
-}) {
-  const { t } = useTranslation();
-  const locale = getLocale();
-  const [openModuleId, setOpenModuleId] = useState(null);
-  const [openMetricId, setOpenMetricId] = useState(null);
-  const [presetPickerOpen, setPresetPickerOpen] = useState(false);
-  const [pendingPreset, setPendingPreset] = useState(null);
-
-  useEffect(() => {
-    if (openModuleId && !modules.some(m => m.id === openModuleId)) {
-      setOpenModuleId(null);
-    }
-  }, [modules, openModuleId]);
-
-  useEffect(() => {
-    if (openMetricId) {
-      const mod = openModuleId ? modules.find(m => m.id === openModuleId) : (modules.length === 1 ? modules[0] : null);
-      const exists = mod && (mod.metrics || []).some(m => m.id === openMetricId);
-      if (!exists) setOpenMetricId(null);
-    }
-  }, [modules, openModuleId, openMetricId]);
-
-  const handlePresetPick = (preset) => {
-    setPresetPickerOpen(false);
-    if (modules.length === 0) {
-      onCreateFromPreset(preset, null);
-      return;
-    }
-    setPendingPreset(preset);
-  };
-
-  const handleTargetPick = (targetModuleId) => {
-    if (!pendingPreset) return;
-    onCreateFromPreset(pendingPreset, targetModuleId);
-    setPendingPreset(null);
-    if (targetModuleId) setOpenModuleId(targetModuleId);
-  };
-
-  if (modules.length === 0) {
-    return (
-      <>
-        <EmptyState
-          theme={theme}
-          t={t}
-          onCreate={onCreate}
-          onPickPreset={() => setPresetPickerOpen(true)}
-        />
-        {presetPickerOpen && (
-          <PresetPickerModal
-            theme={theme}
-            t={t}
-            onClose={() => setPresetPickerOpen(false)}
-            onPick={handlePresetPick}
-          />
-        )}
-      </>
-    );
-  }
-
-  const activeModule = openModuleId
-    ? modules.find(m => m.id === openModuleId)
-    : (modules.length === 1 ? modules[0] : null);
-
-  return (
-    <>
-      {activeModule ? (
-        <ModuleDetail
-          module={activeModule}
-          canGoBack={modules.length > 1}
-          onBack={() => { setOpenModuleId(null); setOpenMetricId(null); }}
-          onUpdateModule={onUpdateModule}
-          onEditModule={onEditModule}
-          onOpenPresetPicker={() => setPresetPickerOpen(true)}
-          openMetricId={openMetricId}
-          setOpenMetricId={setOpenMetricId}
-          theme={theme}
-          t={t}
-          locale={locale}
-        />
-      ) : (
-        <ModuleList
-          modules={modules}
-          onOpen={(id) => { setOpenModuleId(id); setOpenMetricId(null); }}
-          onCreate={onCreate}
-          onPickPreset={() => setPresetPickerOpen(true)}
-          theme={theme}
-          t={t}
-        />
-      )}
-
-      {presetPickerOpen && (
-        <PresetPickerModal
-          theme={theme}
-          t={t}
-          onClose={() => setPresetPickerOpen(false)}
-          onPick={handlePresetPick}
-        />
-      )}
-
-      {pendingPreset && (
-        <TargetPickerModal
-          preset={pendingPreset}
-          modules={modules}
-          theme={theme}
-          t={t}
-          onClose={() => setPendingPreset(null)}
-          onPick={handleTargetPick}
-        />
-      )}
-    </>
-  );
-}

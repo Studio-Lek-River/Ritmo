@@ -1,15 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { Pencil, Syringe, Trash2 } from 'lucide-react';
 import { getColorHex } from '../utils/colors';
 import {
   INJECTION_ZONES,
   suggestNextZone,
   zoneLastUse,
-  injectableMeds,
 } from '../utils/bodymap';
 import { parseDateKey, formatRelativeDate } from '../utils/dates';
 import ConfirmDialog from '../components/ConfirmDialog';
-import EmptyState from '../components/EmptyState';
 import { useToast } from '../hooks/useToast';
 import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 
@@ -106,84 +104,48 @@ function BodyMapSvg({ log, accentHex, suggestedZoneId, disabled, onZoneClick, t 
   );
 }
 
-export default function BodymapView({
-  modules,
+// Zelfstandige kaart voor één priklocatie-module. `meds` zijn de injecteerbare
+// medicijnen (via injectableMeds over alle modules) die de aanroeper meegeeft.
+export function BodymapModuleCard({
+  module: mod,
+  meds,
   iconOptions,
   onLogInjection,
   onRemoveInjection,
-  onCreate,
   onEditModule,
   theme,
 }) {
   const { t } = useTranslation();
   const { showToast } = useToast();
 
-  const bodymapModules = useMemo(
-    () => modules.filter((m) => m.type === 'bodymap' && m.enabled),
-    [modules]
-  );
-  const meds = useMemo(() => injectableMeds(modules), [modules]);
-
-  const [selectedMedByModule, setSelectedMedByModule] = useState({});
-  const [confirmRemove, setConfirmRemove] = useState(null); // { moduleId, index, event }
-
-  if (bodymapModules.length === 0) {
-    return (
-      <EmptyState
-        icon={Syringe}
-        title={t('bodymap.emptyTitle')}
-        description={t('bodymap.emptyDesc')}
-        buttonLabel={onCreate ? t('bodymap.emptyButton') : null}
-        onClick={onCreate}
-        theme={theme}
-      />
-    );
-  }
+  const [selectedMedId, setSelectedMedId] = useState(null);
+  const [confirmRemove, setConfirmRemove] = useState(null); // { index, event }
 
   const handleRemoveConfirmed = () => {
     if (!confirmRemove) return;
-    const { moduleId, index, event } = confirmRemove;
+    const { index, event } = confirmRemove;
     setConfirmRemove(null);
-    onRemoveInjection?.(moduleId, index);
+    onRemoveInjection?.(mod.id, index);
     showToast({
       message: t('bodymap.injectionRemoved'),
       actionLabel: t('common.undo'),
       onAction: () => {
-        onLogInjection?.(moduleId, event);
+        onLogInjection?.(mod.id, event);
       },
     });
   };
 
+  const Icon = iconOptions?.[mod.icon] || Syringe;
+  const log = mod.log || [];
+  const activeMedId = selectedMedId ?? meds[0]?.id ?? null;
+  const selectedMed = meds.find((med) => med.id === activeMedId) || null;
+  const accentHex = getColorHex(selectedMed?.color);
+  const suggestedZoneId = suggestNextZone(log);
+  const canInject = meds.length > 0 && !!selectedMed;
+
   return (
-    <div className="slide-in space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className={`text-base font-semibold ${theme.textSecondary}`}>
-          {t('bodymap.title')}
-        </h2>
-        {onCreate && (
-          <button
-            type="button"
-            onClick={onCreate}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition"
-            aria-label={t('bodymap.newModuleAria')}
-          >
-            <Syringe className="w-4 h-4" />
-            {t('bodymap.newModuleLabel')}
-          </button>
-        )}
-      </div>
-
-      {bodymapModules.map((mod) => {
-        const Icon = iconOptions?.[mod.icon] || Syringe;
-        const log = mod.log || [];
-        const selectedMedId = selectedMedByModule[mod.id] ?? meds[0]?.id ?? null;
-        const selectedMed = meds.find((med) => med.id === selectedMedId) || null;
-        const accentHex = getColorHex(selectedMed?.color);
-        const suggestedZoneId = suggestNextZone(log);
-        const canInject = meds.length > 0 && !!selectedMed;
-
-        return (
-          <div key={mod.id} className={`${theme.card} rounded-2xl shadow-sm overflow-hidden`}>
+    <>
+      <div className={`${theme.card} rounded-2xl shadow-sm overflow-hidden`}>
             <div className="flex items-center gap-3 p-4 pb-3">
               <div
                 className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white"
@@ -218,15 +180,15 @@ export default function BodymapView({
                     <button
                       key={med.id}
                       type="button"
-                      onClick={() => setSelectedMedByModule((prev) => ({ ...prev, [mod.id]: med.id }))}
+                      onClick={() => setSelectedMedId(med.id)}
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                        selectedMedId === med.id ? 'text-white' : `${theme.cardSecondary} ${theme.textMuted}`
+                        activeMedId === med.id ? 'text-white' : `${theme.cardSecondary} ${theme.textMuted}`
                       }`}
-                      style={selectedMedId === med.id ? { backgroundColor: getColorHex(med.color) } : undefined}
+                      style={activeMedId === med.id ? { backgroundColor: getColorHex(med.color) } : undefined}
                     >
                       <span
                         className="w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: selectedMedId === med.id ? '#fff' : getColorHex(med.color) }}
+                        style={{ backgroundColor: activeMedId === med.id ? '#fff' : getColorHex(med.color) }}
                         aria-hidden="true"
                       />
                       {med.name}
@@ -285,7 +247,7 @@ export default function BodymapView({
                         </div>
                         <button
                           type="button"
-                          onClick={() => setConfirmRemove({ moduleId: mod.id, index, event })}
+                          onClick={() => setConfirmRemove({ index, event })}
                           className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition flex-shrink-0"
                           aria-label={t('bodymap.removeInjection')}
                         >
@@ -298,8 +260,6 @@ export default function BodymapView({
               </div>
             )}
           </div>
-        );
-      })}
 
       <ConfirmDialog
         open={!!confirmRemove}
@@ -311,6 +271,6 @@ export default function BodymapView({
         onCancel={() => setConfirmRemove(null)}
         theme={theme}
       />
-    </div>
+    </>
   );
 }

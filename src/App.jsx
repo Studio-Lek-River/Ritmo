@@ -12,9 +12,7 @@ import CounterModule from './modules/CounterModule';
 import SleepModule from './modules/SleepModule';
 import ProjectsView from './views/ProjectsView';
 import CollectionsView from './views/CollectionsView';
-import MeasurementsView from './views/MeasurementsView';
-import MedicationView from './views/MedicationView';
-import BodymapView from './views/BodymapView';
+import HealthView from './views/HealthView';
 import HouseholdView from './views/HouseholdView';
 import TodayView from './views/TodayView';
 import InsightView from './views/InsightView';
@@ -747,6 +745,17 @@ export default function Ritmo() {
     });
   };
 
+  const openBlankModuleEditor = () => {
+    setEditingModule({
+      id: `mod_${Date.now()}`,
+      name: '',
+      icon: 'Star',
+      color: 'blue',
+      enabled: true,
+      countInStreak: false,
+    });
+  };
+
   const openCollectionCreator = () => {
     setEditingModule({
       id: `mod_${Date.now()}`,
@@ -1194,38 +1203,18 @@ export default function Ritmo() {
         )}
 
         {view === 'measurements' && (
-          <MeasurementsView
-            modules={modules.filter(m => m.enabled && m.type === 'measurements')}
-            onUpdateModule={updateMeasurementsModule}
-            onCreate={() => openModuleEditor('measurements')}
-            onCreateFromPreset={createMeasurementsFromPreset}
-            onEditModule={(mod) => setEditingModule(mod)}
-            theme={theme}
-          />
-        )}
-
-        {view === 'medication' && (
-          <MedicationView
+          <HealthView
             modules={modules}
-            iconOptions={ICON_OPTIONS}
+            onUpdateMeasurementsModule={updateMeasurementsModule}
+            onCreateFromPreset={createMeasurementsFromPreset}
+            onAddModule={openBlankModuleEditor}
+            onEditModule={(mod) => setEditingModule(mod)}
             onAddMed={addMed}
             onUpdateMed={updateMed}
             onDeleteMed={deleteMed}
             onOrderMed={orderMed}
-            onCreate={() => openModuleEditor('medication')}
-            onEditModule={(mod) => setEditingModule(mod)}
-            theme={theme}
-          />
-        )}
-
-        {view === 'bodymap' && (
-          <BodymapView
-            modules={modules}
-            iconOptions={ICON_OPTIONS}
             onLogInjection={logInjectionEvent}
             onRemoveInjection={removeInjectionEvent}
-            onCreate={() => openModuleEditor('bodymap')}
-            onEditModule={(mod) => setEditingModule(mod)}
             theme={theme}
           />
         )}
@@ -2104,9 +2093,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                 {[
                   { key: 'today', types: ['checklist', 'choice', 'counter', 'tasks', 'sleep', 'projects'] },
                   { key: 'collections', types: ['collection'] },
-                  { key: 'measurements', types: ['measurements'] },
-                  { key: 'medication', types: ['medication'] },
-                  { key: 'bodymap', types: ['bodymap'] },
+                  { key: 'measurements', types: ['measurements', 'medication', 'bodymap'] },
                 ].map(group => {
                   const groupMods = modules.filter(m => group.types.includes(m.type));
                   return (
@@ -2168,14 +2155,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
 
             {!reorderMode && (
               <button
-                onClick={() => setEditingModule({
-                  id: `mod_${Date.now()}`,
-                  name: '',
-                  icon: 'Star',
-                  color: 'blue',
-                  enabled: true,
-                  countInStreak: false,
-                })}
+                onClick={openBlankModuleEditor}
                 className="w-full py-3 border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-sm font-medium text-slate-500 hover:text-blue-500 transition flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4" />
