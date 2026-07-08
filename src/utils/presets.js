@@ -39,6 +39,12 @@ function buildPresets(t) {
         allowNotes: true,
         items: t('presets.meals.items'),
       },
+      {
+        nameKey: 'presets.bijwerkingen.name',
+        icon: 'HeartPulse',
+        color: 'red',
+        items: t('presets.bijwerkingen.items'),
+      },
     ],
     choice: [
       {
@@ -95,6 +101,16 @@ function buildPresets(t) {
         presets: [1000, 2500],
         categoriesEnabled: false,
         categories: [],
+      },
+      {
+        nameKey: 'presets.beweging.name',
+        icon: 'Activity',
+        color: 'green',
+        unit: 'minutes',
+        dailyGoal: 30,
+        presets: [10, 20, 30],
+        categoriesEnabled: true,
+        categories: t('presets.beweging.categories'),
       },
     ],
     tasks: [
