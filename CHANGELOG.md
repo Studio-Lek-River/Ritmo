@@ -1,3 +1,16 @@
+# [0.25.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.24.0...v0.25.0) (2026-07-08)
+
+
+### Bug Fixes
+
+* **presets:** gebruik palet-kleur 'red' voor Bijwerkingen-preset i.p.v. legacy 'rose' ([1b58101](https://github.com/Studio-Lek-River/Ritmo/commit/1b58101e3277c7520bc050bc4b7f0c5970f73135))
+
+
+### Features
+
+* **presets:** voeg Beweging-health-preset (counter, minuten + categorieen) toe ([f520332](https://github.com/Studio-Lek-River/Ritmo/commit/f520332e84315899bfeb2173aea0f134de90dd50))
+* **presets:** voeg Bijwerkingen-health-preset (checklist, dagelijkse bijwerkingen) toe ([02ffdf4](https://github.com/Studio-Lek-River/Ritmo/commit/02ffdf45e027e4ad6c0ae4167226857b22170ea1))
+
 # [0.24.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.23.0...v0.24.0) (2026-07-08)
 
 
