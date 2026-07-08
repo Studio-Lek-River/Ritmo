@@ -34,6 +34,7 @@ Deelbare huishoudens, membership, invite-tokens. Klein openstaand, optioneel: ho
 
 ### Fase 2 - Hygiëne plus Koppelingen
 - **S01** - DB-schema plus RLS in version control (deze slice).
+- **S01b** - RLS-fix household_invites: invite-inwisselen via redeem_invite RPC.
 - **S02** - Connections-infra plus genormaliseerd items-model (connections-tabel, server-side tokens via `api/`, normalisatie-laag).
 - **S03** - Outlook lezen (Microsoft Graph, persoonlijk account, authority `consumers`).
 - **S04** - Trello lezen (meerdere accounts en borden).
