@@ -1,3 +1,13 @@
+# [0.38.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.37.0...v0.38.0) (2026-07-09)
+
+
+### Features
+
+* **i18n:** Nederlandse naam Planner en labels voor de Planner-weergave ([58dbddf](https://github.com/Studio-Lek-River/Ritmo/commit/58dbddf605c075631807a1f068403843c01c543b))
+* **productivity:** gedeelde takenlijst met toevoeg-veld in de Planner ([6ad8109](https://github.com/Studio-Lek-River/Ritmo/commit/6ad810972d377a3d4797de92839b36e640fef3b6))
+* **productivity:** toon de dag als agenda per uur ([7f6b415](https://github.com/Studio-Lek-River/Ritmo/commit/7f6b415ed58cbfa9724f6785bc80f192bc161ef9))
+* **productivity:** toon Kanban altijd met drie kolommen en kaart-toevoegen ([92a49b4](https://github.com/Studio-Lek-River/Ritmo/commit/92a49b40b325edb961b6afb4f29b49c438eeb0e6))
+
 # [0.37.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.36.0...v0.37.0) (2026-07-09)
 
 
