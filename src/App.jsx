@@ -33,6 +33,7 @@ import AuthSection from './components/auth/AuthSection';
 import SyncStatusRow from './components/SyncStatusRow';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
+import TimeInput from './components/TimeInput';
 import ChecklistModule from './modules/ChecklistModule';
 import CelebrationOverlay from './components/CelebrationOverlay';
 import ConfirmDialog from './components/ConfirmDialog';
@@ -100,6 +101,7 @@ export default function Ritmo() {
   const [customTasks, setCustomTasks] = useState([]);
   const [recurringTasks, setRecurringTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
+  const [newTaskTime, setNewTaskTime] = useState('');
   const [streakSettings, setStreakSettings] = useState({});
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [soundVolume, setSoundVolume] = useState(80);
@@ -328,7 +330,8 @@ export default function Ritmo() {
             id: genId('task'),
             recurringId: rt.id,
             text: rt.text,
-            done: false
+            done: false,
+            ...(rt.time ? { time: rt.time } : {}),
           }]);
         }
       }
@@ -916,8 +919,14 @@ export default function Ritmo() {
 
   const addTask = () => {
     if (newTask.trim()) {
-      setCustomTasks(prev => [...prev, { id: Date.now(), text: newTask.trim(), done: false }]);
+      setCustomTasks(prev => [...prev, {
+        id: Date.now(),
+        text: newTask.trim(),
+        done: false,
+        ...(newTaskTime ? { time: newTaskTime } : {}),
+      }]);
       setNewTask('');
+      setNewTaskTime('');
     }
   };
 
@@ -930,6 +939,10 @@ export default function Ritmo() {
 
   const deleteTask = (id) => {
     setCustomTasks(prev => prev.filter(t => t.id !== id));
+  };
+
+  const setTaskTime = (id, time) => {
+    setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, time: time || undefined } : t));
   };
 
   // Streak calculation. moduleData is the source of truth for the active
@@ -1139,9 +1152,12 @@ export default function Ritmo() {
         customTasks={customTasks}
         newTask={newTask}
         setNewTask={setNewTask}
+        newTaskTime={newTaskTime}
+        setNewTaskTime={setNewTaskTime}
         addTask={addTask}
         toggleTask={toggleTask}
         deleteTask={deleteTask}
+        setTaskTime={setTaskTime}
         theme={theme}
         darkMode={darkMode}
       />
@@ -1453,7 +1469,7 @@ export default function Ritmo() {
 // =============================================
 // MODULE RENDERER
 // =============================================
-function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle, onChecklistIncrement, onChecklistNote, onChoiceToggle, onChoiceOptionSet, onEdit, weekDates, history, customTasks, newTask, setNewTask, addTask, toggleTask, deleteTask, theme, darkMode }) {
+function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle, onChecklistIncrement, onChecklistNote, onChoiceToggle, onChoiceOptionSet, onEdit, weekDates, history, customTasks, newTask, setNewTask, newTaskTime, setNewTaskTime, addTask, toggleTask, deleteTask, setTaskTime, theme, darkMode }) {
   const { t } = useTranslation();
   const modName = resolveModuleName(mod, t);
   const editButton = onEdit ? (
@@ -1552,6 +1568,7 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
               placeholder={t('modules.addTaskPlaceholder')}
               className={`flex-1 px-3 py-2 ${theme.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
             />
+            <TimeInput value={newTaskTime} onChange={setNewTaskTime} theme={theme} />
             <button
               onClick={addTask}
               className={`px-3 py-2 bg-${mod.color}-500 hover:bg-${mod.color}-600 text-white rounded-lg transition`}
@@ -1582,6 +1599,11 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
                 <span className={`flex-1 text-sm ${task.done ? `line-through ${theme.textMuted}` : theme.textSecondary}`}>
                   {task.text}
                 </span>
+                {editable ? (
+                  <TimeInput value={task.time} onChange={(v) => setTaskTime(task.id, v)} theme={theme} className="w-24" />
+                ) : task.time ? (
+                  <span className={`text-xs ${theme.textMuted}`}>{task.time}</span>
+                ) : null}
                 {editable && (
                   <button
                     onClick={() => deleteTask(task.id)}
@@ -2747,6 +2769,18 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
             </div>
           </div>
 
+          {(editing.type === 'choice' || editing.type === 'counter') && (
+            <div>
+              <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('productivity.time')}</label>
+              <TimeInput
+                value={editing.time}
+                onChange={(v) => update('time', v || undefined)}
+                theme={theme}
+                className="w-full"
+              />
+            </div>
+          )}
+
           {editing.type === 'checklist' && (
             <>
               <div className={`pt-4 border-t ${theme.border}`}>
@@ -2784,7 +2818,9 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
                 <div className="space-y-2 mb-2">
                   {(editing.items || []).map(item => {
                     const isExpanded = expandedItemId === item.id;
-                    const showSettingsBtn = editing.allowDescriptions || editing.allowTargets;
+                    // Altijd zichtbaar: naast de optionele beschrijving/sets is er
+                    // per item ook een optioneel tijdstip (voor de Dag-view).
+                    const showSettingsBtn = true;
                     return (
                       <div key={item.id} className={`${theme.cardSecondary} rounded-lg`}>
                         <div className="flex items-center gap-2 p-2">
@@ -2842,6 +2878,14 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
                                 />
                               </div>
                             )}
+                            <div>
+                              <label className={`text-xs font-medium ${theme.textMuted} mb-1 block`}>{t('productivity.time')}</label>
+                              <TimeInput
+                                value={item.time}
+                                onChange={(v) => updateItem(item.id, { time: v || undefined })}
+                                theme={theme}
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
@@ -3702,6 +3746,7 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
   const { t } = useTranslation();
   const [newRecurringText, setNewRecurringText] = useState('');
   const [newRecurringDays, setNewRecurringDays] = useState([]);
+  const [newRecurringTime, setNewRecurringTime] = useState('');
 
   const toggleDay = (day) => {
     setNewRecurringDays(prev =>
@@ -3714,15 +3759,21 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
       setRecurringTasks(prev => [...prev, {
         id: Date.now(),
         text: newRecurringText.trim(),
-        days: newRecurringDays
+        days: newRecurringDays,
+        ...(newRecurringTime ? { time: newRecurringTime } : {}),
       }]);
       setNewRecurringText('');
       setNewRecurringDays([]);
+      setNewRecurringTime('');
     }
   };
 
   const removeRecurring = (id) => {
     setRecurringTasks(prev => prev.filter(t => t.id !== id));
+  };
+
+  const setRecurringTime = (id, time) => {
+    setRecurringTasks(prev => prev.map(rt => rt.id === id ? { ...rt, time: time || undefined } : rt));
   };
 
   return (
@@ -3742,6 +3793,7 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
                     {rt.days.map(d => dayNames[d]).join(', ')}
                   </div>
                 </div>
+                <TimeInput value={rt.time} onChange={(v) => setRecurringTime(rt.id, v)} theme={theme} className="w-24" />
                 <button onClick={() => removeRecurring(rt.id)} className="text-slate-400 hover:text-red-500">
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -3751,13 +3803,16 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
         </div>
         
         <div className="space-y-2">
-          <input
-            type="text"
-            value={newRecurringText}
-            onChange={(e) => setNewRecurringText(e.target.value)}
-            placeholder={t('settings.recurringExamplePlaceholder')}
-            className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm`}
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newRecurringText}
+              onChange={(e) => setNewRecurringText(e.target.value)}
+              placeholder={t('settings.recurringExamplePlaceholder')}
+              className={`flex-1 px-3 py-2 ${theme.input} rounded-lg text-sm`}
+            />
+            <TimeInput value={newRecurringTime} onChange={setNewRecurringTime} theme={theme} />
+          </div>
           <div className="flex gap-1">
             {dayNames.map((day, i) => (
               <button
