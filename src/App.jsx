@@ -314,6 +314,14 @@ export default function Ritmo() {
     if (appMode === 'health' && !allowed.includes(view)) setView('today');
   }, [appMode, view]);
 
+  // De Productivity Suite Dag-view toont/schrijft altijd de échte vandaag,
+  // nooit de dag die de gebruiker via DayNavigator op Vandaag aan het bekijken
+  // was (activeDate is globale state en reset niet vanzelf bij view-wissel).
+  // Guard voorkomt een render-loop: alleen setten als het nog niet vandaag is.
+  useEffect(() => {
+    if (view === 'productivity' && activeDateKey !== todayKey) setActiveDate(new Date());
+  }, [view, activeDateKey, todayKey]);
+
   // Recurring tasks. Only inject into today's task list, never into a
   // historical day the user is just viewing.
   useEffect(() => {
