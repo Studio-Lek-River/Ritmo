@@ -1131,6 +1131,17 @@ export default {
     intro: 'Ritmo is your day, your way. We will walk through a few areas together. For each one you can pick: ready-made examples, your own list, or skip it entirely.',
     start: 'Get started',
     finish: 'Start Ritmo',
+    profile: {
+      title: 'Choose your starting profile',
+      full: {
+        title: 'Full Ritmo',
+        description: 'All areas: modules, projects, collections and household. You put together what you track yourself.',
+      },
+      health: {
+        title: 'Ritmo Health',
+        description: 'Start right away with a fixed set of health modules: measurements, medication, injection site, injection schedule, movement and side effects.',
+      },
+    },
     skipAll: 'Skip onboarding',
     progress: 'Step {current} of {total}',
     tabs: {

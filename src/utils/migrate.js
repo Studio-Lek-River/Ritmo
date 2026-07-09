@@ -191,6 +191,7 @@ export function migrateSettings(settings) {
     out.language = 'auto';
   }
   if (out.appMode === undefined) out.appMode = 'standard';
+  if (out.onboardingProfile === undefined) out.onboardingProfile = 'full';
   return out;
 }
 

@@ -4,7 +4,7 @@ import WelcomeStep from '../components/onboarding/WelcomeStep';
 import AreaStep from '../components/onboarding/AreaStep';
 import DoneStep from '../components/onboarding/DoneStep';
 import { useTranslation } from '../i18n/useTranslation';
-import { buildOnboardingResult } from '../utils/onboardingCommit';
+import { buildOnboardingResult, buildHealthProfileModules } from '../utils/onboardingCommit';
 
 const TOTAL_STEPS = 6;
 
@@ -35,12 +35,11 @@ export default function OnboardingView({ onComplete, theme, darkMode }) {
   const skipAll = () => setStep(TOTAL_STEPS - 1);
 
   // Schrijft household:* direct via window.storage; settings.modules wordt
-  // door App.jsx's save-effect geschreven na onComplete(nextModules).
-  const handleFinish = async () => {
+  // door App.jsx's save-effect geschreven na onComplete(nextModules, profile).
+  const commitAndComplete = async (profile, modules, chores = [], groceries = []) => {
     if (committing) return;
     setCommitting(true);
     try {
-      const { modules, chores, groceries } = buildOnboardingResult(areaState, t);
       const writes = [];
       if (chores.length > 0) {
         writes.push(window.storage.set(STORAGE_KEYS.HOUSEHOLD_CHORES, JSON.stringify(chores)));
@@ -52,17 +51,32 @@ export default function OnboardingView({ onComplete, theme, darkMode }) {
         ));
       }
       if (writes.length > 0) await Promise.all(writes);
-      onComplete(modules);
+      onComplete(modules, profile);
     } finally {
       setCommitting(false);
     }
+  };
+
+  const handleFinish = () => {
+    const { modules, chores, groceries } = buildOnboardingResult(areaState, t);
+    return commitAndComplete('full', modules, chores, groceries);
+  };
+
+  // 'health': slaat de per-area stappen over en commit direct de vaste
+  // health-startpreset (geen household chores/groceries). 'full': ongewijzigd,
+  // ga gewoon door naar de eerste area-stap.
+  const handleWelcomeStart = (profile) => {
+    if (profile === 'health') {
+      return commitAndComplete('health', buildHealthProfileModules(t));
+    }
+    goNext();
   };
 
   return (
     <div className={`min-h-screen ${theme.bg} p-4 flex items-center justify-center`}>
       <div className={`${theme.card} rounded-2xl p-6 shadow-lg max-w-lg w-full`}>
         {step === 0 && (
-          <WelcomeStep onStart={goNext} theme={theme} darkMode={darkMode} />
+          <WelcomeStep onStart={handleWelcomeStart} theme={theme} darkMode={darkMode} />
         )}
 
         {AREAS.map(({ id, step: areaStep }) => step === areaStep && (

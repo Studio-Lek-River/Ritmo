@@ -1140,6 +1140,17 @@ export default {
     intro: 'Ritmo is jouw dag, op jouw manier. We lopen samen door een paar onderdelen. Voor elk gebied kun je kiezen: kant-en-klare voorbeelden, je eigen invulling, of helemaal overslaan.',
     start: 'Aan de slag',
     finish: 'Start Ritmo',
+    profile: {
+      title: 'Kies je startprofiel',
+      full: {
+        title: 'Volledig Ritmo',
+        description: 'Alle onderdelen: modules, projecten, collecties en huishouden. Je stelt zelf samen wat je bijhoudt.',
+      },
+      health: {
+        title: 'Ritmo Health',
+        description: 'Direct van start met een vaste set gezondheidsmodules: metingen, medicatie, priklocatie, prikschema, beweging en bijwerkingen.',
+      },
+    },
     skipAll: 'Onboarding overslaan',
     progress: 'Stap {current} van {total}',
     tabs: {

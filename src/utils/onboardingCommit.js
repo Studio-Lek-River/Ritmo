@@ -13,6 +13,7 @@ import { createSubject } from './createSubject';
 import { createItem } from './collections';
 import { emptyDefaultsForType } from './emptyModule';
 import { getOnboardingPresets } from './onboardingPresets';
+import { getModulePresets } from './presets';
 
 function stripDecorations(p) {
   const { __key, __area, __expandable, __defaultLabels, __itemLabel, key, ...rest } = p;
@@ -153,4 +154,53 @@ export function buildOnboardingResult(areaState, t) {
   }
 
   return { modules, chores, groceries };
+}
+
+// Types zonder onboarding-preset: minimale module met naam via i18n, icoon en
+// kleur (zelfde keuzes als de bestaande health-seeding in App.jsx's
+// setupWeightLossBundle), plus emptyDefaultsForType(type).
+const HEALTH_MANUAL_MODULES = [
+  { type: 'medication',        nameKey: 'modules.types.medication',        icon: 'Cross',        color: 'blue' },
+  { type: 'bodymap',           nameKey: 'modules.types.bodymap',           icon: 'Target',        color: 'purple' },
+  { type: 'injectionSchedule', nameKey: 'modules.types.injectionSchedule', icon: 'CalendarClock', color: 'indigo' },
+];
+
+// Bouwt de vaste Ritmo-Health-startpreset: measurements-health, medication,
+// bodymap, injectionSchedule, beweging, bijwerkingen — allemaal `enabled`.
+// Hergebruikt hetzelfde bouwpad als de rest van deze module: bestaande
+// presets via moduleFromPreset (die op zijn beurt applyModulePreset gebruikt),
+// en emptyDefaultsForType voor de types zonder onboarding-preset.
+export function buildHealthProfileModules(t) {
+  const presets = getModulePresets(t);
+  const modules = [];
+
+  const measurementsHealth = (presets.measurements || []).find(p => p.nameKey === 'presets.health.name');
+  if (measurementsHealth) {
+    modules.push(moduleFromPreset({ ...measurementsHealth, type: 'measurements' }, []));
+  }
+
+  for (const { type, nameKey, icon, color } of HEALTH_MANUAL_MODULES) {
+    modules.push({
+      id: genId(type),
+      name: t(nameKey),
+      type,
+      icon,
+      color,
+      enabled: true,
+      countInStreak: false,
+      ...emptyDefaultsForType(type),
+    });
+  }
+
+  const beweging = (presets.counter || []).find(p => p.nameKey === 'presets.beweging.name');
+  if (beweging) {
+    modules.push(moduleFromPreset({ ...beweging, type: 'counter' }, []));
+  }
+
+  const bijwerkingen = (presets.checklist || []).find(p => p.nameKey === 'presets.bijwerkingen.name');
+  if (bijwerkingen) {
+    modules.push(moduleFromPreset({ ...bijwerkingen, type: 'checklist' }, bijwerkingen.items || []));
+  }
+
+  return modules;
 }

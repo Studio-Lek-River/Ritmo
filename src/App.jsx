@@ -102,6 +102,7 @@ export default function Ritmo() {
   const [soundVolume, setSoundVolume] = useState(80);
   const [goldenBorderEnabled, setGoldenBorderEnabled] = useState(true);
   const [appMode, setAppMode] = useState('standard');
+  const [onboardingProfile, setOnboardingProfile] = useState('full');
   const [showReflectionOnToday, setShowReflectionOnToday] = useState(false);
   const [hasUsedSwipe, setHasUsedSwipe] = useState(false);
   const [hasDismissedInstallBanner, setHasDismissedInstallBanner] = useState(false);
@@ -149,6 +150,7 @@ export default function Ritmo() {
         if (settings.soundVolume !== undefined) setSoundVolume(settings.soundVolume);
         if (settings.goldenBorderEnabled !== undefined) setGoldenBorderEnabled(settings.goldenBorderEnabled);
         if (settings.appMode !== undefined) setAppMode(settings.appMode);
+        if (settings.onboardingProfile !== undefined) setOnboardingProfile(settings.onboardingProfile);
         if (settings.showReflectionOnToday !== undefined) setShowReflectionOnToday(settings.showReflectionOnToday);
         if (settings.hasUsedSwipe !== undefined) setHasUsedSwipe(settings.hasUsedSwipe);
         if (settings.hasDismissedInstallBanner !== undefined) setHasDismissedInstallBanner(settings.hasDismissedInstallBanner);
@@ -285,6 +287,7 @@ export default function Ritmo() {
           soundVolume,
           goldenBorderEnabled,
           appMode,
+          onboardingProfile,
           showReflectionOnToday,
           hasUsedSwipe,
           hasDismissedInstallBanner,
@@ -295,7 +298,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, showReflectionOnToday, hasUsedSwipe, hasDismissedInstallBanner, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, onboardingProfile, showReflectionOnToday, hasUsedSwipe, hasDismissedInstallBanner, modules, hasOnboarded, languageSetting, loading]);
 
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
@@ -1043,9 +1046,11 @@ export default function Ritmo() {
   }
 
   if (!hasOnboarded) {
-    return <OnboardingView onComplete={(selectedModules) => {
+    return <OnboardingView onComplete={(selectedModules, profile) => {
       setModules(selectedModules);
       setHasOnboarded(true);
+      setOnboardingProfile(profile);
+      if (profile === 'health') setAppMode('health');
     }} theme={theme} darkMode={darkMode} />;
   }
 
