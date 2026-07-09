@@ -17,6 +17,7 @@ import { MedFormModal } from './views/MedicationView';
 import HouseholdView from './views/HouseholdView';
 import TodayView from './views/TodayView';
 import InsightView from './views/InsightView';
+import ProductivitySuiteView from './views/ProductivitySuiteView';
 import OnboardingView from './views/OnboardingView';
 import SplashScreen from './components/SplashScreen';
 import RitmoLogo from './components/RitmoLogo';
@@ -1329,6 +1330,19 @@ export default function Ritmo() {
             theme={theme}
             darkMode={darkMode}
             t={t}
+          />
+        )}
+
+        {view === 'productivity' && (
+          <ProductivitySuiteView
+            modules={modules}
+            moduleData={moduleData}
+            customTasks={customTasks}
+            onChecklistToggle={toggleChecklistItem}
+            onChoiceOptionSet={setChoiceOption}
+            onToggleTask={toggleTask}
+            setView={setView}
+            theme={theme}
           />
         )}
 

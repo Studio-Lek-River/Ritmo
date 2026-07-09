@@ -28,6 +28,7 @@ export function getNavGroups(t, appMode) {
     [
       { id: 'projects',     label: t('nav.projects') },
       { id: 'collections',  label: t('nav.collections') },
+      { id: 'productivity', label: t('nav.productivity') },
     ],
   ];
 }
