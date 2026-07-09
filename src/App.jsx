@@ -69,6 +69,8 @@ import {
   canCountInStreak,
 } from './utils/dayProgress';
 import { getColorHex, COLOR_OPTIONS } from './utils/colors';
+import ChecklistInsightCard from './components/insight/ChecklistInsightCard';
+import { buildDaysWithActive } from './utils/insights';
 import CounterDisplay, { DISPLAY_STYLE_KEYS } from './components/CounterDisplay';
 import { DEFAULT_MODULES, instantiateDefaults } from './utils/defaultModules';
 import { playSound } from './utils/sound';
@@ -1740,12 +1742,16 @@ function WeekView({ modules, history, today, activeDateKey, moduleData, activeWe
           let value = '';
 
           if (mod.type === 'checklist') {
-            const fullDays = weekDates.filter(d => {
-              const data = d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id];
-              return data && mod.items.every(i => data[i.id]);
-            }).length;
-            label = resolveModuleName(mod, t);
-            value = t('week.fullDays', { n: fullDays });
+            return (
+              <ChecklistInsightCard
+                key={mod.id}
+                mod={mod}
+                days={buildDaysWithActive(weekDates, { history, activeDateKey, moduleData })}
+                theme={theme}
+                darkMode={darkMode}
+                t={t}
+              />
+            );
           } else if (mod.type === 'choice') {
             const days = weekDates.filter(d => {
               const data = d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id];
@@ -1951,6 +1957,21 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDate
           </div>
         );
       })}
+
+      {modules
+        .filter(m => m.enabled && m.type === 'checklist' && (appMode !== 'health' || isHealthModule(m)))
+        .filter(m => filterModuleId === 'all' || m.id === filterModuleId)
+        .map(mod => (
+          <div key={mod.id} className="mt-3">
+            <ChecklistInsightCard
+              mod={mod}
+              days={buildDaysWithActive(monthDays, { history, activeDateKey, moduleData })}
+              theme={theme}
+              darkMode={darkMode}
+              t={t}
+            />
+          </div>
+        ))}
     </div>
   );
 }
