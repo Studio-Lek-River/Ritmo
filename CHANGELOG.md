@@ -1,3 +1,14 @@
+# [0.34.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.33.0...v0.34.0) (2026-07-09)
+
+
+### Features
+
+* **health:** toon bijwerkingen per item in week- en maandgrafiek ([0d4eab0](https://github.com/Studio-Lek-River/Ritmo/commit/0d4eab083d3a05628c6f371f60cf22949af1dd6f))
+* **health:** vervang dag-tracker door logkaart in gezondheidsmodus ([9ffea90](https://github.com/Studio-Lek-River/Ritmo/commit/9ffea90b7b586ffa7104b132ed452800613f1f05))
+* **layout:** aparte desktop systeem-layout met sidebar naast mobiele view ([cc30c0a](https://github.com/Studio-Lek-River/Ritmo/commit/cc30c0a8c8d3239d523e5d906239c68bdc34e57c))
+* **layout:** baseer desktop-layout op platform i.p.v. vensterbreedte ([2af4da6](https://github.com/Studio-Lek-River/Ritmo/commit/2af4da6cde293390b08e7baf78eeb71048630a97))
+* **layout:** voeg useIsDesktop-hook en isDesktop-context toe ([3e983c6](https://github.com/Studio-Lek-River/Ritmo/commit/3e983c65af50f9fe3ec7d125ccef5f49b694ebc8))
+
 # [0.33.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.32.0...v0.33.0) (2026-07-09)
 
 
