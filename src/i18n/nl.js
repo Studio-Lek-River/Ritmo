@@ -1309,39 +1309,78 @@ export default {
       nextTitle: 'Waar vind je de rest?',
       overview: 'Overzicht: je trends en grafieken over de tijd.',
       household: 'Huishouden: je huishoudelijke taken.',
-      addModule: '+ Module: voeg later een nieuw onderdeel toe.',
+      addModule: '+ Module: tik rechtsboven op het gezondheidsscherm op "+ Module" om een nieuw onderdeel te kiezen en in te stellen.',
     },
+    howTitle: 'Zo doe je het',
     types: {
       measurements: {
         what: 'Hier houd je waarden bij, zoals je gewicht.',
         why: 'Zo zie je verandering over de tijd.',
         hint: 'Tik op een meting en voeg je eerste waarde toe.',
         addHint: 'Voeg een meting toe: kies er een uit de bibliotheek of maak je eigen meting.',
+        how: {
+          steps: [
+            'Meting toevoegen: open de module en tik op de blauwe + knop rechtsonder.',
+            'Nieuwe waarde kiezen of maken: gebruik "Uit bibliotheek" of maak je eigen meting.',
+            'Wijzigen of verwijderen: tik op een regel in de geschiedenis en pas de waarde aan of verwijder hem.',
+          ],
+        },
       },
       medication: {
         what: 'Hier zet je je medicijnen op een rij.',
         why: 'Zo weet je precies wat je gebruikt.',
         hint: 'Tik op de knop om je eerste medicijn toe te voegen.',
+        how: {
+          steps: [
+            'Toevoegen: tik op "Medicijn toevoegen" en vul naam, dosis en frequentie in.',
+            'Wijzigen: tik op een medicijn in de lijst om het aan te passen.',
+            'Verwijderen: open het medicijn en tik op het prullenbak-icoon.',
+          ],
+        },
       },
       bodymap: {
         what: 'Hier houd je bij waar je een prik zet.',
         why: 'Zo wissel je plekken af en voorkom je irritatie.',
         hint: 'Kies een plek op het lichaam om te loggen.',
+        how: {
+          steps: [
+            'Prik loggen: tik op een plek op het lichaam om die te markeren.',
+            'Corrigeren: tik de plek nog eens aan om de log ongedaan te maken.',
+          ],
+        },
       },
       injectionSchedule: {
         what: 'Hier plan je wanneer je prikt.',
         why: 'Zo vergeet je geen dosis.',
         hint: 'Voeg een moment toe waarop je wilt prikken.',
+        how: {
+          steps: [
+            'Toevoegen: tik op "Moment toevoegen" en kies dag en tijd.',
+            'Wijzigen of verwijderen: tik op een moment in de lijst om het aan te passen of te verwijderen.',
+          ],
+        },
       },
       counter: {
         what: 'Hier tel je je beweging van vandaag.',
         why: 'Elke stap telt en je ziet je voortgang.',
         hint: 'Tel je beweging van vandaag bij.',
+        how: {
+          steps: [
+            'Bijtellen: tik op de + knop om je beweging van vandaag op te hogen.',
+            'Corrigeren: tik op de - knop om het aantal te verlagen.',
+          ],
+        },
       },
       checklist: {
         what: 'Hier vink je aan hoe je je voelt.',
         why: 'Zo zie je patronen in bijwerkingen.',
         hint: 'Vink aan wat je vandaag merkt.',
+        how: {
+          steps: [
+            'Aanvinken: tik een punt aan dat je vandaag merkt.',
+            'Ongedaan maken: tik het nog eens aan om het vinkje weg te halen.',
+          ],
+        },
       },
     },
   },

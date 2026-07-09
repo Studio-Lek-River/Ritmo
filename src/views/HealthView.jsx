@@ -118,6 +118,8 @@ export default function HealthView({
     const tourHint = tourActive && !hintDismissed ? (
       <TourHint
         text={t(`tour.types.${tourTypeKey(selected.type)}.hint`)}
+        title={t('tour.howTitle')}
+        steps={t(`tour.types.${tourTypeKey(selected.type)}.how.steps`)}
         theme={theme}
         onDismiss={() => setHintDismissed(true)}
       />
