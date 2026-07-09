@@ -766,6 +766,32 @@ export default function Ritmo() {
         });
       }
 
+      if (!next.some(m => m.type === 'bodymap')) {
+        next.push({
+          id: genId('bodymap'),
+          nameKey: 'modules.types.bodymap',
+          icon: 'Target',
+          color: 'purple',
+          enabled: true,
+          countInStreak: false,
+          type: 'bodymap',
+          log: [],
+        });
+      }
+
+      if (!next.some(m => m.type === 'injectionSchedule')) {
+        next.push({
+          id: genId('injectionSchedule'),
+          nameKey: 'modules.types.injectionSchedule',
+          icon: 'CalendarClock',
+          color: 'indigo',
+          enabled: true,
+          countInStreak: false,
+          type: 'injectionSchedule',
+          entries: [],
+        });
+      }
+
       const bijwerkingenPreset = (MODULE_PRESETS.checklist || []).find(p => p.nameKey === 'presets.bijwerkingen.name');
       if (bijwerkingenPreset && !hasPresetModule('checklist', bijwerkingenPreset.nameKey)) {
         next.push(applyModulePreset(
