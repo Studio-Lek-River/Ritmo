@@ -1,3 +1,28 @@
+# [0.37.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.36.0...v0.37.0) (2026-07-09)
+
+
+### Bug Fixes
+
+* **productivity:** force Dag-view to always reflect today's date ([f3c612d](https://github.com/Studio-Lek-River/Ritmo/commit/f3c612d3d1d18c0a6eb42aec4d0def90774d7bc6))
+* **productivity:** remove dead showSettingsBtn constant in checklist editor ([1331ae1](https://github.com/Studio-Lek-River/Ritmo/commit/1331ae1a6629fcfd7f0021d872786b3a85cbccf1))
+* **theme:** laat r-chip padding niet overschrijven door px-2/py-0.5 ([e7d69fb](https://github.com/Studio-Lek-River/Ritmo/commit/e7d69fb19f0b5beb50e0013328a6abdaa961d1bf))
+
+
+### Features
+
+* **desktop:** zijmenu vervangen door horizontale topbalk ([05712af](https://github.com/Studio-Lek-River/Ritmo/commit/05712af610de2e1b1c9ca29d391e6d1d8fe5ecb3))
+* **productivity:** add dayTimeline aggregation helper and i18n keys ([3901a3c](https://github.com/Studio-Lek-River/Ritmo/commit/3901a3cf6e51f79965145475a9e7d69b1dcb5516))
+* **productivity:** add Kanban-view with drag-and-drop and move buttons ([7fcfa3d](https://github.com/Studio-Lek-River/Ritmo/commit/7fcfa3def8118a613faefe9db09e3dba46b5e657))
+* **productivity:** add optional status field handlers for tasks and project subgoals ([9c78843](https://github.com/Studio-Lek-River/Ritmo/commit/9c7884391d84ec7e6fa3bb2f996d39e4bc8505f8))
+* **productivity:** add optional tijd-veld op taken, routines en projecttaken ([8229b47](https://github.com/Studio-Lek-River/Ritmo/commit/8229b47b0377da6e4b2924a8745967b525995702))
+* **productivity:** add Productivity Suite nav entry and routing ([05157d6](https://github.com/Studio-Lek-River/Ritmo/commit/05157d60cbdabf3e9f808e9ff958a5e106a27a7d))
+* **productivity:** add ProductivitySuiteView workspace and DagView ([8713158](https://github.com/Studio-Lek-River/Ritmo/commit/871315888f3eab4702a11825e03d5e31a8a40c57))
+* **productivity:** add taskBoard aggregation helper for the Kanban view ([e010c43](https://github.com/Studio-Lek-River/Ritmo/commit/e010c434492b7292528dabf0ed954da3794cb750))
+* **productivity:** wire projecttaak toggle into the Dag-view ([10231e1](https://github.com/Studio-Lek-River/Ritmo/commit/10231e17b1e034b4e3822f133a071109203ef234))
+* **settings:** kies weergavestijl Strak, Levendig of Compact ([014ffcc](https://github.com/Studio-Lek-River/Ritmo/commit/014ffcc35ecd300b4eb3029011a3f8fd15e58bec))
+* **theme:** pas dichtheid/hoek-tokens en per-skin status-chips toe op gedeelde oppervlakken ([8566f10](https://github.com/Studio-Lek-River/Ritmo/commit/8566f10b7f25e8e1c22a4d701012eb5376aca6ff))
+* **theme:** radius- en dichtheid-tokens per weergavestijl ([e45d3f9](https://github.com/Studio-Lek-River/Ritmo/commit/e45d3f9d5dcb9e913a092810d91af9689132f216))
+
 # [0.36.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.35.0...v0.36.0) (2026-07-09)
 
 
