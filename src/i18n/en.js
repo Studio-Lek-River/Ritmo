@@ -97,7 +97,7 @@ export default {
   },
 
   nav: {
-    today: 'Today',
+    today: 'Tasks',
     projects: 'Projects',
     collections: 'Collections',
     measurements: 'Health',

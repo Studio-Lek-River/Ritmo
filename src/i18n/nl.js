@@ -98,7 +98,7 @@ export default {
   },
 
   nav: {
-    today: 'Vandaag',
+    today: 'Taken',
     projects: 'Projecten',
     collections: 'Collecties',
     measurements: 'Gezondheid',
