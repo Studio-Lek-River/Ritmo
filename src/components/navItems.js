@@ -8,11 +8,12 @@ export function getNavGroups(t, appMode) {
   if (appMode === 'health') {
     // Health-modus: één groep. De 'today'-tab is het gecombineerde Health-scherm
     // (dagelijks dashboard + gezondheidsmodules) en draagt het label "Gezondheid".
+    // De 'insight'-tab (Overzicht) opent de Inzicht-pagina en hergebruikt daarom
+    // het bestaande insight.title-label.
     return [
       [
         { id: 'today',     label: t('nav.measurements') },
-        { id: 'week',      label: t('nav.week') },
-        { id: 'month',     label: t('nav.month') },
+        { id: 'insight',   label: t('insight.title') },
         { id: 'household', label: t('nav.household') },
       ],
     ];
@@ -20,16 +21,13 @@ export function getNavGroups(t, appMode) {
 
   return [
     [
-      { id: 'today',      label: t('nav.today') },
-      { id: 'week',       label: t('nav.week') },
-      { id: 'month',      label: t('nav.month') },
-      { id: 'reflection', label: t('nav.reflection') },
+      { id: 'today',        label: t('nav.today') },
+      { id: 'household',    label: t('nav.household') },
+      { id: 'measurements', label: t('nav.measurements') },
     ],
     [
-      { id: 'household',    label: t('nav.household') },
       { id: 'projects',     label: t('nav.projects') },
       { id: 'collections',  label: t('nav.collections') },
-      { id: 'measurements', label: t('nav.measurements') },
     ],
   ];
 }

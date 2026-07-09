@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
-  Sun, Moon, Plus, Trash2, TrendingUp, Calendar, Sparkles, Settings, BookOpen, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Repeat, Trophy, GripVertical, Eye, EyeOff, GraduationCap, HelpCircle, ArrowUpDown, SlidersHorizontal, BedDouble, Check, BarChart3,
+  Sun, Moon, Plus, Trash2, Sparkles, Settings, BookOpen, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Repeat, GripVertical, Eye, EyeOff, GraduationCap, HelpCircle, ArrowUpDown, SlidersHorizontal, BedDouble, Check, BarChart3,
 } from 'lucide-react';
 import './storage';
 import { isSyncEnabled } from './sync/supabase';
@@ -59,10 +59,9 @@ import MetricLibraryModal from './components/MetricLibraryModal';
 import {
   fmtDateKey, parseDateKey, addDays, sameDay, startOfWeek,
   isEditable, isFuture, isToday as isTodayDate,
-  formatWeekTitle, formatWeekRange,
-  WEEKDAY_KEYS, shortWeekdayLabelsMondayFirst, longMonthLabels, weekdayLabelLong,
+  WEEKDAY_KEYS, shortWeekdayLabelsMondayFirst, weekdayLabelLong,
 } from './utils/dates';
-import { summarizeSleep, goalsForNight, isOnTarget } from './utils/sleep';
+import { goalsForNight, isOnTarget } from './utils/sleep';
 import {
   buildDayCellBackground, moduleStatusForDay, isDayFullyComplete,
   normalizeChecklistItemData, isChecklistItemComplete,
@@ -81,7 +80,6 @@ export default function Ritmo() {
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [selectedCollectionId, setSelectedCollectionId] = useState(null);
   const [activeDate, setActiveDate] = useState(new Date());
-  const [activeWeekStart, setActiveWeekStart] = useState(() => startOfWeek(new Date()));
   const todayKey = fmtDateKey(new Date());
   const activeDateKey = fmtDateKey(activeDate);
   const today = todayKey;
@@ -100,8 +98,6 @@ export default function Ritmo() {
   const [customTasks, setCustomTasks] = useState([]);
   const [recurringTasks, setRecurringTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
-  const [reflectionAnswers, setReflectionAnswers] = useState({});
-  const [reflectionQuestions, setReflectionQuestions] = useState([]);
   const [streakSettings, setStreakSettings] = useState({});
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [soundVolume, setSoundVolume] = useState(80);
@@ -109,13 +105,11 @@ export default function Ritmo() {
   const [appMode, setAppMode] = useState('standard');
   const isDesktop = useIsDesktop();
   const [onboardingProfile, setOnboardingProfile] = useState('full');
-  const [showReflectionOnToday, setShowReflectionOnToday] = useState(false);
   const [hasUsedSwipe, setHasUsedSwipe] = useState(false);
   const [hasDismissedInstallBanner, setHasDismissedInstallBanner] = useState(false);
   const [confetti, setConfetti] = useState([]);
   const [celebrationMsg, setCelebrationMsg] = useState(null);
   const [celebrationOverlay, setCelebrationOverlay] = useState(null);
-  const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [currentUser, setCurrentUser] = useState(null);
   const [pendingConflicts, setPendingConflicts] = useState(null);
   const conflictResolverRef = useRef(null);
@@ -149,7 +143,6 @@ export default function Ritmo() {
           loadedModules = settings.modules.map(migrateModuleConfig);
         }
         if (settings.darkMode !== undefined) setDarkMode(settings.darkMode);
-        if (settings.reflectionQuestions) setReflectionQuestions(settings.reflectionQuestions);
         if (settings.recurringTasks) setRecurringTasks(settings.recurringTasks);
         if (settings.streakSettings) setStreakSettings(settings.streakSettings);
         if (settings.soundEnabled !== undefined) setSoundEnabled(settings.soundEnabled);
@@ -157,7 +150,6 @@ export default function Ritmo() {
         if (settings.goldenBorderEnabled !== undefined) setGoldenBorderEnabled(settings.goldenBorderEnabled);
         if (settings.appMode !== undefined) setAppMode(settings.appMode);
         if (settings.onboardingProfile !== undefined) setOnboardingProfile(settings.onboardingProfile);
-        if (settings.showReflectionOnToday !== undefined) setShowReflectionOnToday(settings.showReflectionOnToday);
         if (settings.hasUsedSwipe !== undefined) setHasUsedSwipe(settings.hasUsedSwipe);
         if (settings.hasDismissedInstallBanner !== undefined) setHasDismissedInstallBanner(settings.hasDismissedInstallBanner);
         if (loadedModules) setModules(loadedModules);
@@ -185,7 +177,6 @@ export default function Ritmo() {
         const data = migrateDayData(JSON.parse(result.value));
         setModuleData(data.moduleData || {});
         setCustomTasks(data.customTasks || []);
-        setReflectionAnswers(data.reflectionAnswers || {});
         skipNextSaveRef.current = true;
       }
     } catch (e) {}
@@ -250,7 +241,6 @@ export default function Ritmo() {
     skipNextSaveRef.current = true;
     setModuleData(data.moduleData || {});
     setCustomTasks(data.customTasks || []);
-    setReflectionAnswers(data.reflectionAnswers || {});
     prevModuleStatusRef.current = {};
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeDateKey, loading]);
@@ -268,7 +258,6 @@ export default function Ritmo() {
         const dayData = {
           moduleData,
           customTasks,
-          reflectionAnswers,
         };
         await window.storage.set(`day:${activeDateKey}`, JSON.stringify(dayData));
         setHistory(prev => ({ ...prev, [activeDateKey]: dayData }));
@@ -277,7 +266,7 @@ export default function Ritmo() {
       }
     };
     saveData();
-  }, [moduleData, customTasks, reflectionAnswers, loading, activeDateKey, editable]);
+  }, [moduleData, customTasks, loading, activeDateKey, editable]);
 
   // Save settings
   useEffect(() => {
@@ -286,7 +275,6 @@ export default function Ritmo() {
       try {
         await window.storage.set('settings', JSON.stringify({
           darkMode,
-          reflectionQuestions,
           recurringTasks,
           streakSettings,
           soundEnabled,
@@ -294,7 +282,6 @@ export default function Ritmo() {
           goldenBorderEnabled,
           appMode,
           onboardingProfile,
-          showReflectionOnToday,
           hasUsedSwipe,
           hasDismissedInstallBanner,
           modules,
@@ -304,12 +291,12 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, onboardingProfile, showReflectionOnToday, hasUsedSwipe, hasDismissedInstallBanner, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, modules, hasOnboarded, languageSetting, loading]);
 
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
   useEffect(() => {
-    const allowed = ['today', 'week', 'month', 'household', 'insight'];
+    const allowed = ['today', 'insight', 'household'];
     if (appMode === 'health' && !allowed.includes(view)) setView('today');
   }, [appMode, view]);
 
@@ -980,20 +967,14 @@ export default function Ritmo() {
     return 0;
   };
 
-  // Current calendar week (used by Today-side widgets like CounterModule's
-  // "deze week" totals — those should always reflect the real current week,
-  // never the user's nav position in WeekView).
+  // Current calendar week, used by Today-side widgets like CounterModule's
+  // "deze week" totals, die altijd de echte huidige week weerspiegelen.
   const currentWeekDates = Array.from({ length: 7 }, (_, i) => {
     return fmtDateKey(addDays(startOfWeek(new Date()), i));
-  });
-  // Week shown in WeekView, follows the week-nav arrows.
-  const activeWeekDates = Array.from({ length: 7 }, (_, i) => {
-    return fmtDateKey(addDays(activeWeekStart, i));
   });
   const weekDates = currentWeekDates;
 
   const dayNames = shortWeekdayLabelsMondayFirst();
-  const monthNames = longMonthLabels();
 
   const theme = darkMode ? {
     bg: 'bg-gradient-to-br from-slate-900 to-slate-800',
@@ -1151,8 +1132,7 @@ export default function Ritmo() {
     todayFullyComplete, hasDismissedInstallBanner, setHasDismissedInstallBanner,
     enabledModules, todayVisibleModules, getModuleStreak, renderTodayModule,
     totalCompletionItems, completedItems, overallPercentage, setShowSettings,
-    setView, showReflectionOnToday, reflectionQuestions, reflectionAnswers,
-    setReflectionAnswers, StreakBadge,
+    setView, StreakBadge,
   };
   const healthViewProps = {
     modules,
@@ -1286,25 +1266,6 @@ export default function Ritmo() {
             : <TodayView {...todayViewProps} />
         )}
 
-        {view === 'week' && (
-          <WeekView
-            modules={modules}
-            history={history}
-            today={todayKey}
-            activeDateKey={activeDateKey}
-            moduleData={moduleData}
-            activeWeekStart={activeWeekStart}
-            setActiveWeekStart={setActiveWeekStart}
-            weekDates={activeWeekDates}
-            dayNames={dayNames}
-            onPickDay={(date) => { setActiveDate(date); setView('today'); }}
-            theme={theme}
-            darkMode={darkMode}
-            goldenBorderEnabled={goldenBorderEnabled}
-            appMode={appMode}
-          />
-        )}
-
         {view === 'projects' && (
           <ProjectsView
             modules={modules}
@@ -1350,25 +1311,6 @@ export default function Ritmo() {
           <HealthView {...healthViewProps} />
         )}
 
-        {view === 'month' && (
-          <MonthView
-            calendarMonth={calendarMonth}
-            setCalendarMonth={setCalendarMonth}
-            history={history}
-            today={todayKey}
-            activeDateKey={activeDateKey}
-            moduleData={moduleData}
-            modules={modules}
-            onPickDay={(date) => { setActiveDate(date); setView('today'); }}
-            theme={theme}
-            darkMode={darkMode}
-            monthNames={monthNames}
-            dayNames={dayNames}
-            goldenBorderEnabled={goldenBorderEnabled}
-            appMode={appMode}
-          />
-        )}
-
         {view === 'household' && (
           <HouseholdView
             theme={theme}
@@ -1386,17 +1328,6 @@ export default function Ritmo() {
           />
         )}
 
-        {view === 'reflection' && (
-          <ReflectionView
-            reflectionQuestions={reflectionQuestions}
-            reflectionAnswers={reflectionAnswers}
-            setReflectionAnswers={setReflectionAnswers}
-            history={history}
-            today={todayKey}
-            theme={theme}
-            darkMode={darkMode}
-          />
-        )}
         </ErrorBoundary>
 
         <div className={`text-center text-xs ${theme.textMuted} mt-6 pb-4`}>
@@ -1435,8 +1366,6 @@ export default function Ritmo() {
           currentUser={currentUser}
           modules={modules}
           setModules={setModules}
-          reflectionQuestions={reflectionQuestions}
-          setReflectionQuestions={setReflectionQuestions}
           recurringTasks={recurringTasks}
           setRecurringTasks={setRecurringTasks}
           streakSettings={streakSettings}
@@ -1451,8 +1380,6 @@ export default function Ritmo() {
           setGoldenBorderEnabled={setGoldenBorderEnabled}
           appMode={appMode}
           setAppMode={setAppMode}
-          showReflectionOnToday={showReflectionOnToday}
-          setShowReflectionOnToday={setShowReflectionOnToday}
           theme={theme}
           dayNames={dayNames}
           setEditingModule={setEditingModule}
@@ -1665,407 +1592,9 @@ function StreakBadge({ label, days, color, theme }) {
 }
 
 // =============================================
-// WEEK VIEW
-// =============================================
-function WeekView({ modules, history, today, activeDateKey, moduleData, activeWeekStart, setActiveWeekStart, weekDates, dayNames, onPickDay, theme, darkMode, goldenBorderEnabled, appMode }) {
-  const { t } = useTranslation();
-  const enabledNonTaskModules = modules.filter(m => m.enabled && canCountInStreak(m.type) && (appMode !== 'health' || isHealthModule(m)));
-  const atCurrentWeek = sameDay(activeWeekStart, startOfWeek(new Date()));
-
-  const dayDataFor = (dateStr) => (
-    dateStr === activeDateKey ? { moduleData } : history[dateStr]
-  );
-
-  return (
-    <div className={`${theme.card} rounded-2xl p-5 shadow-sm slide-in`}>
-      <div className="flex items-center justify-between gap-2 mb-4">
-        <button
-          onClick={() => setActiveWeekStart(addDays(activeWeekStart, -7))}
-          aria-label={t('dates.previousWeekAria')}
-          className={`w-9 h-9 rounded-lg flex items-center justify-center ${theme.hover} ${theme.textSecondary} transition`}
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <div className="flex-1 text-center">
-          <div className="flex items-center justify-center gap-2">
-            <TrendingUp className="w-4 h-4 text-blue-500" />
-            <h2 className={`font-semibold ${theme.textSecondary}`}>{formatWeekTitle(activeWeekStart)}</h2>
-          </div>
-          <div className={`text-xs ${theme.textMuted}`}>{formatWeekRange(activeWeekStart)}</div>
-        </div>
-        <button
-          onClick={() => setActiveWeekStart(addDays(activeWeekStart, 7))}
-          disabled={atCurrentWeek}
-          aria-label={t('dates.nextWeekAria')}
-          className={`w-9 h-9 rounded-lg flex items-center justify-center ${theme.hover} ${theme.textSecondary} transition disabled:opacity-30 disabled:cursor-not-allowed`}
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
-      </div>
-
-      <div className="grid grid-cols-7 gap-2 mb-6">
-        {weekDates.map((date, i) => {
-          const isTodayCell = date === today;
-          const dateObj = parseDateKey(date);
-          const future = isFuture(dateObj);
-          const bg = buildDayCellBackground(modules, dayDataFor(date), dateObj);
-          const fullyComplete = isDayFullyComplete(modules, dayDataFor(date), dateObj);
-          const dayNum = date.slice(8).replace(/^0/, '');
-
-          return (
-            <div key={date} className="text-center">
-              <div className={`text-xs font-medium mb-1 ${isTodayCell ? 'text-blue-500' : theme.textMuted}`}>
-                {dayNames[i]}
-              </div>
-              <button
-                onClick={() => !future && onPickDay?.(dateObj)}
-                disabled={future}
-                style={bg ? { background: bg } : undefined}
-                className={`relative w-full h-20 rounded-lg overflow-hidden flex items-center justify-center transition ${
-                  bg ? '' : theme.progressBg
-                } ${isTodayCell ? 'ring-2 ring-blue-400' : ''} ${
-                  future ? 'opacity-30 cursor-not-allowed' : 'hover:opacity-90'
-                } ${(goldenBorderEnabled && fullyComplete) ? 'ritmo-golden-border' : ''}`}
-                aria-label={t('dates.openDay', { date })}
-              >
-                <span className={`text-sm font-bold ${bg ? 'text-white drop-shadow' : theme.textSecondary}`}>
-                  {dayNum}
-                </span>
-              </button>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className={`space-y-3 pt-4 border-t ${theme.border}`}>
-        {enabledNonTaskModules.map(mod => {
-          const Icon = ICON_OPTIONS[mod.icon] || Sparkles;
-          let label = '';
-          let value = '';
-
-          if (mod.type === 'checklist') {
-            return (
-              <ChecklistInsightCard
-                key={mod.id}
-                mod={mod}
-                days={buildDaysWithActive(weekDates, { history, activeDateKey, moduleData })}
-                theme={theme}
-                darkMode={darkMode}
-                t={t}
-              />
-            );
-          } else if (mod.type === 'choice') {
-            const days = weekDates.filter(d => {
-              const data = d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id];
-              return data?.completed;
-            }).length;
-            label = resolveModuleName(mod, t);
-            value = t('week.daysCount', { n: days });
-          } else if (mod.type === 'counter') {
-            const unit = mod.unit || 'minutes';
-            const total = weekDates.reduce((sum, d) => {
-              const data = d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id];
-              return sum + (data?.total ?? data?.minutes ?? 0);
-            }, 0);
-            const weekMax = mod.weeklyMax ?? mod.weeklyMaxMinutes;
-            label = resolveModuleName(mod, t);
-            value = weekMax
-              ? `${formatAmount(total, unit)} / ${formatAmount(weekMax, unit)}`
-              : formatAmount(total, unit);
-          } else if (mod.type === 'sleep') {
-            if (!mod.countInStreak) return null;
-            const days = weekDates.map(d => ({
-              date: parseDateKey(d),
-              dayData: (d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id]) || null,
-            }));
-            const summary = summarizeSleep(days, mod);
-            label = resolveModuleName(mod, t);
-            value = summary.nightsLogged === 0
-              ? t('week.noData')
-              : `${formatDuration(summary.averageDurationMinutes)} · ${t('week.onRhythm', { n: summary.nightsOnTarget })}`;
-          }
-
-          return (
-            <div key={mod.id} className={`flex items-center justify-between p-3 ${darkMode ? `bg-${mod.color}-900/20` : `bg-${mod.color}-50`} rounded-lg`}>
-              <div className="flex items-center gap-2">
-                <Icon className={`w-4 h-4 text-${mod.color}-500`} />
-                <span className={`text-sm font-medium ${theme.textSecondary}`}>{label}</span>
-              </div>
-              <span className={`font-bold text-sm ${darkMode ? `text-${mod.color}-300` : `text-${mod.color}-600`}`}>
-                {value}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// =============================================
-// MONTH VIEW
-// =============================================
-function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDateKey, moduleData, modules, onPickDay, theme, darkMode, monthNames, dayNames, goldenBorderEnabled, appMode }) {
-  const { t } = useTranslation();
-  const [filterModuleId, setFilterModuleId] = useState('all');
-  const year = calendarMonth.getFullYear();
-  const month = calendarMonth.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const daysInMonth = lastDay.getDate();
-  const startWeekday = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
-
-  const cells = [];
-  for (let i = 0; i < startWeekday; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    cells.push(dateStr);
-  }
-
-  const dayDataFor = (dateStr) => (
-    dateStr === activeDateKey ? { moduleData } : history[dateStr]
-  );
-
-  const filterModule = filterModuleId === 'all'
-    ? null
-    : modules.find(m => m.id === filterModuleId) || null;
-
-  const cellBackground = (dateStr, dateObj) => {
-    if (!filterModule) {
-      return buildDayCellBackground(modules, dayDataFor(dateStr), dateObj);
-    }
-    const status = moduleStatusForDay(filterModule, dayDataFor(dateStr), dateObj);
-    return status === 'full' ? getColorHex(filterModule.color) : null;
-  };
-
-  const monthDays = cells.filter(c => c !== null);
-  const completedDays = monthDays.filter(d => cellBackground(d, parseDateKey(d)) !== null).length;
-  const partialDays = monthDays.filter(d => {
-    const data = dayDataFor(d);
-    if (!data?.moduleData) return false;
-    const dateObj = parseDateKey(d);
-    if (cellBackground(d, dateObj) !== null) return false;
-    if (filterModule) {
-      return moduleStatusForDay(filterModule, data, dateObj) === 'partial';
-    }
-    return modules.some(m => m.enabled && canCountInStreak(m.type) && (appMode !== 'health' || isHealthModule(m)) &&
-      moduleStatusForDay(m, data, dateObj) !== 'none');
-  }).length;
-
-  const filterableModules = modules.filter(m => m.enabled && canCountInStreak(m.type) && (appMode !== 'health' || isHealthModule(m)));
-
-  return (
-    <div className={`${theme.card} rounded-2xl p-5 shadow-sm slide-in`}>
-      <div className="flex items-center justify-between mb-4">
-        <button onClick={() => setCalendarMonth(new Date(year, month - 1, 1))} className={`p-2 ${theme.hover} rounded-lg transition`}>
-          <ChevronLeft className={`w-5 h-5 ${theme.textSecondary}`} />
-        </button>
-        <h2 className={`font-semibold ${theme.textSecondary}`}>{monthNames[month]} {year}</h2>
-        <button onClick={() => setCalendarMonth(new Date(year, month + 1, 1))} className={`p-2 ${theme.hover} rounded-lg transition`}>
-          <ChevronRight className={`w-5 h-5 ${theme.textSecondary}`} />
-        </button>
-      </div>
-
-      {filterableModules.length > 0 && (
-        <div className="flex items-center justify-end gap-2 mb-3">
-          <label className={`text-xs ${theme.textMuted}`} htmlFor="month-module-filter">
-            {t('month.filter')}
-          </label>
-          <select
-            id="month-module-filter"
-            value={filterModuleId}
-            onChange={(e) => setFilterModuleId(e.target.value)}
-            className={`px-2 py-1 ${theme.input} rounded text-xs`}
-          >
-            <option value="all">{t('month.filterAll')}</option>
-            {filterableModules.map(m => (
-              <option key={m.id} value={m.id}>{resolveModuleName(m, t)}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      <div className="grid grid-cols-7 gap-1 mb-2">
-        {dayNames.map(d => (
-          <div key={d} className={`text-center text-xs font-medium ${theme.textMuted} py-1`}>{d}</div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-7 gap-1 mb-4">
-        {cells.map((dateStr, i) => {
-          if (!dateStr) return <div key={i} />;
-          const day = parseInt(dateStr.slice(8));
-          const isTodayCell = dateStr === today;
-          const dateObj = parseDateKey(dateStr);
-          const future = isFuture(dateObj);
-          const bg = cellBackground(dateStr, dateObj);
-          const fullyComplete = !filterModule && isDayFullyComplete(modules, dayDataFor(dateStr), dateObj);
-
-          return (
-            <button
-              key={dateStr}
-              onClick={() => !future && onPickDay?.(dateObj)}
-              disabled={future}
-              style={bg ? { background: bg } : undefined}
-              className={`aspect-square rounded-md flex items-center justify-center text-xs font-medium transition-all ${
-                bg ? '' : (darkMode ? 'bg-slate-700' : 'bg-slate-100')
-              } ${isTodayCell ? 'ring-2 ring-blue-500' : ''} ${
-                future ? 'opacity-30 cursor-not-allowed' : 'hover:scale-110'
-              } ${(goldenBorderEnabled && fullyComplete) ? 'ritmo-golden-border' : ''}`}
-              aria-label={t('dates.openDay', { date: dateStr })}
-            >
-              <span className={bg ? 'text-white drop-shadow' : theme.textSecondary}>{day}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <p className={`text-xs ${theme.textMuted} mb-4 text-center`}>
-        {t('month.clickDay')}
-      </p>
-
-      <div className={`grid grid-cols-2 gap-2 pt-4 border-t ${theme.border}`}>
-        <div className={`${darkMode ? 'bg-green-900/20' : 'bg-green-50'} p-3 rounded-lg text-center`}>
-          <Trophy className={`w-4 h-4 mx-auto mb-1 ${darkMode ? 'text-green-400' : 'text-green-600'}`} />
-          <div className={`text-xl font-bold ${darkMode ? 'text-green-300' : 'text-green-600'}`}>{completedDays}</div>
-          <div className={`text-xs ${theme.textMuted}`}>{t('month.fullyCompleted')}</div>
-        </div>
-        <div className={`${darkMode ? 'bg-blue-900/20' : 'bg-blue-50'} p-3 rounded-lg text-center`}>
-          <Calendar className={`w-4 h-4 mx-auto mb-1 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-          <div className={`text-xl font-bold ${darkMode ? 'text-blue-300' : 'text-blue-600'}`}>{partialDays}</div>
-          <div className={`text-xs ${theme.textMuted}`}>{t('month.partial')}</div>
-        </div>
-      </div>
-
-      {modules.filter(m => m.enabled && m.type === 'sleep' && m.countInStreak === true).map(mod => {
-        const Icon = ICON_OPTIONS[mod.icon] || BedDouble;
-        const days = monthDays.map(d => ({
-          date: parseDateKey(d),
-          dayData: (d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id]) || null,
-        }));
-        const summary = summarizeSleep(days, mod);
-        const value = summary.nightsLogged === 0
-          ? t('month.noSleepData')
-          : `${formatDuration(summary.averageDurationMinutes)} · ${t('month.onRhythmOf', { n: summary.nightsOnTarget, total: monthDays.length })}`;
-        return (
-          <div key={mod.id} className={`mt-3 flex items-center justify-between p-3 ${darkMode ? `bg-${mod.color}-900/20` : `bg-${mod.color}-50`} rounded-lg`}>
-            <div className="flex items-center gap-2">
-              <Icon className={`w-4 h-4 text-${mod.color}-500`} />
-              <span className={`text-sm font-medium ${theme.textSecondary}`}>{resolveModuleName(mod, t)}</span>
-            </div>
-            <span className={`font-bold text-sm ${darkMode ? `text-${mod.color}-300` : `text-${mod.color}-600`}`}>
-              {value}
-            </span>
-          </div>
-        );
-      })}
-
-      {modules
-        .filter(m => m.enabled && m.type === 'checklist' && (appMode !== 'health' || isHealthModule(m)))
-        .filter(m => filterModuleId === 'all' || m.id === filterModuleId)
-        .map(mod => (
-          <div key={mod.id} className="mt-3">
-            <ChecklistInsightCard
-              mod={mod}
-              days={buildDaysWithActive(monthDays, { history, activeDateKey, moduleData })}
-              theme={theme}
-              darkMode={darkMode}
-              t={t}
-            />
-          </div>
-        ))}
-    </div>
-  );
-}
-
-// =============================================
-// REFLECTION VIEW
-// =============================================
-function ReflectionView({ reflectionQuestions, reflectionAnswers, setReflectionAnswers, history, today, theme, darkMode }) {
-  const { t } = useTranslation();
-  const [selectedDate, setSelectedDate] = useState(today);
-
-  const isToday = selectedDate === today;
-  const dayData = isToday ? { reflectionAnswers } : history[selectedDate];
-  const answers = isToday ? reflectionAnswers : (dayData?.reflectionAnswers || {});
-
-  const datesWithReflections = Object.keys(history)
-    .filter(d => {
-      const refs = history[d]?.reflectionAnswers;
-      return refs && Object.values(refs).some(v => v && v.trim());
-    })
-    .sort()
-    .reverse();
-
-  return (
-    <div className="slide-in space-y-4">
-      <div className={`${theme.card} rounded-2xl p-5 shadow-sm`}>
-        <div className="flex items-center gap-2 mb-4">
-          <BookOpen className="w-5 h-5 text-blue-500" />
-          <h2 className={`font-semibold ${theme.textSecondary}`}>{t('reflection.title')}</h2>
-        </div>
-
-        <div className="mb-4">
-          <label className={`text-xs ${theme.textMuted} mb-1 block`}>{t('reflection.date')}</label>
-          <input
-            type="date"
-            value={selectedDate}
-            max={today}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300`}
-          />
-        </div>
-
-        <div className="space-y-4">
-          {reflectionQuestions.map((q, i) => (
-            <div key={i}>
-              <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{q}</label>
-              {isToday ? (
-                <textarea
-                  value={answers[q] || ''}
-                  onChange={(e) => setReflectionAnswers(prev => ({ ...prev, [q]: e.target.value }))}
-                  placeholder={t('reflection.placeholder')}
-                  className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm h-24 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300`}
-                />
-              ) : (
-                <div className={`px-3 py-2 ${theme.cardSecondary} rounded-lg text-sm min-h-[60px] ${theme.textSecondary}`}>
-                  {answers[q] || <span className={theme.textMuted}>{t('reflection.noAnswer')}</span>}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        <p className={`text-xs ${theme.textMuted} mt-4`}>{t('reflection.editHint')}</p>
-      </div>
-
-      {datesWithReflections.length > 0 && (
-        <div className={`${theme.card} rounded-2xl p-5 shadow-sm`}>
-          <h3 className={`font-semibold ${theme.textSecondary} mb-3 text-sm`}>{t('reflection.earlier')}</h3>
-          <div className="space-y-2">
-            {datesWithReflections.slice(0, 10).map(date => (
-              <button
-                key={date}
-                onClick={() => setSelectedDate(date)}
-                className={`w-full text-left px-3 py-2 ${theme.cardSecondary} ${theme.hover} rounded-lg text-sm transition flex items-center justify-between`}
-              >
-                <span className={theme.textSecondary}>
-                  {new Date(date).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'short' })}
-                </span>
-                <ChevronRight className={`w-4 h-4 ${theme.textMuted}`} />
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, showReflectionOnToday, setShowReflectionOnToday, theme, dayNames, setEditingModule, initialTab, currentUser }) {
+function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, theme, dayNames, setEditingModule, initialTab, currentUser }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
   const [helpView, setHelpView] = useState(null); // null | 'list' | 'install' | 'feedback'
@@ -2163,7 +1692,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
             [
               { id: 'modules', label: t('settings.tabModules') },
               { id: 'streaks', label: t('settings.tabStreaks') },
-              { id: 'reflect', label: t('settings.tabReflection') },
+              { id: 'recurring', label: t('settings.tabRecurring') },
               { id: 'theme', label: t('settings.tabTheme') },
             ],
             [
@@ -2469,12 +1998,9 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
           );
         })()}
 
-        {activeTab === 'reflect' && (
+        {activeTab === 'recurring' && (
           <div>
-            <h3 className={`font-semibold ${theme.textSecondary} mb-3`}>{t('settings.reflectionQuestions')}</h3>
-            <ReflectionSettings
-              reflectionQuestions={reflectionQuestions}
-              setReflectionQuestions={setReflectionQuestions}
+            <RecurringSettings
               recurringTasks={recurringTasks}
               setRecurringTasks={setRecurringTasks}
               theme={theme}
@@ -2540,19 +2066,6 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                   type="checkbox"
                   checked={goldenBorderEnabled}
                   onChange={(e) => setGoldenBorderEnabled(e.target.checked)}
-                  className="w-4 h-4 cursor-pointer flex-shrink-0"
-                />
-              </label>
-
-              <label className={`flex items-center justify-between gap-3 p-3 ${theme.cardSecondary} rounded-lg mb-3`}>
-                <div className="min-w-0">
-                  <span className={`text-sm font-medium ${theme.textSecondary}`}>{t('settings.showReflection')}</span>
-                  <p className={`text-xs ${theme.textMuted} mt-0.5`}>{t('settings.showReflectionHint')}</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={showReflectionOnToday}
-                  onChange={(e) => setShowReflectionOnToday(e.target.checked)}
                   className="w-4 h-4 cursor-pointer flex-shrink-0"
                 />
               </label>
@@ -4122,27 +3635,15 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
 }
 
 // =============================================
-// REFLECTION SETTINGS
+// RECURRING SETTINGS
 // =============================================
-function ReflectionSettings({ reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, theme, dayNames }) {
+function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames }) {
   const { t } = useTranslation();
-  const [newQuestion, setNewQuestion] = useState('');
   const [newRecurringText, setNewRecurringText] = useState('');
   const [newRecurringDays, setNewRecurringDays] = useState([]);
 
-  const addQuestion = () => {
-    if (newQuestion.trim()) {
-      setReflectionQuestions(prev => [...prev, newQuestion.trim()]);
-      setNewQuestion('');
-    }
-  };
-
-  const removeQuestion = (i) => {
-    setReflectionQuestions(prev => prev.filter((_, idx) => idx !== i));
-  };
-
   const toggleDay = (day) => {
-    setNewRecurringDays(prev => 
+    setNewRecurringDays(prev =>
       prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
     );
   };
@@ -4165,32 +3666,6 @@ function ReflectionSettings({ reflectionQuestions, setReflectionQuestions, recur
 
   return (
     <div className="space-y-6">
-      <div>
-        <div className="space-y-2 mb-3">
-          {reflectionQuestions.map((q, i) => (
-            <div key={i} className={`flex items-center gap-2 p-2 ${theme.cardSecondary} rounded-lg`}>
-              <span className={`flex-1 text-sm ${theme.textSecondary}`}>{q}</span>
-              <button onClick={() => removeQuestion(i)} className="text-slate-400 hover:text-red-500">
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newQuestion}
-            onChange={(e) => setNewQuestion(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addQuestion()}
-            placeholder={t('settings.reflectionNewPlaceholder')}
-            className={`flex-1 px-3 py-2 ${theme.input} rounded-lg text-sm`}
-          />
-          <button onClick={addQuestion} className="px-3 py-2 bg-blue-500 text-white rounded-lg">
-            <Plus className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
       <div>
         <h4 className={`font-semibold ${theme.textSecondary} mb-3 text-sm`}>{t('settings.recurringWeekly')}</h4>
         <div className="space-y-2 mb-4">

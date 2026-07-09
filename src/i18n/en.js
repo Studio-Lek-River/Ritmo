@@ -97,10 +97,7 @@ export default {
   },
 
   nav: {
-    today: 'Today',
-    week: 'Week',
-    month: 'Month',
-    reflection: 'Reflection',
+    today: 'Tasks',
     projects: 'Projects',
     collections: 'Collections',
     measurements: 'Health',
@@ -136,36 +133,8 @@ export default {
     noModulesActive: 'No modules active',
     activateModulesHint: 'Activate modules in settings to begin your day.',
     toSettings: 'Go to settings',
-    reflection: 'Reflection',
-    viewFull: 'View full',
     allModulesCompleted: '🎉 All modules completed!',
     goalReached: '💪 {name} goal reached!',
-  },
-
-  week: {
-    fullDays: '{n} / 7 full days',
-    daysCount: '{n} / 7 days',
-    onRhythm: '{n} / 7 on track',
-    noData: 'No data yet',
-  },
-
-  month: {
-    clickDay: 'Click a day to view it',
-    fullyCompleted: 'full',
-    partial: 'partial',
-    noSleepData: 'No sleep data this month yet',
-    onRhythmOf: '{n} / {total} on track',
-    filter: 'Filter',
-    filterAll: 'All modules',
-  },
-
-  reflection: {
-    title: 'Reflection',
-    date: 'Date',
-    earlier: 'Earlier reflections',
-    noAnswer: 'No answer entered',
-    placeholder: 'Write here...',
-    editHint: '💡 Edit questions in settings',
   },
 
   household: {
@@ -1053,7 +1022,7 @@ export default {
     title: 'Settings',
     tabModules: 'Modules',
     tabStreaks: 'Streaks',
-    tabReflection: 'Reflection',
+    tabRecurring: 'Recurring',
     tabTheme: 'Theme',
     tabLanguage: 'Language',
     tabAccount: 'Account',
@@ -1085,10 +1054,6 @@ export default {
     streakChoiceHint: 'Streak counts as soon as you pick an option.',
     streakSleepHint: 'Streak counts when both bed and wake times are within the goal tolerance.',
 
-    reflectionQuestions: 'Reflection questions',
-    reflectionAddQuestion: 'Add question',
-    reflectionPlaceholder: 'New question...',
-    reflectionNewPlaceholder: 'New reflection question...',
     recurringTasks: 'Recurring tasks',
     recurringHint: 'Tasks that automatically appear on your day on chosen weekdays.',
     recurringTaskPlaceholder: 'Task...',
@@ -1106,8 +1071,6 @@ export default {
     effects: 'Effects',
     goldenBorder: 'Golden border on completed days',
     goldenBorderHint: 'Animation around days where everything is ticked off.',
-    showReflection: 'Show reflection on Today',
-    showReflectionHint: 'Hide the reflection card on the Today screen. The Reflection tab stays available.',
     sounds: 'Sounds',
     soundEffects: 'Sound effects',
     volume: 'Volume',
