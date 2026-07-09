@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useTranslation } from '../i18n/useTranslation';
 import DagView from './DagView';
+import KanbanView from './KanbanView';
 
 const TABS = ['dag', 'kanban'];
 
-// Werkruimte voor de Productivity Suite: kop + Dag/Kanban-toggle. Kanban is in
-// deze slice een placeholder (volgt in een latere slice); Dag rendert de
-// geaggregeerde tijdlijn. Lokale useState zodat de keuze een lichte,
-// niet-persistente UI-voorkeur blijft (principe 2: geen gedrag opgelegd).
+// Werkruimte voor de Productivity Suite: kop + Dag/Kanban-toggle. Dag rendert
+// de geaggregeerde tijdlijn, Kanban het statusbord. Lokale useState zodat de
+// keuze een lichte, niet-persistente UI-voorkeur blijft (principe 2: geen
+// gedrag opgelegd).
 export default function ProductivitySuiteView({
   modules,
   moduleData,
@@ -16,6 +17,8 @@ export default function ProductivitySuiteView({
   onChoiceOptionSet,
   onToggleTask,
   onToggleProjectSubgoal,
+  onSetTaskStatus,
+  onSetSubgoalStatus,
   setView,
   theme,
 }) {
@@ -56,9 +59,13 @@ export default function ProductivitySuiteView({
           theme={theme}
         />
       ) : (
-        <div className={`${theme.card} rounded-2xl p-8 text-center text-sm ${theme.textMuted}`}>
-          {t('productivity.kanbanPlaceholder')}
-        </div>
+        <KanbanView
+          modules={modules}
+          customTasks={customTasks}
+          onSetTaskStatus={onSetTaskStatus}
+          onSetSubgoalStatus={onSetSubgoalStatus}
+          theme={theme}
+        />
       )}
     </div>
   );
