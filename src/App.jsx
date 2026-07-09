@@ -300,7 +300,7 @@ export default function Ritmo() {
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
   useEffect(() => {
-    const allowed = ['measurements', 'today', 'week', 'month', 'household', 'insight'];
+    const allowed = ['today', 'week', 'month', 'household', 'insight'];
     if (appMode === 'health' && !allowed.includes(view)) setView('today');
   }, [appMode, view]);
 
@@ -1126,6 +1126,34 @@ export default function Ritmo() {
     );
   };
 
+  // Prop-bundels voor Today en Health, gedeeld tussen de losse tabs (standard
+  // mode) en het gecombineerde Health-scherm (health mode).
+  const todayViewProps = {
+    t, theme, activeDate, setActiveDate, editable, goldenBorderEnabled,
+    todayFullyComplete, hasDismissedInstallBanner, setHasDismissedInstallBanner,
+    enabledModules, todayVisibleModules, getModuleStreak, renderTodayModule,
+    totalCompletionItems, completedItems, overallPercentage, setShowSettings,
+    setView, showReflectionOnToday, reflectionQuestions, reflectionAnswers,
+    setReflectionAnswers, StreakBadge,
+  };
+  const healthViewProps = {
+    modules,
+    onUpdateMeasurementsModule: updateMeasurementsModule,
+    onAddModule: openBlankModuleEditor,
+    onEditModule: (mod) => setEditingModule(mod),
+    onSetupWeightLoss: setupWeightLossBundle,
+    onAddMed: addMed,
+    onUpdateMed: updateMed,
+    onDeleteMed: deleteMed,
+    onOrderMed: orderMed,
+    onLogInjection: logInjectionEvent,
+    onRemoveInjection: removeInjectionEvent,
+    onAddScheduleEntry: addScheduleEntry,
+    onUpdateScheduleEntry: updateScheduleEntry,
+    onDeleteScheduleEntry: deleteScheduleEntry,
+    theme,
+  };
+
   return (
     <ToastProvider>
     <div className={`min-h-screen ${theme.bg} p-4 transition-colors duration-300 relative overflow-hidden`}>
@@ -1226,31 +1254,9 @@ export default function Ritmo() {
 
         <ErrorBoundary key={view} darkMode={darkMode} onReset={() => setView('today')}>
         {view === 'today' && (
-          <TodayView
-            t={t}
-            theme={theme}
-            activeDate={activeDate}
-            setActiveDate={setActiveDate}
-            editable={editable}
-            goldenBorderEnabled={goldenBorderEnabled}
-            todayFullyComplete={todayFullyComplete}
-            hasDismissedInstallBanner={hasDismissedInstallBanner}
-            setHasDismissedInstallBanner={setHasDismissedInstallBanner}
-            enabledModules={enabledModules}
-            todayVisibleModules={todayVisibleModules}
-            getModuleStreak={getModuleStreak}
-            renderTodayModule={renderTodayModule}
-            totalCompletionItems={totalCompletionItems}
-            completedItems={completedItems}
-            overallPercentage={overallPercentage}
-            setShowSettings={setShowSettings}
-            setView={setView}
-            showReflectionOnToday={showReflectionOnToday}
-            reflectionQuestions={reflectionQuestions}
-            reflectionAnswers={reflectionAnswers}
-            setReflectionAnswers={setReflectionAnswers}
-            StreakBadge={StreakBadge}
-          />
+          appMode === 'health'
+            ? <HealthView {...healthViewProps} topContent={<TodayView {...todayViewProps} />} />
+            : <TodayView {...todayViewProps} />
         )}
 
         {view === 'week' && (
@@ -1313,24 +1319,8 @@ export default function Ritmo() {
           />
         )}
 
-        {view === 'measurements' && (
-          <HealthView
-            modules={modules}
-            onUpdateMeasurementsModule={updateMeasurementsModule}
-            onAddModule={openBlankModuleEditor}
-            onEditModule={(mod) => setEditingModule(mod)}
-            onSetupWeightLoss={setupWeightLossBundle}
-            onAddMed={addMed}
-            onUpdateMed={updateMed}
-            onDeleteMed={deleteMed}
-            onOrderMed={orderMed}
-            onLogInjection={logInjectionEvent}
-            onRemoveInjection={removeInjectionEvent}
-            onAddScheduleEntry={addScheduleEntry}
-            onUpdateScheduleEntry={updateScheduleEntry}
-            onDeleteScheduleEntry={deleteScheduleEntry}
-            theme={theme}
-          />
+        {view === 'measurements' && appMode !== 'health' && (
+          <HealthView {...healthViewProps} />
         )}
 
         {view === 'month' && (

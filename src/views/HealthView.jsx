@@ -48,6 +48,7 @@ export default function HealthView({
   onAddScheduleEntry,
   onUpdateScheduleEntry,
   onDeleteScheduleEntry,
+  topContent,
   theme,
 }) {
   const { t } = useTranslation();
@@ -143,9 +144,11 @@ export default function HealthView({
     );
   }
 
-  // Lijstweergave: alle gezondheidsmodules door elkaar.
+  // Lijstweergave: alle gezondheidsmodules door elkaar. In health mode wordt
+  // hierboven het dagelijkse dashboard (Today) getoond via topContent.
   return (
     <div className="slide-in">
+      {topContent}
       <div className="flex items-center justify-between mb-4 gap-2">
         <h1 className={`text-xl font-semibold ${theme.text}`}>{t('nav.measurements')}</h1>
         <div className="flex gap-2">

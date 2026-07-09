@@ -16,13 +16,14 @@ export default function TabBar({ view, setView, theme, appMode }) {
     { id: 'collections',  label: t('nav.collections') },
     { id: 'measurements', label: t('nav.measurements') },
   ];
-  // Health-modus: één rij met de gezondheidsrelevante tabs, Gezondheid eerst.
+  // Health-modus: één rij. De 'today'-tab is het gecombineerde Health-scherm
+  // (dagelijks dashboard + gezondheidsmodules) en draagt daarom het label
+  // "Gezondheid". Er is geen aparte measurements-tab in health mode.
   const healthTabs = [
-    { id: 'measurements', label: t('nav.measurements') },
-    { id: 'today',        label: t('nav.today') },
-    { id: 'week',         label: t('nav.week') },
-    { id: 'month',        label: t('nav.month') },
-    { id: 'household',    label: t('nav.household') },
+    { id: 'today',     label: t('nav.measurements') },
+    { id: 'week',      label: t('nav.week') },
+    { id: 'month',     label: t('nav.month') },
+    { id: 'household', label: t('nav.household') },
   ];
 
   const tabBtnClass = (active) =>
