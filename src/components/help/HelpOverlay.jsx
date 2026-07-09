@@ -1,11 +1,17 @@
 import React from 'react';
-import { Smartphone, MessageSquare } from 'lucide-react';
+import { GraduationCap, Smartphone, MessageSquare } from 'lucide-react';
 import HelpItemRow from './HelpItemRow';
 import { useTranslation } from '../../i18n/useTranslation';
 
-export default function HelpOverlay({ theme, onSelect }) {
+export default function HelpOverlay({ theme, onSelect, showTour }) {
   const { t } = useTranslation();
   const helpItems = [
+    showTour && {
+      id: 'tour',
+      icon: GraduationCap,
+      title: t('help.tour'),
+      description: t('help.tourDesc'),
+    },
     {
       id: 'install',
       icon: Smartphone,
@@ -18,7 +24,7 @@ export default function HelpOverlay({ theme, onSelect }) {
       title: t('help.feedback'),
       description: t('help.feedbackDesc'),
     },
-  ];
+  ].filter(Boolean);
 
   return (
     <div className="space-y-2">

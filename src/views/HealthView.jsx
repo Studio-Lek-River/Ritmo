@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Activity, Sparkles } from 'lucide-react';
 import { ICON_OPTIONS } from '../utils/icons';
 import { getColorClasses } from '../utils/colors';
 import { injectableMeds } from '../utils/bodymap';
 import { useTranslation, getLocale, resolveModuleName } from '../i18n/useTranslation';
 import { isHealthModule } from '../utils/healthModules';
+import { tourTypeKey } from '../utils/tourSteps';
 import { formatAmount } from '../utils/format';
 import { useToast } from '../hooks/useToast';
+import TourHint from '../components/tour/TourHint';
 import { ModuleDetail } from './MeasurementsView';
 import { MedicationModuleCard } from './MedicationView';
 import { BodymapModuleCard } from './BodymapView';
@@ -60,12 +62,30 @@ export default function HealthView({
   renderLogModule,
   appMode,
   theme,
+  focusModuleId,
+  onFocusConsumed,
+  tourActive,
 }) {
   const { t } = useTranslation();
   const locale = getLocale();
   const { showToast } = useToast();
   const [selectedId, setSelectedId] = useState(null);
   const [openMetricId, setOpenMetricId] = useState(null);
+  const [hintDismissed, setHintDismissed] = useState(false);
+
+  // De rondleiding kan met "Breng me erheen" een specifieke module openen.
+  useEffect(() => {
+    if (!focusModuleId) return;
+    setSelectedId(focusModuleId);
+    setOpenMetricId(null);
+    setHintDismissed(false);
+    onFocusConsumed?.();
+  }, [focusModuleId, onFocusConsumed]);
+
+  // Bij het openen van een andere module de hint weer tonen.
+  useEffect(() => {
+    setHintDismissed(false);
+  }, [selectedId]);
 
   const healthModules = modules.filter(
     (m) => m.enabled && HEALTH_TYPES.includes(m.type)
@@ -94,25 +114,40 @@ export default function HealthView({
 
   // Detailweergave van de gekozen module.
   if (selected) {
+    // Kalme hint tijdens de rondleiding: waar voeg je in deze module iets toe.
+    const tourHint = tourActive && !hintDismissed ? (
+      <TourHint
+        text={t(`tour.types.${tourTypeKey(selected.type)}.hint`)}
+        title={t('tour.howTitle')}
+        steps={t(`tour.types.${tourTypeKey(selected.type)}.how.steps`)}
+        theme={theme}
+        onDismiss={() => setHintDismissed(true)}
+      />
+    ) : null;
+
     if (selected.type === 'measurements') {
       return (
-        <ModuleDetail
-          module={selected}
-          canGoBack
-          onBack={backToList}
-          onUpdateModule={onUpdateMeasurementsModule}
-          onEditModule={onEditModule}
-          openMetricId={openMetricId}
-          setOpenMetricId={setOpenMetricId}
-          theme={theme}
-          t={t}
-          locale={locale}
-        />
+        <div className="slide-in">
+          {tourHint}
+          <ModuleDetail
+            module={selected}
+            canGoBack
+            onBack={backToList}
+            onUpdateModule={onUpdateMeasurementsModule}
+            onEditModule={onEditModule}
+            openMetricId={openMetricId}
+            setOpenMetricId={setOpenMetricId}
+            theme={theme}
+            t={t}
+            locale={locale}
+          />
+        </div>
       );
     }
 
     return (
       <div className="slide-in space-y-4">
+        {tourHint}
         <button
           type="button"
           onClick={backToList}

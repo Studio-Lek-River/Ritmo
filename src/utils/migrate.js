@@ -97,6 +97,29 @@ export function migrateModuleConfig(module) {
     };
   }
 
+  // De losse "Weight Loss"-preset is samengevoegd met "Health metrics". Zet
+  // bestaande modules die nog naar de oude keys verwijzen niet-destructief om.
+  if (m.type === 'measurements') {
+    const usesWeightLoss = m.nameKey === 'presets.weightLoss.name'
+      || (Array.isArray(m.metrics) && m.metrics.some(
+        (mt) => typeof mt?.nameKey === 'string' && mt.nameKey.startsWith('presets.weightLoss.')
+      ));
+    if (usesWeightLoss) {
+      const remap = (k) => (typeof k === 'string' && k.startsWith('presets.weightLoss.'))
+        ? k.replace('presets.weightLoss.', 'presets.health.')
+        : k;
+      const next = {
+        ...m,
+        nameKey: remap(m.nameKey),
+        metrics: Array.isArray(m.metrics)
+          ? m.metrics.map((mt) => (mt ? { ...mt, nameKey: remap(mt.nameKey) } : mt))
+          : m.metrics,
+      };
+      if (next.name === 'Weight Loss') delete next.name;
+      m = next;
+    }
+  }
+
   if (m.type === 'measurements') {
     m = {
       ...m,
@@ -192,6 +215,7 @@ export function migrateSettings(settings) {
   }
   if (out.appMode === undefined) out.appMode = 'standard';
   if (out.onboardingProfile === undefined) out.onboardingProfile = 'full';
+  if (out.hasSeenHealthTour === undefined) out.hasSeenHealthTour = false;
   return out;
 }
 

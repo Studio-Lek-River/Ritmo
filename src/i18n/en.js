@@ -1215,13 +1215,6 @@ export default {
         muscle: 'Muscle mass',
         fat: 'Body fat',
         waist: 'Waist circumference',
-      },
-    },
-    weightLoss: {
-      name: 'Weight Loss',
-      metrics: {
-        weight: 'Weight',
-        waist: 'Waist',
         leg: 'Leg',
         arm: 'Arm',
       },
@@ -1274,10 +1267,117 @@ export default {
 
   help: {
     title: 'Help',
+    tour: 'Start the tour',
+    tourDesc: 'Set up the basics of health mode step by step',
     install: 'Add app to home screen',
     installDesc: 'Open Ritmo faster, from your home screen',
     feedback: 'Give feedback',
     feedbackDesc: 'Report a problem or share an idea',
+  },
+
+  // health tour (tutorial)
+  tour: {
+    panelTitle: 'Tour',
+    progress: '{done} of {total} done',
+    pill: 'Tour {done}/{total}',
+    nowLabel: 'Do now',
+    nowTag: 'now',
+    whatLabel: 'What',
+    whyLabel: 'Why',
+    goto: 'Take me there',
+    allSteps: 'All steps',
+    previewCaption: 'Example: this is how a measurement grows with you over time.',
+    collapseAria: 'Collapse the tour',
+    expandAria: 'Open the tour',
+    closeAria: 'Close the tour',
+    hintClose: 'Close hint',
+    welcome: {
+      title: 'Ready to start?',
+      body: 'This tour helps you set up the parts of health mode once. You set the pace and can stop any time.',
+      start: 'Start',
+      later: 'Later',
+    },
+    done: {
+      title: 'Done. Your basics are set.',
+      body: 'You have filled in every part. You can find the tour again in Settings, under Help.',
+      close: 'Close',
+      nextTitle: 'Where to find the rest',
+      overview: 'Overview: your trends and charts over time.',
+      household: 'Household: your household tasks.',
+      addModule: '+ Module: tap "+ Module" at the top right of the health screen to pick and set up a new part.',
+    },
+    howTitle: 'How to do it',
+    types: {
+      measurements: {
+        what: 'This is where you track values, like your weight.',
+        why: 'That way you see change over time.',
+        hint: 'Tap a measurement and add your first value.',
+        addHint: 'Add a measurement: pick one from the library or create your own.',
+        how: {
+          steps: [
+            'Add a measurement: open the module and tap the blue + button at the bottom right.',
+            'Pick or create a value: use "From library" or make your own measurement.',
+            'Edit or delete: tap a row in the history to change the value or remove it.',
+          ],
+        },
+      },
+      medication: {
+        what: 'This is where you list your medicines.',
+        why: 'That way you know exactly what you take.',
+        hint: 'Tap the button to add your first medicine.',
+        how: {
+          steps: [
+            'Add: tap "Add medicine" and fill in name, dose and frequency.',
+            'Edit: tap a medicine in the list to change it.',
+            'Delete: open the medicine and tap the trash icon.',
+          ],
+        },
+      },
+      bodymap: {
+        what: 'This is where you track where you inject.',
+        why: 'That way you rotate spots and avoid irritation.',
+        hint: 'Pick a spot on the body to log it.',
+        how: {
+          steps: [
+            'Log an injection: tap a spot on the body to mark it.',
+            'Correct it: tap the spot again to undo the log.',
+          ],
+        },
+      },
+      injectionSchedule: {
+        what: 'This is where you plan when you inject.',
+        why: 'That way you never miss a dose.',
+        hint: 'Add a time when you want to inject.',
+        how: {
+          steps: [
+            'Add: tap "Add time" and pick a day and time.',
+            'Edit or delete: tap a time in the list to change or remove it.',
+          ],
+        },
+      },
+      counter: {
+        what: 'This is where you count your movement today.',
+        why: 'Every step counts and you see your progress.',
+        hint: 'Add your movement for today.',
+        how: {
+          steps: [
+            'Add: tap the + button to raise your movement for today.',
+            'Correct it: tap the - button to lower the count.',
+          ],
+        },
+      },
+      checklist: {
+        what: 'This is where you note how you feel.',
+        why: 'That way you spot patterns in side effects.',
+        hint: 'Check what you notice today.',
+        how: {
+          steps: [
+            'Check: tap an item you notice today.',
+            'Undo: tap it again to remove the check.',
+          ],
+        },
+      },
+    },
   },
 
   install: {
