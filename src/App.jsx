@@ -98,8 +98,6 @@ export default function Ritmo() {
   const [customTasks, setCustomTasks] = useState([]);
   const [recurringTasks, setRecurringTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
-  const [reflectionAnswers, setReflectionAnswers] = useState({});
-  const [reflectionQuestions, setReflectionQuestions] = useState([]);
   const [streakSettings, setStreakSettings] = useState({});
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [soundVolume, setSoundVolume] = useState(80);
@@ -107,7 +105,6 @@ export default function Ritmo() {
   const [appMode, setAppMode] = useState('standard');
   const isDesktop = useIsDesktop();
   const [onboardingProfile, setOnboardingProfile] = useState('full');
-  const [showReflectionOnToday, setShowReflectionOnToday] = useState(false);
   const [hasUsedSwipe, setHasUsedSwipe] = useState(false);
   const [hasDismissedInstallBanner, setHasDismissedInstallBanner] = useState(false);
   const [confetti, setConfetti] = useState([]);
@@ -146,7 +143,6 @@ export default function Ritmo() {
           loadedModules = settings.modules.map(migrateModuleConfig);
         }
         if (settings.darkMode !== undefined) setDarkMode(settings.darkMode);
-        if (settings.reflectionQuestions) setReflectionQuestions(settings.reflectionQuestions);
         if (settings.recurringTasks) setRecurringTasks(settings.recurringTasks);
         if (settings.streakSettings) setStreakSettings(settings.streakSettings);
         if (settings.soundEnabled !== undefined) setSoundEnabled(settings.soundEnabled);
@@ -154,7 +150,6 @@ export default function Ritmo() {
         if (settings.goldenBorderEnabled !== undefined) setGoldenBorderEnabled(settings.goldenBorderEnabled);
         if (settings.appMode !== undefined) setAppMode(settings.appMode);
         if (settings.onboardingProfile !== undefined) setOnboardingProfile(settings.onboardingProfile);
-        if (settings.showReflectionOnToday !== undefined) setShowReflectionOnToday(settings.showReflectionOnToday);
         if (settings.hasUsedSwipe !== undefined) setHasUsedSwipe(settings.hasUsedSwipe);
         if (settings.hasDismissedInstallBanner !== undefined) setHasDismissedInstallBanner(settings.hasDismissedInstallBanner);
         if (loadedModules) setModules(loadedModules);
@@ -182,7 +177,6 @@ export default function Ritmo() {
         const data = migrateDayData(JSON.parse(result.value));
         setModuleData(data.moduleData || {});
         setCustomTasks(data.customTasks || []);
-        setReflectionAnswers(data.reflectionAnswers || {});
         skipNextSaveRef.current = true;
       }
     } catch (e) {}
@@ -247,7 +241,6 @@ export default function Ritmo() {
     skipNextSaveRef.current = true;
     setModuleData(data.moduleData || {});
     setCustomTasks(data.customTasks || []);
-    setReflectionAnswers(data.reflectionAnswers || {});
     prevModuleStatusRef.current = {};
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeDateKey, loading]);
@@ -265,7 +258,6 @@ export default function Ritmo() {
         const dayData = {
           moduleData,
           customTasks,
-          reflectionAnswers,
         };
         await window.storage.set(`day:${activeDateKey}`, JSON.stringify(dayData));
         setHistory(prev => ({ ...prev, [activeDateKey]: dayData }));
@@ -274,7 +266,7 @@ export default function Ritmo() {
       }
     };
     saveData();
-  }, [moduleData, customTasks, reflectionAnswers, loading, activeDateKey, editable]);
+  }, [moduleData, customTasks, loading, activeDateKey, editable]);
 
   // Save settings
   useEffect(() => {
@@ -283,7 +275,6 @@ export default function Ritmo() {
       try {
         await window.storage.set('settings', JSON.stringify({
           darkMode,
-          reflectionQuestions,
           recurringTasks,
           streakSettings,
           soundEnabled,
@@ -291,7 +282,6 @@ export default function Ritmo() {
           goldenBorderEnabled,
           appMode,
           onboardingProfile,
-          showReflectionOnToday,
           hasUsedSwipe,
           hasDismissedInstallBanner,
           modules,
@@ -301,7 +291,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, reflectionQuestions, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, onboardingProfile, showReflectionOnToday, hasUsedSwipe, hasDismissedInstallBanner, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, modules, hasOnboarded, languageSetting, loading]);
 
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
@@ -1143,8 +1133,7 @@ export default function Ritmo() {
     todayFullyComplete, hasDismissedInstallBanner, setHasDismissedInstallBanner,
     enabledModules, todayVisibleModules, getModuleStreak, renderTodayModule,
     totalCompletionItems, completedItems, overallPercentage, setShowSettings,
-    setView, showReflectionOnToday, reflectionQuestions, reflectionAnswers,
-    setReflectionAnswers, StreakBadge,
+    setView, StreakBadge,
   };
   const healthViewProps = {
     modules,
@@ -1340,17 +1329,6 @@ export default function Ritmo() {
           />
         )}
 
-        {view === 'reflection' && (
-          <ReflectionView
-            reflectionQuestions={reflectionQuestions}
-            reflectionAnswers={reflectionAnswers}
-            setReflectionAnswers={setReflectionAnswers}
-            history={history}
-            today={todayKey}
-            theme={theme}
-            darkMode={darkMode}
-          />
-        )}
         </ErrorBoundary>
 
         <div className={`text-center text-xs ${theme.textMuted} mt-6 pb-4`}>
@@ -1389,8 +1367,6 @@ export default function Ritmo() {
           currentUser={currentUser}
           modules={modules}
           setModules={setModules}
-          reflectionQuestions={reflectionQuestions}
-          setReflectionQuestions={setReflectionQuestions}
           recurringTasks={recurringTasks}
           setRecurringTasks={setRecurringTasks}
           streakSettings={streakSettings}
@@ -1405,8 +1381,6 @@ export default function Ritmo() {
           setGoldenBorderEnabled={setGoldenBorderEnabled}
           appMode={appMode}
           setAppMode={setAppMode}
-          showReflectionOnToday={showReflectionOnToday}
-          setShowReflectionOnToday={setShowReflectionOnToday}
           theme={theme}
           dayNames={dayNames}
           setEditingModule={setEditingModule}
@@ -1619,93 +1593,9 @@ function StreakBadge({ label, days, color, theme }) {
 }
 
 // =============================================
-// REFLECTION VIEW
-// =============================================
-function ReflectionView({ reflectionQuestions, reflectionAnswers, setReflectionAnswers, history, today, theme, darkMode }) {
-  const { t } = useTranslation();
-  const [selectedDate, setSelectedDate] = useState(today);
-
-  const isToday = selectedDate === today;
-  const dayData = isToday ? { reflectionAnswers } : history[selectedDate];
-  const answers = isToday ? reflectionAnswers : (dayData?.reflectionAnswers || {});
-
-  const datesWithReflections = Object.keys(history)
-    .filter(d => {
-      const refs = history[d]?.reflectionAnswers;
-      return refs && Object.values(refs).some(v => v && v.trim());
-    })
-    .sort()
-    .reverse();
-
-  return (
-    <div className="slide-in space-y-4">
-      <div className={`${theme.card} rounded-2xl p-5 shadow-sm`}>
-        <div className="flex items-center gap-2 mb-4">
-          <BookOpen className="w-5 h-5 text-blue-500" />
-          <h2 className={`font-semibold ${theme.textSecondary}`}>{t('reflection.title')}</h2>
-        </div>
-
-        <div className="mb-4">
-          <label className={`text-xs ${theme.textMuted} mb-1 block`}>{t('reflection.date')}</label>
-          <input
-            type="date"
-            value={selectedDate}
-            max={today}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300`}
-          />
-        </div>
-
-        <div className="space-y-4">
-          {reflectionQuestions.map((q, i) => (
-            <div key={i}>
-              <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{q}</label>
-              {isToday ? (
-                <textarea
-                  value={answers[q] || ''}
-                  onChange={(e) => setReflectionAnswers(prev => ({ ...prev, [q]: e.target.value }))}
-                  placeholder={t('reflection.placeholder')}
-                  className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm h-24 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300`}
-                />
-              ) : (
-                <div className={`px-3 py-2 ${theme.cardSecondary} rounded-lg text-sm min-h-[60px] ${theme.textSecondary}`}>
-                  {answers[q] || <span className={theme.textMuted}>{t('reflection.noAnswer')}</span>}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        <p className={`text-xs ${theme.textMuted} mt-4`}>{t('reflection.editHint')}</p>
-      </div>
-
-      {datesWithReflections.length > 0 && (
-        <div className={`${theme.card} rounded-2xl p-5 shadow-sm`}>
-          <h3 className={`font-semibold ${theme.textSecondary} mb-3 text-sm`}>{t('reflection.earlier')}</h3>
-          <div className="space-y-2">
-            {datesWithReflections.slice(0, 10).map(date => (
-              <button
-                key={date}
-                onClick={() => setSelectedDate(date)}
-                className={`w-full text-left px-3 py-2 ${theme.cardSecondary} ${theme.hover} rounded-lg text-sm transition flex items-center justify-between`}
-              >
-                <span className={theme.textSecondary}>
-                  {new Date(date).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'short' })}
-                </span>
-                <ChevronRight className={`w-4 h-4 ${theme.textMuted}`} />
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, showReflectionOnToday, setShowReflectionOnToday, theme, dayNames, setEditingModule, initialTab, currentUser }) {
+function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, theme, dayNames, setEditingModule, initialTab, currentUser }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
   const [helpView, setHelpView] = useState(null); // null | 'list' | 'install' | 'feedback'
@@ -1803,7 +1693,7 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
             [
               { id: 'modules', label: t('settings.tabModules') },
               { id: 'streaks', label: t('settings.tabStreaks') },
-              { id: 'reflect', label: t('settings.tabReflection') },
+              { id: 'recurring', label: t('settings.tabRecurring') },
               { id: 'theme', label: t('settings.tabTheme') },
             ],
             [
@@ -2109,12 +1999,9 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
           );
         })()}
 
-        {activeTab === 'reflect' && (
+        {activeTab === 'recurring' && (
           <div>
-            <h3 className={`font-semibold ${theme.textSecondary} mb-3`}>{t('settings.reflectionQuestions')}</h3>
-            <ReflectionSettings
-              reflectionQuestions={reflectionQuestions}
-              setReflectionQuestions={setReflectionQuestions}
+            <RecurringSettings
               recurringTasks={recurringTasks}
               setRecurringTasks={setRecurringTasks}
               theme={theme}
@@ -2180,19 +2067,6 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
                   type="checkbox"
                   checked={goldenBorderEnabled}
                   onChange={(e) => setGoldenBorderEnabled(e.target.checked)}
-                  className="w-4 h-4 cursor-pointer flex-shrink-0"
-                />
-              </label>
-
-              <label className={`flex items-center justify-between gap-3 p-3 ${theme.cardSecondary} rounded-lg mb-3`}>
-                <div className="min-w-0">
-                  <span className={`text-sm font-medium ${theme.textSecondary}`}>{t('settings.showReflection')}</span>
-                  <p className={`text-xs ${theme.textMuted} mt-0.5`}>{t('settings.showReflectionHint')}</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={showReflectionOnToday}
-                  onChange={(e) => setShowReflectionOnToday(e.target.checked)}
                   className="w-4 h-4 cursor-pointer flex-shrink-0"
                 />
               </label>
@@ -3762,27 +3636,15 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
 }
 
 // =============================================
-// REFLECTION SETTINGS
+// RECURRING SETTINGS
 // =============================================
-function ReflectionSettings({ reflectionQuestions, setReflectionQuestions, recurringTasks, setRecurringTasks, theme, dayNames }) {
+function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames }) {
   const { t } = useTranslation();
-  const [newQuestion, setNewQuestion] = useState('');
   const [newRecurringText, setNewRecurringText] = useState('');
   const [newRecurringDays, setNewRecurringDays] = useState([]);
 
-  const addQuestion = () => {
-    if (newQuestion.trim()) {
-      setReflectionQuestions(prev => [...prev, newQuestion.trim()]);
-      setNewQuestion('');
-    }
-  };
-
-  const removeQuestion = (i) => {
-    setReflectionQuestions(prev => prev.filter((_, idx) => idx !== i));
-  };
-
   const toggleDay = (day) => {
-    setNewRecurringDays(prev => 
+    setNewRecurringDays(prev =>
       prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
     );
   };
@@ -3805,32 +3667,6 @@ function ReflectionSettings({ reflectionQuestions, setReflectionQuestions, recur
 
   return (
     <div className="space-y-6">
-      <div>
-        <div className="space-y-2 mb-3">
-          {reflectionQuestions.map((q, i) => (
-            <div key={i} className={`flex items-center gap-2 p-2 ${theme.cardSecondary} rounded-lg`}>
-              <span className={`flex-1 text-sm ${theme.textSecondary}`}>{q}</span>
-              <button onClick={() => removeQuestion(i)} className="text-slate-400 hover:text-red-500">
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newQuestion}
-            onChange={(e) => setNewQuestion(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addQuestion()}
-            placeholder={t('settings.reflectionNewPlaceholder')}
-            className={`flex-1 px-3 py-2 ${theme.input} rounded-lg text-sm`}
-          />
-          <button onClick={addQuestion} className="px-3 py-2 bg-blue-500 text-white rounded-lg">
-            <Plus className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
       <div>
         <h4 className={`font-semibold ${theme.textSecondary} mb-3 text-sm`}>{t('settings.recurringWeekly')}</h4>
         <div className="space-y-2 mb-4">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, Sparkles, BookOpen } from 'lucide-react';
+import { Flame, Sparkles } from 'lucide-react';
 import DayNavigator from '../components/DayNavigator';
 import ReadOnlyBanner from '../components/ReadOnlyBanner';
 import InstallBanner from '../components/InstallBanner';
@@ -15,8 +15,7 @@ export default function TodayView({
   enabledModules, todayVisibleModules,
   getModuleStreak, renderTodayModule,
   totalCompletionItems, completedItems, overallPercentage,
-  setShowSettings, setView,
-  showReflectionOnToday, reflectionQuestions, reflectionAnswers, setReflectionAnswers,
+  setShowSettings,
   StreakBadge,
 }) {
   return (
@@ -94,39 +93,6 @@ export default function TodayView({
         </div>
       )}
 
-      {showReflectionOnToday && (() => {
-        const firstQ = reflectionQuestions[0];
-        const hasAnswer = !!firstQ && !!reflectionAnswers[firstQ];
-        if (!editable && !hasAnswer) return null;
-        return (
-          <div className={`${theme.card} rounded-2xl p-5 shadow-sm mb-4`}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-blue-500" />
-                <h2 className={`font-semibold ${theme.textSecondary}`}>{t('today.reflection')}</h2>
-              </div>
-              <button
-                onClick={() => setView('reflection')}
-                className="text-xs text-blue-500 hover:underline"
-              >
-                {t('today.viewFull')}
-              </button>
-            </div>
-            {firstQ && (
-              <div>
-                <label className={`text-xs ${theme.textMuted} mb-1 block`}>{firstQ}</label>
-                <textarea
-                  value={reflectionAnswers[firstQ] || ''}
-                  onChange={(e) => setReflectionAnswers(prev => ({ ...prev, [firstQ]: e.target.value }))}
-                  disabled={!editable}
-                  placeholder={editable ? t('reflection.placeholder') : ''}
-                  className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm h-16 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-70 disabled:cursor-not-allowed`}
-                />
-              </div>
-            )}
-          </div>
-        );
-      })()}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 // Nederlandse vertalingen voor Ritmo. Elke key in dit bestand moet ook in en.js bestaan.
-// Top-level groepen: common, nav, today, week, month, reflection, projects, collections,
+// Top-level groepen: common, nav, today, projects, collections,
 // household, sleep, modules, settings, presets, onboarding, tasks, dates.
 
 export default {
@@ -99,7 +99,6 @@ export default {
 
   nav: {
     today: 'Vandaag',
-    reflection: 'Reflectie',
     projects: 'Projecten',
     collections: 'Collecties',
     measurements: 'Gezondheid',
@@ -135,19 +134,8 @@ export default {
     noModulesActive: 'Geen modules actief',
     activateModulesHint: 'Activeer modules via de instellingen om je dag te beginnen.',
     toSettings: 'Naar instellingen',
-    reflection: 'Reflectie',
-    viewFull: 'Volledig bekijken',
     allModulesCompleted: '🎉 Alle modules voltooid!',
     goalReached: '💪 {name} doel gehaald!',
-  },
-
-  reflection: {
-    title: 'Reflectie',
-    date: 'Datum',
-    earlier: 'Eerdere reflecties',
-    noAnswer: 'Geen antwoord ingevuld',
-    placeholder: 'Schrijf hier...',
-    editHint: '💡 Wijzig vragen via instellingen',
   },
 
   household: {
@@ -1043,7 +1031,7 @@ export default {
     title: 'Instellingen',
     tabModules: 'Modules',
     tabStreaks: 'Streaks',
-    tabReflection: 'Reflectie',
+    tabRecurring: 'Terugkerend',
     tabTheme: 'Thema',
     tabLanguage: 'Taal',
     tabAccount: 'Account',
@@ -1075,10 +1063,6 @@ export default {
     streakChoiceHint: 'Streak telt zodra je een optie kiest.',
     streakSleepHint: 'Streak telt als slaap- en wektijd binnen de tolerantie van het doel vallen.',
 
-    reflectionQuestions: 'Reflectievragen',
-    reflectionAddQuestion: 'Vraag toevoegen',
-    reflectionPlaceholder: 'Nieuwe vraag...',
-    reflectionNewPlaceholder: 'Nieuwe reflectievraag...',
     recurringTasks: 'Terugkerende taken',
     recurringHint: 'Taken die op gekozen weekdagen automatisch op je dag verschijnen.',
     recurringTaskPlaceholder: 'Taak...',
@@ -1096,8 +1080,6 @@ export default {
     effects: 'Effecten',
     goldenBorder: 'Gouden rand bij voltooide dagen',
     goldenBorderHint: 'Animatie rond dagen waarop alles afgevinkt is.',
-    showReflection: 'Reflectie tonen op Vandaag',
-    showReflectionHint: 'Verberg de Reflectie-kaart op het Vandaag-scherm. De Reflectie-tab blijft bereikbaar.',
     sounds: 'Geluiden',
     soundEffects: 'Geluidseffecten',
     volume: 'Volume',

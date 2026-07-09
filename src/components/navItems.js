@@ -19,7 +19,6 @@ export function getNavGroups(t, appMode) {
   return [
     [
       { id: 'today',      label: t('nav.today') },
-      { id: 'reflection', label: t('nav.reflection') },
     ],
     [
       { id: 'household',    label: t('nav.household') },
