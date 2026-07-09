@@ -98,8 +98,6 @@ export default {
 
   nav: {
     today: 'Today',
-    week: 'Week',
-    month: 'Month',
     reflection: 'Reflection',
     projects: 'Projects',
     collections: 'Collections',
@@ -140,23 +138,6 @@ export default {
     viewFull: 'View full',
     allModulesCompleted: '🎉 All modules completed!',
     goalReached: '💪 {name} goal reached!',
-  },
-
-  week: {
-    fullDays: '{n} / 7 full days',
-    daysCount: '{n} / 7 days',
-    onRhythm: '{n} / 7 on track',
-    noData: 'No data yet',
-  },
-
-  month: {
-    clickDay: 'Click a day to view it',
-    fullyCompleted: 'full',
-    partial: 'partial',
-    noSleepData: 'No sleep data this month yet',
-    onRhythmOf: '{n} / {total} on track',
-    filter: 'Filter',
-    filterAll: 'All modules',
   },
 
   reflection: {

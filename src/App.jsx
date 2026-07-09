@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
-  Sun, Moon, Plus, Trash2, TrendingUp, Calendar, Sparkles, Settings, BookOpen, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Repeat, Trophy, GripVertical, Eye, EyeOff, GraduationCap, HelpCircle, ArrowUpDown, SlidersHorizontal, BedDouble, Check, BarChart3,
+  Sun, Moon, Plus, Trash2, Sparkles, Settings, BookOpen, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Repeat, GripVertical, Eye, EyeOff, GraduationCap, HelpCircle, ArrowUpDown, SlidersHorizontal, BedDouble, Check, BarChart3,
 } from 'lucide-react';
 import './storage';
 import { isSyncEnabled } from './sync/supabase';
@@ -59,10 +59,9 @@ import MetricLibraryModal from './components/MetricLibraryModal';
 import {
   fmtDateKey, parseDateKey, addDays, sameDay, startOfWeek,
   isEditable, isFuture, isToday as isTodayDate,
-  formatWeekTitle, formatWeekRange,
-  WEEKDAY_KEYS, shortWeekdayLabelsMondayFirst, longMonthLabels, weekdayLabelLong,
+  WEEKDAY_KEYS, shortWeekdayLabelsMondayFirst, weekdayLabelLong,
 } from './utils/dates';
-import { summarizeSleep, goalsForNight, isOnTarget } from './utils/sleep';
+import { goalsForNight, isOnTarget } from './utils/sleep';
 import {
   buildDayCellBackground, moduleStatusForDay, isDayFullyComplete,
   normalizeChecklistItemData, isChecklistItemComplete,
@@ -81,7 +80,6 @@ export default function Ritmo() {
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [selectedCollectionId, setSelectedCollectionId] = useState(null);
   const [activeDate, setActiveDate] = useState(new Date());
-  const [activeWeekStart, setActiveWeekStart] = useState(() => startOfWeek(new Date()));
   const todayKey = fmtDateKey(new Date());
   const activeDateKey = fmtDateKey(activeDate);
   const today = todayKey;
@@ -115,7 +113,6 @@ export default function Ritmo() {
   const [confetti, setConfetti] = useState([]);
   const [celebrationMsg, setCelebrationMsg] = useState(null);
   const [celebrationOverlay, setCelebrationOverlay] = useState(null);
-  const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [currentUser, setCurrentUser] = useState(null);
   const [pendingConflicts, setPendingConflicts] = useState(null);
   const conflictResolverRef = useRef(null);
@@ -309,7 +306,7 @@ export default function Ritmo() {
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
   useEffect(() => {
-    const allowed = ['today', 'week', 'month', 'household', 'insight'];
+    const allowed = ['today', 'insight', 'household'];
     if (appMode === 'health' && !allowed.includes(view)) setView('today');
   }, [appMode, view]);
 
@@ -986,14 +983,9 @@ export default function Ritmo() {
   const currentWeekDates = Array.from({ length: 7 }, (_, i) => {
     return fmtDateKey(addDays(startOfWeek(new Date()), i));
   });
-  // Week shown in WeekView, follows the week-nav arrows.
-  const activeWeekDates = Array.from({ length: 7 }, (_, i) => {
-    return fmtDateKey(addDays(activeWeekStart, i));
-  });
   const weekDates = currentWeekDates;
 
   const dayNames = shortWeekdayLabelsMondayFirst();
-  const monthNames = longMonthLabels();
 
   const theme = darkMode ? {
     bg: 'bg-gradient-to-br from-slate-900 to-slate-800',
@@ -1286,25 +1278,6 @@ export default function Ritmo() {
             : <TodayView {...todayViewProps} />
         )}
 
-        {view === 'week' && (
-          <WeekView
-            modules={modules}
-            history={history}
-            today={todayKey}
-            activeDateKey={activeDateKey}
-            moduleData={moduleData}
-            activeWeekStart={activeWeekStart}
-            setActiveWeekStart={setActiveWeekStart}
-            weekDates={activeWeekDates}
-            dayNames={dayNames}
-            onPickDay={(date) => { setActiveDate(date); setView('today'); }}
-            theme={theme}
-            darkMode={darkMode}
-            goldenBorderEnabled={goldenBorderEnabled}
-            appMode={appMode}
-          />
-        )}
-
         {view === 'projects' && (
           <ProjectsView
             modules={modules}
@@ -1348,25 +1321,6 @@ export default function Ritmo() {
 
         {view === 'measurements' && appMode !== 'health' && (
           <HealthView {...healthViewProps} />
-        )}
-
-        {view === 'month' && (
-          <MonthView
-            calendarMonth={calendarMonth}
-            setCalendarMonth={setCalendarMonth}
-            history={history}
-            today={todayKey}
-            activeDateKey={activeDateKey}
-            moduleData={moduleData}
-            modules={modules}
-            onPickDay={(date) => { setActiveDate(date); setView('today'); }}
-            theme={theme}
-            darkMode={darkMode}
-            monthNames={monthNames}
-            dayNames={dayNames}
-            goldenBorderEnabled={goldenBorderEnabled}
-            appMode={appMode}
-          />
         )}
 
         {view === 'household' && (
@@ -1660,320 +1614,6 @@ function StreakBadge({ label, days, color, theme }) {
         <div className="text-xs text-white/90">{days === 1 ? t('common.day') : t('common.days')}</div>
       </div>
       <div className={`text-xs ${theme.textMuted} truncate`}>{label}</div>
-    </div>
-  );
-}
-
-// =============================================
-// WEEK VIEW
-// =============================================
-function WeekView({ modules, history, today, activeDateKey, moduleData, activeWeekStart, setActiveWeekStart, weekDates, dayNames, onPickDay, theme, darkMode, goldenBorderEnabled, appMode }) {
-  const { t } = useTranslation();
-  const enabledNonTaskModules = modules.filter(m => m.enabled && canCountInStreak(m.type) && (appMode !== 'health' || isHealthModule(m)));
-  const atCurrentWeek = sameDay(activeWeekStart, startOfWeek(new Date()));
-
-  const dayDataFor = (dateStr) => (
-    dateStr === activeDateKey ? { moduleData } : history[dateStr]
-  );
-
-  return (
-    <div className={`${theme.card} rounded-2xl p-5 shadow-sm slide-in`}>
-      <div className="flex items-center justify-between gap-2 mb-4">
-        <button
-          onClick={() => setActiveWeekStart(addDays(activeWeekStart, -7))}
-          aria-label={t('dates.previousWeekAria')}
-          className={`w-9 h-9 rounded-lg flex items-center justify-center ${theme.hover} ${theme.textSecondary} transition`}
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <div className="flex-1 text-center">
-          <div className="flex items-center justify-center gap-2">
-            <TrendingUp className="w-4 h-4 text-blue-500" />
-            <h2 className={`font-semibold ${theme.textSecondary}`}>{formatWeekTitle(activeWeekStart)}</h2>
-          </div>
-          <div className={`text-xs ${theme.textMuted}`}>{formatWeekRange(activeWeekStart)}</div>
-        </div>
-        <button
-          onClick={() => setActiveWeekStart(addDays(activeWeekStart, 7))}
-          disabled={atCurrentWeek}
-          aria-label={t('dates.nextWeekAria')}
-          className={`w-9 h-9 rounded-lg flex items-center justify-center ${theme.hover} ${theme.textSecondary} transition disabled:opacity-30 disabled:cursor-not-allowed`}
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
-      </div>
-
-      <div className="grid grid-cols-7 gap-2 mb-6">
-        {weekDates.map((date, i) => {
-          const isTodayCell = date === today;
-          const dateObj = parseDateKey(date);
-          const future = isFuture(dateObj);
-          const bg = buildDayCellBackground(modules, dayDataFor(date), dateObj);
-          const fullyComplete = isDayFullyComplete(modules, dayDataFor(date), dateObj);
-          const dayNum = date.slice(8).replace(/^0/, '');
-
-          return (
-            <div key={date} className="text-center">
-              <div className={`text-xs font-medium mb-1 ${isTodayCell ? 'text-blue-500' : theme.textMuted}`}>
-                {dayNames[i]}
-              </div>
-              <button
-                onClick={() => !future && onPickDay?.(dateObj)}
-                disabled={future}
-                style={bg ? { background: bg } : undefined}
-                className={`relative w-full h-20 rounded-lg overflow-hidden flex items-center justify-center transition ${
-                  bg ? '' : theme.progressBg
-                } ${isTodayCell ? 'ring-2 ring-blue-400' : ''} ${
-                  future ? 'opacity-30 cursor-not-allowed' : 'hover:opacity-90'
-                } ${(goldenBorderEnabled && fullyComplete) ? 'ritmo-golden-border' : ''}`}
-                aria-label={t('dates.openDay', { date })}
-              >
-                <span className={`text-sm font-bold ${bg ? 'text-white drop-shadow' : theme.textSecondary}`}>
-                  {dayNum}
-                </span>
-              </button>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className={`space-y-3 pt-4 border-t ${theme.border}`}>
-        {enabledNonTaskModules.map(mod => {
-          const Icon = ICON_OPTIONS[mod.icon] || Sparkles;
-          let label = '';
-          let value = '';
-
-          if (mod.type === 'checklist') {
-            return (
-              <ChecklistInsightCard
-                key={mod.id}
-                mod={mod}
-                days={buildDaysWithActive(weekDates, { history, activeDateKey, moduleData })}
-                theme={theme}
-                darkMode={darkMode}
-                t={t}
-              />
-            );
-          } else if (mod.type === 'choice') {
-            const days = weekDates.filter(d => {
-              const data = d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id];
-              return data?.completed;
-            }).length;
-            label = resolveModuleName(mod, t);
-            value = t('week.daysCount', { n: days });
-          } else if (mod.type === 'counter') {
-            const unit = mod.unit || 'minutes';
-            const total = weekDates.reduce((sum, d) => {
-              const data = d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id];
-              return sum + (data?.total ?? data?.minutes ?? 0);
-            }, 0);
-            const weekMax = mod.weeklyMax ?? mod.weeklyMaxMinutes;
-            label = resolveModuleName(mod, t);
-            value = weekMax
-              ? `${formatAmount(total, unit)} / ${formatAmount(weekMax, unit)}`
-              : formatAmount(total, unit);
-          } else if (mod.type === 'sleep') {
-            if (!mod.countInStreak) return null;
-            const days = weekDates.map(d => ({
-              date: parseDateKey(d),
-              dayData: (d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id]) || null,
-            }));
-            const summary = summarizeSleep(days, mod);
-            label = resolveModuleName(mod, t);
-            value = summary.nightsLogged === 0
-              ? t('week.noData')
-              : `${formatDuration(summary.averageDurationMinutes)} · ${t('week.onRhythm', { n: summary.nightsOnTarget })}`;
-          }
-
-          return (
-            <div key={mod.id} className={`flex items-center justify-between p-3 ${darkMode ? `bg-${mod.color}-900/20` : `bg-${mod.color}-50`} rounded-lg`}>
-              <div className="flex items-center gap-2">
-                <Icon className={`w-4 h-4 text-${mod.color}-500`} />
-                <span className={`text-sm font-medium ${theme.textSecondary}`}>{label}</span>
-              </div>
-              <span className={`font-bold text-sm ${darkMode ? `text-${mod.color}-300` : `text-${mod.color}-600`}`}>
-                {value}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// =============================================
-// MONTH VIEW
-// =============================================
-function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDateKey, moduleData, modules, onPickDay, theme, darkMode, monthNames, dayNames, goldenBorderEnabled, appMode }) {
-  const { t } = useTranslation();
-  const [filterModuleId, setFilterModuleId] = useState('all');
-  const year = calendarMonth.getFullYear();
-  const month = calendarMonth.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const daysInMonth = lastDay.getDate();
-  const startWeekday = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
-
-  const cells = [];
-  for (let i = 0; i < startWeekday; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    cells.push(dateStr);
-  }
-
-  const dayDataFor = (dateStr) => (
-    dateStr === activeDateKey ? { moduleData } : history[dateStr]
-  );
-
-  const filterModule = filterModuleId === 'all'
-    ? null
-    : modules.find(m => m.id === filterModuleId) || null;
-
-  const cellBackground = (dateStr, dateObj) => {
-    if (!filterModule) {
-      return buildDayCellBackground(modules, dayDataFor(dateStr), dateObj);
-    }
-    const status = moduleStatusForDay(filterModule, dayDataFor(dateStr), dateObj);
-    return status === 'full' ? getColorHex(filterModule.color) : null;
-  };
-
-  const monthDays = cells.filter(c => c !== null);
-  const completedDays = monthDays.filter(d => cellBackground(d, parseDateKey(d)) !== null).length;
-  const partialDays = monthDays.filter(d => {
-    const data = dayDataFor(d);
-    if (!data?.moduleData) return false;
-    const dateObj = parseDateKey(d);
-    if (cellBackground(d, dateObj) !== null) return false;
-    if (filterModule) {
-      return moduleStatusForDay(filterModule, data, dateObj) === 'partial';
-    }
-    return modules.some(m => m.enabled && canCountInStreak(m.type) && (appMode !== 'health' || isHealthModule(m)) &&
-      moduleStatusForDay(m, data, dateObj) !== 'none');
-  }).length;
-
-  const filterableModules = modules.filter(m => m.enabled && canCountInStreak(m.type) && (appMode !== 'health' || isHealthModule(m)));
-
-  return (
-    <div className={`${theme.card} rounded-2xl p-5 shadow-sm slide-in`}>
-      <div className="flex items-center justify-between mb-4">
-        <button onClick={() => setCalendarMonth(new Date(year, month - 1, 1))} className={`p-2 ${theme.hover} rounded-lg transition`}>
-          <ChevronLeft className={`w-5 h-5 ${theme.textSecondary}`} />
-        </button>
-        <h2 className={`font-semibold ${theme.textSecondary}`}>{monthNames[month]} {year}</h2>
-        <button onClick={() => setCalendarMonth(new Date(year, month + 1, 1))} className={`p-2 ${theme.hover} rounded-lg transition`}>
-          <ChevronRight className={`w-5 h-5 ${theme.textSecondary}`} />
-        </button>
-      </div>
-
-      {filterableModules.length > 0 && (
-        <div className="flex items-center justify-end gap-2 mb-3">
-          <label className={`text-xs ${theme.textMuted}`} htmlFor="month-module-filter">
-            {t('month.filter')}
-          </label>
-          <select
-            id="month-module-filter"
-            value={filterModuleId}
-            onChange={(e) => setFilterModuleId(e.target.value)}
-            className={`px-2 py-1 ${theme.input} rounded text-xs`}
-          >
-            <option value="all">{t('month.filterAll')}</option>
-            {filterableModules.map(m => (
-              <option key={m.id} value={m.id}>{resolveModuleName(m, t)}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      <div className="grid grid-cols-7 gap-1 mb-2">
-        {dayNames.map(d => (
-          <div key={d} className={`text-center text-xs font-medium ${theme.textMuted} py-1`}>{d}</div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-7 gap-1 mb-4">
-        {cells.map((dateStr, i) => {
-          if (!dateStr) return <div key={i} />;
-          const day = parseInt(dateStr.slice(8));
-          const isTodayCell = dateStr === today;
-          const dateObj = parseDateKey(dateStr);
-          const future = isFuture(dateObj);
-          const bg = cellBackground(dateStr, dateObj);
-          const fullyComplete = !filterModule && isDayFullyComplete(modules, dayDataFor(dateStr), dateObj);
-
-          return (
-            <button
-              key={dateStr}
-              onClick={() => !future && onPickDay?.(dateObj)}
-              disabled={future}
-              style={bg ? { background: bg } : undefined}
-              className={`aspect-square rounded-md flex items-center justify-center text-xs font-medium transition-all ${
-                bg ? '' : (darkMode ? 'bg-slate-700' : 'bg-slate-100')
-              } ${isTodayCell ? 'ring-2 ring-blue-500' : ''} ${
-                future ? 'opacity-30 cursor-not-allowed' : 'hover:scale-110'
-              } ${(goldenBorderEnabled && fullyComplete) ? 'ritmo-golden-border' : ''}`}
-              aria-label={t('dates.openDay', { date: dateStr })}
-            >
-              <span className={bg ? 'text-white drop-shadow' : theme.textSecondary}>{day}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <p className={`text-xs ${theme.textMuted} mb-4 text-center`}>
-        {t('month.clickDay')}
-      </p>
-
-      <div className={`grid grid-cols-2 gap-2 pt-4 border-t ${theme.border}`}>
-        <div className={`${darkMode ? 'bg-green-900/20' : 'bg-green-50'} p-3 rounded-lg text-center`}>
-          <Trophy className={`w-4 h-4 mx-auto mb-1 ${darkMode ? 'text-green-400' : 'text-green-600'}`} />
-          <div className={`text-xl font-bold ${darkMode ? 'text-green-300' : 'text-green-600'}`}>{completedDays}</div>
-          <div className={`text-xs ${theme.textMuted}`}>{t('month.fullyCompleted')}</div>
-        </div>
-        <div className={`${darkMode ? 'bg-blue-900/20' : 'bg-blue-50'} p-3 rounded-lg text-center`}>
-          <Calendar className={`w-4 h-4 mx-auto mb-1 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-          <div className={`text-xl font-bold ${darkMode ? 'text-blue-300' : 'text-blue-600'}`}>{partialDays}</div>
-          <div className={`text-xs ${theme.textMuted}`}>{t('month.partial')}</div>
-        </div>
-      </div>
-
-      {modules.filter(m => m.enabled && m.type === 'sleep' && m.countInStreak === true).map(mod => {
-        const Icon = ICON_OPTIONS[mod.icon] || BedDouble;
-        const days = monthDays.map(d => ({
-          date: parseDateKey(d),
-          dayData: (d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id]) || null,
-        }));
-        const summary = summarizeSleep(days, mod);
-        const value = summary.nightsLogged === 0
-          ? t('month.noSleepData')
-          : `${formatDuration(summary.averageDurationMinutes)} · ${t('month.onRhythmOf', { n: summary.nightsOnTarget, total: monthDays.length })}`;
-        return (
-          <div key={mod.id} className={`mt-3 flex items-center justify-between p-3 ${darkMode ? `bg-${mod.color}-900/20` : `bg-${mod.color}-50`} rounded-lg`}>
-            <div className="flex items-center gap-2">
-              <Icon className={`w-4 h-4 text-${mod.color}-500`} />
-              <span className={`text-sm font-medium ${theme.textSecondary}`}>{resolveModuleName(mod, t)}</span>
-            </div>
-            <span className={`font-bold text-sm ${darkMode ? `text-${mod.color}-300` : `text-${mod.color}-600`}`}>
-              {value}
-            </span>
-          </div>
-        );
-      })}
-
-      {modules
-        .filter(m => m.enabled && m.type === 'checklist' && (appMode !== 'health' || isHealthModule(m)))
-        .filter(m => filterModuleId === 'all' || m.id === filterModuleId)
-        .map(mod => (
-          <div key={mod.id} className="mt-3">
-            <ChecklistInsightCard
-              mod={mod}
-              days={buildDaysWithActive(monthDays, { history, activeDateKey, moduleData })}
-              theme={theme}
-              darkMode={darkMode}
-              t={t}
-            />
-          </div>
-        ))}
     </div>
   );
 }

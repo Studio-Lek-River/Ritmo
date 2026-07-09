@@ -99,8 +99,6 @@ export default {
 
   nav: {
     today: 'Vandaag',
-    week: 'Week',
-    month: 'Maand',
     reflection: 'Reflectie',
     projects: 'Projecten',
     collections: 'Collecties',
@@ -141,23 +139,6 @@ export default {
     viewFull: 'Volledig bekijken',
     allModulesCompleted: '🎉 Alle modules voltooid!',
     goalReached: '💪 {name} doel gehaald!',
-  },
-
-  week: {
-    fullDays: '{n} / 7 dagen volledig',
-    daysCount: '{n} / 7 dagen',
-    onRhythm: '{n} / 7 op ritme',
-    noData: 'Nog geen data',
-  },
-
-  month: {
-    clickDay: 'Klik op een dag om te bekijken',
-    fullyCompleted: 'volledig',
-    partial: 'gedeeltelijk',
-    noSleepData: 'Nog geen slaapdata in deze maand',
-    onRhythmOf: '{n} / {total} op ritme',
-    filter: 'Filter',
-    filterAll: 'Alle modules',
   },
 
   reflection: {
