@@ -17,6 +17,7 @@ import { MedFormModal } from './views/MedicationView';
 import HouseholdView from './views/HouseholdView';
 import TodayView from './views/TodayView';
 import InsightView from './views/InsightView';
+import ProductivitySuiteView from './views/ProductivitySuiteView';
 import OnboardingView from './views/OnboardingView';
 import SplashScreen from './components/SplashScreen';
 import RitmoLogo from './components/RitmoLogo';
@@ -32,6 +33,7 @@ import AuthSection from './components/auth/AuthSection';
 import SyncStatusRow from './components/SyncStatusRow';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
+import TimeInput from './components/TimeInput';
 import ChecklistModule from './modules/ChecklistModule';
 import CelebrationOverlay from './components/CelebrationOverlay';
 import ConfirmDialog from './components/ConfirmDialog';
@@ -90,6 +92,7 @@ export default function Ritmo() {
   const [loading, setLoading] = useState(true);
   const [splashDone, setSplashDone] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const [uiStyle, setUiStyle] = useState('strak');
   const [showSettings, setShowSettings] = useState(false);
   const [openSettingsToHelp, setOpenSettingsToHelp] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState(null);
@@ -101,6 +104,7 @@ export default function Ritmo() {
   const [customTasks, setCustomTasks] = useState([]);
   const [recurringTasks, setRecurringTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
+  const [newTaskTime, setNewTaskTime] = useState('');
   const [streakSettings, setStreakSettings] = useState({});
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [soundVolume, setSoundVolume] = useState(80);
@@ -130,6 +134,14 @@ export default function Ritmo() {
     setDarkMode(isDark);
   }, []);
 
+  // Zet de weergavestijl en het thema op <html>, zodat de CSS-variabele
+  // token-laag (index.css) de juiste oppervlakte-kleuren kiest.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+    root.setAttribute('data-style', uiStyle);
+  }, [darkMode, uiStyle]);
+
   // Auth state
   useEffect(() => {
     if (!isSyncEnabled()) return;
@@ -151,6 +163,7 @@ export default function Ritmo() {
           loadedModules = settings.modules.map(migrateModuleConfig);
         }
         if (settings.darkMode !== undefined) setDarkMode(settings.darkMode);
+        if (settings.uiStyle !== undefined) setUiStyle(settings.uiStyle);
         if (settings.recurringTasks) setRecurringTasks(settings.recurringTasks);
         if (settings.streakSettings) setStreakSettings(settings.streakSettings);
         if (settings.soundEnabled !== undefined) setSoundEnabled(settings.soundEnabled);
@@ -284,6 +297,7 @@ export default function Ritmo() {
       try {
         await window.storage.set('settings', JSON.stringify({
           darkMode,
+          uiStyle,
           recurringTasks,
           streakSettings,
           soundEnabled,
@@ -301,7 +315,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
 
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
@@ -309,6 +323,14 @@ export default function Ritmo() {
     const allowed = ['today', 'insight', 'household'];
     if (appMode === 'health' && !allowed.includes(view)) setView('today');
   }, [appMode, view]);
+
+  // De Productivity Suite Dag-view toont/schrijft altijd de échte vandaag,
+  // nooit de dag die de gebruiker via DayNavigator op Vandaag aan het bekijken
+  // was (activeDate is globale state en reset niet vanzelf bij view-wissel).
+  // Guard voorkomt een render-loop: alleen setten als het nog niet vandaag is.
+  useEffect(() => {
+    if (view === 'productivity' && activeDateKey !== todayKey) setActiveDate(new Date());
+  }, [view, activeDateKey, todayKey]);
 
   // De rondleiding hoort alleen in gezondheidsmodus met minstens één
   // gezondheidsmodule. Zet hij aan buiten die context (mode gewisseld, laatste
@@ -339,7 +361,8 @@ export default function Ritmo() {
             id: genId('task'),
             recurringId: rt.id,
             text: rt.text,
-            done: false
+            done: false,
+            ...(rt.time ? { time: rt.time } : {}),
           }]);
         }
       }
@@ -484,6 +507,45 @@ export default function Ritmo() {
       return { ...p, selectedOption: optionId, completed: true };
     });
     if (!willDeselect) sfx('pop');
+  };
+
+  // Bron-handler voor het afvinken van een project-subgoal ("projecttaak") vanuit
+  // de Productivity Suite Dag-view. Zelfde mutatie-patroon als ProjectsView's
+  // lokale toggleSubgoal, hier op App-niveau zodat de Dag-view (die meerdere
+  // projectmodules tegelijk toont) er ook bij kan.
+  const toggleProjectSubgoal = (projectId, subjectId, goalId) => {
+    setModules(prev => prev.map(m => {
+      if (m.id !== projectId) return m;
+      return {
+        ...m,
+        subjects: (m.subjects || []).map(s => s.id !== subjectId ? s : {
+          ...s,
+          subgoals: (s.subgoals || []).map(g => g.id !== goalId ? g : { ...g, completed: !g.completed }),
+        }),
+      };
+    }));
+    updateModuleData(projectId, prev => ({ ...prev, touchedToday: true }));
+  };
+
+  // Zet de Kanban-status van een project-subgoal ("projecttaak"). Houdt
+  // `completed` consistent met de bestaande toggle (Today/Dag-view): `klaar`
+  // zet `completed = true`, elke andere kolom zet het weer op false.
+  const setSubgoalStatus = (projectId, subjectId, goalId, status) => {
+    setModules(prev => prev.map(m => {
+      if (m.id !== projectId) return m;
+      return {
+        ...m,
+        subjects: (m.subjects || []).map(s => s.id !== subjectId ? s : {
+          ...s,
+          subgoals: (s.subgoals || []).map(g => g.id !== goalId ? g : {
+            ...g,
+            status,
+            completed: status === 'klaar',
+          }),
+        }),
+      };
+    }));
+    updateModuleData(projectId, prev => ({ ...prev, touchedToday: true }));
   };
 
   const incrementCounter = (moduleId, amount) => {
@@ -909,8 +971,14 @@ export default function Ritmo() {
 
   const addTask = () => {
     if (newTask.trim()) {
-      setCustomTasks(prev => [...prev, { id: Date.now(), text: newTask.trim(), done: false }]);
+      setCustomTasks(prev => [...prev, {
+        id: Date.now(),
+        text: newTask.trim(),
+        done: false,
+        ...(newTaskTime ? { time: newTaskTime } : {}),
+      }]);
       setNewTask('');
+      setNewTaskTime('');
     }
   };
 
@@ -923,6 +991,17 @@ export default function Ritmo() {
 
   const deleteTask = (id) => {
     setCustomTasks(prev => prev.filter(t => t.id !== id));
+  };
+
+  const setTaskTime = (id, time) => {
+    setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, time: time || undefined } : t));
+  };
+
+  // Zet de Kanban-status van een losse taak. Houdt `done` consistent met de
+  // bestaande toggle (Today/Dag-view): `klaar` zet `done = true`, elke andere
+  // kolom zet het weer op false.
+  const setTaskStatus = (id, status) => {
+    setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, status, done: status === 'klaar' } : t));
   };
 
   // Streak calculation. moduleData is the source of truth for the active
@@ -999,28 +1078,25 @@ export default function Ritmo() {
 
   const dayNames = shortWeekdayLabelsMondayFirst();
 
-  const theme = darkMode ? {
-    bg: 'bg-gradient-to-br from-slate-900 to-slate-800',
-    card: 'bg-slate-800',
-    cardSecondary: 'bg-slate-700',
-    text: 'text-slate-100',
-    textSecondary: 'text-slate-300',
-    textMuted: 'text-slate-400',
-    border: 'border-slate-700',
-    input: 'bg-slate-700 text-slate-100',
-    hover: 'hover:bg-slate-700',
-    progressBg: 'bg-slate-700',
-  } : {
-    bg: 'bg-gradient-to-br from-slate-50 to-blue-50',
-    card: 'bg-white',
-    cardSecondary: 'bg-slate-50',
-    text: 'text-slate-800',
-    textSecondary: 'text-slate-700',
-    textMuted: 'text-slate-500',
-    border: 'border-slate-100',
-    input: 'bg-slate-50 text-slate-700',
-    hover: 'hover:bg-slate-50',
-    progressBg: 'bg-slate-100',
+  // Oppervlakte-kleuren komen uit de CSS-variabele token-laag (index.css),
+  // gekozen via data-style + data-theme op <html>. Het theme-object verwijst
+  // naar de r-* helper-classes; light/dark en de weergavestijl worden dus in
+  // CSS bepaald, niet meer via een darkMode-ternary hier.
+  const theme = {
+    bg: 'r-bg',
+    card: 'r-card',
+    cardSecondary: 'r-card-2',
+    text: 'r-text',
+    textSecondary: 'r-text-2',
+    textMuted: 'r-text-muted',
+    border: 'r-border',
+    input: 'r-input',
+    hover: 'r-hover',
+    progressBg: 'r-progress',
+    radiusCard: 'r-radius-card',
+    radiusControl: 'r-radius-control',
+    padCard: 'r-pad-card',
+    padRow: 'r-pad-row',
   };
 
   // Overall completion
@@ -1145,9 +1221,12 @@ export default function Ritmo() {
         customTasks={customTasks}
         newTask={newTask}
         setNewTask={setNewTask}
+        newTaskTime={newTaskTime}
+        setNewTaskTime={setNewTaskTime}
         addTask={addTask}
         toggleTask={toggleTask}
         deleteTask={deleteTask}
+        setTaskTime={setTaskTime}
         theme={theme}
         darkMode={darkMode}
       />
@@ -1403,6 +1482,22 @@ export default function Ritmo() {
           />
         )}
 
+        {view === 'productivity' && (
+          <ProductivitySuiteView
+            modules={modules}
+            moduleData={moduleData}
+            customTasks={customTasks}
+            onChecklistToggle={toggleChecklistItem}
+            onChoiceOptionSet={setChoiceOption}
+            onToggleTask={toggleTask}
+            onToggleProjectSubgoal={toggleProjectSubgoal}
+            onSetTaskStatus={setTaskStatus}
+            onSetSubgoalStatus={setSubgoalStatus}
+            setView={setView}
+            theme={theme}
+          />
+        )}
+
         </ErrorBoundary>
 
         <div className={`text-center text-xs ${theme.textMuted} mt-6 pb-4`}>
@@ -1453,6 +1548,8 @@ export default function Ritmo() {
           setStreakSettings={setStreakSettings}
           darkMode={darkMode}
           setDarkMode={setDarkMode}
+          uiStyle={uiStyle}
+          setUiStyle={setUiStyle}
           soundEnabled={soundEnabled}
           setSoundEnabled={setSoundEnabled}
           soundVolume={soundVolume}
@@ -1496,7 +1593,7 @@ export default function Ritmo() {
 // =============================================
 // MODULE RENDERER
 // =============================================
-function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle, onChecklistIncrement, onChecklistNote, onChoiceToggle, onChoiceOptionSet, onEdit, weekDates, history, customTasks, newTask, setNewTask, addTask, toggleTask, deleteTask, theme, darkMode }) {
+function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle, onChecklistIncrement, onChecklistNote, onChoiceToggle, onChoiceOptionSet, onEdit, weekDates, history, customTasks, newTask, setNewTask, newTaskTime, setNewTaskTime, addTask, toggleTask, deleteTask, setTaskTime, theme, darkMode }) {
   const { t } = useTranslation();
   const modName = resolveModuleName(mod, t);
   const editButton = onEdit ? (
@@ -1595,6 +1692,7 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
               placeholder={t('modules.addTaskPlaceholder')}
               className={`flex-1 px-3 py-2 ${theme.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
             />
+            <TimeInput value={newTaskTime} onChange={setNewTaskTime} theme={theme} />
             <button
               onClick={addTask}
               className={`px-3 py-2 bg-${mod.color}-500 hover:bg-${mod.color}-600 text-white rounded-lg transition`}
@@ -1625,6 +1723,11 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
                 <span className={`flex-1 text-sm ${task.done ? `line-through ${theme.textMuted}` : theme.textSecondary}`}>
                   {task.text}
                 </span>
+                {editable ? (
+                  <TimeInput value={task.time} onChange={(v) => setTaskTime(task.id, v)} theme={theme} className="w-24" />
+                ) : task.time ? (
+                  <span className={`text-xs ${theme.textMuted}`}>{task.time}</span>
+                ) : null}
                 {editable && (
                   <button
                     onClick={() => deleteTask(task.id)}
@@ -1676,7 +1779,7 @@ function StreakBadge({ label, days, color, theme }) {
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour }) {
+function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
   const [helpView, setHelpView] = useState(initialHelp ? 'list' : null); // null | 'list' | 'install' | 'feedback'
@@ -2115,6 +2218,28 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
               >
                 <Moon className="w-4 h-4" /> {t('settings.themeDark')}
               </button>
+            </div>
+
+            <div className={`mt-6 pt-6 border-t ${theme.border}`}>
+              <h3 className={`font-semibold ${theme.textSecondary} mb-1`}>{t('settings.uiStyle')}</h3>
+              <p className={`text-xs ${theme.textMuted} mb-3`}>{t('settings.uiStyleHint')}</p>
+              <div className="flex gap-2">
+                {[
+                  { id: 'strak', label: t('settings.uiStyleStrak') },
+                  { id: 'levendig', label: t('settings.uiStyleLevendig') },
+                  { id: 'compact', label: t('settings.uiStyleCompact') },
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setUiStyle(opt.id)}
+                    className={`flex-1 py-3 px-3 rounded-lg text-sm font-medium transition ${
+                      uiStyle === opt.id ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className={`mt-6 pt-6 border-t ${theme.border}`}>
@@ -2772,6 +2897,18 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
             </div>
           </div>
 
+          {(editing.type === 'choice' || editing.type === 'counter') && (
+            <div>
+              <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('productivity.time')}</label>
+              <TimeInput
+                value={editing.time}
+                onChange={(v) => update('time', v || undefined)}
+                theme={theme}
+                className="w-full"
+              />
+            </div>
+          )}
+
           {editing.type === 'checklist' && (
             <>
               <div className={`pt-4 border-t ${theme.border}`}>
@@ -2809,7 +2946,6 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
                 <div className="space-y-2 mb-2">
                   {(editing.items || []).map(item => {
                     const isExpanded = expandedItemId === item.id;
-                    const showSettingsBtn = editing.allowDescriptions || editing.allowTargets;
                     return (
                       <div key={item.id} className={`${theme.cardSecondary} rounded-lg`}>
                         <div className="flex items-center gap-2 p-2">
@@ -2819,17 +2955,18 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
                             onChange={(e) => updateItem(item.id, { label: e.target.value })}
                             className={`flex-1 px-2 py-1 ${theme.input} rounded text-sm focus:outline-none focus:ring-2 focus:ring-${editing.color}-300`}
                           />
-                          {showSettingsBtn && (
-                            <button
-                              onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
-                              className={`p-1.5 rounded transition ${
-                                isExpanded ? `bg-${editing.color}-500 text-white` : `${theme.textMuted} ${theme.hover}`
-                              }`}
-                              title={t('modules.itemSettings')}
-                            >
-                              <SlidersHorizontal className="w-4 h-4" />
-                            </button>
-                          )}
+                          {/* Instellingen-knop staat altijd aan: naast de optionele
+                              beschrijving/sets zit hier ook het optionele tijdstip
+                              (voor de Dag-view), dat los staat van allowDescriptions/allowTargets. */}
+                          <button
+                            onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
+                            className={`p-1.5 rounded transition ${
+                              isExpanded ? `bg-${editing.color}-500 text-white` : `${theme.textMuted} ${theme.hover}`
+                            }`}
+                            title={t('modules.itemSettings')}
+                          >
+                            <SlidersHorizontal className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => removeEntry('items', item.id)}
                             className="text-slate-400 hover:text-red-500 p-1.5"
@@ -2837,7 +2974,7 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
-                        {isExpanded && showSettingsBtn && (
+                        {isExpanded && (
                           <div className="px-2 pb-2 space-y-2">
                             {editing.allowDescriptions && (
                               <div>
@@ -2867,6 +3004,14 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
                                 />
                               </div>
                             )}
+                            <div>
+                              <label className={`text-xs font-medium ${theme.textMuted} mb-1 block`}>{t('productivity.time')}</label>
+                              <TimeInput
+                                value={item.time}
+                                onChange={(v) => updateItem(item.id, { time: v || undefined })}
+                                theme={theme}
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
@@ -3727,6 +3872,7 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
   const { t } = useTranslation();
   const [newRecurringText, setNewRecurringText] = useState('');
   const [newRecurringDays, setNewRecurringDays] = useState([]);
+  const [newRecurringTime, setNewRecurringTime] = useState('');
 
   const toggleDay = (day) => {
     setNewRecurringDays(prev =>
@@ -3739,15 +3885,21 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
       setRecurringTasks(prev => [...prev, {
         id: Date.now(),
         text: newRecurringText.trim(),
-        days: newRecurringDays
+        days: newRecurringDays,
+        ...(newRecurringTime ? { time: newRecurringTime } : {}),
       }]);
       setNewRecurringText('');
       setNewRecurringDays([]);
+      setNewRecurringTime('');
     }
   };
 
   const removeRecurring = (id) => {
     setRecurringTasks(prev => prev.filter(t => t.id !== id));
+  };
+
+  const setRecurringTime = (id, time) => {
+    setRecurringTasks(prev => prev.map(rt => rt.id === id ? { ...rt, time: time || undefined } : rt));
   };
 
   return (
@@ -3767,6 +3919,7 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
                     {rt.days.map(d => dayNames[d]).join(', ')}
                   </div>
                 </div>
+                <TimeInput value={rt.time} onChange={(v) => setRecurringTime(rt.id, v)} theme={theme} className="w-24" />
                 <button onClick={() => removeRecurring(rt.id)} className="text-slate-400 hover:text-red-500">
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -3776,13 +3929,16 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
         </div>
         
         <div className="space-y-2">
-          <input
-            type="text"
-            value={newRecurringText}
-            onChange={(e) => setNewRecurringText(e.target.value)}
-            placeholder={t('settings.recurringExamplePlaceholder')}
-            className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm`}
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newRecurringText}
+              onChange={(e) => setNewRecurringText(e.target.value)}
+              placeholder={t('settings.recurringExamplePlaceholder')}
+              className={`flex-1 px-3 py-2 ${theme.input} rounded-lg text-sm`}
+            />
+            <TimeInput value={newRecurringTime} onChange={setNewRecurringTime} theme={theme} />
+          </div>
           <div className="flex gap-1">
             {dayNames.map((day, i) => (
               <button

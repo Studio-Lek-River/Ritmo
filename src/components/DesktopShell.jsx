@@ -2,10 +2,11 @@ import React from 'react';
 import { Sun, Moon, BarChart3, Settings, HelpCircle } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { getNavGroups } from './navItems';
+import RitmoLogo from './RitmoLogo';
 
-// Desktop (systeem-layout) shell: verticale sidebar-navigatie links, brede
-// content-area rechts. Alleen actief op breed scherm; de mobiele render (App.jsx)
-// blijft volledig ongemoeid. Deelt nav-items en het theme-object met mobiel.
+// Desktop (systeem-layout) shell: horizontale topbalk boven, brede content-area
+// eronder. Alleen actief op breed scherm; de mobiele render (App.jsx) blijft
+// volledig ongemoeid. Deelt nav-items en het theme-object met mobiel.
 export default function DesktopShell({
   view,
   setView,
@@ -17,38 +18,31 @@ export default function DesktopShell({
   onOpenHelp,
   children,
 }) {
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
   const groups = getNavGroups(t, appMode);
 
   const navBtnClass = (active) =>
-    `w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition ${
+    `whitespace-nowrap px-4 py-2.5 rounded-lg text-sm font-medium transition ${
       active ? 'bg-blue-500 text-white shadow' : `${theme.textSecondary} ${theme.hover}`
     }`;
 
   const iconBtnClass = `p-2 rounded-xl shadow-sm ${theme.hover} transition ${theme.bg}`;
 
   return (
-    <div className="max-w-7xl mx-auto flex gap-6">
-      <aside
-        className={`w-64 shrink-0 self-start sticky top-4 ${theme.card} rounded-2xl shadow-sm p-4 flex flex-col`}
+    <div className="max-w-7xl mx-auto flex flex-col gap-6">
+      <header
+        className={`${theme.card} rounded-2xl shadow-sm px-4 py-3 flex items-center justify-between gap-4`}
       >
-        <div className="mb-6">
-          <h1 className={`text-2xl font-bold ${theme.text} mb-1`}>{t('app.title')}</h1>
-          <p className={`${theme.textMuted} text-xs`}>{t('app.tagline')}</p>
-          <p className={`${theme.textMuted} text-xs mt-1`}>
-            {new Date().toLocaleDateString(language === 'nl' ? 'nl-NL' : 'en-GB', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-            })}
-          </p>
+        <div className="flex items-center gap-2 shrink-0">
+          <RitmoLogo size={32} variant={darkMode ? 'light' : 'dark'} />
+          <h1 className={`text-lg font-bold ${theme.text}`}>{t('app.title')}</h1>
         </div>
 
-        <nav className="flex-1">
+        <nav className="flex items-center flex-wrap justify-center gap-1">
           {groups.map((group, i) => (
             <div
               key={i}
-              className={`space-y-1 ${i > 0 ? `mt-3 pt-3 border-t ${theme.border}` : ''}`}
+              className={`flex items-center gap-1 ${i > 0 ? `ml-2 pl-2 border-l ${theme.border}` : ''}`}
             >
               {group.map(tab => (
                 <button
@@ -63,7 +57,7 @@ export default function DesktopShell({
           ))}
         </nav>
 
-        <div className="flex gap-2 mt-6">
+        <div className="flex gap-2 shrink-0">
           <button onClick={() => setDarkMode(!darkMode)} className={iconBtnClass}>
             {darkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-slate-600" />}
           </button>
@@ -81,9 +75,9 @@ export default function DesktopShell({
             <Settings className={`w-5 h-5 ${theme.textSecondary}`} />
           </button>
         </div>
-      </aside>
+      </header>
 
-      <main className="flex-1 min-w-0">
+      <main className="min-w-0">
         {children}
       </main>
     </div>

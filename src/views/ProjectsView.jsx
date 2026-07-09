@@ -4,6 +4,7 @@ import ProgressBar from '../components/ProgressBar';
 import EmptyState from '../components/EmptyState';
 import SwipeRow from '../components/SwipeRow';
 import ConfirmDialog from '../components/ConfirmDialog';
+import TimeInput from '../components/TimeInput';
 import { getColorClasses } from '../utils/colors';
 import {
   projectProgress,
@@ -49,6 +50,7 @@ export default function ProjectsView({
   const [newSubjectName, setNewSubjectName] = useState('');
   const [newSubgoalLabel, setNewSubgoalLabel] = useState('');
   const [newSubgoalDeadline, setNewSubgoalDeadline] = useState('');
+  const [newSubgoalTime, setNewSubgoalTime] = useState('');
   const [confirmDeleteSubject, setConfirmDeleteSubject] = useState(null);
   const [confirmDeleteSubgoal, setConfirmDeleteSubgoal] = useState(null);
   const [confirmDeleteProject, setConfirmDeleteProject] = useState(null);
@@ -127,12 +129,14 @@ export default function ProjectsView({
             deadline: newSubgoalDeadline || null,
             completed: false,
             grade: null,
+            ...(newSubgoalTime ? { time: newSubgoalTime } : {}),
           }] }
         : s
       ),
     }));
     setNewSubgoalLabel('');
     setNewSubgoalDeadline('');
+    setNewSubgoalTime('');
   };
 
   const toggleSubgoal = (subjectId, goalId) => {
@@ -144,6 +148,16 @@ export default function ProjectsView({
       }),
     }));
     markTouchedToday?.(activeProject.id);
+  };
+
+  const setSubgoalTime = (subjectId, goalId, time) => {
+    updateProject(p => ({
+      ...p,
+      subjects: p.subjects.map(s => s.id !== subjectId ? s : {
+        ...s,
+        subgoals: s.subgoals.map(g => g.id !== goalId ? g : { ...g, time: time || undefined }),
+      }),
+    }));
   };
 
   const setGrade = (subjectId, goalId, raw) => {
@@ -325,7 +339,7 @@ export default function ProjectsView({
                           {s.name}
                         </span>
                         {avg !== null && (
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${c.pillBg} ${c.pillText} shrink-0`}>
+                          <span className={`text-xs font-semibold r-chip ${c.pillBg} ${c.pillText} shrink-0`}>
                             {avg}
                           </span>
                         )}
@@ -382,6 +396,7 @@ export default function ProjectsView({
                 theme={theme}
                 onToggle={(goalId) => toggleSubgoal(activeSubject.id, goalId)}
                 onGrade={(goalId, raw) => setGrade(activeSubject.id, goalId, raw)}
+                onSetTime={(goalId, time) => setSubgoalTime(activeSubject.id, goalId, time)}
                 onRequestDelete={(goal) => setConfirmDeleteSubgoal({ subjectId: activeSubject.id, goal })}
                 onFirstSwipe={onFirstSwipe}
               />
@@ -402,6 +417,7 @@ export default function ProjectsView({
                     onChange={(e) => setNewSubgoalDeadline(e.target.value)}
                     className={`flex-1 min-w-0 px-2 py-2 ${theme.input} rounded-lg text-sm`}
                   />
+                  <TimeInput value={newSubgoalTime} onChange={setNewSubgoalTime} theme={theme} />
                   <button
                     type="button"
                     onClick={addSubgoal}
@@ -457,7 +473,7 @@ export default function ProjectsView({
   );
 }
 
-function SubgoalList({ subject, color, theme, onToggle, onGrade, onRequestDelete, onFirstSwipe }) {
+function SubgoalList({ subject, color, theme, onToggle, onGrade, onSetTime, onRequestDelete, onFirstSwipe }) {
   const { t } = useTranslation();
   const c = getColorClasses(color);
   const sorted = useMemo(() => {
@@ -510,6 +526,12 @@ function SubgoalList({ subject, color, theme, onToggle, onGrade, onRequestDelete
                     {formatDeadline(g.deadline)}
                   </span>
                 )}
+                <TimeInput
+                  value={g.time}
+                  onChange={(v) => onSetTime(g.id, v)}
+                  theme={theme}
+                  className="w-20 shrink-0"
+                />
                 <input
                   type="number"
                   min="1"
