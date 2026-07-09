@@ -100,6 +100,7 @@ export default {
     today: 'Tasks',
     projects: 'Projects',
     collections: 'Collections',
+    productivity: 'Productivity Suite',
     measurements: 'Health',
     household: 'Household',
     settings: 'Settings',
@@ -1425,5 +1426,29 @@ export default {
       changeOverPeriod: '{change} across {count} measurements',
     },
     notSupportedYet: 'Not yet supported in insights',
+  },
+
+  productivity: {
+    title: 'Productivity Suite',
+    dag: 'Day',
+    kanban: 'Kanban',
+    kanbanPlaceholder: 'Coming soon',
+    empty: 'Nothing planned for today yet.',
+    noTime: '-',
+    time: 'Time',
+    goToToday: 'Go to Today',
+    toggleAria: 'Check off {label}',
+    dagdelen: {
+      ochtend: 'Morning',
+      middag: 'Afternoon',
+      avond: 'Evening',
+      ongepland: 'Unplanned',
+    },
+    types: {
+      routine: 'Routine',
+      activiteit: 'Activity',
+      losseTaak: 'Task',
+      projecttaak: 'Project task',
+    },
   },
 };
