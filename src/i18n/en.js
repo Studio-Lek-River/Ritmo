@@ -1295,6 +1295,10 @@ export default {
       title: 'Done. Your basics are set.',
       body: 'You have filled in every part. You can find the tour again in Settings, under Help.',
       close: 'Close',
+      nextTitle: 'Where to find the rest',
+      overview: 'Overview: your trends and charts over time.',
+      household: 'Household: your household tasks.',
+      addModule: '+ Module: add a new part later.',
     },
     types: {
       measurements: {

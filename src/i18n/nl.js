@@ -1306,6 +1306,10 @@ export default {
       title: 'Klaar. Je basis staat.',
       body: 'Je hebt alle onderdelen ingevuld. Je vindt de rondleiding terug via Instellingen, onder Help.',
       close: 'Sluiten',
+      nextTitle: 'Waar vind je de rest?',
+      overview: 'Overzicht: je trends en grafieken over de tijd.',
+      household: 'Huishouden: je huishoudelijke taken.',
+      addModule: '+ Module: voeg later een nieuw onderdeel toe.',
     },
     types: {
       measurements: {

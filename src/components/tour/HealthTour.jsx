@@ -116,6 +116,16 @@ export default function HealthTour({
           </div>
           <h3 className={`text-lg font-semibold ${theme.text} mb-1`}>{t('tour.done.title')}</h3>
           <p className={`text-sm ${theme.textMuted} mb-4`}>{t('tour.done.body')}</p>
+          <div className={`text-left rounded-2xl ${theme.cardSecondary} p-3.5 mb-4`}>
+            <p className={`text-[11px] font-bold uppercase tracking-wide ${theme.textMuted} mb-1.5`}>
+              {t('tour.done.nextTitle')}
+            </p>
+            <ul className={`text-sm ${theme.text} space-y-1`}>
+              <li>{t('tour.done.overview')}</li>
+              <li>{t('tour.done.household')}</li>
+              <li>{t('tour.done.addModule')}</li>
+            </ul>
+          </div>
           <button
             type="button"
             onClick={onFinish}
