@@ -1,3 +1,16 @@
+# [0.29.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.28.0...v0.29.0) (2026-07-09)
+
+
+### Bug Fixes
+
+* **household:** voorkom dataverlies bij weekmenu-plak-flow ([4dd854b](https://github.com/Studio-Lek-River/Ritmo/commit/4dd854bbef5da93266eb440fe09e785a1493dd0d))
+
+
+### Features
+
+* **household:** laat huishoud-secties verbergen en sorteren ([061017d](https://github.com/Studio-Lek-River/Ritmo/commit/061017dde533e81ae0a60187d1c3ec9b8057d43b))
+* **household:** vervang Mee-eten-tracker door weekdag-weekmenu ([ba44e33](https://github.com/Studio-Lek-River/Ritmo/commit/ba44e3342c6b5887645e6fcdb8599fe4eba9f7b3))
+
 # [0.28.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.27.0...v0.28.0) (2026-07-08)
 
 
