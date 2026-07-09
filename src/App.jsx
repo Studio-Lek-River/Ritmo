@@ -36,7 +36,11 @@ import { CELEBRATION_ANIMATIONS, CONFETTI_CONFIG, buildConfetti } from './utils/
 import { migrateModuleConfig, migrateDayModuleData, migrateSettings } from './utils/migrate';
 import { useTranslation, resolveModuleName } from './i18n/useTranslation';
 import { logEvent, removeEvent, generateTagId, generateTagGroupId } from './utils/collections';
-import { logInjection, removeInjection } from './utils/bodymap';
+import { logInjection, removeInjection, injectableMeds, INJECTION_ZONES } from './utils/bodymap';
+import { FREQUENCY_LABEL_KEYS } from './utils/medication';
+import { scheduleEntryMed } from './utils/injectionSchedule';
+import { ScheduleEntryFormModal } from './views/InjectionScheduleView';
+import { BodymapModuleCard } from './views/BodymapView';
 import { ToastProvider } from './hooks/useToast';
 import Toast from './components/Toast';
 import { formatAmount, formatDuration } from './utils/format';
@@ -1391,6 +1395,7 @@ export default function Ritmo() {
       {editingModule && (
         <ModuleEditor
           module={editingModule}
+          modules={modules}
           onSave={(updated) => {
             setModules(prev => {
               const exists = prev.find(m => m.id === updated.id);
@@ -2808,7 +2813,7 @@ function CollectionTagGroupsEditor({ tagGroups, items, onUpdateGroups, theme }) 
   );
 }
 
-function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
+function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme }) {
   const { t } = useTranslation();
   const TYPE_OPTIONS = useMemo(() => getTypeOptions(t), [t]);
   const [editing, setEditing] = useState(mod);
@@ -2817,6 +2822,8 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
   const [removingMetric, setRemovingMetric] = useState(null);
   const [metricLibraryOpen, setMetricLibraryOpen] = useState(false);
   const [addingMedInline, setAddingMedInline] = useState(false);
+  const [addingEntryInline, setAddingEntryInline] = useState(false);
+  const injMeds = injectableMeds(modules);
   const isNew = !mod.name && !mod.nameKey;
   const [step, setStep] = useState(
     isNew ? (mod.type ? 'preset' : 'type') : 'config'
@@ -3892,15 +3899,87 @@ function ModuleEditor({ module: mod, onSave, onCancel, onDelete, theme }) {
           )}
 
           {editing.type === 'bodymap' && (
-            <p className={`text-xs ${theme.textMuted}`}>
-              {t('modules.bodymapEditorNote')}
-            </p>
+            injMeds.length > 0 ? (
+              <BodymapModuleCard
+                module={editing}
+                meds={injMeds}
+                iconOptions={ICON_OPTIONS}
+                onLogInjection={(modId, event) => setEditing(prev => logInjection(prev, event))}
+                onRemoveInjection={(modId, index) => setEditing(prev => removeInjection(prev, index))}
+                theme={theme}
+              />
+            ) : (
+              <p className={`text-xs ${theme.textMuted}`}>
+                {t('modules.bodymapEditorNote')}
+              </p>
+            )
           )}
 
           {editing.type === 'injectionSchedule' && (
-            <p className={`text-xs ${theme.textMuted}`}>
-              {t('modules.injectionScheduleEditorNote')}
-            </p>
+            <div>
+              <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                {t('injectionSchedule.entryCount', { count: (editing.entries || []).length })}
+              </label>
+              {(editing.entries || []).length > 0 && (
+                <ul className="space-y-2 mb-2">
+                  {(editing.entries || []).map((entry) => {
+                    const entryMed = scheduleEntryMed(entry, injMeds);
+                    const entryZone = INJECTION_ZONES.find((z) => z.id === entry.zone);
+                    return (
+                      <li key={entry.id} className={`flex items-center gap-2 p-2 ${theme.cardSecondary} rounded-lg`}>
+                        <span
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: getColorHex(entryMed?.color) }}
+                          aria-hidden="true"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className={`block text-sm ${theme.textSecondary} truncate`}>
+                            {entryMed?.name || t('injectionSchedule.unknownMed')}
+                          </span>
+                          <span className={`text-xs ${theme.textMuted}`}>
+                            {entryZone ? t(entryZone.labelKey) : entry.zone}
+                            {' · '}
+                            {t(`medication.${FREQUENCY_LABEL_KEYS[entry.frequencyId] || FREQUENCY_LABEL_KEYS.weekly}`)}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditing(prev => ({ ...prev, entries: (prev.entries || []).filter(e => e.id !== entry.id) }))}
+                          className="text-slate-400 hover:text-red-500 p-1.5"
+                          aria-label={t('common.delete')}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {(editing.entries || []).length === 0 && (
+                <p className={`text-xs ${theme.textMuted} mb-2`}>
+                  {t('injectionSchedule.emptyEntries')}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => setAddingEntryInline(true)}
+                className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 ${theme.cardSecondary} ${theme.hover} ${theme.textSecondary} rounded-lg text-sm font-medium`}
+              >
+                <Plus className="w-4 h-4" />
+                {t('injectionSchedule.addEntry')}
+              </button>
+              <p className={`text-xs ${theme.textMuted} mt-2`}>
+                {t('modules.injectionScheduleEditorNote')}
+              </p>
+              <ScheduleEntryFormModal
+                open={addingEntryInline}
+                mode="add"
+                meds={injMeds}
+                onClose={() => setAddingEntryInline(false)}
+                onSave={(entry) => setEditing(prev => ({ ...prev, entries: [...(prev.entries || []), entry] }))}
+                theme={theme}
+              />
+            </div>
           )}
         </div>
         )}

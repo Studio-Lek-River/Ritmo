@@ -9,7 +9,7 @@ import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 
 // Formulier voor één geplande prik: medicijn, zone en frequentie. Mirror van
 // MedFormModal (medicatie) / de zone-kiezer uit BodymapView.
-function ScheduleEntryFormModal({ open, mode = 'edit', meds, entry, onClose, onSave, onDelete, theme }) {
+export function ScheduleEntryFormModal({ open, mode = 'edit', meds, entry, onClose, onSave, onDelete, theme }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(() => createScheduleEntry());
   const [confirmDelete, setConfirmDelete] = useState(false);
