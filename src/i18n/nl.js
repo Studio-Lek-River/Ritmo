@@ -1218,13 +1218,6 @@ export default {
         muscle: 'Spiermassa',
         fat: 'Vetpercentage',
         waist: 'Buikomvang',
-      },
-    },
-    weightLoss: {
-      name: 'Weight Loss',
-      metrics: {
-        weight: 'Gewicht',
-        waist: 'Buik',
         leg: 'Been',
         arm: 'Arm',
       },
@@ -1279,10 +1272,117 @@ export default {
   // help-overlay components
   help: {
     title: 'Help',
+    tour: 'Rondleiding starten',
+    tourDesc: 'Stel de basis van gezondheidsmodus stap voor stap in',
     install: 'App op beginscherm zetten',
     installDesc: 'Open Ritmo sneller, vanaf jouw startscherm',
     feedback: 'Feedback geven',
     feedbackDesc: 'Probleem melden of een idee delen',
+  },
+
+  // gezondheids-rondleiding (tutorial)
+  tour: {
+    panelTitle: 'Rondleiding',
+    progress: '{done} van {total} klaar',
+    pill: 'Rondleiding {done}/{total}',
+    nowLabel: 'Nu doen',
+    nowTag: 'nu',
+    whatLabel: 'Wat',
+    whyLabel: 'Waarom',
+    goto: 'Breng me erheen',
+    allSteps: 'Alle stappen',
+    previewCaption: 'Voorbeeld: zo groeit een meting met je mee over de tijd.',
+    collapseAria: 'Rondleiding inklappen',
+    expandAria: 'Rondleiding openen',
+    closeAria: 'Rondleiding sluiten',
+    hintClose: 'Hint sluiten',
+    welcome: {
+      title: 'Klaar om te beginnen?',
+      body: 'Deze rondleiding helpt je de onderdelen van gezondheidsmodus eenmalig in te stellen. Je bepaalt zelf het tempo en kunt altijd stoppen.',
+      start: 'Start',
+      later: 'Later',
+    },
+    done: {
+      title: 'Klaar. Je basis staat.',
+      body: 'Je hebt alle onderdelen ingevuld. Je vindt de rondleiding terug via Instellingen, onder Help.',
+      close: 'Sluiten',
+      nextTitle: 'Waar vind je de rest?',
+      overview: 'Overzicht: je trends en grafieken over de tijd.',
+      household: 'Huishouden: je huishoudelijke taken.',
+      addModule: '+ Module: tik rechtsboven op het gezondheidsscherm op "+ Module" om een nieuw onderdeel te kiezen en in te stellen.',
+    },
+    howTitle: 'Zo doe je het',
+    types: {
+      measurements: {
+        what: 'Hier houd je waarden bij, zoals je gewicht.',
+        why: 'Zo zie je verandering over de tijd.',
+        hint: 'Tik op een meting en voeg je eerste waarde toe.',
+        addHint: 'Voeg een meting toe: kies er een uit de bibliotheek of maak je eigen meting.',
+        how: {
+          steps: [
+            'Meting toevoegen: open de module en tik op de blauwe + knop rechtsonder.',
+            'Nieuwe waarde kiezen of maken: gebruik "Uit bibliotheek" of maak je eigen meting.',
+            'Wijzigen of verwijderen: tik op een regel in de geschiedenis en pas de waarde aan of verwijder hem.',
+          ],
+        },
+      },
+      medication: {
+        what: 'Hier zet je je medicijnen op een rij.',
+        why: 'Zo weet je precies wat je gebruikt.',
+        hint: 'Tik op de knop om je eerste medicijn toe te voegen.',
+        how: {
+          steps: [
+            'Toevoegen: tik op "Medicijn toevoegen" en vul naam, dosis en frequentie in.',
+            'Wijzigen: tik op een medicijn in de lijst om het aan te passen.',
+            'Verwijderen: open het medicijn en tik op het prullenbak-icoon.',
+          ],
+        },
+      },
+      bodymap: {
+        what: 'Hier houd je bij waar je een prik zet.',
+        why: 'Zo wissel je plekken af en voorkom je irritatie.',
+        hint: 'Kies een plek op het lichaam om te loggen.',
+        how: {
+          steps: [
+            'Prik loggen: tik op een plek op het lichaam om die te markeren.',
+            'Corrigeren: tik de plek nog eens aan om de log ongedaan te maken.',
+          ],
+        },
+      },
+      injectionSchedule: {
+        what: 'Hier plan je wanneer je prikt.',
+        why: 'Zo vergeet je geen dosis.',
+        hint: 'Voeg een moment toe waarop je wilt prikken.',
+        how: {
+          steps: [
+            'Toevoegen: tik op "Moment toevoegen" en kies dag en tijd.',
+            'Wijzigen of verwijderen: tik op een moment in de lijst om het aan te passen of te verwijderen.',
+          ],
+        },
+      },
+      counter: {
+        what: 'Hier tel je je beweging van vandaag.',
+        why: 'Elke stap telt en je ziet je voortgang.',
+        hint: 'Tel je beweging van vandaag bij.',
+        how: {
+          steps: [
+            'Bijtellen: tik op de + knop om je beweging van vandaag op te hogen.',
+            'Corrigeren: tik op de - knop om het aantal te verlagen.',
+          ],
+        },
+      },
+      checklist: {
+        what: 'Hier vink je aan hoe je je voelt.',
+        why: 'Zo zie je patronen in bijwerkingen.',
+        hint: 'Vink aan wat je vandaag merkt.',
+        how: {
+          steps: [
+            'Aanvinken: tik een punt aan dat je vandaag merkt.',
+            'Ongedaan maken: tik het nog eens aan om het vinkje weg te halen.',
+          ],
+        },
+      },
+    },
   },
 
   install: {

@@ -198,17 +198,8 @@ function buildPresets(t) {
           { nameKey: 'presets.health.metrics.muscle', unit: 'kg',  icon: 'Zap',     decimals: 1, lowerIsBetter: false, target: null },
           { nameKey: 'presets.health.metrics.fat',    unit: 'pct', icon: 'Droplet', decimals: 1, lowerIsBetter: true,  target: null },
           { nameKey: 'presets.health.metrics.waist',  unit: 'cm',  icon: 'Ruler',   decimals: 0, lowerIsBetter: true,  target: null },
-        ],
-      },
-      {
-        nameKey: 'presets.weightLoss.name',
-        icon: 'Heart',
-        color: 'pink',
-        metrics: [
-          { nameKey: 'presets.weightLoss.metrics.weight', unit: 'kg', icon: 'Scale', decimals: 1, lowerIsBetter: true, target: null },
-          { nameKey: 'presets.weightLoss.metrics.waist',  unit: 'cm', icon: 'Ruler', decimals: 0, lowerIsBetter: true, target: null },
-          { nameKey: 'presets.weightLoss.metrics.leg',    unit: 'cm', icon: 'Ruler', decimals: 0, lowerIsBetter: true, target: null },
-          { nameKey: 'presets.weightLoss.metrics.arm',    unit: 'cm', icon: 'Ruler', decimals: 0, lowerIsBetter: true, target: null },
+          { nameKey: 'presets.health.metrics.leg',    unit: 'cm',  icon: 'Ruler',   decimals: 0, lowerIsBetter: true,  target: null },
+          { nameKey: 'presets.health.metrics.arm',    unit: 'cm',  icon: 'Ruler',   decimals: 0, lowerIsBetter: true,  target: null },
         ],
       },
       {
