@@ -52,7 +52,7 @@ export default function KanbanView({ modules, customTasks, onSetTaskStatus, onSe
           key={col}
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDrop(col)}
-          className={`${theme.cardSecondary} rounded-2xl p-3 space-y-2 min-h-[8rem]`}
+          className={`${theme.cardSecondary} ${theme.radiusCard} ${theme.padRow} space-y-2 min-h-[8rem]`}
         >
           <h2 className={`text-xs font-semibold uppercase tracking-wide mb-1 ${theme.textMuted}`}>
             {t(`productivity.kanbanColumns.${col}`)}
@@ -102,7 +102,7 @@ function KanbanCard({ card, column, onDragStart, onDragEnd, theme, t }) {
           <div className={`text-sm ${theme.textSecondary}`}>{card.label}</div>
           <div className={`text-xs ${theme.textMuted}`}>{t(`productivity.types.${card.kind}`)}</div>
           {card.kind === 'projecttaak' && card.projectLabel && (
-            <span className={`inline-block mt-1 px-2 py-0.5 r-chip text-xs ${c.pillBg} ${c.pillText}`}>
+            <span className={`inline-block mt-1 r-chip text-xs ${c.pillBg} ${c.pillText}`}>
               {card.projectLabel}
             </span>
           )}

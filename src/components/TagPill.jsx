@@ -7,7 +7,7 @@ export default function TagPill({ tag, onClick, active = false }) {
   const { t } = useTranslation();
   const c = getColorClasses(tag.color);
   const clickable = typeof onClick === 'function';
-  const base = 'inline-flex items-center px-2 py-0.5 r-chip text-xs font-medium transition select-none';
+  const base = 'inline-flex items-center r-chip text-xs font-medium transition select-none';
   const styleClasses = active
     ? `${c.bar} text-white`
     : `${c.pillBg} ${c.pillText}`;
