@@ -26,15 +26,18 @@ export default function HealthTour({
   const current = steps.find((s) => !filledMap[s.id]) || null;
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
 
-  // Escape klapt het paneel in (niet sluiten). Alleen actief in de paneelweergave.
+  // Escape sluit het klaar-scherm en klapt anders het paneel in (nooit hard
+  // sluiten). In de pil-stand doet Escape niets. Consistent over de schermen.
   useEffect(() => {
-    if (collapsed || welcome || allDone) return undefined;
+    if (collapsed) return undefined;
     const onKey = (e) => {
-      if (e.key === 'Escape') onToggleCollapse();
+      if (e.key !== 'Escape') return;
+      if (allDone) onFinish();
+      else onToggleCollapse();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [collapsed, welcome, allDone, onToggleCollapse]);
+  }, [collapsed, allDone, onToggleCollapse, onFinish]);
 
   const wrap = 'fixed z-40 left-1/2 -translate-x-1/2 bottom-4 w-[calc(100%-1.5rem)] max-w-md';
   const card = `${theme.card} border ${theme.border} rounded-3xl shadow-xl`;

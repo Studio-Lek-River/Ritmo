@@ -309,6 +309,19 @@ export default function Ritmo() {
     if (appMode === 'health' && !allowed.includes(view)) setView('today');
   }, [appMode, view]);
 
+  // De rondleiding hoort alleen in gezondheidsmodus met minstens één
+  // gezondheidsmodule. Zet hij aan buiten die context (mode gewisseld, laatste
+  // module verwijderd, of gestart zonder modules), sluit dan stil af zodat er
+  // nooit later een ongevraagd paneel opduikt.
+  useEffect(() => {
+    if (!tourActive) return;
+    if (appMode !== 'health' || buildTourSteps(modules).length === 0) {
+      setTourActive(false);
+    }
+  }, [tourActive, appMode, modules]);
+
+  const consumeTourFocus = useCallback(() => setTourFocusId(null), []);
+
   // Recurring tasks. Only inject into today's task list, never into a
   // historical day the user is just viewing.
   useEffect(() => {
@@ -1170,8 +1183,8 @@ export default function Ritmo() {
   const healthViewProps = {
     modules,
     focusModuleId: tourFocusId,
-    onFocusConsumed: () => setTourFocusId(null),
-    tourActive,
+    onFocusConsumed: consumeTourFocus,
+    tourActive: appMode === 'health' && tourActive,
     onUpdateMeasurementsModule: updateMeasurementsModule,
     onAddModule: openBlankModuleEditor,
     onEditModule: (mod) => setEditingModule(mod),
@@ -1732,7 +1745,7 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
         {helpView === 'list' && (
           <HelpOverlay
             theme={theme}
-            showTour={appMode === 'health'}
+            showTour={appMode === 'health' && modules.some((m) => m.enabled && isHealthModule(m))}
             onSelect={(id) => { if (id === 'tour') { onStartTour?.(); } else { setHelpView(id); } }}
           />
         )}
