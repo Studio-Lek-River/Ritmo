@@ -1,366 +1,158 @@
-import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Settings2, Plus, X, Check, Users } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { ClipboardPaste } from 'lucide-react';
 import { useTranslation } from '../../i18n/useTranslation';
 import ConfirmDialog from '../../components/ConfirmDialog';
-import MealPlanSettings, { getMemberBg } from './MealPlanSettings';
-import {
-  CURRENT_USER_ID,
-  DEFAULT_MEALPLAN_CONFIG,
-  createSelfMember,
-  effectiveStatus,
-  countForDay,
-  isDeadlinePassed,
-  canEditMember,
-  generateGuestId,
-} from '../../utils/mealplan';
-import {
-  fmtDateKey,
-  todayKey,
-  addDays,
-  startOfWeek,
-  weekdayNameShort,
-  formatDayTitle,
-  formatDaySubtitle,
-  sameDay,
-} from '../../utils/dates';
+import { MENU_DAYS, MENU_SLOTS, normalizeWeekMenu, parseWeekMenuText } from '../../utils/mealplan';
+import { WEEKDAY_KEYS, weekdayKeyForDate, weekdayLabelLong, shortWeekdayLabelsMondayFirst } from '../../utils/dates';
 
-export default function MealPlanSection({ theme, config, setConfig, members, setMembers, plan, setPlan }) {
+// Elke slot-id gebruikt één van deze vier labels (de drie snack-slots delen
+// hetzelfde 'snack'-label; hun positie in de lijst maakt het moment duidelijk).
+const SLOT_LABEL_KEY = {
+  breakfast: 'breakfast',
+  snack1: 'snack',
+  lunch: 'lunch',
+  snack2: 'snack',
+  dinner: 'dinner',
+  snack3: 'snack',
+};
+
+function defaultSelectedDay() {
+  const idx = WEEKDAY_KEYS.indexOf(weekdayKeyForDate(new Date()));
+  return MENU_DAYS[idx >= 0 ? idx : 0];
+}
+
+export default function MealPlanSection({ theme, menu, setMenu }) {
   const { t } = useTranslation();
 
-  const [weekOffset, setWeekOffset] = useState(0);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showSettings, setShowSettings] = useState(false);
-  const [pendingSkip, setPendingSkip] = useState(null);
-  const [guestInputs, setGuestInputs] = useState({});
+  const [selectedDay, setSelectedDay] = useState(defaultSelectedDay);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [pendingParse, setPendingParse] = useState(null);
 
-  const effectiveUserId = CURRENT_USER_ID;
-  const selfMember = members.find(m => m.id === effectiveUserId) ?? createSelfMember();
-  const selfRole = selfMember.role;
-  const isActive = !!config.householdName;
+  const safeMenu = useMemo(() => normalizeWeekMenu(menu), [menu]);
+  const dayShortLabels = useMemo(() => shortWeekdayLabelsMondayFirst(), []);
+  const selectedDayIndex = MENU_DAYS.indexOf(selectedDay);
+  const selectedDayLabel = weekdayLabelLong(WEEKDAY_KEYS[selectedDayIndex >= 0 ? selectedDayIndex : 0]);
 
-  const today = new Date();
-  const weekStart = startOfWeek(addDays(today, weekOffset * 7));
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-
-  const selectedKey = fmtDateKey(selectedDate);
-  const planForSelected = plan[selectedKey] ?? {};
-  const deadlinePassed = isDeadlinePassed(selectedKey, config.deadlineTime, config.deadlineEnabled);
-
-  // Helpers voor plan-mutaties
-  function updateEntry(dateKey, memberId, patch) {
-    setPlan(prev => {
-      const dayData = prev[dateKey] ?? {};
-      const memberEntry = dayData[memberId] ?? { status: null, guests: [] };
+  function updateSlot(slotId, value) {
+    setMenu(prev => {
+      const base = normalizeWeekMenu(prev);
       return {
-        ...prev,
-        [dateKey]: {
-          ...dayData,
-          [memberId]: { ...memberEntry, ...patch },
-        },
+        ...base,
+        [selectedDay]: { ...base[selectedDay], [slotId]: value },
       };
     });
   }
 
-  function setStatus(memberId, status) {
-    const entry = planForSelected[memberId] ?? { status: null, guests: [] };
-    const hasGuests = (entry.guests?.length ?? 0) > 0;
-    if (status === 'no' && hasGuests) {
-      setPendingSkip({ memberId, dateKey: selectedKey });
-      return;
-    }
-    updateEntry(selectedKey, memberId, { status });
+  function handleParse() {
+    if (!pasteText.trim()) return;
+    setPendingParse(parseWeekMenuText(pasteText));
   }
 
-  function confirmSkipRemoveGuests() {
-    if (!pendingSkip) return;
-    updateEntry(pendingSkip.dateKey, pendingSkip.memberId, { status: 'no', guests: [] });
-    setPendingSkip(null);
-  }
-
-  function confirmSkipKeepGuests() {
-    if (!pendingSkip) return;
-    updateEntry(pendingSkip.dateKey, pendingSkip.memberId, { status: 'no' });
-    setPendingSkip(null);
-  }
-
-  function addGuest(memberId) {
-    const name = (guestInputs[memberId] ?? '').trim();
-    if (!name) return;
-    const entry = planForSelected[memberId] ?? { status: null, guests: [] };
-    const newGuest = { id: generateGuestId(), name };
-    updateEntry(selectedKey, memberId, { guests: [...(entry.guests ?? []), newGuest] });
-    setGuestInputs(prev => ({ ...prev, [memberId]: '' }));
-  }
-
-  function removeGuest(memberId, guestId) {
-    const entry = planForSelected[memberId] ?? { status: null, guests: [] };
-    updateEntry(selectedKey, memberId, { guests: (entry.guests ?? []).filter(g => g.id !== guestId) });
-  }
-
-  // Lege staat: nog geen naam ingesteld
-  if (!isActive) {
-    return (
-      <div className="text-center py-6 space-y-3">
-        <div className={`text-sm font-medium ${theme.text}`}>{t('household.mealPlan.emptyTitle')}</div>
-        <p className={`text-xs ${theme.textMuted}`}>{t('household.mealPlan.emptyDescription')}</p>
-        <button
-          type="button"
-          onClick={() => setShowSettings(true)}
-          className="px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition"
-        >
-          {t('household.mealPlan.emptyCta')}
-        </button>
-        {showSettings && (
-          <MealPlanSettings
-            theme={theme}
-            config={config}
-            setConfig={setConfig}
-            members={members}
-            setMembers={setMembers}
-            onClose={() => setShowSettings(false)}
-          />
-        )}
-      </div>
-    );
+  function confirmParse() {
+    if (!pendingParse) return;
+    setMenu(prev => {
+      const base = normalizeWeekMenu(prev);
+      const merged = {};
+      for (const day of MENU_DAYS) {
+        merged[day] = { ...base[day] };
+        for (const slot of MENU_SLOTS) {
+          const v = pendingParse.menu[day][slot.id];
+          if (v && v.trim()) merged[day][slot.id] = v;
+        }
+      }
+      return merged;
+    });
+    setPendingParse(null);
+    setPasteText('');
+    setPasteOpen(false);
   }
 
   return (
     <div className="space-y-4">
-      {/* Week-strip */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setWeekOffset(w => w - 1)}
-            className={`p-1 rounded ${theme.hover}`}
-            aria-label={t('household.mealPlan.prevWeek')}
-          >
-            <ChevronLeft className={`w-4 h-4 ${theme.textMuted}`} />
-          </button>
-          <span className={`text-xs font-medium ${theme.textMuted}`}>
-            {weekDays[0].getDate()} {weekDays[0].toLocaleString(undefined, { month: 'short' })}
-            {' '}&ndash;{' '}
-            {weekDays[6].getDate()} {weekDays[6].toLocaleString(undefined, { month: 'short' })}
-          </span>
-          <button
-            type="button"
-            onClick={() => setWeekOffset(w => w + 1)}
-            className={`p-1 rounded ${theme.hover}`}
-            aria-label={t('household.mealPlan.nextWeek')}
-          >
-            <ChevronRight className={`w-4 h-4 ${theme.textMuted}`} />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-7 gap-1">
-          {weekDays.map(day => {
-            const key = fmtDateKey(day);
-            const count = countForDay(plan[key], members, config.defaultStatus);
-            const isSelected = sameDay(day, selectedDate);
-            const isToday = sameDay(day, today);
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setSelectedDate(day)}
-                className={`flex flex-col items-center py-2 px-1 rounded-xl text-xs transition ${
-                  isSelected
-                    ? 'bg-amber-500 text-white'
-                    : `${theme.cardSecondary} ${isToday ? `ring-1 ring-amber-400` : ''} ${theme.hover}`
-                }`}
-              >
-                <span className={`font-medium ${isSelected ? 'text-white' : theme.textMuted}`}>
-                  {weekdayNameShort(day).slice(0, 2).toUpperCase()}
-                </span>
-                <span className={`font-bold text-sm ${isSelected ? 'text-white' : theme.text}`}>
-                  {day.getDate()}
-                </span>
-                {count > 0 && (
-                  <span className={`text-xs ${isSelected ? 'text-amber-100' : 'text-amber-500'}`}>
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Dag-detail header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className={`font-semibold text-sm ${theme.text}`}>{formatDayTitle(selectedDate)}</div>
-          <div className={`text-xs ${theme.textMuted}`}>{formatDaySubtitle(selectedDate)}</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className={`text-xs ${theme.textMuted}`}>
-            {(() => {
-              const total = countForDay(planForSelected, members, config.defaultStatus);
-              return total > 0
-                ? t('household.mealPlan.eatingTotal', { n: total })
-                : t('household.mealPlan.eatingTotalNone');
-            })()}
-          </span>
-          <button
-            type="button"
-            onClick={() => setShowSettings(true)}
-            className={`p-1 rounded ${theme.hover}`}
-            aria-label={t('household.mealPlan.manageHousehold')}
-          >
-            <Settings2 className={`w-4 h-4 ${theme.textMuted}`} />
-          </button>
-        </div>
-      </div>
-
-      {/* Deadline-banner */}
-      {deadlinePassed && (
-        <div className={`text-xs px-3 py-2 rounded-lg ${theme.cardSecondary} ${selfRole === 'admin' ? 'text-amber-500' : theme.textMuted}`}>
-          {selfRole === 'admin'
-            ? t('household.mealPlan.deadlinePassedAdmin', { time: config.deadlineTime })
-            : t('household.mealPlan.deadlinePassedMember', { time: config.deadlineTime })}
-        </div>
-      )}
-
-      {/* Leden-rijen */}
-      <div className="space-y-2">
-        {members.map(member => {
-          const entry = planForSelected[member.id] ?? { status: null, guests: [] };
-          const effective = effectiveStatus(entry.status, config.defaultStatus);
-          const canEdit = canEditMember({
-            userId: effectiveUserId,
-            userRole: selfRole,
-            memberId: member.id,
-            deadlinePassed,
-          });
-          const guestVal = guestInputs[member.id] ?? '';
-          const canAddGuest = canEdit && (member.id === effectiveUserId || selfRole === 'admin');
-
+      {/* Dag-kiezer */}
+      <div className="grid grid-cols-7 gap-1">
+        {MENU_DAYS.map((day, idx) => {
+          const isSelected = day === selectedDay;
           return (
-            <div key={member.id} className={`${theme.cardSecondary} rounded-xl p-3 space-y-2`}>
-              <div className="flex items-center gap-2">
-                <span className={`w-3 h-3 rounded-full flex-shrink-0 ${getMemberBg(member.color)}`} />
-                <span className={`flex-1 text-sm font-medium ${theme.text}`}>
-                  {member.name || (member.id === CURRENT_USER_ID ? t('household.mealPlan.settings.yourNamePlaceholder') : member.id)}
-                  {member.id === CURRENT_USER_ID && (
-                    <span className={`ml-1 text-xs font-normal ${theme.textMuted}`}>
-                      {t('household.mealPlan.settings.youSuffix')}
-                    </span>
-                  )}
-                </span>
-
-                {/* Status-knoppen */}
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    disabled={!canEdit}
-                    aria-pressed={effective === 'yes'}
-                    onClick={() => setStatus(member.id, effective === 'yes' ? null : 'yes')}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition ${
-                      effective === 'yes'
-                        ? 'bg-emerald-500 text-white'
-                        : `${theme.card} ${theme.textMuted} ${canEdit ? theme.hover : 'opacity-40 cursor-not-allowed'}`
-                    }`}
-                  >
-                    <Check className="w-3 h-3" />
-                    {t('household.mealPlan.statusEat')}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!canEdit}
-                    aria-pressed={entry.status === 'no'}
-                    onClick={() => setStatus(member.id, entry.status === 'no' ? null : 'no')}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition ${
-                      entry.status === 'no'
-                        ? 'bg-slate-500 text-white'
-                        : `${theme.card} ${theme.textMuted} ${canEdit ? theme.hover : 'opacity-40 cursor-not-allowed'}`
-                    }`}
-                  >
-                    <X className="w-3 h-3" />
-                    {t('household.mealPlan.statusSkip')}
-                  </button>
-                </div>
-              </div>
-
-              {/* Default-hint als status null is */}
-              {entry.status === null && (
-                <p className={`text-xs ${theme.textMuted} pl-5`}>
-                  {config.defaultStatus === 'yes'
-                    ? t('household.mealPlan.defaultYes')
-                    : t('household.mealPlan.defaultNo')}
-                </p>
-              )}
-
-              {/* Gasten */}
-              {(entry.guests?.length > 0 || canAddGuest) && effective === 'yes' && (
-                <div className="pl-5 space-y-1.5">
-                  {(entry.guests ?? []).map(guest => (
-                    <div key={guest.id} className="flex items-center gap-1.5">
-                      <Users className={`w-3 h-3 ${theme.textMuted}`} />
-                      <span className={`flex-1 text-xs ${theme.textSecondary}`}>{guest.name}</span>
-                      {canEdit && (
-                        <button
-                          type="button"
-                          onClick={() => removeGuest(member.id, guest.id)}
-                          className={`p-0.5 rounded ${theme.hover}`}
-                          aria-label={t('household.mealPlan.removeGuestAria')}
-                        >
-                          <X className={`w-3 h-3 ${theme.textMuted}`} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  {canAddGuest && (
-                    <div className="flex gap-1.5">
-                      <input
-                        type="text"
-                        value={guestVal}
-                        onChange={e => setGuestInputs(prev => ({ ...prev, [member.id]: e.target.value }))}
-                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addGuest(member.id); } }}
-                        placeholder={t('household.mealPlan.guestNamePlaceholder')}
-                        className={`flex-1 px-2 py-1 rounded-lg text-xs ${theme.input} border ${theme.border} outline-none`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => addGuest(member.id)}
-                        disabled={!guestVal.trim()}
-                        className="px-2 py-1 rounded-lg bg-amber-500 text-white text-xs disabled:opacity-40 hover:bg-amber-600 transition"
-                        aria-label={t('household.mealPlan.addGuest')}
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <button
+              key={day}
+              type="button"
+              onClick={() => setSelectedDay(day)}
+              className={`py-2 rounded-lg text-xs font-medium transition ${
+                isSelected
+                  ? 'bg-amber-500 text-white'
+                  : `${theme.cardSecondary} ${theme.textMuted} ${theme.hover}`
+              }`}
+            >
+              {dayShortLabels[idx]}
+            </button>
           );
         })}
       </div>
 
-      {/* Settings modal */}
-      {showSettings && (
-        <MealPlanSettings
-          theme={theme}
-          config={config}
-          setConfig={setConfig}
-          members={members}
-          setMembers={setMembers}
-          onClose={() => setShowSettings(false)}
-        />
-      )}
+      {/* Geselecteerde dag: 6 slots */}
+      <div className="space-y-2">
+        <div className={`text-sm font-semibold ${theme.text}`}>{selectedDayLabel}</div>
+        {MENU_SLOTS.map(slot => (
+          <div key={slot.id} className="space-y-1">
+            <label className={`text-xs font-medium ${theme.textMuted}`}>
+              {t(`household.mealPlan.slots.${SLOT_LABEL_KEY[slot.id]}`)}
+            </label>
+            <input
+              type="text"
+              value={safeMenu[selectedDay][slot.id]}
+              onChange={e => updateSlot(slot.id, e.target.value)}
+              placeholder={t('household.mealPlan.slotPlaceholder')}
+              className={`w-full px-3 py-2 rounded-lg text-sm ${theme.input} border ${theme.border} outline-none`}
+            />
+          </div>
+        ))}
+      </div>
 
-      {/* Bevestig-dialoog: afmelden met gasten */}
+      {/* Tekst plakken */}
+      <div className={`pt-3 border-t ${theme.border}`}>
+        <button
+          type="button"
+          onClick={() => setPasteOpen(v => !v)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition border ${theme.border} ${theme.textSecondary} ${theme.hover}`}
+        >
+          <ClipboardPaste className="w-3.5 h-3.5" />
+          {pasteOpen ? t('common.close') : t('household.mealPlan.pasteToggle')}
+        </button>
+
+        {pasteOpen && (
+          <div className="mt-2 space-y-2">
+            <textarea
+              value={pasteText}
+              onChange={e => setPasteText(e.target.value)}
+              placeholder={t('household.mealPlan.pasteTextareaPlaceholder')}
+              rows={6}
+              className={`w-full px-3 py-2 rounded-lg text-sm ${theme.input} border ${theme.border} outline-none`}
+            />
+            <button
+              type="button"
+              onClick={handleParse}
+              disabled={!pasteText.trim()}
+              className="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-medium disabled:opacity-40 hover:bg-amber-600 transition"
+            >
+              {t('household.mealPlan.pasteButton')}
+            </button>
+          </div>
+        )}
+      </div>
+
       <ConfirmDialog
-        open={!!pendingSkip}
+        open={!!pendingParse}
         theme={theme}
-        title={t('household.mealPlan.confirmSkipTitle')}
-        description={t('household.mealPlan.confirmSkipDescription', {
-          n: pendingSkip ? (planForSelected[pendingSkip.memberId]?.guests?.length ?? 0) : 0,
-        })}
-        confirmLabel={t('household.mealPlan.confirmSkipRemove')}
-        cancelLabel={t('household.mealPlan.confirmSkipKeep')}
-        onConfirm={confirmSkipRemoveGuests}
-        onCancel={confirmSkipKeepGuests}
+        title={t('household.mealPlan.pasteConfirmTitle')}
+        description={pendingParse && pendingParse.filledCount > 0
+          ? t('household.mealPlan.pasteConfirmDescription', { n: pendingParse.filledCount })
+          : t('household.mealPlan.pasteConfirmDescriptionNone')}
+        confirmLabel={t('household.mealPlan.pasteConfirmConfirm')}
+        cancelLabel={t('common.cancel')}
+        onConfirm={confirmParse}
+        onCancel={() => setPendingParse(null)}
       />
     </div>
   );

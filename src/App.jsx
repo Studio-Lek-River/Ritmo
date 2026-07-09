@@ -42,6 +42,7 @@ import Toast from './components/Toast';
 import { formatAmount, formatDuration } from './utils/format';
 import { MODULE_PRESETS } from './utils/presets';
 import { genId } from './utils/genId';
+import { moveById, reorderById } from './utils/reorder';
 import { applyModulePreset } from './utils/applyModulePreset';
 import { MEASUREMENT_UNITS, unitSymbol, createMetric } from './utils/measurements';
 import { ICON_OPTIONS } from './utils/icons';
@@ -1986,26 +1987,11 @@ function SettingsModal({ onClose, modules, setModules, reflectionQuestions, setR
   const [dragOverId, setDragOverId] = useState(null);
 
   const moveModule = (id, dir) => {
-    setModules(prev => {
-      const i = prev.findIndex(m => m.id === id);
-      const j = i + dir;
-      if (i < 0 || j < 0 || j >= prev.length) return prev;
-      const next = [...prev];
-      [next[i], next[j]] = [next[j], next[i]];
-      return next;
-    });
+    setModules(prev => moveById(prev, id, dir));
   };
 
   const reorderModules = (fromId, toId) => {
-    setModules(prev => {
-      const from = prev.findIndex(m => m.id === fromId);
-      const to = prev.findIndex(m => m.id === toId);
-      if (from < 0 || to < 0 || from === to) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      return next;
-    });
+    setModules(prev => reorderById(prev, fromId, toId));
   };
 
   const openBlankModuleEditor = () => {
