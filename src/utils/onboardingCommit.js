@@ -156,9 +156,9 @@ export function buildOnboardingResult(areaState, t) {
   return { modules, chores, groceries };
 }
 
-// Types zonder onboarding-preset: minimale module met naam via i18n, icoon en
-// kleur (zelfde keuzes als de bestaande health-seeding in App.jsx's
-// setupWeightLossBundle), plus emptyDefaultsForType(type).
+// Types zonder onboarding-preset: minimale module met nameKey (taal-reactief,
+// zelfde patroon als setupWeightLossBundle in App.jsx), icoon en kleur, plus
+// emptyDefaultsForType(type).
 const HEALTH_MANUAL_MODULES = [
   { type: 'medication',        nameKey: 'modules.types.medication',        icon: 'Cross',        color: 'blue' },
   { type: 'bodymap',           nameKey: 'modules.types.bodymap',           icon: 'Target',        color: 'purple' },
@@ -182,7 +182,7 @@ export function buildHealthProfileModules(t) {
   for (const { type, nameKey, icon, color } of HEALTH_MANUAL_MODULES) {
     modules.push({
       id: genId(type),
-      name: t(nameKey),
+      nameKey,
       type,
       icon,
       color,
