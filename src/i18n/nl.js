@@ -771,6 +771,7 @@ export default {
 
   modules: {
     add: 'Nieuwe module toevoegen',
+    dailyLog: 'Dagelijks bijhouden',
     edit: 'Module bewerken',
     editTitle: 'Bewerk module',
     newPickType: 'Kies type nieuwe module',

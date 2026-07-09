@@ -770,6 +770,7 @@ export default {
 
   modules: {
     add: 'Add new module',
+    dailyLog: 'Daily log',
     edit: 'Edit module',
     editTitle: 'Edit module',
     newPickType: 'New module — pick type',

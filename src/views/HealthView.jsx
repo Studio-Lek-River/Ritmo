@@ -4,6 +4,8 @@ import { ICON_OPTIONS } from '../utils/icons';
 import { getColorClasses } from '../utils/colors';
 import { injectableMeds } from '../utils/bodymap';
 import { useTranslation, getLocale, resolveModuleName } from '../i18n/useTranslation';
+import { isHealthModule } from '../utils/healthModules';
+import { formatAmount } from '../utils/format';
 import { useToast } from '../hooks/useToast';
 import { ModuleDetail } from './MeasurementsView';
 import { MedicationModuleCard } from './MedicationView';
@@ -27,6 +29,12 @@ function moduleSummary(mod, t) {
   if (mod.type === 'injectionSchedule') {
     return t('modules.summary.injectionSchedule', { count: (mod.entries || []).length });
   }
+  if (mod.type === 'checklist') {
+    return t('modules.summary.checklistItems', { n: (mod.items || []).length });
+  }
+  if (mod.type === 'counter') {
+    return t('modules.summary.counter', { goal: formatAmount(mod.dailyGoal ?? mod.dailyGoalMinutes ?? 0, mod.unit || 'minutes') });
+  }
   return '';
 }
 
@@ -49,7 +57,8 @@ export default function HealthView({
   onAddScheduleEntry,
   onUpdateScheduleEntry,
   onDeleteScheduleEntry,
-  topContent,
+  renderLogModule,
+  appMode,
   theme,
 }) {
   const { t } = useTranslation();
@@ -61,10 +70,16 @@ export default function HealthView({
   const healthModules = modules.filter(
     (m) => m.enabled && HEALTH_TYPES.includes(m.type)
   );
+  // Dagelijks te loggen gezondheidsmodules (bijwerkingen-checklist, beweging-
+  // teller): in gezondheidsmodus is er geen aparte dag-tracker meer, dus deze
+  // krijgen hier hun eigen logkaart.
+  const trackableHealth = appMode === 'health'
+    ? modules.filter((m) => m.enabled && (m.type === 'checklist' || m.type === 'counter') && isHealthModule(m))
+    : [];
   const meds = injectableMeds(modules);
 
   const selected = selectedId
-    ? healthModules.find((m) => m.id === selectedId) || null
+    ? [...healthModules, ...trackableHealth].find((m) => m.id === selectedId) || null
     : null;
 
   const backToList = () => {
@@ -142,15 +157,39 @@ export default function HealthView({
             theme={theme}
           />
         )}
+        {(selected.type === 'checklist' || selected.type === 'counter') && renderLogModule?.(selected)}
       </div>
     );
   }
 
-  // Lijstweergave: alle gezondheidsmodules door elkaar. In health mode wordt
-  // hierboven het dagelijkse dashboard (Today) getoond via topContent.
+  // Kaartje per module in de lijst; hergebruikt voor gezondheidsdata- en
+  // dagelijks-te-loggen modules.
+  const moduleCard = (mod) => {
+    const IconComp = ICON_OPTIONS[mod.icon] || Activity;
+    const colorCls = getColorClasses(mod.color);
+    return (
+      <button
+        key={mod.id}
+        type="button"
+        onClick={() => { setSelectedId(mod.id); setOpenMetricId(null); }}
+        className={`w-full flex items-center gap-3 ${theme.card} rounded-2xl border ${theme.border} p-4 hover:shadow-sm transition-all text-left`}
+      >
+        <div className={`w-10 h-10 rounded-xl ${colorCls.iconBg} flex items-center justify-center shrink-0`}>
+          <IconComp className={`w-5 h-5 ${colorCls.iconText}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className={`font-medium ${theme.text} truncate`}>{resolveModuleName(mod, t)}</p>
+          <p className={`text-xs ${theme.textMuted} mt-0.5`}>{moduleSummary(mod, t)}</p>
+        </div>
+        <ChevronRight className={`w-5 h-5 ${theme.textMuted}`} />
+      </button>
+    );
+  };
+
+  // Lijstweergave: gezondheidsdata-modules, plus een aparte sectie met de
+  // dagelijks te loggen modules (bijwerkingen, beweging). Geen dag-tracker.
   return (
     <div className="slide-in">
-      {topContent}
       <div className="flex items-center justify-between mb-4 gap-2">
         <h1 className={`text-xl font-semibold ${theme.text}`}>{t('nav.measurements')}</h1>
         <div className="flex gap-2">
@@ -174,7 +213,7 @@ export default function HealthView({
         </div>
       </div>
 
-      {healthModules.length === 0 ? (
+      {(healthModules.length + trackableHealth.length) === 0 ? (
         <div className={`${theme.card} rounded-2xl border ${theme.border} p-8 text-center`}>
           <Activity className={`w-10 h-10 ${theme.textMuted} mx-auto mb-3 opacity-60`} />
           <h3 className={`font-medium ${theme.text} mb-1`}>
@@ -185,29 +224,23 @@ export default function HealthView({
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {healthModules.map((mod) => {
-            const IconComp = ICON_OPTIONS[mod.icon] || Activity;
-            const colorCls = getColorClasses(mod.color);
-            return (
-              <button
-                key={mod.id}
-                type="button"
-                onClick={() => { setSelectedId(mod.id); setOpenMetricId(null); }}
-                className={`w-full flex items-center gap-3 ${theme.card} rounded-2xl border ${theme.border} p-4 hover:shadow-sm transition-all text-left`}
-              >
-                <div className={`w-10 h-10 rounded-xl ${colorCls.iconBg} flex items-center justify-center shrink-0`}>
-                  <IconComp className={`w-5 h-5 ${colorCls.iconText}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`font-medium ${theme.text} truncate`}>{resolveModuleName(mod, t)}</p>
-                  <p className={`text-xs ${theme.textMuted} mt-0.5`}>{moduleSummary(mod, t)}</p>
-                </div>
-                <ChevronRight className={`w-5 h-5 ${theme.textMuted}`} />
-              </button>
-            );
-          })}
-        </div>
+        <>
+          {healthModules.length > 0 && (
+            <div className="space-y-3">
+              {healthModules.map(moduleCard)}
+            </div>
+          )}
+          {trackableHealth.length > 0 && (
+            <div className={healthModules.length > 0 ? 'mt-6' : ''}>
+              <h2 className={`text-sm font-semibold ${theme.textSecondary} mb-3`}>
+                {t('modules.dailyLog')}
+              </h2>
+              <div className="space-y-3">
+                {trackableHealth.map(moduleCard)}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

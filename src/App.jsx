@@ -21,6 +21,9 @@ import OnboardingView from './views/OnboardingView';
 import SplashScreen from './components/SplashScreen';
 import RitmoLogo from './components/RitmoLogo';
 import TabBar from './components/TabBar';
+import DesktopShell from './components/DesktopShell';
+import IsDesktopContext from './context/IsDesktopContext';
+import useIsDesktop from './hooks/useIsDesktop';
 import ErrorBoundary from './components/ErrorBoundary';
 import HelpOverlay from './components/help/HelpOverlay';
 import InstallGuide from './components/help/InstallGuide';
@@ -66,6 +69,8 @@ import {
   canCountInStreak,
 } from './utils/dayProgress';
 import { getColorHex, COLOR_OPTIONS } from './utils/colors';
+import ChecklistInsightCard from './components/insight/ChecklistInsightCard';
+import { buildDaysWithActive } from './utils/insights';
 import CounterDisplay, { DISPLAY_STYLE_KEYS } from './components/CounterDisplay';
 import { DEFAULT_MODULES, instantiateDefaults } from './utils/defaultModules';
 import { playSound } from './utils/sound';
@@ -102,6 +107,7 @@ export default function Ritmo() {
   const [soundVolume, setSoundVolume] = useState(80);
   const [goldenBorderEnabled, setGoldenBorderEnabled] = useState(true);
   const [appMode, setAppMode] = useState('standard');
+  const isDesktop = useIsDesktop();
   const [onboardingProfile, setOnboardingProfile] = useState('full');
   const [showReflectionOnToday, setShowReflectionOnToday] = useState(false);
   const [hasUsedSwipe, setHasUsedSwipe] = useState(false);
@@ -1164,6 +1170,8 @@ export default function Ritmo() {
     onAddScheduleEntry: addScheduleEntry,
     onUpdateScheduleEntry: updateScheduleEntry,
     onDeleteScheduleEntry: deleteScheduleEntry,
+    renderLogModule: renderTodayModule,
+    appMode,
     theme,
   };
 
@@ -1229,46 +1237,52 @@ export default function Ritmo() {
         .slide-in { animation: slideIn 0.3s ease-out; }
       `}</style>
 
-      <div className="max-w-2xl mx-auto relative">
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <div className="flex items-baseline gap-2 mb-1">
-              <h1 className={`text-3xl font-bold ${theme.text}`}>{t('app.title')}</h1>
-              <span className={`text-sm ${theme.textMuted}`}>· {t('app.tagline')}</span>
+      <IsDesktopContext.Provider value={isDesktop}>
+      {(() => {
+        const mobileHeader = (
+          <>
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <div className="flex items-baseline gap-2 mb-1">
+                  <h1 className={`text-3xl font-bold ${theme.text}`}>{t('app.title')}</h1>
+                  <span className={`text-sm ${theme.textMuted}`}>· {t('app.tagline')}</span>
+                </div>
+                <p className={`${theme.textMuted} text-sm`}>
+                  {new Date().toLocaleDateString(language === 'nl' ? 'nl-NL' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setDarkMode(!darkMode)}
+                  className={`p-2 ${theme.card} rounded-xl shadow-sm ${theme.hover} transition`}
+                >
+                  {darkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-slate-600" />}
+                </button>
+                <button
+                  onClick={() => setView('insight')}
+                  aria-label={t('insight.headerButtonAria')}
+                  className={`p-2 ${theme.card} rounded-xl shadow-sm ${theme.hover} transition ${view === 'insight' ? 'ring-2 ring-blue-400' : ''}`}
+                >
+                  <BarChart3 className={`w-5 h-5 ${view === 'insight' ? 'text-blue-500' : theme.textSecondary}`} />
+                </button>
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className={`p-2 ${theme.card} rounded-xl shadow-sm ${theme.hover} transition`}
+                >
+                  <Settings className={`w-5 h-5 ${theme.textSecondary}`} />
+                </button>
+              </div>
             </div>
-            <p className={`${theme.textMuted} text-sm`}>
-              {new Date().toLocaleDateString(language === 'nl' ? 'nl-NL' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className={`p-2 ${theme.card} rounded-xl shadow-sm ${theme.hover} transition`}
-            >
-              {darkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-slate-600" />}
-            </button>
-            <button
-              onClick={() => setView('insight')}
-              aria-label={t('insight.headerButtonAria')}
-              className={`p-2 ${theme.card} rounded-xl shadow-sm ${theme.hover} transition ${view === 'insight' ? 'ring-2 ring-blue-400' : ''}`}
-            >
-              <BarChart3 className={`w-5 h-5 ${view === 'insight' ? 'text-blue-500' : theme.textSecondary}`} />
-            </button>
-            <button
-              onClick={() => setShowSettings(true)}
-              className={`p-2 ${theme.card} rounded-xl shadow-sm ${theme.hover} transition`}
-            >
-              <Settings className={`w-5 h-5 ${theme.textSecondary}`} />
-            </button>
-          </div>
-        </div>
 
-        <TabBar view={view} setView={setView} theme={theme} appMode={appMode} />
-
+            <TabBar view={view} setView={setView} theme={theme} appMode={appMode} />
+          </>
+        );
+        const viewContent = (
+          <>
         <ErrorBoundary key={view} darkMode={darkMode} onReset={() => setView('today')}>
         {view === 'today' && (
           appMode === 'health'
-            ? <HealthView {...healthViewProps} topContent={<TodayView {...todayViewProps} />} />
+            ? <HealthView {...healthViewProps} />
             : <TodayView {...todayViewProps} />
         )}
 
@@ -1388,7 +1402,31 @@ export default function Ritmo() {
         <div className={`text-center text-xs ${theme.textMuted} mt-6 pb-4`}>
           {t('app.autosave')}
         </div>
-      </div>
+          </>
+        );
+        if (isDesktop) {
+          return (
+            <DesktopShell
+              view={view}
+              setView={setView}
+              theme={theme}
+              appMode={appMode}
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
+              setShowSettings={setShowSettings}
+            >
+              {viewContent}
+            </DesktopShell>
+          );
+        }
+        return (
+          <div className="max-w-2xl mx-auto relative">
+            {mobileHeader}
+            {viewContent}
+          </div>
+        );
+      })()}
+      </IsDesktopContext.Provider>
 
       {showSettings && (
         <SettingsModal
@@ -1706,12 +1744,16 @@ function WeekView({ modules, history, today, activeDateKey, moduleData, activeWe
           let value = '';
 
           if (mod.type === 'checklist') {
-            const fullDays = weekDates.filter(d => {
-              const data = d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id];
-              return data && mod.items.every(i => data[i.id]);
-            }).length;
-            label = resolveModuleName(mod, t);
-            value = t('week.fullDays', { n: fullDays });
+            return (
+              <ChecklistInsightCard
+                key={mod.id}
+                mod={mod}
+                days={buildDaysWithActive(weekDates, { history, activeDateKey, moduleData })}
+                theme={theme}
+                darkMode={darkMode}
+                t={t}
+              />
+            );
           } else if (mod.type === 'choice') {
             const days = weekDates.filter(d => {
               const data = d === activeDateKey ? moduleData[mod.id] : history[d]?.moduleData?.[mod.id];
@@ -1917,6 +1959,21 @@ function MonthView({ calendarMonth, setCalendarMonth, history, today, activeDate
           </div>
         );
       })}
+
+      {modules
+        .filter(m => m.enabled && m.type === 'checklist' && (appMode !== 'health' || isHealthModule(m)))
+        .filter(m => filterModuleId === 'all' || m.id === filterModuleId)
+        .map(mod => (
+          <div key={mod.id} className="mt-3">
+            <ChecklistInsightCard
+              mod={mod}
+              days={buildDaysWithActive(monthDays, { history, activeDateKey, moduleData })}
+              theme={theme}
+              darkMode={darkMode}
+              t={t}
+            />
+          </div>
+        ))}
     </div>
   );
 }
