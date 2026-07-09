@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sun, Moon, BarChart3, Settings } from 'lucide-react';
+import { Sun, Moon, BarChart3, Settings, HelpCircle } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { getNavGroups } from './navItems';
 
@@ -14,6 +14,7 @@ export default function DesktopShell({
   darkMode,
   setDarkMode,
   setShowSettings,
+  onOpenHelp,
   children,
 }) {
   const { t, language } = useTranslation();
@@ -72,6 +73,9 @@ export default function DesktopShell({
             className={`${iconBtnClass} ${view === 'insight' ? 'ring-2 ring-blue-400' : ''}`}
           >
             <BarChart3 className={`w-5 h-5 ${view === 'insight' ? 'text-blue-500' : theme.textSecondary}`} />
+          </button>
+          <button onClick={() => onOpenHelp?.()} aria-label={t('help.title')} className={iconBtnClass}>
+            <HelpCircle className={`w-5 h-5 ${theme.textSecondary}`} />
           </button>
           <button onClick={() => setShowSettings(true)} className={iconBtnClass}>
             <Settings className={`w-5 h-5 ${theme.textSecondary}`} />

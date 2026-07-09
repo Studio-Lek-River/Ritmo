@@ -189,9 +189,11 @@ export default function HealthTour({
             const isDone = !!filledMap[s.id];
             const isCurrent = current && current.id === s.id;
             return (
-              <div
+              <button
                 key={s.id}
-                className={`flex items-center gap-3 px-3 py-2 rounded-xl ${isCurrent ? theme.cardSecondary : ''}`}
+                type="button"
+                onClick={() => onGoToModule(s.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left ${theme.hover} ${isCurrent ? theme.cardSecondary : ''}`}
               >
                 <span
                   className={`rounded-full flex items-center justify-center shrink-0 ${
@@ -207,7 +209,7 @@ export default function HealthTour({
                 {isCurrent && (
                   <span className="ml-auto text-[11px] font-bold text-blue-500">{t('tour.nowTag')}</span>
                 )}
-              </div>
+              </button>
             );
           })}
         </div>

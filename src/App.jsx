@@ -91,6 +91,7 @@ export default function Ritmo() {
   const [splashDone, setSplashDone] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [openSettingsToHelp, setOpenSettingsToHelp] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState(null);
   const [editingModule, setEditingModule] = useState(null);
   const [hasOnboarded, setHasOnboarded] = useState(true);
@@ -1174,6 +1175,9 @@ export default function Ritmo() {
   const goToTourModule = (id) => {
     setView('today');
     setTourFocusId(id);
+    // Klap in tot het pil-knopje zodat de module en de hint vrij zichtbaar zijn
+    // en de gebruiker meteen een waarde kan toevoegen.
+    setTourCollapsed(true);
   };
   const finishHealthTour = () => {
     setTourActive(false);
@@ -1310,6 +1314,13 @@ export default function Ritmo() {
                   <BarChart3 className={`w-5 h-5 ${view === 'insight' ? 'text-blue-500' : theme.textSecondary}`} />
                 </button>
                 <button
+                  onClick={() => { setOpenSettingsToHelp(true); setShowSettings(true); }}
+                  aria-label={t('help.title')}
+                  className={`p-2 ${theme.card} rounded-xl shadow-sm ${theme.hover} transition`}
+                >
+                  <HelpCircle className={`w-5 h-5 ${theme.textSecondary}`} />
+                </button>
+                <button
                   onClick={() => setShowSettings(true)}
                   className={`p-2 ${theme.card} rounded-xl shadow-sm ${theme.hover} transition`}
                 >
@@ -1413,6 +1424,7 @@ export default function Ritmo() {
               darkMode={darkMode}
               setDarkMode={setDarkMode}
               setShowSettings={setShowSettings}
+              onOpenHelp={() => { setOpenSettingsToHelp(true); setShowSettings(true); }}
             >
               {viewContent}
             </DesktopShell>
@@ -1429,8 +1441,9 @@ export default function Ritmo() {
 
       {showSettings && (
         <SettingsModal
-          onClose={() => { setShowSettings(false); setSettingsInitialTab(null); }}
+          onClose={() => { setShowSettings(false); setSettingsInitialTab(null); setOpenSettingsToHelp(false); }}
           initialTab={settingsInitialTab}
+          initialHelp={openSettingsToHelp}
           currentUser={currentUser}
           modules={modules}
           setModules={setModules}
@@ -1663,10 +1676,10 @@ function StreakBadge({ label, days, color, theme }) {
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, theme, dayNames, setEditingModule, initialTab, currentUser, onStartTour }) {
+function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
-  const [helpView, setHelpView] = useState(null); // null | 'list' | 'install' | 'feedback'
+  const [helpView, setHelpView] = useState(initialHelp ? 'list' : null); // null | 'list' | 'install' | 'feedback'
   const [reorderMode, setReorderMode] = useState(false);
   const [androidPromptable, setAndroidPromptable] = useState(false);
   useEffect(() => {
