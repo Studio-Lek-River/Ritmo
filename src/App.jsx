@@ -651,6 +651,11 @@ export default function Ritmo() {
     }));
   };
 
+  // Bewaart het gekozen heat-venster (30d/14d/all) op de bodymap-module.
+  const setBodymapHeatWindow = (moduleId, windowId) => {
+    updateBodymapModule(moduleId, m => ({ ...m, heatWindow: windowId }));
+  };
+
   // Eén pass die atomair de prik logt én de voorraad van het bronmedicijn
   // verlaagt (geklemd op 0), zodat log en voorraad nooit uit de pas lopen.
   // `date` mag worden meegegeven (undo van een verwijdering herstelt zo de
@@ -776,6 +781,7 @@ export default function Ritmo() {
           countInStreak: false,
           type: 'bodymap',
           log: [],
+          heatWindow: '30d',
         });
       }
 
@@ -847,6 +853,7 @@ export default function Ritmo() {
       } : {}),
       ...(type === 'bodymap' ? {
         log: [],
+        heatWindow: '30d',
       } : {}),
       ...(type === 'injectionSchedule' ? {
         entries: [],
@@ -1148,6 +1155,7 @@ export default function Ritmo() {
     onOrderMed: orderMed,
     onLogInjection: logInjectionEvent,
     onRemoveInjection: removeInjectionEvent,
+    onSetHeatWindow: setBodymapHeatWindow,
     onAddScheduleEntry: addScheduleEntry,
     onUpdateScheduleEntry: updateScheduleEntry,
     onDeleteScheduleEntry: deleteScheduleEntry,
@@ -3922,6 +3930,7 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
                 iconOptions={ICON_OPTIONS}
                 onLogInjection={(modId, event) => setEditing(prev => logInjection(prev, event))}
                 onRemoveInjection={(modId, index) => setEditing(prev => removeInjection(prev, index))}
+                onSetHeatWindow={(modId, windowId) => setEditing(prev => ({ ...prev, heatWindow: windowId }))}
                 theme={theme}
               />
             ) : (
