@@ -160,6 +160,11 @@ export function buildDayTimeline({
   return items;
 }
 
+function byTimeThenOrder(a, b) {
+  if (a.time !== b.time) return a.time < b.time ? -1 : 1;
+  return a.order - b.order;
+}
+
 // Groepeert een platte tijdlijn per dagdeel. Binnen een dagdeel: sorteren op
 // tijd, daarna op bronvolgorde (stabiele tiebreaker via `order`).
 export function groupDayTimelineByDagdeel(items) {
@@ -168,10 +173,26 @@ export function groupDayTimelineByDagdeel(items) {
     (grouped[item.dagdeel] || grouped.ongepland).push(item);
   });
   DAGDEEL_ORDER.forEach(key => {
-    grouped[key].sort((a, b) => {
-      if (a.time !== b.time) return a.time < b.time ? -1 : 1;
-      return a.order - b.order;
-    });
+    grouped[key].sort(byTimeThenOrder);
   });
   return grouped;
+}
+
+// Groepeert een platte tijdlijn per uur (00:00–23:00) voor een agenda-weergave.
+// Items zonder geldige tijd komen in `untimed`. Binnen een uur en binnen
+// `untimed`: sorteren op tijd, daarna op bronvolgorde (stabiele tiebreaker).
+export function groupDayTimelineByHour(items) {
+  const untimed = [];
+  const hours = Array.from({ length: 24 }, (_, hour) => ({ hour, items: [] }));
+  items.forEach(item => {
+    const minutes = timeToMinutes(item.time);
+    if (minutes == null) {
+      untimed.push(item);
+      return;
+    }
+    hours[Math.floor(minutes / 60)].items.push(item);
+  });
+  hours.forEach(slot => slot.items.sort(byTimeThenOrder));
+  untimed.sort(byTimeThenOrder);
+  return { untimed, hours };
 }

@@ -1,16 +1,17 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { getColorClasses } from '../utils/colors';
 import { buildTaskBoard, KANBAN_COLUMNS } from '../utils/taskBoard';
 
-// Kanban-bord voor de Productivity Suite: losse taken (vandaag) en
-// projecttaken (alle, ongeacht deadline) als kaartjes in drie kolommen op
-// status. Hergebruikt uitsluitend bestaande handlers uit App.jsx via
-// buildTaskBoard; dit component schrijft zelf niets naar opslag. Verplaatsen
-// kan zowel via native drag-and-drop als via de toegankelijke chevron-knoppen
-// (principe 2: geen enkele interactievorm wordt opgelegd).
-export default function KanbanView({ modules, customTasks, onSetTaskStatus, onSetSubgoalStatus, theme }) {
+// Kanban-bord voor de Planner: losse taken (vandaag) en projecttaken (alle,
+// ongeacht deadline) als kaartjes in drie kolommen op status. De drie kolommen
+// zijn altijd zichtbaar, ook bij een leeg bord. Hergebruikt bestaande handlers
+// uit App.jsx via buildTaskBoard; een nieuwe kaart wordt als losse taak
+// toegevoegd via onAddTask (belandt in Te doen). Verplaatsen kan zowel via
+// native drag-and-drop als via de toegankelijke chevron-knoppen (principe 2:
+// geen enkele interactievorm wordt opgelegd).
+export default function KanbanView({ modules, customTasks, onAddTask, onSetTaskStatus, onSetSubgoalStatus, theme }) {
   const { t } = useTranslation();
   const [draggingKey, setDraggingKey] = useState(null);
 
@@ -26,16 +27,6 @@ export default function KanbanView({ modules, customTasks, onSetTaskStatus, onSe
     });
     return map;
   }, [board]);
-
-  const hasAnyCards = KANBAN_COLUMNS.some(col => board[col].length > 0);
-
-  if (!hasAnyCards) {
-    return (
-      <div className={`${theme.card} ${theme.radiusCard} p-8 text-center text-sm ${theme.textMuted}`}>
-        {t('productivity.kanbanEmpty')}
-      </div>
-    );
-  }
 
   const handleDrop = (col) => (e) => {
     e.preventDefault();
@@ -77,8 +68,42 @@ export default function KanbanView({ modules, customTasks, onSetTaskStatus, onSe
               />
             ))
           )}
+          {col === 'todo' && onAddTask && <AddCardForm onAddTask={onAddTask} theme={theme} t={t} />}
         </div>
       ))}
+    </div>
+  );
+}
+
+// Compact toevoeg-veld onderaan de Te doen-kolom: maakt een losse taak aan via
+// onAddTask (belandt in Te doen omdat nieuwe taken geen status/done hebben).
+function AddCardForm({ onAddTask, theme, t }) {
+  const [text, setText] = useState('');
+
+  const submit = () => {
+    if (!text.trim()) return;
+    onAddTask(text.trim());
+    setText('');
+  };
+
+  return (
+    <div className="flex gap-2 pt-1">
+      <input
+        type="text"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && submit()}
+        placeholder={t('productivity.addCard')}
+        className={`flex-1 min-w-0 px-2 py-1.5 ${theme.input} ${theme.radiusControl} text-sm focus:outline-none focus:ring-2 focus:ring-blue-300`}
+      />
+      <button
+        type="button"
+        onClick={submit}
+        aria-label={t('productivity.addCard')}
+        className={`p-1.5 rounded-lg transition ${theme.hover} ${theme.textMuted} shrink-0`}
+      >
+        <Plus className="w-4 h-4" />
+      </button>
     </div>
   );
 }

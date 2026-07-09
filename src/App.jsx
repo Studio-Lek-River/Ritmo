@@ -969,14 +969,23 @@ export default function Ritmo() {
     });
   };
 
+  // Kern-functie: voegt een losse taak toe. Hergebruikt door zowel het
+  // Tasks-module-invoerveld (addTask) als het toevoeg-veld in de Planner
+  // (TaskListPanel / Kanban Te doen-kolom).
+  const addCustomTask = (text, time) => {
+    const trimmed = (text || '').trim();
+    if (!trimmed) return;
+    setCustomTasks(prev => [...prev, {
+      id: Date.now(),
+      text: trimmed,
+      done: false,
+      ...(time ? { time } : {}),
+    }]);
+  };
+
   const addTask = () => {
     if (newTask.trim()) {
-      setCustomTasks(prev => [...prev, {
-        id: Date.now(),
-        text: newTask.trim(),
-        done: false,
-        ...(newTaskTime ? { time: newTaskTime } : {}),
-      }]);
+      addCustomTask(newTask, newTaskTime || undefined);
       setNewTask('');
       setNewTaskTime('');
     }
@@ -1489,7 +1498,10 @@ export default function Ritmo() {
             customTasks={customTasks}
             onChecklistToggle={toggleChecklistItem}
             onChoiceOptionSet={setChoiceOption}
+            onAddTask={addCustomTask}
             onToggleTask={toggleTask}
+            onDeleteTask={deleteTask}
+            onSetTaskTime={setTaskTime}
             onToggleProjectSubgoal={toggleProjectSubgoal}
             onSetTaskStatus={setTaskStatus}
             onSetSubgoalStatus={setSubgoalStatus}

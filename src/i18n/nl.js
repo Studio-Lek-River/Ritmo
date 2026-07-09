@@ -101,7 +101,7 @@ export default {
     today: 'Taken',
     projects: 'Projecten',
     collections: 'Collecties',
-    productivity: 'Productivity Suite',
+    productivity: 'Planner',
     measurements: 'Gezondheid',
     household: 'Huishouden',
     settings: 'Instellingen',
@@ -1540,9 +1540,12 @@ export default {
   },
 
   productivity: {
-    title: 'Productivity Suite',
+    title: 'Planner',
     dag: 'Dag',
     kanban: 'Kanban',
+    taskListTitle: 'Taken',
+    addCard: 'Taak toevoegen',
+    untimed: 'Geen tijd',
     kanbanColumns: {
       todo: 'Te doen',
       bezig: 'Bezig',
