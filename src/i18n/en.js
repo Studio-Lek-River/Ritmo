@@ -1268,10 +1268,72 @@ export default {
 
   help: {
     title: 'Help',
+    tour: 'Start the tour',
+    tourDesc: 'Set up the basics of health mode step by step',
     install: 'Add app to home screen',
     installDesc: 'Open Ritmo faster, from your home screen',
     feedback: 'Give feedback',
     feedbackDesc: 'Report a problem or share an idea',
+  },
+
+  // health tour (tutorial)
+  tour: {
+    panelTitle: 'Tour',
+    progress: '{done} of {total} done',
+    pill: 'Tour {done}/{total}',
+    nowLabel: 'Do now',
+    nowTag: 'now',
+    whatLabel: 'What',
+    whyLabel: 'Why',
+    goto: 'Take me there',
+    allSteps: 'All steps',
+    collapseAria: 'Collapse the tour',
+    expandAria: 'Open the tour',
+    closeAria: 'Close the tour',
+    hintClose: 'Close hint',
+    welcome: {
+      title: 'Ready to start?',
+      body: 'This tour helps you set up the parts of health mode once. You set the pace and can stop any time.',
+      start: 'Start',
+      later: 'Later',
+    },
+    done: {
+      title: 'Done. Your basics are set.',
+      body: 'You have filled in every part. You can find the tour again in Settings, under Help.',
+      close: 'Close',
+    },
+    types: {
+      measurements: {
+        what: 'This is where you track values, like your weight.',
+        why: 'That way you see change over time.',
+        hint: 'Tap a measurement and add your first value.',
+      },
+      medication: {
+        what: 'This is where you list your medicines.',
+        why: 'That way you know exactly what you take.',
+        hint: 'Tap the button to add your first medicine.',
+      },
+      bodymap: {
+        what: 'This is where you track where you inject.',
+        why: 'That way you rotate spots and avoid irritation.',
+        hint: 'Pick a spot on the body to log it.',
+      },
+      injectionSchedule: {
+        what: 'This is where you plan when you inject.',
+        why: 'That way you never miss a dose.',
+        hint: 'Add a time when you want to inject.',
+      },
+      counter: {
+        what: 'This is where you count your movement today.',
+        why: 'Every step counts and you see your progress.',
+        hint: 'Add your movement for today.',
+      },
+      checklist: {
+        what: 'This is where you note how you feel.',
+        why: 'That way you spot patterns in side effects.',
+        hint: 'Check what you notice today.',
+      },
+    },
   },
 
   install: {

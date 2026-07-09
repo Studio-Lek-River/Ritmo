@@ -35,6 +35,8 @@ import FeedbackForm from './components/help/FeedbackForm';
 import ChecklistModule from './modules/ChecklistModule';
 import CelebrationOverlay from './components/CelebrationOverlay';
 import ConfirmDialog from './components/ConfirmDialog';
+import HealthTour from './components/tour/HealthTour';
+import { buildTourSteps, buildFilledMap } from './utils/tourSteps';
 import { CELEBRATION_ANIMATIONS, CONFETTI_CONFIG, buildConfetti } from './utils/celebrations';
 import { migrateModuleConfig, migrateDayModuleData, migrateSettings } from './utils/migrate';
 import { useTranslation, resolveModuleName } from './i18n/useTranslation';
@@ -107,6 +109,11 @@ export default function Ritmo() {
   const [onboardingProfile, setOnboardingProfile] = useState('full');
   const [hasUsedSwipe, setHasUsedSwipe] = useState(false);
   const [hasDismissedInstallBanner, setHasDismissedInstallBanner] = useState(false);
+  const [hasSeenHealthTour, setHasSeenHealthTour] = useState(false);
+  const [tourActive, setTourActive] = useState(false);
+  const [tourCollapsed, setTourCollapsed] = useState(false);
+  const [tourWelcome, setTourWelcome] = useState(false);
+  const [tourFocusId, setTourFocusId] = useState(null);
   const [confetti, setConfetti] = useState([]);
   const [celebrationMsg, setCelebrationMsg] = useState(null);
   const [celebrationOverlay, setCelebrationOverlay] = useState(null);
@@ -152,6 +159,7 @@ export default function Ritmo() {
         if (settings.onboardingProfile !== undefined) setOnboardingProfile(settings.onboardingProfile);
         if (settings.hasUsedSwipe !== undefined) setHasUsedSwipe(settings.hasUsedSwipe);
         if (settings.hasDismissedInstallBanner !== undefined) setHasDismissedInstallBanner(settings.hasDismissedInstallBanner);
+        if (settings.hasSeenHealthTour !== undefined) setHasSeenHealthTour(settings.hasSeenHealthTour);
         if (loadedModules) setModules(loadedModules);
         if (settings.hasOnboarded !== undefined) setHasOnboarded(settings.hasOnboarded);
       } else {
@@ -284,6 +292,7 @@ export default function Ritmo() {
           onboardingProfile,
           hasUsedSwipe,
           hasDismissedInstallBanner,
+          hasSeenHealthTour,
           modules,
           hasOnboarded,
           language: languageSetting,
@@ -291,7 +300,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
 
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
@@ -1037,7 +1046,13 @@ export default function Ritmo() {
       setModules(selectedModules);
       setHasOnboarded(true);
       setOnboardingProfile(profile);
-      if (profile === 'health') setAppMode('health');
+      if (profile === 'health') {
+        setAppMode('health');
+        // Bied de rondleiding zacht aan (opt-in): start met het welkomkaartje.
+        setTourWelcome(true);
+        setTourCollapsed(false);
+        setTourActive(true);
+      }
     }} theme={theme} darkMode={darkMode} />;
   }
 
@@ -1134,8 +1149,29 @@ export default function Ritmo() {
     totalCompletionItems, completedItems, overallPercentage, setShowSettings,
     setView, StreakBadge,
   };
+  // Gezondheids-rondleiding: stappen + ingevuld-status live afgeleid uit data.
+  const tourSteps = tourActive ? buildTourSteps(modules) : [];
+  const tourFilledMap = tourActive ? buildFilledMap(tourSteps, moduleData, history) : {};
+  const startHealthTour = () => {
+    setTourWelcome(false);
+    setTourCollapsed(false);
+    setTourFocusId(null);
+    setTourActive(true);
+  };
+  const goToTourModule = (id) => {
+    setView('today');
+    setTourFocusId(id);
+  };
+  const finishHealthTour = () => {
+    setTourActive(false);
+    setHasSeenHealthTour(true);
+  };
+
   const healthViewProps = {
     modules,
+    focusModuleId: tourFocusId,
+    onFocusConsumed: () => setTourFocusId(null),
+    tourActive,
     onUpdateMeasurementsModule: updateMeasurementsModule,
     onAddModule: openBlankModuleEditor,
     onEditModule: (mod) => setEditingModule(mod),
@@ -1196,6 +1232,21 @@ export default function Ritmo() {
         <CelebrationOverlay
           animationId={celebrationOverlay.animationId}
           onClose={() => setCelebrationOverlay(null)}
+        />
+      )}
+
+      {appMode === 'health' && tourActive && tourSteps.length > 0 && (
+        <HealthTour
+          steps={tourSteps}
+          filledMap={tourFilledMap}
+          theme={theme}
+          collapsed={tourCollapsed}
+          welcome={tourWelcome}
+          onToggleCollapse={() => { setTourWelcome(false); setTourCollapsed(c => !c); }}
+          onStartFromWelcome={() => { setTourWelcome(false); setTourCollapsed(false); }}
+          onGoToModule={goToTourModule}
+          onClose={finishHealthTour}
+          onFinish={finishHealthTour}
         />
       )}
 
@@ -1333,6 +1384,10 @@ export default function Ritmo() {
         <div className={`text-center text-xs ${theme.textMuted} mt-6 pb-4`}>
           {t('app.autosave')}
         </div>
+        {/* Ruimte onderaan zodat de zwevende rondleiding de inhoud niet afdekt. */}
+        {appMode === 'health' && tourActive && !tourCollapsed && (
+          <div className="h-80" aria-hidden="true" />
+        )}
           </>
         );
         if (isDesktop) {
@@ -1383,6 +1438,7 @@ export default function Ritmo() {
           theme={theme}
           dayNames={dayNames}
           setEditingModule={setEditingModule}
+          onStartTour={() => { setShowSettings(false); setSettingsInitialTab(null); startHealthTour(); }}
         />
       )}
 
@@ -1594,7 +1650,7 @@ function StreakBadge({ label, days, color, theme }) {
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, theme, dayNames, setEditingModule, initialTab, currentUser }) {
+function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, theme, dayNames, setEditingModule, initialTab, currentUser, onStartTour }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
   const [helpView, setHelpView] = useState(null); // null | 'list' | 'install' | 'feedback'
@@ -1674,7 +1730,11 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
         </div>
 
         {helpView === 'list' && (
-          <HelpOverlay theme={theme} onSelect={setHelpView} />
+          <HelpOverlay
+            theme={theme}
+            showTour={appMode === 'health'}
+            onSelect={(id) => { if (id === 'tour') { onStartTour?.(); } else { setHelpView(id); } }}
+          />
         )}
 
         {helpView === 'install' && (

@@ -1279,10 +1279,72 @@ export default {
   // help-overlay components
   help: {
     title: 'Help',
+    tour: 'Rondleiding starten',
+    tourDesc: 'Stel de basis van gezondheidsmodus stap voor stap in',
     install: 'App op beginscherm zetten',
     installDesc: 'Open Ritmo sneller, vanaf jouw startscherm',
     feedback: 'Feedback geven',
     feedbackDesc: 'Probleem melden of een idee delen',
+  },
+
+  // gezondheids-rondleiding (tutorial)
+  tour: {
+    panelTitle: 'Rondleiding',
+    progress: '{done} van {total} klaar',
+    pill: 'Rondleiding {done}/{total}',
+    nowLabel: 'Nu doen',
+    nowTag: 'nu',
+    whatLabel: 'Wat',
+    whyLabel: 'Waarom',
+    goto: 'Breng me erheen',
+    allSteps: 'Alle stappen',
+    collapseAria: 'Rondleiding inklappen',
+    expandAria: 'Rondleiding openen',
+    closeAria: 'Rondleiding sluiten',
+    hintClose: 'Hint sluiten',
+    welcome: {
+      title: 'Klaar om te beginnen?',
+      body: 'Deze rondleiding helpt je de onderdelen van gezondheidsmodus eenmalig in te stellen. Je bepaalt zelf het tempo en kunt altijd stoppen.',
+      start: 'Start',
+      later: 'Later',
+    },
+    done: {
+      title: 'Klaar. Je basis staat.',
+      body: 'Je hebt alle onderdelen ingevuld. Je vindt de rondleiding terug via Instellingen, onder Help.',
+      close: 'Sluiten',
+    },
+    types: {
+      measurements: {
+        what: 'Hier houd je waarden bij, zoals je gewicht.',
+        why: 'Zo zie je verandering over de tijd.',
+        hint: 'Tik op een meting en voeg je eerste waarde toe.',
+      },
+      medication: {
+        what: 'Hier zet je je medicijnen op een rij.',
+        why: 'Zo weet je precies wat je gebruikt.',
+        hint: 'Tik op de knop om je eerste medicijn toe te voegen.',
+      },
+      bodymap: {
+        what: 'Hier houd je bij waar je een prik zet.',
+        why: 'Zo wissel je plekken af en voorkom je irritatie.',
+        hint: 'Kies een plek op het lichaam om te loggen.',
+      },
+      injectionSchedule: {
+        what: 'Hier plan je wanneer je prikt.',
+        why: 'Zo vergeet je geen dosis.',
+        hint: 'Voeg een moment toe waarop je wilt prikken.',
+      },
+      counter: {
+        what: 'Hier tel je je beweging van vandaag.',
+        why: 'Elke stap telt en je ziet je voortgang.',
+        hint: 'Tel je beweging van vandaag bij.',
+      },
+      checklist: {
+        what: 'Hier vink je aan hoe je je voelt.',
+        why: 'Zo zie je patronen in bijwerkingen.',
+        hint: 'Vink aan wat je vandaag merkt.',
+      },
+    },
   },
 
   install: {

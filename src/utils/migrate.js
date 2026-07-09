@@ -192,6 +192,7 @@ export function migrateSettings(settings) {
   }
   if (out.appMode === undefined) out.appMode = 'standard';
   if (out.onboardingProfile === undefined) out.onboardingProfile = 'full';
+  if (out.hasSeenHealthTour === undefined) out.hasSeenHealthTour = false;
   return out;
 }
 
