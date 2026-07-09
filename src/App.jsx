@@ -1070,6 +1070,10 @@ export default function Ritmo() {
     input: 'r-input',
     hover: 'r-hover',
     progressBg: 'r-progress',
+    radiusCard: 'r-radius-card',
+    radiusControl: 'r-radius-control',
+    padCard: 'r-pad-card',
+    padRow: 'r-pad-row',
   };
 
   // Overall completion

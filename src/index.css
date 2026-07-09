@@ -25,6 +25,11 @@
   --r-input-text: #334155;
   --r-hover: #f8fafc;
   --r-progress: #f1f5f9;
+  --r-radius-card: 0.75rem;
+  --r-radius-control: 0.5rem;
+  --r-radius-pill: 9999px;
+  --r-pad-card: 1.25rem;
+  --r-pad-row: 0.75rem;
 }
 :root[data-theme="dark"] {
   --r-bg: linear-gradient(to bottom right, #0f172a, #1e293b);
@@ -38,6 +43,11 @@
   --r-input-text: #f1f5f9;
   --r-hover: #334155;
   --r-progress: #334155;
+  --r-radius-card: 0.75rem;
+  --r-radius-control: 0.5rem;
+  --r-radius-pill: 9999px;
+  --r-pad-card: 1.25rem;
+  --r-pad-row: 0.75rem;
 }
 
 /* --- Levendig (Monday-achtig): warmer wit, licht-lila achtergrond --- */
@@ -53,6 +63,11 @@
   --r-input-text: #323338;
   --r-hover: #eef0f6;
   --r-progress: #e6e9ef;
+  --r-radius-card: 1rem;
+  --r-radius-control: 0.625rem;
+  --r-radius-pill: 9999px;
+  --r-pad-card: 1.5rem;
+  --r-pad-row: 0.875rem;
 }
 :root[data-style="levendig"][data-theme="dark"] {
   --r-bg: linear-gradient(to bottom right, #181b34, #20233f);
@@ -66,6 +81,11 @@
   --r-input-text: #e6e7f2;
   --r-hover: #2a2e4d;
   --r-progress: #33365a;
+  --r-radius-card: 1rem;
+  --r-radius-control: 0.625rem;
+  --r-radius-pill: 9999px;
+  --r-pad-card: 1.5rem;
+  --r-pad-row: 0.875rem;
 }
 
 /* --- Compact (Salesforce-achtig): vlak, neutraal grijs, zichtbare randen --- */
@@ -81,6 +101,11 @@
   --r-input-text: #181818;
   --r-hover: #f3f2f2;
   --r-progress: #ecebea;
+  --r-radius-card: 0.375rem;
+  --r-radius-control: 0.25rem;
+  --r-radius-pill: 0.25rem;
+  --r-pad-card: 0.875rem;
+  --r-pad-row: 0.5rem;
 }
 :root[data-style="compact"][data-theme="dark"] {
   --r-bg: #0f1114;
@@ -94,6 +119,11 @@
   --r-input-text: #eceef2;
   --r-hover: #232830;
   --r-progress: #2c313a;
+  --r-radius-card: 0.375rem;
+  --r-radius-control: 0.25rem;
+  --r-radius-pill: 0.25rem;
+  --r-pad-card: 0.875rem;
+  --r-pad-row: 0.5rem;
 }
 
 /* Helper-classes die de tokens toepassen. In @layer components zodat
@@ -109,6 +139,34 @@
   .r-input { background-color: var(--r-input-bg); color: var(--r-input-text); }
   .r-hover:hover { background-color: var(--r-hover); }
   .r-progress { background-color: var(--r-progress); }
+
+  .r-radius-card    { border-radius: var(--r-radius-card); }
+  .r-radius-control { border-radius: var(--r-radius-control); }
+  .r-pad-card       { padding: var(--r-pad-card); }
+  .r-pad-row        { padding: var(--r-pad-row); }
+
+  /* Status-chip vorm per skin. Basis = Strak: getinte, licht-afgeronde badge. */
+  .r-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: var(--r-radius-control);
+    padding: 0.125rem 0.625rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 500;
+  }
+  /* Levendig: volle ronde pill, iets ruimer */
+  :root[data-style="levendig"] .r-chip {
+    border-radius: var(--r-radius-pill);
+    padding: 0.1875rem 0.75rem;
+  }
+  /* Compact: minimaal, klein-hoekig label met dunne rand */
+  :root[data-style="compact"] .r-chip {
+    border-radius: var(--r-radius-pill);
+    border: 1px solid var(--r-border);
+    padding: 0.0625rem 0.375rem;
+    font-weight: 600;
+  }
 }
 
 html, body {
