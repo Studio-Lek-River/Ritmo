@@ -100,7 +100,7 @@ export default {
     today: 'Tasks',
     projects: 'Projects',
     collections: 'Collections',
-    productivity: 'Productivity Suite',
+    productivity: 'Planner',
     measurements: 'Health',
     household: 'Household',
     settings: 'Settings',
@@ -1529,9 +1529,13 @@ export default {
   },
 
   productivity: {
-    title: 'Productivity Suite',
+    title: 'Planner',
     dag: 'Day',
     kanban: 'Kanban',
+    taskListTitle: 'Tasks',
+    addCard: 'Add task',
+    untimed: 'No time',
+    today: 'Today',
     kanbanColumns: {
       todo: 'To do',
       bezig: 'In progress',
