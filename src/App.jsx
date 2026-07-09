@@ -1170,6 +1170,8 @@ export default function Ritmo() {
     onAddScheduleEntry: addScheduleEntry,
     onUpdateScheduleEntry: updateScheduleEntry,
     onDeleteScheduleEntry: deleteScheduleEntry,
+    renderLogModule: renderTodayModule,
+    appMode,
     theme,
   };
 
@@ -1280,7 +1282,7 @@ export default function Ritmo() {
         <ErrorBoundary key={view} darkMode={darkMode} onReset={() => setView('today')}>
         {view === 'today' && (
           appMode === 'health'
-            ? <HealthView {...healthViewProps} topContent={<TodayView {...todayViewProps} />} />
+            ? <HealthView {...healthViewProps} />
             : <TodayView {...todayViewProps} />
         )}
 
