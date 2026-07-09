@@ -967,9 +967,8 @@ export default function Ritmo() {
     return 0;
   };
 
-  // Current calendar week (used by Today-side widgets like CounterModule's
-  // "deze week" totals — those should always reflect the real current week,
-  // never the user's nav position in WeekView).
+  // Current calendar week, used by Today-side widgets like CounterModule's
+  // "deze week" totals, die altijd de echte huidige week weerspiegelen.
   const currentWeekDates = Array.from({ length: 7 }, (_, i) => {
     return fmtDateKey(addDays(startOfWeek(new Date()), i));
   });
