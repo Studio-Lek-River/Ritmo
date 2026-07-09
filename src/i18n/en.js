@@ -372,6 +372,10 @@ export default {
       pasteConfirmDescriptionNone: 'Nothing was recognized to fill in. The current weekly menu will be overwritten.',
       pasteConfirmConfirm: 'Overwrite',
     },
+    sections: {
+      manageToggle: 'Manage sections',
+      manageTitle: 'Order and visibility',
+    },
   },
 
   sync: {

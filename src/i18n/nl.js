@@ -373,6 +373,10 @@ export default {
       pasteConfirmDescriptionNone: 'Er is niets herkend om in te vullen. Het huidige weekmenu wordt overschreven.',
       pasteConfirmConfirm: 'Overschrijven',
     },
+    sections: {
+      manageToggle: 'Secties beheren',
+      manageTitle: 'Volgorde en zichtbaarheid',
+    },
   },
 
   sync: {

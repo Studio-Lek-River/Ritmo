@@ -3,7 +3,7 @@ import {
   Home, ChevronDown, ChevronUp,
   Plus, Trash2, Check, Star, ChevronLeft, ChevronRight, Edit3, X, Info, Lightbulb,
   ShoppingCart, Coffee, Utensils, Zap, Droplet, Wifi, Phone, Car, Film, Music, Book, Heart, Gift, Dumbbell, Flame, Plane, Fuel, BadgeEuro, GraduationCap, Briefcase,
-  UtensilsCrossed, TrendingUp,
+  UtensilsCrossed, TrendingUp, ArrowUpDown, Eye, EyeOff,
 } from 'lucide-react';
 import MealPlanSection from './household/MealPlanSection';
 import InvestmentsSection from './household/InvestmentsSection';
@@ -23,6 +23,7 @@ import { migrateHousehold } from '../utils/migrate';
 import { useTranslation, getLocale } from '../i18n/useTranslation';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { emptyWeekMenu, normalizeWeekMenu, filledSlotCount, MENU_DAYS, MENU_SLOTS } from '../utils/mealplan';
+import { moveById } from '../utils/reorder';
 
 const newId = () => (typeof crypto !== 'undefined' && crypto.randomUUID
   ? crypto.randomUUID()
@@ -36,6 +37,49 @@ const BUDGET_ICON_KEYS = Object.keys(BUDGET_ICONS);
 
 const UTILITY_ICON = { water: Droplet, elektra: Zap, gas: Flame, energie: Lightbulb };
 const UTILITY_COLOR = { water: 'text-sky-500', elektra: 'text-amber-500', gas: 'text-orange-500', energie: 'text-violet-500' };
+
+// Huishoud-secties die verborgen/gesorteerd kunnen worden. Volgorde in dit
+// array = de default render-volgorde (huidige volgorde), alles zichtbaar.
+const SECTION_IDS = ['chores', 'groceries', 'menu', 'fixedCosts', 'investments', 'utilities'];
+const DEFAULT_SECTIONS = SECTION_IDS.map(id => ({ id, enabled: true }));
+
+const SECTION_TITLE_KEYS = {
+  chores: 'household.chores.title',
+  groceries: 'household.groceries.title',
+  menu: 'household.mealPlan.sectionTitle',
+  fixedCosts: 'household.fixedCosts.title',
+  investments: 'household.investments.title',
+  utilities: 'household.utilities.title',
+};
+
+const SECTION_ICON_META = {
+  chores: { Icon: Home, color: 'text-blue-500' },
+  groceries: { Icon: ShoppingCart, color: 'text-emerald-500' },
+  menu: { Icon: UtensilsCrossed, color: 'text-amber-500' },
+  fixedCosts: { Icon: BadgeEuro, color: 'text-violet-500' },
+  investments: { Icon: TrendingUp, color: 'text-blue-500' },
+  utilities: { Icon: Zap, color: 'text-amber-500' },
+};
+
+// Defensieve normalisatie: onbekende ids weg, ontbrekende bekende ids
+// achteraan toevoegen (nooit een sectie kwijtraken). Nooit een crash, ook
+// niet bij een niet-array of leeg opgeslagen waarde.
+function normalizeSections(raw) {
+  if (!Array.isArray(raw)) return DEFAULT_SECTIONS.map(s => ({ ...s }));
+  const seen = new Set();
+  const result = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const id = entry.id;
+    if (!SECTION_IDS.includes(id) || seen.has(id)) continue;
+    seen.add(id);
+    result.push({ id, enabled: entry.enabled !== false });
+  }
+  for (const id of SECTION_IDS) {
+    if (!seen.has(id)) result.push({ id, enabled: true });
+  }
+  return result;
+}
 
 function buildLocalizedNames(language) {
   // Re-runs whenever language changes; uses Intl with the resolved locale.
@@ -71,7 +115,7 @@ export default function HouseholdView({ theme, darkMode }) {
   const utilityLabel = (k) => t(`household.utilities.types.${k}`);
 
   const [expanded, setExpanded] = useState({
-    chores: true, groceries: false, mealPlan: false, fixedCosts: false, utilities: false, investments: false,
+    chores: true, groceries: false, menu: false, fixedCosts: false, utilities: false, investments: false,
   });
   const toggle = (key) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -85,6 +129,20 @@ export default function HouseholdView({ theme, darkMode }) {
   const [investments, setInvestments] = useStoredState('household:investments', {
     mode: 'total', total: { events: [] }, holdings: [],
   });
+
+  // Zichtbaarheid + volgorde van de huishoud-secties. Default = huidige
+  // render-volgorde, alles zichtbaar. Genormaliseerd bij elk gebruik zodat
+  // onbekende ids verdwijnen en nieuwe secties automatisch verschijnen.
+  const [sectionsRaw, setSectionsRaw] = useStoredState('household:sections', DEFAULT_SECTIONS);
+  const sections = useMemo(() => normalizeSections(sectionsRaw), [sectionsRaw]);
+  const [manageSectionsOpen, setManageSectionsOpen] = useState(false);
+
+  const moveSection = (id, dir) => {
+    setSectionsRaw(prev => moveById(normalizeSections(prev), id, dir));
+  };
+  const toggleSectionEnabled = (id) => {
+    setSectionsRaw(prev => normalizeSections(prev).map(s => (s.id === id ? { ...s, enabled: !s.enabled } : s)));
+  };
 
   // Eenmalige migratie van oude isUtility/autoFromBudget-shape naar nieuw
   // vaste-lasten-model. Lezen via window.storage rechtstreeks om race-
@@ -148,9 +206,11 @@ export default function HouseholdView({ theme, darkMode }) {
     ? t('household.investments.metaValue', { value: formatEuro(investmentsStats.current) })
     : t('household.investments.metaEmpty');
 
-  return (
-    <div className="slide-in space-y-3">
-
+  // Data-driven sectie-render: elke functie geeft exact hetzelfde <Section>-
+  // blok terug als voorheen. `sections` (genormaliseerd, geordend) bepaalt
+  // welke secties in welke volgorde verschijnen.
+  const sectionRenderers = {
+    chores: () => (
       <Section
         theme={theme}
         icon={<Home className="w-4 h-4 text-blue-500" />}
@@ -163,7 +223,8 @@ export default function HouseholdView({ theme, darkMode }) {
       >
         <ChoresSection chores={chores} setChores={setChores} theme={theme} />
       </Section>
-
+    ),
+    groceries: () => (
       <Section
         theme={theme}
         icon={<ShoppingCart className="w-4 h-4 text-emerald-500" />}
@@ -174,7 +235,8 @@ export default function HouseholdView({ theme, darkMode }) {
       >
         <GroceriesSection groceries={groceries} setGroceries={setGroceries} theme={theme} dayLabels={names.dayLabels} />
       </Section>
-
+    ),
+    menu: () => (
       <Section
         theme={theme}
         icon={<UtensilsCrossed className="w-4 h-4 text-amber-500" />}
@@ -182,12 +244,13 @@ export default function HouseholdView({ theme, darkMode }) {
         meta={filledMenuCount > 0
           ? t('household.mealPlan.sectionMeta', { n: filledMenuCount, total: totalMenuSlots })
           : t('household.mealPlan.sectionMetaNone')}
-        expanded={expanded.mealPlan}
-        onToggle={() => toggle('mealPlan')}
+        expanded={expanded.menu}
+        onToggle={() => toggle('menu')}
       >
         <MealPlanSection theme={theme} menu={mealPlanMenu} setMenu={setMealPlan} />
       </Section>
-
+    ),
+    fixedCosts: () => (
       <Section
         theme={theme}
         icon={<BadgeEuro className="w-4 h-4 text-violet-500" />}
@@ -209,7 +272,8 @@ export default function HouseholdView({ theme, darkMode }) {
           monthlyNetValue={monthlyNetValue}
         />
       </Section>
-
+    ),
+    investments: () => (
       <Section
         theme={theme}
         icon={<TrendingUp className="w-4 h-4 text-blue-500" />}
@@ -220,7 +284,8 @@ export default function HouseholdView({ theme, darkMode }) {
       >
         <InvestmentsSection investments={investments} setInvestments={setInvestments} theme={theme} />
       </Section>
-
+    ),
+    utilities: () => (
       <Section
         theme={theme}
         icon={<Zap className="w-4 h-4 text-amber-500" />}
@@ -239,6 +304,81 @@ export default function HouseholdView({ theme, darkMode }) {
           utilityLabel={utilityLabel}
         />
       </Section>
+    ),
+  };
+
+  return (
+    <div className="slide-in space-y-3">
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setManageSectionsOpen(v => !v)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+            manageSectionsOpen
+              ? 'bg-slate-700 text-white'
+              : `border ${theme.border} ${theme.textSecondary} ${theme.hover}`
+          }`}
+        >
+          <ArrowUpDown className="w-3.5 h-3.5" />
+          {manageSectionsOpen ? t('common.done') : t('household.sections.manageToggle')}
+        </button>
+      </div>
+
+      {manageSectionsOpen && (
+        <div className={`${theme.card} rounded-2xl p-4 space-y-2`}>
+          <h3 className={`text-sm font-semibold ${theme.textSecondary}`}>{t('household.sections.manageTitle')}</h3>
+          <div className="space-y-2">
+            {sections.map((section, index) => {
+              const { Icon, color } = SECTION_ICON_META[section.id];
+              const isFirst = index === 0;
+              const isLast = index === sections.length - 1;
+              return (
+                <div
+                  key={section.id}
+                  className={`flex items-center gap-2 p-3 ${theme.cardSecondary} rounded-lg`}
+                >
+                  <Icon className={`w-4 h-4 ${section.enabled ? color : theme.textMuted}`} />
+                  <div className={`flex-1 min-w-0 text-sm font-medium ${section.enabled ? theme.textSecondary : theme.textMuted}`}>
+                    {t(SECTION_TITLE_KEYS[section.id])}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleSectionEnabled(section.id)}
+                    className={`p-1.5 rounded transition ${section.enabled ? color : theme.textMuted} ${theme.hover}`}
+                    title={section.enabled ? t('common.hide') : t('common.show')}
+                    aria-label={section.enabled ? t('common.hide') : t('common.show')}
+                  >
+                    {section.enabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveSection(section.id, -1)}
+                    disabled={isFirst}
+                    aria-label={t('common.moveUp')}
+                    className={`p-1.5 rounded transition ${theme.hover} ${theme.textSecondary} disabled:opacity-30 disabled:cursor-not-allowed`}
+                  >
+                    <ChevronUp className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveSection(section.id, 1)}
+                    disabled={isLast}
+                    aria-label={t('common.moveDown')}
+                    className={`p-1.5 rounded transition ${theme.hover} ${theme.textSecondary} disabled:opacity-30 disabled:cursor-not-allowed`}
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {sections.filter(s => s.enabled).map(s => (
+        <React.Fragment key={s.id}>{sectionRenderers[s.id]?.()}</React.Fragment>
+      ))}
 
     </div>
   );
