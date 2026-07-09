@@ -1546,7 +1546,6 @@ export default {
     taskListTitle: 'Taken',
     addCard: 'Taak toevoegen',
     untimed: 'Geen tijd',
-    today: 'Vandaag',
     kanbanColumns: {
       todo: 'Te doen',
       bezig: 'Bezig',

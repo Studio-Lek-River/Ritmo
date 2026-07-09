@@ -2,11 +2,13 @@ import React, { useMemo } from 'react';
 import { Check, ChevronRight } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { getColorClasses } from '../utils/colors';
-import { buildDayTimeline, groupDayTimelineByDagdeel, DAGDEEL_ORDER } from '../utils/dayTimeline';
+import { buildDayTimeline, groupDayTimelineByHour } from '../utils/dayTimeline';
+import { formatDayTitle, formatDaySubtitle } from '../utils/dates';
 
-// De dag in tijdvolgorde, gegroepeerd per dagdeel: routines, activiteiten,
-// losse taken en projecttaken naast elkaar. Hergebruikt uitsluitend bestaande
-// toggle-handlers uit App.jsx; dit component schrijft zelf niets naar opslag.
+// De dag als agenda per uur (00:00–23:00): routines, activiteiten, losse taken
+// en projecttaken in hun tijdslot, met taken zonder tijd apart bovenaan.
+// Hergebruikt uitsluitend bestaande toggle-handlers uit App.jsx; dit component
+// schrijft zelf niets naar opslag.
 export default function DagView({
   modules,
   moduleData,
@@ -20,7 +22,7 @@ export default function DagView({
 }) {
   const { t } = useTranslation();
 
-  const grouped = useMemo(() => {
+  const { untimed, hours } = useMemo(() => {
     const items = buildDayTimeline({
       modules,
       moduleData,
@@ -33,37 +35,43 @@ export default function DagView({
         onNavigateToday: () => setView?.('today'),
       },
     });
-    return groupDayTimelineByDagdeel(items);
+    return groupDayTimelineByHour(items);
   }, [modules, moduleData, customTasks, onChecklistToggle, onChoiceOptionSet, onToggleTask, onToggleProjectSubgoal, setView]);
 
-  const hasAnyItems = DAGDEEL_ORDER.some(key => grouped[key].length > 0);
-
-  if (!hasAnyItems) {
-    return (
-      <div className={`${theme.card} ${theme.radiusCard} p-8 text-center text-sm ${theme.textMuted}`}>
-        {t('productivity.empty')}
-      </div>
-    );
-  }
+  const today = new Date();
 
   return (
-    <div className="space-y-6">
-      {DAGDEEL_ORDER.map(dagdeel => {
-        const items = grouped[dagdeel];
-        if (items.length === 0) return null;
-        return (
-          <section key={dagdeel}>
-            <h2 className={`text-xs font-semibold uppercase tracking-wide mb-2 ${theme.textMuted}`}>
-              {t(`productivity.dagdelen.${dagdeel}`)}
-            </h2>
-            <div className="space-y-2">
+    <div className={`${theme.card} ${theme.radiusCard} ${theme.padRow} space-y-3`}>
+      <div className="flex items-baseline gap-2">
+        <h2 className={`text-lg font-bold ${theme.text}`}>{formatDayTitle(today)}</h2>
+        <span className={`text-sm ${theme.textMuted}`}>{formatDaySubtitle(today)}</span>
+      </div>
+
+      {untimed.length > 0 && (
+        <section className={`${theme.cardSecondary} ${theme.radiusControl} ${theme.padRow} space-y-2`}>
+          <h3 className={`text-xs font-semibold uppercase tracking-wide ${theme.textMuted}`}>
+            {t('productivity.untimed')}
+          </h3>
+          {untimed.map(item => (
+            <DagTimelineRow key={item.key} item={item} theme={theme} t={t} />
+          ))}
+        </section>
+      )}
+
+      <div className="max-h-[70vh] overflow-y-auto pr-1 divide-y divide-slate-200/60 dark:divide-slate-700/60">
+        {hours.map(({ hour, items }) => (
+          <div key={hour} className="flex items-start gap-3 py-1.5 min-h-[2.75rem]">
+            <span className={`text-xs font-medium tabular-nums w-11 shrink-0 pt-1.5 ${theme.textMuted}`}>
+              {String(hour).padStart(2, '0')}:00
+            </span>
+            <div className="flex-1 min-w-0 space-y-2">
               {items.map(item => (
                 <DagTimelineRow key={item.key} item={item} theme={theme} t={t} />
               ))}
             </div>
-          </section>
-        );
-      })}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

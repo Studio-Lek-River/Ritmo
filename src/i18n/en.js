@@ -1535,7 +1535,6 @@ export default {
     taskListTitle: 'Tasks',
     addCard: 'Add task',
     untimed: 'No time',
-    today: 'Today',
     kanbanColumns: {
       todo: 'To do',
       bezig: 'In progress',
