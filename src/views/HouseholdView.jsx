@@ -22,8 +22,7 @@ import { activeSeries, seriesStats } from '../utils/investments';
 import { migrateHousehold } from '../utils/migrate';
 import { useTranslation, getLocale } from '../i18n/useTranslation';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { DEFAULT_MEALPLAN_CONFIG, createSelfMember, countForDay } from '../utils/mealplan';
-import { todayKey } from '../utils/dates';
+import { emptyWeekMenu, normalizeWeekMenu, filledSlotCount, MENU_DAYS, MENU_SLOTS } from '../utils/mealplan';
 
 const newId = () => (typeof crypto !== 'undefined' && crypto.randomUUID
   ? crypto.randomUUID()
@@ -81,9 +80,8 @@ export default function HouseholdView({ theme, darkMode }) {
   const [budget, setBudget] = useStoredState('household:budget', { income: [], expenses: [], oneTime: [] });
   const [utilities, setUtilities] = useStoredState('household:utilities', { actuals: {} });
   const [config, setConfig] = useStoredState('household:config', {});
-  const [mealPlanConfig, setMealPlanConfig] = useStoredState('household:mealplan:config', DEFAULT_MEALPLAN_CONFIG);
-  const [mealPlanMembers, setMealPlanMembers] = useStoredState('household:mealplan:members', [createSelfMember()]);
-  const [mealPlanPlan, setMealPlanPlan] = useStoredState('household:mealplan:plan', {});
+  const [mealPlanRaw, setMealPlan] = useStoredState('household:mealplan:plan', emptyWeekMenu());
+  const mealPlanMenu = useMemo(() => normalizeWeekMenu(mealPlanRaw), [mealPlanRaw]);
   const [investments, setInvestments] = useStoredState('household:investments', {
     mode: 'total', total: { events: [] }, holdings: [],
   });
@@ -114,10 +112,18 @@ export default function HouseholdView({ theme, darkMode }) {
           parseValue(c, {}),
           new Date(),
         );
-        if (cancelled || !result.changed) return;
-        setBudget(result.budget);
-        setUtilities(result.utilities);
-        setConfig(result.config);
+        if (!cancelled && result.changed) {
+          setBudget(result.budget);
+          setUtilities(result.utilities);
+          setConfig(result.config);
+        }
+        // Opruimen van de vervallen per-persoon mee-eten-data (vervangen door
+        // het weekmenu). Idempotent: verwijderen van een niet-bestaande key
+        // is een no-op.
+        await Promise.all([
+          window.storage.delete('household:mealplan:members'),
+          window.storage.delete('household:mealplan:config'),
+        ]);
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('[migrate-household] failed', e);
@@ -130,7 +136,8 @@ export default function HouseholdView({ theme, darkMode }) {
   const overdueCount = chores.filter(isOverdue).length;
   const groceriesCount = (groceries.items || []).filter(i => !i.checked).length;
   const today = new Date();
-  const mealPlanTodayCount = countForDay(mealPlanPlan[todayKey()], mealPlanMembers, mealPlanConfig.defaultStatus);
+  const filledMenuCount = filledSlotCount(mealPlanMenu);
+  const totalMenuSlots = MENU_DAYS.length * MENU_SLOTS.length;
   const currentMonthKey = monthKeyFor(today.getFullYear(), today.getMonth());
   const monthlyIncome = monthlyIncomeTotal(budget.income, currentMonthKey);
   const monthlyExpenses = monthlyExpenseTotal(budget.expenses, currentMonthKey);
@@ -172,21 +179,13 @@ export default function HouseholdView({ theme, darkMode }) {
         theme={theme}
         icon={<UtensilsCrossed className="w-4 h-4 text-amber-500" />}
         title={t('household.mealPlan.sectionTitle')}
-        meta={mealPlanTodayCount > 0
-          ? t('household.mealPlan.sectionMeta', { n: mealPlanTodayCount })
+        meta={filledMenuCount > 0
+          ? t('household.mealPlan.sectionMeta', { n: filledMenuCount, total: totalMenuSlots })
           : t('household.mealPlan.sectionMetaNone')}
         expanded={expanded.mealPlan}
         onToggle={() => toggle('mealPlan')}
       >
-        <MealPlanSection
-          theme={theme}
-          config={mealPlanConfig}
-          setConfig={setMealPlanConfig}
-          members={mealPlanMembers}
-          setMembers={setMealPlanMembers}
-          plan={mealPlanPlan}
-          setPlan={setMealPlanPlan}
-        />
+        <MealPlanSection theme={theme} menu={mealPlanMenu} setMenu={setMealPlan} />
       </Section>
 
       <Section
