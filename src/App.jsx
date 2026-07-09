@@ -1376,6 +1376,8 @@ export default function Ritmo() {
           setStreakSettings={setStreakSettings}
           darkMode={darkMode}
           setDarkMode={setDarkMode}
+          uiStyle={uiStyle}
+          setUiStyle={setUiStyle}
           soundEnabled={soundEnabled}
           setSoundEnabled={setSoundEnabled}
           soundVolume={soundVolume}
@@ -1598,7 +1600,7 @@ function StreakBadge({ label, days, color, theme }) {
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, theme, dayNames, setEditingModule, initialTab, currentUser }) {
+function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, theme, dayNames, setEditingModule, initialTab, currentUser }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
   const [helpView, setHelpView] = useState(null); // null | 'list' | 'install' | 'feedback'
@@ -2033,6 +2035,28 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
               >
                 <Moon className="w-4 h-4" /> {t('settings.themeDark')}
               </button>
+            </div>
+
+            <div className={`mt-6 pt-6 border-t ${theme.border}`}>
+              <h3 className={`font-semibold ${theme.textSecondary} mb-1`}>{t('settings.uiStyle')}</h3>
+              <p className={`text-xs ${theme.textMuted} mb-3`}>{t('settings.uiStyleHint')}</p>
+              <div className="flex gap-2">
+                {[
+                  { id: 'strak', label: t('settings.uiStyleStrak') },
+                  { id: 'levendig', label: t('settings.uiStyleLevendig') },
+                  { id: 'compact', label: t('settings.uiStyleCompact') },
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setUiStyle(opt.id)}
+                    className={`flex-1 py-3 px-3 rounded-lg text-sm font-medium transition ${
+                      uiStyle === opt.id ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className={`mt-6 pt-6 border-t ${theme.border}`}>
