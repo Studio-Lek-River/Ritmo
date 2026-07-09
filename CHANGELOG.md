@@ -1,3 +1,15 @@
+# [0.33.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.32.0...v0.33.0) (2026-07-09)
+
+
+### Bug Fixes
+
+* **onboarding:** behoud nameKey op health-modules voor taal-reactiviteit ([59ca87e](https://github.com/Studio-Lek-River/Ritmo/commit/59ca87ee62e4059773479f31afa952ba12d4ba74))
+
+
+### Features
+
+* **onboarding:** voeg Ritmo Health startprofiel toe aan onboarding ([9f12aef](https://github.com/Studio-Lek-River/Ritmo/commit/9f12aefde392b77656f2984d7347f132960d11d7))
+
 # [0.32.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.31.0...v0.32.0) (2026-07-09)
 
 
