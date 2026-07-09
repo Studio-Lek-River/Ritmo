@@ -339,7 +339,7 @@ export default function ProjectsView({
                           {s.name}
                         </span>
                         {avg !== null && (
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${c.pillBg} ${c.pillText} shrink-0`}>
+                          <span className={`text-xs font-semibold px-2 py-0.5 r-chip ${c.pillBg} ${c.pillText} shrink-0`}>
                             {avg}
                           </span>
                         )}

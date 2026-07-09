@@ -40,7 +40,7 @@ export default function DagView({
 
   if (!hasAnyItems) {
     return (
-      <div className={`${theme.card} rounded-2xl p-8 text-center text-sm ${theme.textMuted}`}>
+      <div className={`${theme.card} ${theme.radiusCard} p-8 text-center text-sm ${theme.textMuted}`}>
         {t('productivity.empty')}
       </div>
     );
@@ -73,7 +73,7 @@ function DagTimelineRow({ item, theme, t }) {
   const isActivity = item.kind === 'activiteit';
 
   return (
-    <div className={`flex items-center gap-3 p-3 ${theme.cardSecondary} rounded-lg`}>
+    <div className={`flex items-center gap-3 ${theme.padRow} ${theme.cardSecondary} ${theme.radiusControl}`}>
       <span className={`text-xs font-medium tabular-nums w-11 shrink-0 ${theme.textMuted}`}>
         {item.time || t('productivity.noTime')}
       </span>

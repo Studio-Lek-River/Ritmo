@@ -29,14 +29,14 @@ export default function ProductivitySuiteView({
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h1 className={`text-2xl font-bold ${theme.text}`}>{t('productivity.title')}</h1>
-        <div className={`flex gap-1 p-1 ${theme.cardSecondary} rounded-xl`}>
+        <div className={`flex gap-1 p-1 ${theme.cardSecondary} ${theme.radiusControl}`}>
           {TABS.map(id => (
             <button
               key={id}
               type="button"
               onClick={() => setTab(id)}
               aria-pressed={tab === id}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+              className={`px-4 py-2 ${theme.radiusControl} text-sm font-medium transition ${
                 tab === id ? 'bg-blue-500 text-white shadow' : `${theme.textMuted} ${theme.hover}`
               }`}
             >

@@ -31,7 +31,7 @@ export default function KanbanView({ modules, customTasks, onSetTaskStatus, onSe
 
   if (!hasAnyCards) {
     return (
-      <div className={`${theme.card} rounded-2xl p-8 text-center text-sm ${theme.textMuted}`}>
+      <div className={`${theme.card} ${theme.radiusCard} p-8 text-center text-sm ${theme.textMuted}`}>
         {t('productivity.kanbanEmpty')}
       </div>
     );
@@ -94,7 +94,7 @@ function KanbanCard({ card, column, onDragStart, onDragEnd, theme, t }) {
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      className={`${theme.card} rounded-lg p-3 space-y-2 cursor-grab active:cursor-grabbing`}
+      className={`${theme.card} ${theme.radiusControl} ${theme.padRow} space-y-2 cursor-grab active:cursor-grabbing`}
     >
       <div className="flex items-start gap-2">
         <span className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${c.bar}`} />
@@ -102,7 +102,7 @@ function KanbanCard({ card, column, onDragStart, onDragEnd, theme, t }) {
           <div className={`text-sm ${theme.textSecondary}`}>{card.label}</div>
           <div className={`text-xs ${theme.textMuted}`}>{t(`productivity.types.${card.kind}`)}</div>
           {card.kind === 'projecttaak' && card.projectLabel && (
-            <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs ${c.pillBg} ${c.pillText}`}>
+            <span className={`inline-block mt-1 px-2 py-0.5 r-chip text-xs ${c.pillBg} ${c.pillText}`}>
               {card.projectLabel}
             </span>
           )}
