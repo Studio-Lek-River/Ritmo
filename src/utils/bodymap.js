@@ -2,7 +2,24 @@
 // Prikken leven in settings.modules[i].log, niet in per-dag moduleData
 // (mirror van het collection-opslagpatroon, zie collections.js/medication.js).
 
-import { todayKey } from './dates';
+import { todayKey, parseDateKey } from './dates';
+
+// Instelbare heat-vensters voor de figuur. `days === null` = alle tijd.
+// De id wordt op de module bewaard als `heatWindow`; default is '30d'.
+export const HEAT_WINDOWS = [
+  { id: '30d', days: 30, labelKey: 'bodymap.heatWindow30' },
+  { id: '14d', days: 14, labelKey: 'bodymap.heatWindow14' },
+  { id: 'all', days: null, labelKey: 'bodymap.heatWindowAll' },
+];
+export const DEFAULT_HEAT_WINDOW = '30d';
+
+// Vertaalt een window-id naar het aantal dagen (of null voor alle tijd). Een
+// onbekende id valt terug op de default.
+export function windowDaysFor(windowId) {
+  const match = HEAT_WINDOWS.find((w) => w.id === windowId);
+  if (match) return match.days;
+  return HEAT_WINDOWS.find((w) => w.id === DEFAULT_HEAT_WINDOW).days;
+}
 
 // Geordende lijst van injectiezones. Volgorde bepaalt de deterministische
 // tie-break in suggestNextZone en de weergavevolgorde in de bodymap.
@@ -58,6 +75,27 @@ export function zoneLastUse(log, zoneId) {
   const events = (log || []).filter((e) => e.zoneId === zoneId);
   if (events.length === 0) return null;
   return events.reduce((latest, e) => (e.date > latest ? e.date : latest), events[0].date);
+}
+
+// Aantal prikken in een zone binnen het gekozen venster. `windowDays === null`
+// telt alle tijd; anders alleen prikken vanaf (vandaag - windowDays), inclusief
+// vandaag. Voedt de heat-kleur van de zone-stip.
+export function zoneInjectionCount(log, zoneId, windowDays) {
+  const events = (log || []).filter((e) => e.zoneId === zoneId);
+  if (windowDays === null || windowDays === undefined) return events.length;
+  const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - windowDays);
+  return events.filter((e) => e.date && parseDateKey(e.date) >= cutoff).length;
+}
+
+// Discrete heat-schaal (0 = ongebruikt .. 3 = vaak), gedeeld door de figuur en
+// de legenda zodat kleuren consistent zijn. Kleuren zelf leven in de view.
+export function heatLevel(count) {
+  if (!count) return 0;
+  if (count === 1) return 1;
+  if (count === 2) return 2;
+  return 3;
 }
 
 // Alle injecteerbare medicijnen uit ingeschakelde medication-modules, verrijkt
