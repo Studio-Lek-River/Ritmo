@@ -34,6 +34,16 @@ export function buildDays(history, dayKeys) {
   }));
 }
 
+// Zoals buildDays, maar de actieve dag (vandaag) leest uit moduleData i.p.v.
+// history — nodig in Week/Maand waar de data van vandaag nog niet in history staat.
+export function buildDaysWithActive(dayKeys, { history, activeDateKey, moduleData }) {
+  return dayKeys.map(key => ({
+    key,
+    date: parseDateKey(key),
+    dayData: key === activeDateKey ? { moduleData } : (history?.[key] || null),
+  }));
+}
+
 // --- Counter ---------------------------------------------------------------
 
 export function aggregateCounter(mod, days) {
