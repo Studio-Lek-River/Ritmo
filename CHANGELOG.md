@@ -1,3 +1,10 @@
+# [0.30.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.29.0...v0.30.0) (2026-07-09)
+
+
+### Features
+
+* **modules:** vul prikschema en bodymap direct in bij aanmaken ([4dc6e49](https://github.com/Studio-Lek-River/Ritmo/commit/4dc6e49bf19cfd9009fcdebe4eb3974ed8f8fae8))
+
 # [0.29.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.28.0...v0.29.0) (2026-07-09)
 
 
