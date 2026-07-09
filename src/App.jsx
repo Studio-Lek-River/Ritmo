@@ -761,7 +761,7 @@ export default function Ritmo() {
     ));
   };
 
-  // Eén-klik bundel: measurements (Weight Loss preset) + medication + bijwerkingen
+  // Eén-klik bundel: measurements (Health metrics preset) + medication + bijwerkingen
   // (checklist-preset, health) + beweging (counter-preset, health). Bestaande
   // modules van hetzelfde type/preset blijven ongemoeid, geen duplicaten.
   const setupWeightLossBundle = useCallback(() => {
@@ -769,11 +769,11 @@ export default function Ritmo() {
       const next = [...prev];
       const hasPresetModule = (type, nameKey) => next.some(m => m.type === type && m.nameKey === nameKey);
 
-      const weightLossPreset = (MODULE_PRESETS.measurements || []).find(p => p.nameKey === 'presets.weightLoss.name');
-      if (weightLossPreset && !hasPresetModule('measurements', weightLossPreset.nameKey)) {
+      const healthPreset = (MODULE_PRESETS.measurements || []).find(p => p.nameKey === 'presets.health.name');
+      if (healthPreset && !hasPresetModule('measurements', healthPreset.nameKey)) {
         next.push(applyModulePreset(
           { type: 'measurements', id: genId('measurements'), enabled: true, countInStreak: false },
-          weightLossPreset
+          healthPreset
         ));
       }
 

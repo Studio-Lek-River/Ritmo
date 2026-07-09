@@ -1209,13 +1209,6 @@ export default {
         muscle: 'Muscle mass',
         fat: 'Body fat',
         waist: 'Waist circumference',
-      },
-    },
-    weightLoss: {
-      name: 'Weight Loss',
-      metrics: {
-        weight: 'Weight',
-        waist: 'Waist',
         leg: 'Leg',
         arm: 'Arm',
       },

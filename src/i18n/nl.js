@@ -1218,13 +1218,6 @@ export default {
         muscle: 'Spiermassa',
         fat: 'Vetpercentage',
         waist: 'Buikomvang',
-      },
-    },
-    weightLoss: {
-      name: 'Weight Loss',
-      metrics: {
-        weight: 'Gewicht',
-        waist: 'Buik',
         leg: 'Been',
         arm: 'Arm',
       },
