@@ -2826,9 +2826,6 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
                 <div className="space-y-2 mb-2">
                   {(editing.items || []).map(item => {
                     const isExpanded = expandedItemId === item.id;
-                    // Altijd zichtbaar: naast de optionele beschrijving/sets is er
-                    // per item ook een optioneel tijdstip (voor de Dag-view).
-                    const showSettingsBtn = true;
                     return (
                       <div key={item.id} className={`${theme.cardSecondary} rounded-lg`}>
                         <div className="flex items-center gap-2 p-2">
@@ -2838,17 +2835,18 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
                             onChange={(e) => updateItem(item.id, { label: e.target.value })}
                             className={`flex-1 px-2 py-1 ${theme.input} rounded text-sm focus:outline-none focus:ring-2 focus:ring-${editing.color}-300`}
                           />
-                          {showSettingsBtn && (
-                            <button
-                              onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
-                              className={`p-1.5 rounded transition ${
-                                isExpanded ? `bg-${editing.color}-500 text-white` : `${theme.textMuted} ${theme.hover}`
-                              }`}
-                              title={t('modules.itemSettings')}
-                            >
-                              <SlidersHorizontal className="w-4 h-4" />
-                            </button>
-                          )}
+                          {/* Instellingen-knop staat altijd aan: naast de optionele
+                              beschrijving/sets zit hier ook het optionele tijdstip
+                              (voor de Dag-view), dat los staat van allowDescriptions/allowTargets. */}
+                          <button
+                            onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
+                            className={`p-1.5 rounded transition ${
+                              isExpanded ? `bg-${editing.color}-500 text-white` : `${theme.textMuted} ${theme.hover}`
+                            }`}
+                            title={t('modules.itemSettings')}
+                          >
+                            <SlidersHorizontal className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => removeEntry('items', item.id)}
                             className="text-slate-400 hover:text-red-500 p-1.5"
@@ -2856,7 +2854,7 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
-                        {isExpanded && showSettingsBtn && (
+                        {isExpanded && (
                           <div className="px-2 pb-2 space-y-2">
                             {editing.allowDescriptions && (
                               <div>
