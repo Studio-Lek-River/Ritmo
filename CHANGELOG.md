@@ -1,3 +1,11 @@
+# [0.32.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.31.0...v0.32.0) (2026-07-09)
+
+
+### Features
+
+* **bodymap:** herontwerp priklocatie met lichaamssilhouet en heat-stippen ([0d6ab68](https://github.com/Studio-Lek-River/Ritmo/commit/0d6ab687ec4108ea046f09de0e7ccf657bfd6579))
+* **bodymap:** tel prikken per zone binnen instelbaar venster ([f30d9a6](https://github.com/Studio-Lek-River/Ritmo/commit/f30d9a68a8dc475e8d455fd79994c2e857489665))
+
 # [0.31.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.30.0...v0.31.0) (2026-07-09)
 
 
