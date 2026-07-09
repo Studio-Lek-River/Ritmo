@@ -2,20 +2,24 @@ import React, { useState } from 'react';
 import { useTranslation } from '../i18n/useTranslation';
 import DagView from './DagView';
 import KanbanView from './KanbanView';
+import TaskListPanel from '../components/TaskListPanel';
 
 const TABS = ['dag', 'kanban'];
 
-// Werkruimte voor de Productivity Suite: kop + Dag/Kanban-toggle. Dag rendert
-// de geaggregeerde tijdlijn, Kanban het statusbord. Lokale useState zodat de
-// keuze een lichte, niet-persistente UI-voorkeur blijft (principe 2: geen
-// gedrag opgelegd).
+// Werkruimte voor de Planner: kop + Dag/Kanban-toggle, met links een gedeelde
+// takenlijst en rechts de actieve weergave. Dag rendert de geaggregeerde
+// uur-agenda, Kanban het statusbord. Lokale useState zodat de tabkeuze een
+// lichte, niet-persistente UI-voorkeur blijft (principe 2: geen gedrag opgelegd).
 export default function ProductivitySuiteView({
   modules,
   moduleData,
   customTasks,
   onChecklistToggle,
   onChoiceOptionSet,
+  onAddTask,
   onToggleTask,
+  onDeleteTask,
+  onSetTaskTime,
   onToggleProjectSubgoal,
   onSetTaskStatus,
   onSetSubgoalStatus,
@@ -24,6 +28,8 @@ export default function ProductivitySuiteView({
 }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState('dag');
+
+  const tasksColor = modules.find(m => m.enabled && m.type === 'tasks')?.color;
 
   return (
     <div className="space-y-4">
@@ -46,27 +52,40 @@ export default function ProductivitySuiteView({
         </div>
       </div>
 
-      {tab === 'dag' ? (
-        <DagView
-          modules={modules}
-          moduleData={moduleData}
-          customTasks={customTasks}
-          onChecklistToggle={onChecklistToggle}
-          onChoiceOptionSet={onChoiceOptionSet}
+      <div className="grid gap-4 md:grid-cols-[minmax(240px,300px)_1fr] items-start">
+        <TaskListPanel
+          tasks={customTasks}
+          color={tasksColor}
+          onAddTask={onAddTask}
           onToggleTask={onToggleTask}
-          onToggleProjectSubgoal={onToggleProjectSubgoal}
-          setView={setView}
+          onDeleteTask={onDeleteTask}
+          onSetTaskTime={onSetTaskTime}
           theme={theme}
         />
-      ) : (
-        <KanbanView
-          modules={modules}
-          customTasks={customTasks}
-          onSetTaskStatus={onSetTaskStatus}
-          onSetSubgoalStatus={onSetSubgoalStatus}
-          theme={theme}
-        />
-      )}
+
+        {tab === 'dag' ? (
+          <DagView
+            modules={modules}
+            moduleData={moduleData}
+            customTasks={customTasks}
+            onChecklistToggle={onChecklistToggle}
+            onChoiceOptionSet={onChoiceOptionSet}
+            onToggleTask={onToggleTask}
+            onToggleProjectSubgoal={onToggleProjectSubgoal}
+            setView={setView}
+            theme={theme}
+          />
+        ) : (
+          <KanbanView
+            modules={modules}
+            customTasks={customTasks}
+            onAddTask={onAddTask}
+            onSetTaskStatus={onSetTaskStatus}
+            onSetSubgoalStatus={onSetSubgoalStatus}
+            theme={theme}
+          />
+        )}
+      </div>
     </div>
   );
 }
