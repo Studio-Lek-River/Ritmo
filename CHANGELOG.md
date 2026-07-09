@@ -1,3 +1,20 @@
+# [0.36.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.35.0...v0.36.0) (2026-07-09)
+
+
+### Bug Fixes
+
+* houd gezondheids-rondleiding beperkt tot geldige health-context ([e7afa81](https://github.com/Studio-Lek-River/Ritmo/commit/e7afa81e4d903ea650a7aab013775b4202e071b4))
+
+
+### Features
+
+* leer in de gezondheids-rondleiding hoe je onderdelen toevoegt, wijzigt en verwijdert ([7ec3727](https://github.com/Studio-Lek-River/Ritmo/commit/7ec3727efb87232b3abc903064bd507da88a7389))
+* maak de rondleiding beter vindbaar en bruikbaar ([ac1c71e](https://github.com/Studio-Lek-River/Ritmo/commit/ac1c71ecfb23d3278c6dfd4b19840a4691ea6a62))
+* sluit de gezondheids-rondleiding af met wegwijzers naar overzicht en huishouden ([bb5b470](https://github.com/Studio-Lek-River/Ritmo/commit/bb5b470e48fde7532205ef9e2f0d140ee1511562))
+* toon voorbeeldgrafiek en uitleg voor metrieken in de gezondheids-rondleiding ([d7d2807](https://github.com/Studio-Lek-River/Ritmo/commit/d7d2807ac6398ef0df3a543f7d1d279e830551f7))
+* voeg gezondheids-rondleiding toe die de basis van gezondheidsmodus stap voor stap instelt ([37358a8](https://github.com/Studio-Lek-River/Ritmo/commit/37358a8e133103355a2dfcf983f8c5d18902faae))
+* voeg metingen-presets Health metrics en Weight Loss samen tot een ([59a6708](https://github.com/Studio-Lek-River/Ritmo/commit/59a670867a55c032209700634953fac857845396))
+
 # [0.35.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.34.0...v0.35.0) (2026-07-09)
 
 
