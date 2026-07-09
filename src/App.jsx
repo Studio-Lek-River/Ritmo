@@ -504,6 +504,27 @@ export default function Ritmo() {
     updateModuleData(projectId, prev => ({ ...prev, touchedToday: true }));
   };
 
+  // Zet de Kanban-status van een project-subgoal ("projecttaak"). Houdt
+  // `completed` consistent met de bestaande toggle (Today/Dag-view): `klaar`
+  // zet `completed = true`, elke andere kolom zet het weer op false.
+  const setSubgoalStatus = (projectId, subjectId, goalId, status) => {
+    setModules(prev => prev.map(m => {
+      if (m.id !== projectId) return m;
+      return {
+        ...m,
+        subjects: (m.subjects || []).map(s => s.id !== subjectId ? s : {
+          ...s,
+          subgoals: (s.subgoals || []).map(g => g.id !== goalId ? g : {
+            ...g,
+            status,
+            completed: status === 'klaar',
+          }),
+        }),
+      };
+    }));
+    updateModuleData(projectId, prev => ({ ...prev, touchedToday: true }));
+  };
+
   const incrementCounter = (moduleId, amount) => {
     const mod = modules.find(m => m.id === moduleId);
     const currentTotal = moduleData[moduleId]?.total ?? moduleData[moduleId]?.minutes ?? 0;
@@ -953,6 +974,13 @@ export default function Ritmo() {
     setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, time: time || undefined } : t));
   };
 
+  // Zet de Kanban-status van een losse taak. Houdt `done` consistent met de
+  // bestaande toggle (Today/Dag-view): `klaar` zet `done = true`, elke andere
+  // kolom zet het weer op false.
+  const setTaskStatus = (id, status) => {
+    setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, status, done: status === 'klaar' } : t));
+  };
+
   // Streak calculation. moduleData is the source of truth for the active
   // date; for any other day, fall back to history (which is updated on save).
   const calculateStreak = (checkFn) => {
@@ -1384,6 +1412,8 @@ export default function Ritmo() {
             onChoiceOptionSet={setChoiceOption}
             onToggleTask={toggleTask}
             onToggleProjectSubgoal={toggleProjectSubgoal}
+            onSetTaskStatus={setTaskStatus}
+            onSetSubgoalStatus={setSubgoalStatus}
             setView={setView}
             theme={theme}
           />
