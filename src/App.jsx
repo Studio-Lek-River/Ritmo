@@ -475,6 +475,24 @@ export default function Ritmo() {
     if (!willDeselect) sfx('pop');
   };
 
+  // Bron-handler voor het afvinken van een project-subgoal ("projecttaak") vanuit
+  // de Productivity Suite Dag-view. Zelfde mutatie-patroon als ProjectsView's
+  // lokale toggleSubgoal, hier op App-niveau zodat de Dag-view (die meerdere
+  // projectmodules tegelijk toont) er ook bij kan.
+  const toggleProjectSubgoal = (projectId, subjectId, goalId) => {
+    setModules(prev => prev.map(m => {
+      if (m.id !== projectId) return m;
+      return {
+        ...m,
+        subjects: (m.subjects || []).map(s => s.id !== subjectId ? s : {
+          ...s,
+          subgoals: (s.subgoals || []).map(g => g.id !== goalId ? g : { ...g, completed: !g.completed }),
+        }),
+      };
+    }));
+    updateModuleData(projectId, prev => ({ ...prev, touchedToday: true }));
+  };
+
   const incrementCounter = (moduleId, amount) => {
     const mod = modules.find(m => m.id === moduleId);
     const currentTotal = moduleData[moduleId]?.total ?? moduleData[moduleId]?.minutes ?? 0;
@@ -1341,6 +1359,7 @@ export default function Ritmo() {
             onChecklistToggle={toggleChecklistItem}
             onChoiceOptionSet={setChoiceOption}
             onToggleTask={toggleTask}
+            onToggleProjectSubgoal={toggleProjectSubgoal}
             setView={setView}
             theme={theme}
           />
