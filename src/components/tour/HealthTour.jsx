@@ -1,6 +1,18 @@
 import React, { useEffect } from 'react';
 import { GraduationCap, Minus, X, Check, ArrowRight, PartyPopper } from 'lucide-react';
 import { useTranslation, resolveModuleName } from '../../i18n/useTranslation';
+import LineChart from '../LineChart';
+
+// Illustratief voorbeeld voor de meting-preview: een gewicht dat over enkele
+// weken zakt richting een doel van 80. Vaste datums zodat de preview stabiel is
+// en losstaat van de eigen data van de gebruiker.
+const EXAMPLE_METRIC_EVENTS = [
+  { id: 'ex1', date: '2025-01-06', value: 84.0 },
+  { id: 'ex2', date: '2025-01-13', value: 83.1 },
+  { id: 'ex3', date: '2025-01-20', value: 82.5 },
+  { id: 'ex4', date: '2025-01-27', value: 81.4 },
+  { id: 'ex5', date: '2025-02-03', value: 80.3 },
+];
 
 // Zwevende, niet-blokkerende rondleiding voor gezondheidsmodus. Toont per stap
 // in gewone taal wat de module is en waarom die handig is, brengt je erheen, en
@@ -170,6 +182,26 @@ export default function HealthTour({
               <span className={`font-semibold ${theme.textSecondary} w-14 shrink-0`}>{t('tour.whyLabel')}</span>
               <span>{t(`tour.types.${current.typeKey}.why`)}</span>
             </p>
+            {current.typeKey === 'measurements' && (
+              <>
+                <p className={`text-sm ${theme.textSecondary} mt-2`}>
+                  {t('tour.types.measurements.addHint')}
+                </p>
+                <div className={`mt-3 rounded-xl ${theme.card} border ${theme.border} p-2.5`}>
+                  <p className={`text-[11px] ${theme.textMuted} mb-1 px-1`}>
+                    {t('tour.previewCaption')}
+                  </p>
+                  <LineChart
+                    events={EXAMPLE_METRIC_EVENTS}
+                    color="blue"
+                    decimals={1}
+                    target={80}
+                    unit="kg"
+                    height={120}
+                  />
+                </div>
+              </>
+            )}
             <button
               type="button"
               onClick={() => onGoToModule(current.id)}

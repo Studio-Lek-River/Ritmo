@@ -1280,6 +1280,7 @@ export default {
     whyLabel: 'Why',
     goto: 'Take me there',
     allSteps: 'All steps',
+    previewCaption: 'Example: this is how a measurement grows with you over time.',
     collapseAria: 'Collapse the tour',
     expandAria: 'Open the tour',
     closeAria: 'Close the tour',
@@ -1300,6 +1301,7 @@ export default {
         what: 'This is where you track values, like your weight.',
         why: 'That way you see change over time.',
         hint: 'Tap a measurement and add your first value.',
+        addHint: 'Add a measurement: pick one from the library or create your own.',
       },
       medication: {
         what: 'This is where you list your medicines.',

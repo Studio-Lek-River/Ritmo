@@ -1291,6 +1291,7 @@ export default {
     whyLabel: 'Waarom',
     goto: 'Breng me erheen',
     allSteps: 'Alle stappen',
+    previewCaption: 'Voorbeeld: zo groeit een meting met je mee over de tijd.',
     collapseAria: 'Rondleiding inklappen',
     expandAria: 'Rondleiding openen',
     closeAria: 'Rondleiding sluiten',
@@ -1311,6 +1312,7 @@ export default {
         what: 'Hier houd je waarden bij, zoals je gewicht.',
         why: 'Zo zie je verandering over de tijd.',
         hint: 'Tik op een meting en voeg je eerste waarde toe.',
+        addHint: 'Voeg een meting toe: kies er een uit de bibliotheek of maak je eigen meting.',
       },
       medication: {
         what: 'Hier zet je je medicijnen op een rij.',
