@@ -1,3 +1,12 @@
+# [0.35.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.34.0...v0.35.0) (2026-07-09)
+
+
+### Features
+
+* herorden navigatie en hernoem Vandaag naar Taken ([7b8315a](https://github.com/Studio-Lek-River/Ritmo/commit/7b8315ade137d14c58cbceb1dac2f80624f8edf6))
+* verwijder Reflectie volledig uit app en instellingen ([cf30943](https://github.com/Studio-Lek-River/Ritmo/commit/cf3094318f4a412f2fdc361f53b8f6a1b7b89058))
+* verwijder Week- en Maand-weergaven uit navigatie en app ([4dc893e](https://github.com/Studio-Lek-River/Ritmo/commit/4dc893e2befc20c9c8c4ec32df9d600eefd7560d))
+
 # [0.34.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.33.0...v0.34.0) (2026-07-09)
 
 
