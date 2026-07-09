@@ -88,6 +88,7 @@ export default function Ritmo() {
   const [loading, setLoading] = useState(true);
   const [splashDone, setSplashDone] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const [uiStyle, setUiStyle] = useState('strak');
   const [showSettings, setShowSettings] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState(null);
   const [editingModule, setEditingModule] = useState(null);
@@ -122,6 +123,14 @@ export default function Ritmo() {
     setDarkMode(isDark);
   }, []);
 
+  // Zet de weergavestijl en het thema op <html>, zodat de CSS-variabele
+  // token-laag (index.css) de juiste oppervlakte-kleuren kiest.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+    root.setAttribute('data-style', uiStyle);
+  }, [darkMode, uiStyle]);
+
   // Auth state
   useEffect(() => {
     if (!isSyncEnabled()) return;
@@ -143,6 +152,7 @@ export default function Ritmo() {
           loadedModules = settings.modules.map(migrateModuleConfig);
         }
         if (settings.darkMode !== undefined) setDarkMode(settings.darkMode);
+        if (settings.uiStyle !== undefined) setUiStyle(settings.uiStyle);
         if (settings.recurringTasks) setRecurringTasks(settings.recurringTasks);
         if (settings.streakSettings) setStreakSettings(settings.streakSettings);
         if (settings.soundEnabled !== undefined) setSoundEnabled(settings.soundEnabled);
@@ -275,6 +285,7 @@ export default function Ritmo() {
       try {
         await window.storage.set('settings', JSON.stringify({
           darkMode,
+          uiStyle,
           recurringTasks,
           streakSettings,
           soundEnabled,
@@ -291,7 +302,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, modules, hasOnboarded, languageSetting, loading]);
 
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
@@ -976,28 +987,21 @@ export default function Ritmo() {
 
   const dayNames = shortWeekdayLabelsMondayFirst();
 
-  const theme = darkMode ? {
-    bg: 'bg-gradient-to-br from-slate-900 to-slate-800',
-    card: 'bg-slate-800',
-    cardSecondary: 'bg-slate-700',
-    text: 'text-slate-100',
-    textSecondary: 'text-slate-300',
-    textMuted: 'text-slate-400',
-    border: 'border-slate-700',
-    input: 'bg-slate-700 text-slate-100',
-    hover: 'hover:bg-slate-700',
-    progressBg: 'bg-slate-700',
-  } : {
-    bg: 'bg-gradient-to-br from-slate-50 to-blue-50',
-    card: 'bg-white',
-    cardSecondary: 'bg-slate-50',
-    text: 'text-slate-800',
-    textSecondary: 'text-slate-700',
-    textMuted: 'text-slate-500',
-    border: 'border-slate-100',
-    input: 'bg-slate-50 text-slate-700',
-    hover: 'hover:bg-slate-50',
-    progressBg: 'bg-slate-100',
+  // Oppervlakte-kleuren komen uit de CSS-variabele token-laag (index.css),
+  // gekozen via data-style + data-theme op <html>. Het theme-object verwijst
+  // naar de r-* helper-classes; light/dark en de weergavestijl worden dus in
+  // CSS bepaald, niet meer via een darkMode-ternary hier.
+  const theme = {
+    bg: 'r-bg',
+    card: 'r-card',
+    cardSecondary: 'r-card-2',
+    text: 'r-text',
+    textSecondary: 'r-text-2',
+    textMuted: 'r-text-muted',
+    border: 'r-border',
+    input: 'r-input',
+    hover: 'r-hover',
+    progressBg: 'r-progress',
   };
 
   // Overall completion
