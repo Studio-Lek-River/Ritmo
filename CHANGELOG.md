@@ -1,3 +1,12 @@
+# [0.31.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.30.0...v0.31.0) (2026-07-09)
+
+
+### Features
+
+* **health:** combineer Health- en Today-tab in health mode ([b825d68](https://github.com/Studio-Lek-River/Ritmo/commit/b825d6824774910dcb9a4f7c9d53752350de6fa5))
+* **health:** toon Weight Loss met hart-icoon in roze ([91f3a3f](https://github.com/Studio-Lek-River/Ritmo/commit/91f3a3fc46fff5d125d3e83820fc718ee4021b9c))
+* **health:** voeg priklocatie en prikschema toe aan Weight Loss-setup ([dfe9734](https://github.com/Studio-Lek-River/Ritmo/commit/dfe9734e434748a5f9399cd92f9038e2d9dda13c))
+
 # [0.30.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.29.0...v0.30.0) (2026-07-09)
 
 
