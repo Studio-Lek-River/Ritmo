@@ -110,11 +110,21 @@ Vat elk resultaat kort samen. Bij bevindingen van reviewer/verifier: terug naar 
 
 ### Stap 7 — PR + samenvatting
 
-Bied aan een PR te openen (branch → `main`):
+Open **altijd** een PR (branch → `main`) als die er nog niet is. Check eerst of er al een open PR voor de branch bestaat; zo ja, maak geen tweede aan maar werk de body bij zodat die de `Closes #<n>`-regel bevat.
+
 ```
-gh pr create --repo Studio-Lek-River/Ritmo --base main --head slice/SXX-<kebab> --title "<type>(<scope>): <beschrijving>" --body "<samenvatting per acceptatiecriterium + issue #<n>>"
+# bestaat er al een PR voor deze branch?
+gh pr view --repo Studio-Lek-River/Ritmo --head slice/SXX-<kebab> --json number,body
+
+# nog geen PR → aanmaken
+gh pr create --repo Studio-Lek-River/Ritmo --base main --head slice/SXX-<kebab> \
+  --title "<type>(<scope>): <beschrijving>" \
+  --body "<samenvatting per acceptatiecriterium — benoemt wat er is veranderd>
+
+Closes #<n>"
 ```
-Sluit af met een samenvatting per acceptatiecriterium en de Netlify-preview-verwijzing. **Poort 2** (Bas test en merge) blijft bij Bas.
+
+De PR-body benoemt de wijzigingen (samenvatting per acceptatiecriterium) en bevat `Closes #<n>` op een eigen regel, zodat GitHub de issue automatisch sluit wanneer de PR naar `main` gemerged wordt. Sluit af met de samenvatting per acceptatiecriterium en de Netlify-preview-verwijzing. **Poort 2** (Bas test en merge) blijft bij Bas.
 
 ## AskUserQuestion-richtlijn
 
