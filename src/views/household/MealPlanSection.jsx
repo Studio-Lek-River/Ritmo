@@ -33,7 +33,6 @@ export default function MealPlanSection({ theme, menu, setMenu }) {
   const dayShortLabels = useMemo(() => shortWeekdayLabelsMondayFirst(), []);
   const selectedDayIndex = MENU_DAYS.indexOf(selectedDay);
   const selectedDayLabel = weekdayLabelLong(WEEKDAY_KEYS[selectedDayIndex >= 0 ? selectedDayIndex : 0]);
-  const totalSlots = MENU_DAYS.length * MENU_SLOTS.length;
 
   function updateSlot(slotId, value) {
     setMenu(prev => {
@@ -52,7 +51,18 @@ export default function MealPlanSection({ theme, menu, setMenu }) {
 
   function confirmParse() {
     if (!pendingParse) return;
-    setMenu(pendingParse.menu);
+    setMenu(prev => {
+      const base = normalizeWeekMenu(prev);
+      const merged = {};
+      for (const day of MENU_DAYS) {
+        merged[day] = { ...base[day] };
+        for (const slot of MENU_SLOTS) {
+          const v = pendingParse.menu[day][slot.id];
+          if (v && v.trim()) merged[day][slot.id] = v;
+        }
+      }
+      return merged;
+    });
     setPendingParse(null);
     setPasteText('');
     setPasteOpen(false);
@@ -137,7 +147,7 @@ export default function MealPlanSection({ theme, menu, setMenu }) {
         theme={theme}
         title={t('household.mealPlan.pasteConfirmTitle')}
         description={pendingParse && pendingParse.filledCount > 0
-          ? t('household.mealPlan.pasteConfirmDescription', { n: pendingParse.filledCount, total: totalSlots })
+          ? t('household.mealPlan.pasteConfirmDescription', { n: pendingParse.filledCount })
           : t('household.mealPlan.pasteConfirmDescriptionNone')}
         confirmLabel={t('household.mealPlan.pasteConfirmConfirm')}
         cancelLabel={t('common.cancel')}
