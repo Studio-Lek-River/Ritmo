@@ -12,18 +12,15 @@ const TABS = ['dag', 'kanban'];
 // lichte, niet-persistente UI-voorkeur blijft (principe 2: geen gedrag opgelegd).
 export default function ProductivitySuiteView({
   modules,
-  moduleData,
   customTasks,
-  onChecklistToggle,
-  onChoiceOptionSet,
   onAddTask,
+  onAddSubgoal,
   onToggleTask,
   onDeleteTask,
   onSetTaskTime,
   onToggleProjectSubgoal,
   onSetTaskStatus,
   onSetSubgoalStatus,
-  setView,
   theme,
 }) {
   const { t } = useTranslation();
@@ -66,13 +63,9 @@ export default function ProductivitySuiteView({
         {tab === 'dag' ? (
           <DagView
             modules={modules}
-            moduleData={moduleData}
             customTasks={customTasks}
-            onChecklistToggle={onChecklistToggle}
-            onChoiceOptionSet={onChoiceOptionSet}
             onToggleTask={onToggleTask}
             onToggleProjectSubgoal={onToggleProjectSubgoal}
-            setView={setView}
             theme={theme}
           />
         ) : (
@@ -80,6 +73,7 @@ export default function ProductivitySuiteView({
             modules={modules}
             customTasks={customTasks}
             onAddTask={onAddTask}
+            onAddSubgoal={onAddSubgoal}
             onSetTaskStatus={onSetTaskStatus}
             onSetSubgoalStatus={onSetSubgoalStatus}
             theme={theme}

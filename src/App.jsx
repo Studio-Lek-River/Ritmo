@@ -75,7 +75,7 @@ import { getColorHex, COLOR_OPTIONS } from './utils/colors';
 import ChecklistInsightCard from './components/insight/ChecklistInsightCard';
 import { buildDaysWithActive } from './utils/insights';
 import CounterDisplay, { DISPLAY_STYLE_KEYS } from './components/CounterDisplay';
-import { DEFAULT_MODULES, instantiateDefaults } from './utils/defaultModules';
+import { DEFAULT_MODULES, instantiateDefaults, ensureStandardModules } from './utils/defaultModules';
 import { playSound } from './utils/sound';
 
 export default function Ritmo() {
@@ -546,6 +546,33 @@ export default function Ritmo() {
       };
     }));
     updateModuleData(projectId, prev => ({ ...prev, touchedToday: true }));
+  };
+
+  // Voegt een nieuw project-subgoal ("projecttaak") toe aan een bestaand project,
+  // gebruikt door het kaart-toevoegveld in de Planner (Kanban). Nieuwe subgoals
+  // hebben geen status/completed en belanden zo via deriveTaskStatus in Te doen.
+  const addProjectSubgoal = (projectId, subjectId, label) => {
+    const trimmed = (label || '').trim();
+    if (!trimmed) return;
+    setModules(prev => prev.map(m => {
+      if (m.id !== projectId) return m;
+      return {
+        ...m,
+        subjects: (m.subjects || []).map(s => s.id !== subjectId ? s : {
+          ...s,
+          subgoals: [...(s.subgoals || []), { id: Date.now(), label: trimmed, completed: false }],
+        }),
+      };
+    }));
+  };
+
+  // Terug naar de Standaard-app: vul eerst de ontbrekende standaard-modules aan
+  // (een health-geonboarde gebruiker heeft er nog geen), daarna de modus. Niet-
+  // destructief: health-modules en -data blijven staan. Voor een gebruiker die de
+  // defaults al heeft is de aanvulling een no-op.
+  const switchToStandard = () => {
+    setModules(prev => ensureStandardModules(prev));
+    setAppMode('standard');
   };
 
   const incrementCounter = (moduleId, amount) => {
@@ -1494,18 +1521,15 @@ export default function Ritmo() {
         {view === 'productivity' && (
           <ProductivitySuiteView
             modules={modules}
-            moduleData={moduleData}
             customTasks={customTasks}
-            onChecklistToggle={toggleChecklistItem}
-            onChoiceOptionSet={setChoiceOption}
             onAddTask={addCustomTask}
+            onAddSubgoal={addProjectSubgoal}
             onToggleTask={toggleTask}
             onDeleteTask={deleteTask}
             onSetTaskTime={setTaskTime}
             onToggleProjectSubgoal={toggleProjectSubgoal}
             onSetTaskStatus={setTaskStatus}
             onSetSubgoalStatus={setSubgoalStatus}
-            setView={setView}
             theme={theme}
           />
         )}
@@ -2259,7 +2283,7 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
               <p className={`text-xs ${theme.textMuted} mb-3`}>{t('settings.appModeHint')}</p>
               <div className="flex gap-2">
                 <button
-                  onClick={() => setAppMode('standard')}
+                  onClick={switchToStandard}
                   className={`flex-1 py-3 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 ${
                     appMode !== 'health' ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
                   }`}

@@ -8,16 +8,25 @@ import { buildTaskBoard, KANBAN_COLUMNS } from '../utils/taskBoard';
 // ongeacht deadline) als kaartjes in drie kolommen op status. De drie kolommen
 // zijn altijd zichtbaar, ook bij een leeg bord. Hergebruikt bestaande handlers
 // uit App.jsx via buildTaskBoard; een nieuwe kaart wordt als losse taak
-// toegevoegd via onAddTask (belandt in Te doen). Verplaatsen kan zowel via
-// native drag-and-drop als via de toegankelijke chevron-knoppen (principe 2:
-// geen enkele interactievorm wordt opgelegd).
-export default function KanbanView({ modules, customTasks, onAddTask, onSetTaskStatus, onSetSubgoalStatus, theme }) {
+// (onAddTask) of als projectdoel (onAddSubgoal) toegevoegd en belandt in Te doen.
+// Verplaatsen kan zowel via native drag-and-drop als via de toegankelijke
+// chevron-knoppen (principe 2: geen enkele interactievorm wordt opgelegd).
+export default function KanbanView({ modules, customTasks, onAddTask, onAddSubgoal, onSetTaskStatus, onSetSubgoalStatus, theme }) {
   const { t } = useTranslation();
   const [draggingKey, setDraggingKey] = useState(null);
 
   const board = useMemo(
     () => buildTaskBoard({ modules, customTasks, handlers: { onSetTaskStatus, onSetSubgoalStatus } }),
     [modules, customTasks, onSetTaskStatus, onSetSubgoalStatus]
+  );
+
+  // Beschikbare projecten (subjects) voor een projectdoel-kaart, afgeleid uit de
+  // bestaande projects-modules. Leeg => het toevoegveld valt terug op taak-only.
+  const projectOptions = useMemo(
+    () => (modules || [])
+      .filter(m => m.enabled && m.type === 'projects')
+      .flatMap(m => (m.subjects || []).map(s => ({ projectId: m.id, subjectId: s.id, name: s.name }))),
+    [modules]
   );
 
   const allCardsByKey = useMemo(() => {
@@ -68,42 +77,101 @@ export default function KanbanView({ modules, customTasks, onAddTask, onSetTaskS
               />
             ))
           )}
-          {col === 'todo' && onAddTask && <AddCardForm onAddTask={onAddTask} theme={theme} t={t} />}
+          {col === 'todo' && onAddTask && (
+            <AddCardForm
+              onAddTask={onAddTask}
+              onAddSubgoal={onAddSubgoal}
+              projectOptions={projectOptions}
+              theme={theme}
+              t={t}
+            />
+          )}
         </div>
       ))}
     </div>
   );
 }
 
-// Compact toevoeg-veld onderaan de Te doen-kolom: maakt een losse taak aan via
-// onAddTask (belandt in Te doen omdat nieuwe taken geen status/done hebben).
-function AddCardForm({ onAddTask, theme, t }) {
+// Toevoeg-veld onderaan de Te doen-kolom: maakt een losse taak (onAddTask) of een
+// projectdoel (onAddSubgoal, gekoppeld aan een gekozen project) aan. Beide belanden
+// in Te doen omdat nieuwe kaarten geen status/done/completed hebben. Zonder
+// beschikbare projecten valt het veld terug op alleen-taak (principe 2: niets
+// opgelegd, projectdoel alleen aangeboden als er projecten zijn).
+function AddCardForm({ onAddTask, onAddSubgoal, projectOptions = [], theme, t }) {
   const [text, setText] = useState('');
+  const [type, setType] = useState('task');
+  const [projectKey, setProjectKey] = useState('');
+
+  const hasProjects = onAddSubgoal && projectOptions.length > 0;
+  const isProject = type === 'project' && hasProjects;
+
+  const optionKey = (o) => `${o.projectId}::${o.subjectId}`;
+  const selected = isProject
+    ? (projectOptions.find(o => optionKey(o) === projectKey) || projectOptions[0])
+    : null;
 
   const submit = () => {
-    if (!text.trim()) return;
-    onAddTask(text.trim());
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    if (isProject && selected) {
+      onAddSubgoal(selected.projectId, selected.subjectId, trimmed);
+    } else {
+      onAddTask(trimmed);
+    }
     setText('');
   };
 
   return (
-    <div className="flex gap-2 pt-1">
-      <input
-        type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && submit()}
-        placeholder={t('productivity.addCard')}
-        className={`flex-1 min-w-0 px-2 py-1.5 ${theme.input} ${theme.radiusControl} text-sm focus:outline-none focus:ring-2 focus:ring-blue-300`}
-      />
-      <button
-        type="button"
-        onClick={submit}
-        aria-label={t('productivity.addCard')}
-        className={`p-1.5 rounded-lg transition ${theme.hover} ${theme.textMuted} shrink-0`}
-      >
-        <Plus className="w-4 h-4" />
-      </button>
+    <div className="space-y-2 pt-1">
+      {hasProjects && (
+        <div className={`flex gap-1 p-1 ${theme.cardSecondary} ${theme.radiusControl}`}>
+          {[['task', 'cardTypeTask'], ['project', 'cardTypeProject']].map(([id, key]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setType(id)}
+              aria-pressed={type === id}
+              className={`flex-1 px-2 py-1 ${theme.radiusControl} text-xs font-medium transition ${
+                type === id ? 'bg-blue-500 text-white shadow' : `${theme.textMuted} ${theme.hover}`
+              }`}
+            >
+              {t(`productivity.${key}`)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {isProject && (
+        <select
+          value={selected ? optionKey(selected) : ''}
+          onChange={(e) => setProjectKey(e.target.value)}
+          aria-label={t('productivity.selectProject')}
+          className={`w-full min-w-0 px-2 py-1.5 ${theme.input} ${theme.radiusControl} text-sm focus:outline-none focus:ring-2 focus:ring-blue-300`}
+        >
+          {projectOptions.map(o => (
+            <option key={optionKey(o)} value={optionKey(o)}>{o.name}</option>
+          ))}
+        </select>
+      )}
+
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && submit()}
+          placeholder={t('productivity.addCard')}
+          className={`flex-1 min-w-0 px-2 py-1.5 ${theme.input} ${theme.radiusControl} text-sm focus:outline-none focus:ring-2 focus:ring-blue-300`}
+        />
+        <button
+          type="button"
+          onClick={submit}
+          aria-label={t('productivity.addCard')}
+          className={`p-1.5 rounded-lg transition ${theme.hover} ${theme.textMuted} shrink-0`}
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }

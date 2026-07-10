@@ -1534,6 +1534,9 @@ export default {
     kanban: 'Kanban',
     taskListTitle: 'Tasks',
     addCard: 'Add task',
+    cardTypeTask: 'Task',
+    cardTypeProject: 'Project goal',
+    selectProject: 'Choose project',
     untimed: 'No time',
     kanbanColumns: {
       todo: 'To do',
@@ -1546,7 +1549,6 @@ export default {
     empty: 'Nothing planned for today yet.',
     noTime: '-',
     time: 'Time',
-    goToToday: 'Go to Today',
     toggleAria: 'Check off {label}',
     dagdelen: {
       ochtend: 'Morning',
@@ -1555,8 +1557,6 @@ export default {
       ongepland: 'Unplanned',
     },
     types: {
-      routine: 'Routine',
-      activiteit: 'Activity',
       losseTaak: 'Task',
       projecttaak: 'Project task',
     },

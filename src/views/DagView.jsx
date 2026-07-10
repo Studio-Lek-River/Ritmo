@@ -1,23 +1,19 @@
 import React, { useMemo } from 'react';
-import { Check, ChevronRight } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { getColorClasses } from '../utils/colors';
 import { buildDayTimeline, groupDayTimelineByHour } from '../utils/dayTimeline';
 import { formatDayTitle, formatDaySubtitle } from '../utils/dates';
 
-// De dag als agenda per uur (00:00–23:00): routines, activiteiten, losse taken
-// en projecttaken in hun tijdslot, met taken zonder tijd apart bovenaan.
-// Hergebruikt uitsluitend bestaande toggle-handlers uit App.jsx; dit component
-// schrijft zelf niets naar opslag.
+// De dag als agenda per uur (00:00–23:00): losse taken en projecttaken in hun
+// tijdslot, met taken zonder tijd apart bovenaan. De Planner toont uitsluitend
+// taken en projecten — geen routines of activiteiten. Hergebruikt bestaande
+// toggle-handlers uit App.jsx; dit component schrijft zelf niets naar opslag.
 export default function DagView({
   modules,
-  moduleData,
   customTasks,
-  onChecklistToggle,
-  onChoiceOptionSet,
   onToggleTask,
   onToggleProjectSubgoal,
-  setView,
   theme,
 }) {
   const { t } = useTranslation();
@@ -25,18 +21,14 @@ export default function DagView({
   const { untimed, hours } = useMemo(() => {
     const items = buildDayTimeline({
       modules,
-      moduleData,
       customTasks,
       handlers: {
-        onChecklistToggle,
-        onChoiceOptionSet,
         onToggleTask,
         onToggleProjectSubgoal,
-        onNavigateToday: () => setView?.('today'),
       },
     });
     return groupDayTimelineByHour(items);
-  }, [modules, moduleData, customTasks, onChecklistToggle, onChoiceOptionSet, onToggleTask, onToggleProjectSubgoal, setView]);
+  }, [modules, customTasks, onToggleTask, onToggleProjectSubgoal]);
 
   const today = new Date();
 
@@ -78,7 +70,6 @@ export default function DagView({
 
 function DagTimelineRow({ item, theme, t }) {
   const c = getColorClasses(item.color);
-  const isActivity = item.kind === 'activiteit';
 
   return (
     <div className={`flex items-center gap-3 ${theme.padRow} ${theme.cardSecondary} ${theme.radiusControl}`}>
@@ -95,38 +86,17 @@ function DagTimelineRow({ item, theme, t }) {
         </div>
       </div>
 
-      {isActivity ? (
-        <>
-          <span
-            className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
-              item.status ? `${c.bar} border-transparent` : `${theme.border} bg-transparent`
-            }`}
-          >
-            {item.status && <Check className="w-3.5 h-3.5 text-white" />}
-          </span>
-          <button
-            type="button"
-            onClick={item.toggle}
-            disabled={!item.toggle}
-            aria-label={t('productivity.goToToday')}
-            className={`p-1.5 rounded-lg transition shrink-0 ${theme.hover} ${theme.textMuted} disabled:opacity-40 disabled:cursor-not-allowed`}
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </>
-      ) : (
-        <button
-          type="button"
-          onClick={item.toggle}
-          disabled={!item.toggle}
-          aria-label={t('productivity.toggleAria', { label: item.label })}
-          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
-            item.status ? `${c.bar} border-transparent` : `${theme.border} bg-transparent`
-          }`}
-        >
-          {item.status && <Check className="w-3.5 h-3.5 text-white" />}
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={item.toggle}
+        disabled={!item.toggle}
+        aria-label={t('productivity.toggleAria', { label: item.label })}
+        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
+          item.status ? `${c.bar} border-transparent` : `${theme.border} bg-transparent`
+        }`}
+      >
+        {item.status && <Check className="w-3.5 h-3.5 text-white" />}
+      </button>
     </div>
   );
 }

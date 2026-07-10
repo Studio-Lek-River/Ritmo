@@ -1545,6 +1545,9 @@ export default {
     kanban: 'Kanban',
     taskListTitle: 'Taken',
     addCard: 'Taak toevoegen',
+    cardTypeTask: 'Taak',
+    cardTypeProject: 'Projectdoel',
+    selectProject: 'Kies project',
     untimed: 'Geen tijd',
     kanbanColumns: {
       todo: 'Te doen',
@@ -1557,7 +1560,6 @@ export default {
     empty: 'Nog niets gepland voor vandaag.',
     noTime: '-',
     time: 'Tijd',
-    goToToday: 'Naar Vandaag',
     toggleAria: '{label} afvinken',
     dagdelen: {
       ochtend: 'Ochtend',
@@ -1566,8 +1568,6 @@ export default {
       ongepland: 'Ongepland',
     },
     types: {
-      routine: 'Routine',
-      activiteit: 'Activiteit',
       losseTaak: 'Losse taak',
       projecttaak: 'Projecttaak',
     },
