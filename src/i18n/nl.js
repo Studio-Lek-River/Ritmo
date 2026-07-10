@@ -1557,7 +1557,6 @@ export default {
     empty: 'Nog niets gepland voor vandaag.',
     noTime: '-',
     time: 'Tijd',
-    goToToday: 'Naar Vandaag',
     toggleAria: '{label} afvinken',
     dagdelen: {
       ochtend: 'Ochtend',
@@ -1566,8 +1565,6 @@ export default {
       ongepland: 'Ongepland',
     },
     types: {
-      routine: 'Routine',
-      activiteit: 'Activiteit',
       losseTaak: 'Losse taak',
       projecttaak: 'Projecttaak',
     },

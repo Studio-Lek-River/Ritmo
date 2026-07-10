@@ -1494,10 +1494,7 @@ export default function Ritmo() {
         {view === 'productivity' && (
           <ProductivitySuiteView
             modules={modules}
-            moduleData={moduleData}
             customTasks={customTasks}
-            onChecklistToggle={toggleChecklistItem}
-            onChoiceOptionSet={setChoiceOption}
             onAddTask={addCustomTask}
             onToggleTask={toggleTask}
             onDeleteTask={deleteTask}
@@ -1505,7 +1502,6 @@ export default function Ritmo() {
             onToggleProjectSubgoal={toggleProjectSubgoal}
             onSetTaskStatus={setTaskStatus}
             onSetSubgoalStatus={setSubgoalStatus}
-            setView={setView}
             theme={theme}
           />
         )}

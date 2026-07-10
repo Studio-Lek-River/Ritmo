@@ -1,11 +1,11 @@
-// Aggregatie-helper voor de Productivity Suite Dag-view. Neemt de bestaande
-// Ritmo-bronnen (modules, moduleData, customTasks) en bouwt daaruit een platte,
-// genormaliseerde tijdlijn met per item: dagdeel, status en een toggle-functie
-// die de bestaande handlers hergebruikt. Voegt geen nieuw "kind"-veld toe aan
-// opgeslagen data — het type wordt hier afgeleid uit de bron.
+// Aggregatie-helper voor de Productivity Suite Dag-view. De Planner toont
+// uitsluitend échte taken (losse taken voor vandaag) en projecten (project-
+// subgoals met deadline vandaag) — geen routines, activiteiten of gezondheids-
+// modules. Neemt de bestaande Ritmo-bronnen (modules, customTasks) en bouwt
+// daaruit een platte, genormaliseerde tijdlijn met per item: dagdeel, status en
+// een toggle-functie die de bestaande handlers hergebruikt. Voegt geen nieuw
+// "kind"-veld toe aan opgeslagen data — het type wordt hier afgeleid uit de bron.
 import { fmtDateKey } from './dates';
-import { isChecklistItemComplete } from './dayProgress';
-import { resolveModuleName, t } from '../i18n/useTranslation';
 
 // Vaste drempels (kloktijd, "HH:MM") voor de dagdeel-indeling. Geen UI-instelling
 // in deze slice; hier als constante zodat er geen verspreide magic numbers zijn.
@@ -47,7 +47,6 @@ function pushItem(items, entry) {
 // opslag, ze roept alleen de meegegeven functie aan bij een klik.
 export function buildDayTimeline({
   modules = [],
-  moduleData = {},
   customTasks = [],
   referenceDate = new Date(),
   handlers = {},
@@ -57,68 +56,6 @@ export function buildDayTimeline({
 
   modules.forEach(mod => {
     if (!mod.enabled) return;
-
-    if (mod.type === 'checklist') {
-      (mod.items || []).forEach(item => {
-        const raw = moduleData[mod.id]?.[item.id];
-        const time = item.time || '';
-        pushItem(items, {
-          key: `checklist:${mod.id}:${item.id}`,
-          kind: 'routine',
-          label: item.label,
-          time,
-          dagdeel: dagdeelForTime(time),
-          status: isChecklistItemComplete(item, raw),
-          color: mod.color,
-          toggle: handlers.onChecklistToggle
-            ? () => handlers.onChecklistToggle(mod.id, item.id)
-            : undefined,
-        });
-      });
-      return;
-    }
-
-    if (mod.type === 'choice') {
-      const data = moduleData[mod.id] || {};
-      const time = mod.time || '';
-      const options = mod.options || [];
-      const toggleOptionId = data.completed && data.selectedOption
-        ? data.selectedOption
-        : options[0]?.id;
-      pushItem(items, {
-        key: `choice:${mod.id}`,
-        kind: 'routine',
-        label: resolveModuleName(mod, t),
-        time,
-        dagdeel: dagdeelForTime(time),
-        status: !!data.completed,
-        color: mod.color,
-        toggle: (handlers.onChoiceOptionSet && toggleOptionId)
-          ? () => handlers.onChoiceOptionSet(mod.id, toggleOptionId)
-          : undefined,
-      });
-      return;
-    }
-
-    if (mod.type === 'counter') {
-      const data = moduleData[mod.id] || {};
-      const time = mod.time || '';
-      const goal = mod.dailyGoal ?? mod.dailyGoalMinutes ?? 0;
-      const total = data.total ?? data.minutes ?? 0;
-      pushItem(items, {
-        key: `counter:${mod.id}`,
-        kind: 'activiteit',
-        label: resolveModuleName(mod, t),
-        time,
-        dagdeel: dagdeelForTime(time),
-        status: goal > 0 && total >= goal,
-        color: mod.color,
-        // Activiteiten zijn niet afvinkbaar vanuit de Dag-view; de regel
-        // navigeert naar Vandaag om de voortgang daar te loggen.
-        toggle: handlers.onNavigateToday ? () => handlers.onNavigateToday() : undefined,
-      });
-      return;
-    }
 
     if (mod.type === 'projects') {
       (mod.subjects || []).forEach(subject => {
