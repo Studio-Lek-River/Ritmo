@@ -75,7 +75,7 @@ import { getColorHex, COLOR_OPTIONS } from './utils/colors';
 import ChecklistInsightCard from './components/insight/ChecklistInsightCard';
 import { buildDaysWithActive } from './utils/insights';
 import CounterDisplay, { DISPLAY_STYLE_KEYS } from './components/CounterDisplay';
-import { DEFAULT_MODULES, instantiateDefaults } from './utils/defaultModules';
+import { DEFAULT_MODULES, instantiateDefaults, ensureStandardModules } from './utils/defaultModules';
 import { playSound } from './utils/sound';
 
 export default function Ritmo() {
@@ -564,6 +564,15 @@ export default function Ritmo() {
         }),
       };
     }));
+  };
+
+  // Terug naar de Standaard-app: vul eerst de ontbrekende standaard-modules aan
+  // (een health-geonboarde gebruiker heeft er nog geen), daarna de modus. Niet-
+  // destructief: health-modules en -data blijven staan. Voor een gebruiker die de
+  // defaults al heeft is de aanvulling een no-op.
+  const switchToStandard = () => {
+    setModules(prev => ensureStandardModules(prev));
+    setAppMode('standard');
   };
 
   const incrementCounter = (moduleId, amount) => {
@@ -2274,7 +2283,7 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
               <p className={`text-xs ${theme.textMuted} mb-3`}>{t('settings.appModeHint')}</p>
               <div className="flex gap-2">
                 <button
-                  onClick={() => setAppMode('standard')}
+                  onClick={switchToStandard}
                   className={`flex-1 py-3 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 ${
                     appMode !== 'health' ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
                   }`}

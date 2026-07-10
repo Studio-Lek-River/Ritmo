@@ -34,3 +34,13 @@ export const DEFAULT_MODULES = [
 export function instantiateDefaults(mods) {
   return mods.map(m => ({ ...m }));
 }
+
+// Vult ontbrekende standaard-modules aan (op id), zodat een health-geonboarde
+// gebruiker bij terugschakelen naar Standaard geen lege app krijgt. Niet-
+// destructief: bestaande modules (ook health-modules) blijven ongemoeid en er
+// wordt niets uitgeschakeld; idempotent voor gebruikers die de defaults al hebben.
+export function ensureStandardModules(modules = []) {
+  const ids = new Set(modules.map(m => m.id));
+  const missing = DEFAULT_MODULES.filter(d => !ids.has(d.id)).map(m => ({ ...m }));
+  return missing.length ? [...modules, ...missing] : modules;
+}
