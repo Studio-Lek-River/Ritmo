@@ -1594,6 +1594,7 @@ export default function Ritmo() {
           setGoldenBorderEnabled={setGoldenBorderEnabled}
           appMode={appMode}
           setAppMode={setAppMode}
+          switchToStandard={switchToStandard}
           theme={theme}
           dayNames={dayNames}
           setEditingModule={setEditingModule}
@@ -1815,7 +1816,7 @@ function StreakBadge({ label, days, color, theme }) {
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour }) {
+function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, switchToStandard, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
   const [helpView, setHelpView] = useState(initialHelp ? 'list' : null); // null | 'list' | 'install' | 'feedback'
