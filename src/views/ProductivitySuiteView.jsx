@@ -14,6 +14,7 @@ export default function ProductivitySuiteView({
   modules,
   customTasks,
   onAddTask,
+  onAddSubgoal,
   onToggleTask,
   onDeleteTask,
   onSetTaskTime,
@@ -72,6 +73,7 @@ export default function ProductivitySuiteView({
             modules={modules}
             customTasks={customTasks}
             onAddTask={onAddTask}
+            onAddSubgoal={onAddSubgoal}
             onSetTaskStatus={onSetTaskStatus}
             onSetSubgoalStatus={onSetSubgoalStatus}
             theme={theme}

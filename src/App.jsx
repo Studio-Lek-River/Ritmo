@@ -548,6 +548,24 @@ export default function Ritmo() {
     updateModuleData(projectId, prev => ({ ...prev, touchedToday: true }));
   };
 
+  // Voegt een nieuw project-subgoal ("projecttaak") toe aan een bestaand project,
+  // gebruikt door het kaart-toevoegveld in de Planner (Kanban). Nieuwe subgoals
+  // hebben geen status/completed en belanden zo via deriveTaskStatus in Te doen.
+  const addProjectSubgoal = (projectId, subjectId, label) => {
+    const trimmed = (label || '').trim();
+    if (!trimmed) return;
+    setModules(prev => prev.map(m => {
+      if (m.id !== projectId) return m;
+      return {
+        ...m,
+        subjects: (m.subjects || []).map(s => s.id !== subjectId ? s : {
+          ...s,
+          subgoals: [...(s.subgoals || []), { id: Date.now(), label: trimmed, completed: false }],
+        }),
+      };
+    }));
+  };
+
   const incrementCounter = (moduleId, amount) => {
     const mod = modules.find(m => m.id === moduleId);
     const currentTotal = moduleData[moduleId]?.total ?? moduleData[moduleId]?.minutes ?? 0;
@@ -1496,6 +1514,7 @@ export default function Ritmo() {
             modules={modules}
             customTasks={customTasks}
             onAddTask={addCustomTask}
+            onAddSubgoal={addProjectSubgoal}
             onToggleTask={toggleTask}
             onDeleteTask={deleteTask}
             onSetTaskTime={setTaskTime}

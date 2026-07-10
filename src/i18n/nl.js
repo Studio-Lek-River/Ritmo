@@ -1545,6 +1545,9 @@ export default {
     kanban: 'Kanban',
     taskListTitle: 'Taken',
     addCard: 'Taak toevoegen',
+    cardTypeTask: 'Taak',
+    cardTypeProject: 'Projectdoel',
+    selectProject: 'Kies project',
     untimed: 'Geen tijd',
     kanbanColumns: {
       todo: 'Te doen',
