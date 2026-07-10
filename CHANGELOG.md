@@ -1,3 +1,16 @@
+# [0.39.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.38.0...v0.39.0) (2026-07-10)
+
+
+### Bug Fixes
+
+* **productivity:** toon in de Planner alleen taken en projecten ([e4133eb](https://github.com/Studio-Lek-River/Ritmo/commit/e4133eb78d18725050011385bfb50db1a2efad80))
+
+
+### Features
+
+* **health:** terugschakelen naar Standaard vult de standaard-modules aan ([05b38b1](https://github.com/Studio-Lek-River/Ritmo/commit/05b38b1ac590b1bd8ac2a83cd0a7380f888cf326))
+* **productivity:** maak vanuit de Planner een taak of projectdoel als kaart aan ([16eb0b8](https://github.com/Studio-Lek-River/Ritmo/commit/16eb0b85cd8dc7119802e49b52ea99287f8b7329))
+
 # [0.38.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.37.0...v0.38.0) (2026-07-09)
 
 
