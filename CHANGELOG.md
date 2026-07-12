@@ -1,3 +1,10 @@
+## [0.39.2](https://github.com/Studio-Lek-River/Ritmo/compare/v0.39.1...v0.39.2) (2026-07-12)
+
+
+### Bug Fixes
+
+* **feedback:** toon specifieke, vertaalde foutmelding bij mislukte issue-aanmaak ([4fea4b9](https://github.com/Studio-Lek-River/Ritmo/commit/4fea4b985f8fa6dea01b9eb9010c80e0755d5864))
+
 ## [0.39.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.39.0...v0.39.1) (2026-07-10)
 
 
