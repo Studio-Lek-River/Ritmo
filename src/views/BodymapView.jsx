@@ -28,14 +28,35 @@ const HEAT_FILL = ['rgba(148,163,184,0.3)', '#fecdd3', '#fb7185', '#e11d48'];
 const HEAT_TEXT = ['#94a3b8', '#9f1239', '#ffffff', '#ffffff'];
 
 // Klikbare zone-stippen op het silhouet. Coördinaten in de 200x320 viewBox.
+// De buik kreeg in H09 drie rijen (boven/midden/onder) i.p.v. één rij; de
+// torso-rect hieronder is iets verlengd zodat alle zes stippen erbinnen vallen.
 const ZONE_DOTS = {
-  abdomenL: { cx: 88, cy: 112 },
-  abdomenR: { cx: 112, cy: 112 },
+  abdomenUpperL: { cx: 88, cy: 82 },
+  abdomenUpperR: { cx: 112, cy: 82 },
+  abdomenMidL: { cx: 88, cy: 112 },
+  abdomenMidR: { cx: 112, cy: 112 },
+  abdomenLowerL: { cx: 88, cy: 142 },
+  abdomenLowerR: { cx: 112, cy: 142 },
   armL: { cx: 52, cy: 92 },
   armR: { cx: 148, cy: 92 },
   thighL: { cx: 86, cy: 224 },
   thighR: { cx: 114, cy: 224 },
 };
+
+// De buik heeft nu drie rijen (cy 82/112/142, 30px uit elkaar) i.p.v. één; de
+// buikstippen en -ringen zijn daarom iets kleiner dan de arm/dij-stippen zodat
+// de suggestie- en laatste-prik-ringen van naastliggende rijen elkaar niet
+// overlappen.
+const ABDOMEN_DOT_RADIUS = 10;
+const ABDOMEN_RING_RADIUS = 13;
+const ABDOMEN_LAST_RING_RADIUS = 12;
+const DEFAULT_DOT_RADIUS = 12;
+const DEFAULT_RING_RADIUS = 16.5;
+const DEFAULT_LAST_RING_RADIUS = 15.5;
+
+function isAbdomenZone(zoneId) {
+  return zoneId.startsWith('abdomen');
+}
 
 function daysAgo(dateKey) {
   const parsed = parseDateKey(dateKey);
@@ -60,7 +81,7 @@ function BodyMapSvg({
       {/* Neutraal lichaamssilhouet: hoofd, torso, twee bovenarmen, taille, twee dijen. */}
       <g fill={SILHOUETTE_FILL} stroke={SILHOUETTE_STROKE} strokeWidth="2" aria-hidden="true">
         <circle cx="100" cy="30" r="20" />
-        <rect x="72" y="54" width="56" height="96" rx="20" />
+        <rect x="72" y="54" width="56" height="104" rx="20" />
         <rect x="42" y="60" width="20" height="92" rx="10" />
         <rect x="138" y="60" width="20" height="92" rx="10" />
         <rect x="72" y="146" width="56" height="30" rx="12" />
@@ -74,6 +95,11 @@ function BodyMapSvg({
         const level = heatLevel(count);
         const isLast = zone.id === lastZoneId;
         const isNext = zone.id === suggestedZoneId;
+        const isAbdomen = isAbdomenZone(zone.id);
+        const dotRadius = isAbdomen ? ABDOMEN_DOT_RADIUS : DEFAULT_DOT_RADIUS;
+        const ringRadius = isAbdomen ? ABDOMEN_RING_RADIUS : DEFAULT_RING_RADIUS;
+        const lastRingRadius = isAbdomen ? ABDOMEN_LAST_RING_RADIUS : DEFAULT_LAST_RING_RADIUS;
+        const fontSize = isAbdomen ? '10' : '12';
 
         const lastUse = zoneLastUse(log, zone.id);
         const dAgo = lastUse ? daysAgo(lastUse) : null;
@@ -107,20 +133,20 @@ function BodyMapSvg({
           >
             {/* Volgende-suggestie: gestippelde ring in de medicijnkleur. */}
             {isNext && (
-              <circle cx={dot.cx} cy={dot.cy} r="16.5" fill="none" stroke={accentHex} strokeWidth="2" strokeDasharray="3 3" />
+              <circle cx={dot.cx} cy={dot.cy} r={ringRadius} fill="none" stroke={accentHex} strokeWidth="2" strokeDasharray="3 3" />
             )}
             {/* Laatste prik: massieve amber ring. */}
             {isLast && (
-              <circle cx={dot.cx} cy={dot.cy} r="15.5" fill="none" stroke={LAST_RING} strokeWidth="2.5" />
+              <circle cx={dot.cx} cy={dot.cy} r={lastRingRadius} fill="none" stroke={LAST_RING} strokeWidth="2.5" />
             )}
-            <circle cx={dot.cx} cy={dot.cy} r="12" fill={HEAT_FILL[level]} stroke="#ffffff" strokeWidth="1.5" />
+            <circle cx={dot.cx} cy={dot.cy} r={dotRadius} fill={HEAT_FILL[level]} stroke="#ffffff" strokeWidth="1.5" />
             {count > 0 && (
               <text
                 x={dot.cx}
                 y={dot.cy}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fontSize="12"
+                fontSize={fontSize}
                 fontWeight="700"
                 fill={HEAT_TEXT[level]}
               >
