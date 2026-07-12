@@ -1,3 +1,16 @@
+# [0.40.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.39.2...v0.40.0) (2026-07-12)
+
+
+### Bug Fixes
+
+* **bodymap:** migreer oude buikprikken niet-destructief naar middenrij ([4ff5601](https://github.com/Studio-Lek-River/Ritmo/commit/4ff56017957effb6561993cc099cc047d6d199de))
+
+
+### Features
+
+* **bodymap:** breid buikzones uit naar 3x2-raster ([848b86d](https://github.com/Studio-Lek-River/Ritmo/commit/848b86dcf82cbfa8647e07bcd8832a1a5613054c))
+* **bodymap:** toon zes buikstippen op het silhouet ([388bd6f](https://github.com/Studio-Lek-River/Ritmo/commit/388bd6f9aa8ba382441a9566368813c1e2a74a18))
+
 ## [0.39.2](https://github.com/Studio-Lek-River/Ritmo/compare/v0.39.1...v0.39.2) (2026-07-12)
 
 
