@@ -669,8 +669,12 @@ export default {
   },
 
   bodymap: {
-    zoneAbdomenL: 'Buik links',
-    zoneAbdomenR: 'Buik rechts',
+    zoneAbdomenUpperL: 'Bovenbuik links',
+    zoneAbdomenUpperR: 'Bovenbuik rechts',
+    zoneAbdomenMidL: 'Middenbuik links',
+    zoneAbdomenMidR: 'Middenbuik rechts',
+    zoneAbdomenLowerL: 'Onderbuik links',
+    zoneAbdomenLowerR: 'Onderbuik rechts',
     zoneArmL: 'Bovenarm links',
     zoneArmR: 'Bovenarm rechts',
     zoneThighL: 'Dij links',
