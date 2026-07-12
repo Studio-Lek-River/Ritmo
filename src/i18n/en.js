@@ -1429,6 +1429,18 @@ export default {
     privacy: 'Avoid personal information.',
     submit: 'Send',
     submitting: 'Sending...',
+    errors: {
+      githubAuth: 'The connection to GitHub has expired. The developer needs to renew access.',
+      githubRateLimit: 'Too many requests. Try again in a few minutes.',
+      githubForbidden: 'Not allowed to create an issue. The developer needs to check access.',
+      githubNotFound: 'The feedback function cannot find the repository. The developer needs to check this.',
+      githubIssuesDisabled: 'Feedback cannot be sent right now. Contact the developer.',
+      githubValidation: 'Your message could not be processed. Try again with different text.',
+      githubError: 'Sending failed. Please try again later.',
+      serverConfig: 'The feedback function is not fully set up yet.',
+      rateLimited: 'Too much feedback sent. Please try again later.',
+      unexpected: 'Something unexpected went wrong. Please try again later.',
+    },
   },
 
   stars: {
