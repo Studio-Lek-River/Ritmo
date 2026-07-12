@@ -24,13 +24,22 @@ export function windowDaysFor(windowId) {
 // Geordende lijst van injectiezones. Volgorde bepaalt de deterministische
 // tie-break in suggestNextZone en de weergavevolgorde in de bodymap.
 export const INJECTION_ZONES = [
-  { id: 'abdomenL', labelKey: 'bodymap.zoneAbdomenL' },
-  { id: 'abdomenR', labelKey: 'bodymap.zoneAbdomenR' },
+  { id: 'abdomenUpperL', labelKey: 'bodymap.zoneAbdomenUpperL' },
+  { id: 'abdomenUpperR', labelKey: 'bodymap.zoneAbdomenUpperR' },
+  { id: 'abdomenMidL', labelKey: 'bodymap.zoneAbdomenMidL' },
+  { id: 'abdomenMidR', labelKey: 'bodymap.zoneAbdomenMidR' },
+  { id: 'abdomenLowerL', labelKey: 'bodymap.zoneAbdomenLowerL' },
+  { id: 'abdomenLowerR', labelKey: 'bodymap.zoneAbdomenLowerR' },
   { id: 'armL', labelKey: 'bodymap.zoneArmL' },
   { id: 'armR', labelKey: 'bodymap.zoneArmR' },
   { id: 'thighL', labelKey: 'bodymap.zoneThighL' },
   { id: 'thighR', labelKey: 'bodymap.zoneThighR' },
 ];
+
+// H09: de buik ging van 2 naar 6 zones (boven/midden/onder x links/rechts).
+// Oude prikken op de enkele buikzone landen niet-destructief in de middenrij,
+// gebruikt door migrate.js voor zowel het bodymap-log als injectionSchedule.
+export const LEGACY_ZONE_ID_MAP = { abdomenL: 'abdomenMidL', abdomenR: 'abdomenMidR' };
 
 // Mirror van collections.js's logEvent: `date` mag door de caller worden
 // meegegeven (bv. om een undo exact te herstellen), anders vandaag.

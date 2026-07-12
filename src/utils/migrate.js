@@ -1,5 +1,6 @@
 import { WEEKDAY_KEYS } from './dates';
 import { NON_TRACKABLE_TYPES } from './dayProgress';
+import { LEGACY_ZONE_ID_MAP } from './bodymap';
 import en from '../i18n/en';
 import nl from '../i18n/nl';
 
@@ -155,14 +156,28 @@ export function migrateModuleConfig(module) {
   if (m.type === 'bodymap') {
     m = {
       ...m,
-      log: Array.isArray(m.log) ? m.log : [],
+      // H09: de buik ging van 2 naar 6 zones; oude abdomenL/R-prikken migreren
+      // niet-destructief naar de middenrij. Onbekende/nieuwe ids blijven ongemoeid.
+      log: Array.isArray(m.log)
+        ? m.log.map((event) => (
+            event && LEGACY_ZONE_ID_MAP[event.zoneId]
+              ? { ...event, zoneId: LEGACY_ZONE_ID_MAP[event.zoneId] }
+              : event
+          ))
+        : [],
     };
   }
 
   if (m.type === 'injectionSchedule') {
     m = {
       ...m,
-      entries: Array.isArray(m.entries) ? m.entries.filter(Boolean) : [],
+      entries: Array.isArray(m.entries)
+        ? m.entries.filter(Boolean).map((entry) => (
+            LEGACY_ZONE_ID_MAP[entry.zone]
+              ? { ...entry, zone: LEGACY_ZONE_ID_MAP[entry.zone] }
+              : entry
+          ))
+        : [],
     };
   }
 
