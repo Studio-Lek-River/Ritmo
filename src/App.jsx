@@ -750,6 +750,33 @@ export default function Ritmo() {
     }));
   };
 
+  // H10: logt een inname op het dagrooster van dit medicijn (géén
+  // voorraad-mutatie — dat blijft de "besteld"-flow). Retourneert een
+  // { entry, undo } paar zodat de aanroeper (de dagrooster-kaart) meteen een
+  // undo-toast kan tonen die exact deze logregel weer verwijdert.
+  const logMedIntake = (moduleId, medId, time) => {
+    const entry = { date: todayKey, time };
+    updateMedicationModule(moduleId, (m) => ({
+      ...m,
+      meds: (m.meds || []).map((med) =>
+        med.id === medId ? { ...med, intakeLog: [...(med.intakeLog || []), entry] } : med
+      ),
+    }));
+    const undo = () => {
+      updateMedicationModule(moduleId, (m) => ({
+        ...m,
+        meds: (m.meds || []).map((med) => {
+          if (med.id !== medId) return med;
+          const log = med.intakeLog || [];
+          const idx = log.lastIndexOf(entry);
+          if (idx === -1) return med;
+          return { ...med, intakeLog: [...log.slice(0, idx), ...log.slice(idx + 1)] };
+        }),
+      }));
+    };
+    return { entry, undo };
+  };
+
   // ---- bodymap handlers ---------------------------------------------------
 
   const updateBodymapModule = (moduleId, mutator) => {
@@ -1277,6 +1304,7 @@ export default function Ritmo() {
     enabledModules, todayVisibleModules, getModuleStreak, renderTodayModule,
     totalCompletionItems, completedItems, overallPercentage, setShowSettings,
     setView, StreakBadge,
+    modules, onLogMedIntake: logMedIntake,
   };
   // Gezondheids-rondleiding: stappen + ingevuld-status live afgeleid uit data.
   const tourSteps = tourActive ? buildTourSteps(modules) : [];
@@ -1312,6 +1340,7 @@ export default function Ritmo() {
     onUpdateMed: updateMed,
     onDeleteMed: deleteMed,
     onOrderMed: orderMed,
+    onLogMedIntake: logMedIntake,
     onLogInjection: logInjectionEvent,
     onRemoveInjection: removeInjectionEvent,
     onSetHeatWindow: setBodymapHeatWindow,
