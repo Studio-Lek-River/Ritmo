@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, X, Pill } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Pill, Clock } from 'lucide-react';
 import { getColorHex, COLOR_OPTIONS } from '../utils/colors';
-import { createMed, medDaysLeft, medIsLow, FREQUENCY_OPTIONS, FREQUENCY_LABEL_KEYS } from '../utils/medication';
+import {
+  createMed, medDaysLeft, medIsLow, medScheduleForDay, medNextDue,
+  FREQUENCY_OPTIONS, FREQUENCY_LABEL_KEYS,
+} from '../utils/medication';
+import { fmtDateKey } from '../utils/dates';
+import TimeInput from '../components/TimeInput';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useToast } from '../hooks/useToast';
 import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
@@ -160,6 +165,53 @@ export function MedFormModal({ open, mode = 'edit', module: mod, med, onClose, o
           />
           {t('medication.injectable')}
         </label>
+
+        <div className="mb-4">
+          <p className={`text-xs ${theme.textMuted} mb-1`}>{t('medication.schedule')}</p>
+          <label className={`flex items-center gap-2 text-sm ${theme.textSecondary} mb-2`}>
+            <input
+              type="checkbox"
+              checked={!!draft.scheduleEnabled}
+              onChange={(e) => setDraft({ ...draft, scheduleEnabled: e.target.checked })}
+            />
+            {t('medication.scheduleEnable')}
+          </label>
+          {draft.scheduleEnabled && (
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <p className={`text-xs ${theme.textMuted} mb-1`}>{t('medication.startTime')}</p>
+                <TimeInput
+                  value={draft.startTime}
+                  onChange={(value) => setDraft({ ...draft, startTime: value })}
+                  theme={theme}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <p className={`text-xs ${theme.textMuted} mb-1`}>{t('medication.interval')}</p>
+                <input
+                  type="number"
+                  value={draft.intervalHours}
+                  min="0"
+                  step="0.5"
+                  onChange={(e) => setDraft({ ...draft, intervalHours: Number(e.target.value) || 0 })}
+                  className={`w-full px-3 py-2 rounded-lg text-sm ${theme.input} ${theme.textSecondary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                />
+              </div>
+              <div>
+                <p className={`text-xs ${theme.textMuted} mb-1`}>{t('medication.dosesPerDay')}</p>
+                <input
+                  type="number"
+                  value={draft.dosesPerDay}
+                  min="1"
+                  step="1"
+                  onChange={(e) => setDraft({ ...draft, dosesPerDay: Math.max(1, Number(e.target.value) || 1) })}
+                  className={`w-full px-3 py-2 rounded-lg text-sm ${theme.input} ${theme.textSecondary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                />
+              </div>
+            </div>
+          )}
+        </div>
 
         <div className="mb-4">
           <p className={`text-xs ${theme.textMuted} mb-1`}>{t('medication.color')}</p>
@@ -478,5 +530,113 @@ export function MedicationModuleCard({
         theme={theme}
       />
     </>
+  );
+}
+
+// i18n-key per medScheduleForDay-status, gedeeld tussen de dosis-chips.
+const DOSE_STATUS_LABEL_KEYS = {
+  taken: 'doseStatusTaken',
+  next: 'doseStatusNext',
+  upcoming: 'doseStatusUpcoming',
+};
+
+const DOSE_STATUS_CHIP_CLASSES = {
+  taken: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+  next: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  upcoming: '',
+};
+
+function nowAsTime() {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+}
+
+// H10: dagelijkse dagrooster-kaart voor "Vandaag"/"Gezondheid". Scant alle
+// enabled medication-modules op meds met scheduleEnabled en toont per
+// medicijn de doses van vandaag (medScheduleForDay), de eerstvolgende tijd en
+// een "Ingenomen"-knop die de huidige kloktijd logt. Rendert niets als er
+// geen enkel rooster-medicijn is (opt-in per medicijn, principe 2).
+export function MedicationScheduleCard({ modules, onLogIntake, theme }) {
+  const { t } = useTranslation();
+  const { showToast } = useToast();
+  const todayKey = fmtDateKey(new Date());
+
+  const scheduledMeds = [];
+  (modules || []).forEach((mod) => {
+    if (!mod.enabled || mod.type !== 'medication') return;
+    (mod.meds || []).forEach((med) => {
+      if (med.scheduleEnabled) scheduledMeds.push({ moduleId: mod.id, med });
+    });
+  });
+
+  if (scheduledMeds.length === 0) return null;
+
+  const handleTake = (moduleId, med) => {
+    const result = onLogIntake?.(moduleId, med.id, nowAsTime());
+    showToast({
+      message: t('medication.doseLogged'),
+      actionLabel: t('common.undo'),
+      onAction: () => result?.undo?.(),
+    });
+  };
+
+  return (
+    <div className={`${theme.card} rounded-2xl p-4 shadow-sm mb-4`}>
+      <div className="flex items-center gap-2 mb-3">
+        <Clock className="w-4 h-4 text-blue-500" />
+        <h2 className={`font-semibold ${theme.textSecondary} text-sm`}>{t('medication.schedule')}</h2>
+      </div>
+      <div className="space-y-3">
+        {scheduledMeds.map(({ moduleId, med }) => {
+          const schedule = medScheduleForDay(med, todayKey);
+          const takenCount = schedule.filter((slot) => slot.status === 'taken').length;
+          const total = schedule.length;
+          const nextDue = medNextDue(med, todayKey);
+          const overdue = !!nextDue && nextDue < nowAsTime();
+
+          return (
+            <div key={med.id} className={`${theme.cardSecondary} rounded-xl p-3`}>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className={`text-sm font-medium truncate ${theme.textSecondary}`}>{med.name}</span>
+                <span className={`text-xs flex-shrink-0 ${theme.textMuted}`}>
+                  {t('medication.takenCount', { count: takenCount, total })}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {schedule.map((slot) => (
+                  <span
+                    key={slot.index}
+                    title={t(`medication.${DOSE_STATUS_LABEL_KEYS[slot.status]}`, { time: slot.time })}
+                    className={`text-xs px-2 py-1 rounded-full ${
+                      DOSE_STATUS_CHIP_CLASSES[slot.status] || `${theme.card} ${theme.textMuted}`
+                    }`}
+                  >
+                    {slot.time}
+                  </span>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between gap-2">
+                {nextDue ? (
+                  <span className={`text-xs ${overdue ? 'text-red-500 font-medium' : theme.textMuted}`}>
+                    {overdue ? t('medication.overdue') : t('medication.nextDose', { time: nextDue })}
+                  </span>
+                ) : <span />}
+                {nextDue && (
+                  <button
+                    type="button"
+                    onClick={() => handleTake(moduleId, med)}
+                    className="text-xs px-3 py-1.5 rounded-full bg-blue-500 hover:bg-blue-600 text-white font-medium transition flex-shrink-0"
+                  >
+                    {t('medication.takeNow')}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
