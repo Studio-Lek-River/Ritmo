@@ -147,6 +147,13 @@ export function migrateModuleConfig(module) {
             perWeek: 1,
             injectable: false,
             color: 'blue',
+            // H10: dagrooster-velden zijn opt-in; bestaande meds krijgen deze
+            // defaults erbij (rooster uit) zonder hun eigen data te wijzigen.
+            scheduleEnabled: false,
+            startTime: '08:00',
+            intervalHours: 0,
+            dosesPerDay: 1,
+            intakeLog: [],
             ...med,
           }))
         : [],
