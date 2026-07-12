@@ -5,6 +5,22 @@ import { useTranslation } from '../../i18n/useTranslation';
 const MAX_LENGTH = 2000;
 const MIN_LENGTH = 10;
 
+// Expliciete allow-list: backend-`code` -> i18n-key. Bewust geen blinde
+// `t('feedback.errors.' + code)`, want t() geeft bij een onbekende key de
+// key-string zelf terug (zie src/i18n/useTranslation.js).
+const ERROR_KEYS = {
+  github_auth: 'feedback.errors.githubAuth',
+  github_rate_limit: 'feedback.errors.githubRateLimit',
+  github_forbidden: 'feedback.errors.githubForbidden',
+  github_not_found: 'feedback.errors.githubNotFound',
+  github_issues_disabled: 'feedback.errors.githubIssuesDisabled',
+  github_validation: 'feedback.errors.githubValidation',
+  github_error: 'feedback.errors.githubError',
+  server_config: 'feedback.errors.serverConfig',
+  rate_limited: 'feedback.errors.rateLimited',
+  unexpected: 'feedback.errors.unexpected',
+};
+
 export default function FeedbackForm({ onBack, theme }) {
   const { t } = useTranslation();
   const [type, setType] = useState(null);
@@ -30,7 +46,9 @@ export default function FeedbackForm({ onBack, theme }) {
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || t('feedback.error'));
+        const key = ERROR_KEYS[data.code];
+        const msg = key ? t(key) : (data.error || t('feedback.error'));
+        throw new Error(msg);
       }
 
       setStatus('success');

@@ -1440,6 +1440,18 @@ export default {
     privacy: 'Vermijd persoonlijke gegevens.',
     submit: 'Versturen',
     submitting: 'Versturen...',
+    errors: {
+      githubAuth: 'De verbinding met GitHub is verlopen. De ontwikkelaar moet de toegang vernieuwen.',
+      githubRateLimit: 'Te veel verzoeken. Probeer het over een paar minuten opnieuw.',
+      githubForbidden: 'Geen toestemming om een issue aan te maken. De ontwikkelaar moet de toegang controleren.',
+      githubNotFound: 'De feedbackfunctie kan de repository niet vinden. De ontwikkelaar moet dit controleren.',
+      githubIssuesDisabled: 'Feedback kan nu niet worden verstuurd. Neem contact op met de ontwikkelaar.',
+      githubValidation: 'Je bericht kon niet worden verwerkt. Probeer het opnieuw met andere tekst.',
+      githubError: 'Versturen lukte niet. Probeer het later opnieuw.',
+      serverConfig: 'De feedbackfunctie is nog niet volledig ingesteld.',
+      rateLimited: 'Te veel feedback verstuurd. Probeer het later opnieuw.',
+      unexpected: 'Er ging iets onverwachts mis. Probeer het later opnieuw.',
+    },
   },
 
   stars: {

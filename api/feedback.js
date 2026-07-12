@@ -28,7 +28,7 @@ export default async function handler(req, res) {
   const forwarded = req.headers['x-forwarded-for'];
   const ip = (typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : null) || 'unknown';
   if (isRateLimited(ip)) {
-    return res.status(429).json({ error: 'Te veel feedback verstuurd. Probeer het later opnieuw.' });
+    return res.status(429).json({ error: 'Te veel feedback verstuurd. Probeer het later opnieuw.', code: 'rate_limited' });
   }
 
   const body = req.body;
@@ -60,7 +60,7 @@ export default async function handler(req, res) {
 
   const token = process.env.GITHUB_TOKEN;
   if (!token) {
-    return res.status(500).json({ error: 'Server niet correct geconfigureerd' });
+    return res.status(500).json({ error: 'Server niet correct geconfigureerd', code: 'server_config' });
   }
 
   const prefix = type === 'bug' ? '[bug]' : '[feature]';
@@ -89,12 +89,31 @@ export default async function handler(req, res) {
     if (!ghResponse.ok) {
       const errText = await ghResponse.text();
       console.error('GitHub API error:', ghResponse.status, errText);
-      return res.status(502).json({ error: 'Kon issue niet aanmaken' });
+
+      const status = ghResponse.status;
+      let code;
+      if (status === 401) {
+        code = 'github_auth';
+      } else if (status === 403) {
+        const rateLimited = ghResponse.headers.get('x-ratelimit-remaining') === '0'
+          || ghResponse.headers.get('retry-after') !== null;
+        code = rateLimited ? 'github_rate_limit' : 'github_forbidden';
+      } else if (status === 404) {
+        code = 'github_not_found';
+      } else if (status === 410) {
+        code = 'github_issues_disabled';
+      } else if (status === 422) {
+        code = 'github_validation';
+      } else {
+        code = 'github_error';
+      }
+
+      return res.status(502).json({ error: 'Kon issue niet aanmaken', code });
     }
 
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.error('Feedback function error:', err);
-    return res.status(500).json({ error: 'Onverwachte fout' });
+    return res.status(500).json({ error: 'Onverwachte fout', code: 'unexpected' });
   }
 }
