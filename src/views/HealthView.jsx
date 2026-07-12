@@ -10,7 +10,7 @@ import { formatAmount } from '../utils/format';
 import { useToast } from '../hooks/useToast';
 import TourHint from '../components/tour/TourHint';
 import { ModuleDetail } from './MeasurementsView';
-import { MedicationModuleCard } from './MedicationView';
+import { MedicationModuleCard, MedicationScheduleCard } from './MedicationView';
 import { BodymapModuleCard } from './BodymapView';
 import { InjectionScheduleModuleCard } from './InjectionScheduleView';
 
@@ -53,6 +53,7 @@ export default function HealthView({
   onUpdateMed,
   onDeleteMed,
   onOrderMed,
+  onLogMedIntake,
   onLogInjection,
   onRemoveInjection,
   onSetHeatWindow,
@@ -247,6 +248,8 @@ export default function HealthView({
           </button>
         </div>
       </div>
+
+      <MedicationScheduleCard modules={modules} onLogIntake={onLogMedIntake} theme={theme} />
 
       {(healthModules.length + trackableHealth.length) === 0 ? (
         <div className={`${theme.card} rounded-2xl border ${theme.border} p-8 text-center`}>
