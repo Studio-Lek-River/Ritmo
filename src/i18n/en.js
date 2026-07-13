@@ -671,6 +671,7 @@ export default {
     interval: 'Interval (hours)',
     dosesPerDay: 'Doses per day',
     nextDose: 'Next dose: {time}',
+    nextDoseTomorrow: 'Next dose: {time} (tomorrow)',
     takeNow: 'Taken',
     takenCount: '{count}/{total} taken',
     overdue: 'Overdue',
@@ -678,6 +679,7 @@ export default {
     doseStatusTaken: 'Taken at {time}',
     doseStatusNext: 'Next dose at {time}',
     doseStatusUpcoming: 'Scheduled at {time}',
+    tomorrow: 'tomorrow',
   },
 
   bodymap: {

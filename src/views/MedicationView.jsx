@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, X, Pill, Clock } from 'lucide-react';
 import { getColorHex, COLOR_OPTIONS } from '../utils/colors';
 import {
-  createMed, medDaysLeft, medIsLow, medScheduleForDay, medNextDue,
+  createMed, medDaysLeft, medIsLow, medScheduleForDay,
   FREQUENCY_OPTIONS, FREQUENCY_LABEL_KEYS,
 } from '../utils/medication';
 import { fmtDateKey } from '../utils/dates';
@@ -591,8 +591,9 @@ export function MedicationScheduleCard({ modules, onLogIntake, theme }) {
           const schedule = medScheduleForDay(med, todayKey);
           const takenCount = schedule.filter((slot) => slot.status === 'taken').length;
           const total = schedule.length;
-          const nextDue = medNextDue(med, todayKey);
-          const overdue = !!nextDue && nextDue < nowAsTime();
+          const nextSlot = schedule.find((s) => s.status === 'next');
+          const nextDue = nextSlot?.time ?? null;
+          const overdue = !!nextDue && !nextSlot?.nextDay && nextDue < nowAsTime();
 
           return (
             <div key={med.id} className={`${theme.cardSecondary} rounded-xl p-3`}>
@@ -613,6 +614,9 @@ export function MedicationScheduleCard({ modules, onLogIntake, theme }) {
                     }`}
                   >
                     {slot.time}
+                    {slot.nextDay && (
+                      <span className="ml-1 opacity-70">{t('medication.tomorrow')}</span>
+                    )}
                   </span>
                 ))}
               </div>
@@ -620,7 +624,11 @@ export function MedicationScheduleCard({ modules, onLogIntake, theme }) {
               <div className="flex items-center justify-between gap-2">
                 {nextDue ? (
                   <span className={`text-xs ${overdue ? 'text-red-500 font-medium' : theme.textMuted}`}>
-                    {overdue ? t('medication.overdue') : t('medication.nextDose', { time: nextDue })}
+                    {overdue
+                      ? t('medication.overdue')
+                      : nextSlot?.nextDay
+                        ? t('medication.nextDoseTomorrow', { time: nextDue })
+                        : t('medication.nextDose', { time: nextDue })}
                   </span>
                 ) : <span />}
                 {nextDue && (

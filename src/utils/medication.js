@@ -74,9 +74,9 @@ function timeToMinutes(time) {
 
 function minutesToTime(minutes) {
   if (minutes == null || Number.isNaN(minutes)) return null;
-  const total = Math.round(minutes);
-  const h = Math.floor(total / 60);
-  const m = total % 60;
+  const wrapped = ((Math.round(minutes) % 1440) + 1440) % 1440;
+  const h = Math.floor(wrapped / 60);
+  const m = wrapped % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
@@ -90,13 +90,17 @@ export function medIntakesForDay(med, dateKey) {
     .sort();
 }
 
-// Levert `dosesPerDay` slots { index, time, status }. Dynamisch: al ingenomen
-// doses krijgen hun werkelijke tijd (status 'taken'); de eerstvolgende
-// openstaande dosis ('next') valt op laatste inname + intervalHours, of op
-// startTime als er die dag nog niets is ingenomen; latere doses ('upcoming')
-// worden vanaf 'next' geprojecteerd met intervalHours. Guards: bij
-// intervalHours <= 0 of dosesPerDay <= 1 is er maar één dosis (op startTime),
-// zonder projectie. Ontbrekende velden lezen als de createMed-defaults.
+// Levert `dosesPerDay` slots { index, time, status, nextDay }. Dynamisch: al
+// ingenomen doses krijgen hun werkelijke tijd (status 'taken'); de
+// eerstvolgende openstaande dosis ('next') valt op laatste inname +
+// intervalHours, of op startTime als er die dag nog niets is ingenomen;
+// latere doses ('upcoming') worden vanaf 'next' geprojecteerd met
+// intervalHours. Projecties die voorbij middernacht vallen wrappen naar een
+// geldige kloktijd (bv. 25:30 -> 01:30) en krijgen `nextDay: true` zodat de UI
+// dat kan markeren en overdue-checks er rekening mee kunnen houden. Guards:
+// bij intervalHours <= 0 of dosesPerDay <= 1 is er maar één dosis (op
+// startTime), zonder projectie. Ontbrekende velden lezen als de
+// createMed-defaults.
 export function medScheduleForDay(med, dateKey) {
   const dosesPerDay = Math.max(1, Number(med?.dosesPerDay) || 1);
   const intervalHours = Number(med?.intervalHours) || 0;
@@ -109,6 +113,7 @@ export function medScheduleForDay(med, dateKey) {
       index: 0,
       time: taken ? intakes[0] : startTime,
       status: taken ? 'taken' : 'next',
+      nextDay: false,
     }];
   }
 
@@ -118,17 +123,27 @@ export function medScheduleForDay(med, dateKey) {
 
   const slots = [];
   for (let i = 0; i < takenCount; i += 1) {
-    slots.push({ index: i, time: intakes[i], status: 'taken' });
+    slots.push({ index: i, time: intakes[i], status: 'taken', nextDay: false });
   }
 
   if (takenCount < dosesPerDay) {
     const lastTakenMinutes = takenCount > 0 ? timeToMinutes(intakes[takenCount - 1]) : null;
     const nextMinutes = lastTakenMinutes != null ? lastTakenMinutes + intervalMinutes : startMinutes;
-    slots.push({ index: takenCount, time: minutesToTime(nextMinutes), status: 'next' });
+    slots.push({
+      index: takenCount,
+      time: minutesToTime(nextMinutes),
+      status: 'next',
+      nextDay: nextMinutes >= 1440,
+    });
 
     for (let i = takenCount + 1; i < dosesPerDay; i += 1) {
       const upcomingMinutes = nextMinutes + intervalMinutes * (i - takenCount);
-      slots.push({ index: i, time: minutesToTime(upcomingMinutes), status: 'upcoming' });
+      slots.push({
+        index: i,
+        time: minutesToTime(upcomingMinutes),
+        status: 'upcoming',
+        nextDay: upcomingMinutes >= 1440,
+      });
     }
   }
 
