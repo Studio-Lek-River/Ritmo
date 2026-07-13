@@ -1,3 +1,18 @@
+# [0.41.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.40.0...v0.41.0) (2026-07-13)
+
+
+### Bug Fixes
+
+* **medication:** wrap dagrooster-doses voorbij middernacht met morgen-markering ([5d8a398](https://github.com/Studio-Lek-River/Ritmo/commit/5d8a3985238d281b90ece9613842b7731c66d33b))
+
+
+### Features
+
+* **medication:** dagrooster-invoer in het medicijnformulier en Vandaag-kaart ([fab9d18](https://github.com/Studio-Lek-River/Ritmo/commit/fab9d18361d211967068c3b918b4dcb1be9e7723))
+* **medication:** dagrooster-velden en schedule-helpers ([aa985a8](https://github.com/Studio-Lek-River/Ritmo/commit/aa985a82b0fdca0481022bf1eebf64da70deb71b))
+* **medication:** logMedIntake-handler met undo, doorgegeven aan Today/Health ([5749f05](https://github.com/Studio-Lek-River/Ritmo/commit/5749f059f9ccb81929dc2e0c84be244227439127))
+* **medication:** toon dagrooster-kaart bovenaan Vandaag en Gezondheid ([38c8935](https://github.com/Studio-Lek-River/Ritmo/commit/38c8935157724a2a1cf4b58312fcd9646f97af0d))
+
 # [0.40.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.39.2...v0.40.0) (2026-07-12)
 
 
