@@ -53,11 +53,12 @@ Het live schema (7 tabellen) en de RLS als versioned migrations in de repo, plus
 #### S01b, RLS-fix invite-lek (B1). IN UITVOERING
 Een `redeem_invite`-RPC (`SECURITY DEFINER`) plus strakke policies, zodat invite-tokens niet meer leesbaar zijn en de isolatie tussen huishoudens hersteld is. Tegelijk gaan we migration-gedreven werken (`migration repair`, daarna `db push`).
 
-#### S02, Connections-infra plus genormaliseerd items-model
+#### S02, Connections-infra plus genormaliseerd items-model. IN UITVOERING
 - **Doel:** de basis voor alle externe bronnen leggen.
 - **Oplevering:** een `connections`-tabel (per account, provider, versleutelde tokens server-side, met RLS); het genormaliseerde items-model plus een normalisatie-laag; een verbind- en verbreek-UI met status. Tokens leven server-side via de `api/`-laag, nooit in de browser.
 - **Afhankelijk van:** S01b (veilige RLS-basis).
 - **Aandacht:** externe bron = bestaande module plus `source`-binding, geen nieuw module-type. Hergebruik het bestaande sync- en storage-patroon.
+- **Openstaand:** de migration (`supabase/migrations/20260713120000_connections.sql`) is geschreven maar nog niet via `db push` toegepast op de live database; dat is een handmatige stap voor Bas (backup plus bevestigingspauze, S01b-workflow), net als het instellen van `SUPABASE_SERVICE_ROLE_KEY` als env-var op de deploy.
 
 #### S03, Outlook lezen
 - **Doel:** je Outlook-afspraken ophalen, zodat de planner er later omheen kan plannen, en agenda-items als bron tonen.
