@@ -1298,6 +1298,7 @@ export default {
     installDesc: 'Open Ritmo faster, from your home screen',
     feedback: 'Give feedback',
     feedbackDesc: 'Report a problem or share an idea',
+    version: 'Ritmo v{version}',
   },
 
   // health tour (tutorial)
@@ -1482,6 +1483,7 @@ export default {
   splash: {
     loading: 'One moment...',
     tagline: 'Your day, your rhythm.',
+    version: 'v{version}',
   },
 
   backup: {

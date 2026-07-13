@@ -1309,6 +1309,7 @@ export default {
     installDesc: 'Open Ritmo sneller, vanaf jouw startscherm',
     feedback: 'Feedback geven',
     feedbackDesc: 'Probleem melden of een idee delen',
+    version: 'Ritmo v{version}',
   },
 
   // gezondheids-rondleiding (tutorial)
@@ -1493,6 +1494,7 @@ export default {
   splash: {
     loading: 'Een momentje...',
     tagline: 'Jouw dag, jouw ritme.',
+    version: 'v{version}',
   },
 
   backup: {
