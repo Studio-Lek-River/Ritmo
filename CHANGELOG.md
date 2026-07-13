@@ -1,3 +1,10 @@
+# [0.46.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.45.0...v0.46.0) (2026-07-13)
+
+
+### Features
+
+* **bodymap:** breid buik uit naar 3x3 raster met middenkolom ([1b901d4](https://github.com/Studio-Lek-River/Ritmo/commit/1b901d48cca9009be79515eb025c420774f38ad3))
+
 # [0.45.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.44.0...v0.45.0) (2026-07-13)
 
 
