@@ -122,7 +122,7 @@ Het sluitstuk van de one-stop-shop: Claude pakt items uit Ritmo op en voert ze u
 
 ### Optioneel of later
 - Household bulk-pull.
-- Overige huishoud-modules (klusjes, boodschappen, budget) delen via de `shared:*`-sleutels, als je dat wilt.
+- ~~Overige huishoud-modules (klusjes, boodschappen, budget) delen via de `shared:*`-sleutels, als je dat wilt.~~ **Gedaan (S02b):** de huishoud-modules (klusjes, boodschappen, budget, weekmenu, vaste lasten, beleggingen, nutsvoorzieningen, sectie-layout) syncen nu per gebruiker via `user_data` (`household:*`-sleutels), niet gedeeld.
 
 ---
 

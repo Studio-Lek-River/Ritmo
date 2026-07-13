@@ -30,6 +30,7 @@ export function isUserSyncKey(key) {
   if (typeof key !== 'string') return false;
   if (key === 'settings') return true;
   if (key.startsWith('day:')) return true;
+  if (key.startsWith('household:')) return true;
   return false;
 }
 
