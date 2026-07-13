@@ -23,7 +23,7 @@ export default function DesktopShell({
 
   const navBtnClass = (active) =>
     `whitespace-nowrap px-4 py-2.5 rounded-lg text-sm font-medium transition ${
-      active ? 'bg-blue-500 text-white shadow' : `${theme.textSecondary} ${theme.hover}`
+      active ? `${theme.accentBg} shadow` : `${theme.textSecondary} ${theme.hover}`
     }`;
 
   const iconBtnClass = `p-2 rounded-xl shadow-sm ${theme.hover} transition ${theme.bg}`;
@@ -64,9 +64,9 @@ export default function DesktopShell({
           <button
             onClick={() => setView('insight')}
             aria-label={t('insight.headerButtonAria')}
-            className={`${iconBtnClass} ${view === 'insight' ? 'ring-2 ring-blue-400' : ''}`}
+            className={`${iconBtnClass} ${view === 'insight' ? `ring-2 ${theme.accentRing}` : ''}`}
           >
-            <BarChart3 className={`w-5 h-5 ${view === 'insight' ? 'text-blue-500' : theme.textSecondary}`} />
+            <BarChart3 className={`w-5 h-5 ${view === 'insight' ? theme.accentText : theme.textSecondary}`} />
           </button>
           <button onClick={() => onOpenHelp?.()} aria-label={t('help.title')} className={iconBtnClass}>
             <HelpCircle className={`w-5 h-5 ${theme.textSecondary}`} />

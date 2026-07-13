@@ -1160,6 +1160,10 @@ export default function Ritmo() {
     radiusControl: 'r-radius-control',
     padCard: 'r-pad-card',
     padRow: 'r-pad-row',
+    accentBg: 'r-accent-bg',
+    accentText: 'r-accent-text',
+    accentRing: 'r-accent-ring',
+    accentWeak: 'r-accent-weak',
   };
 
   // Overall completion
