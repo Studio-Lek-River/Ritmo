@@ -886,6 +886,9 @@ export default {
     celebrationAnimation: 'Animatie',
     celebrationDisabledHint: 'Stel eerst een dagdoel in om celebratie aan te zetten.',
 
+    // health-modus (counter- en checklist-modules)
+    healthModeEnabled: 'Beschikbaar in Health-modus',
+
     // sleep
     bedTime: 'Bedtijd',
     wakeTime: 'Opstaan',
@@ -1219,6 +1222,7 @@ export default {
     mood: { name: 'Stemming', options: ['Goed', 'Oké', 'Mwah'] },
     productiveWork: { name: 'Productief werk' },
     drinking: { name: 'Drinken', categories: ['Water', 'Thee', 'Koffie', 'Frisdrank'] },
+    calories: { name: 'Calorieën' },
     reading: { name: 'Lezen' },
     steps: { name: 'Stappen' },
     beweging: { name: 'Beweging', categories: ['Wandelen', 'Fietsen', 'Kracht', 'Zwemmen'] },

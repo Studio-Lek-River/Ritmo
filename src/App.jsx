@@ -3007,6 +3007,15 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
                 </div>
               </div>
 
+              <label className={`flex items-center gap-2 text-sm ${theme.textSecondary}`}>
+                <input
+                  type="checkbox"
+                  checked={!!editing.health}
+                  onChange={(e) => update('health', e.target.checked)}
+                />
+                {t('modules.healthModeEnabled')}
+              </label>
+
               <div>
                 <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('common.items')}</label>
                 <div className="space-y-2 mb-2">
@@ -3242,6 +3251,15 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
                     className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm`}
                   />
                 </div>
+
+                <label className={`flex items-center gap-2 text-sm ${theme.textSecondary}`}>
+                  <input
+                    type="checkbox"
+                    checked={!!editing.health}
+                    onChange={(e) => update('health', e.target.checked)}
+                  />
+                  {t('modules.healthModeEnabled')}
+                </label>
 
                 {isMinutes ? (
                   <details className={`${theme.cardSecondary} rounded-lg p-3`}>

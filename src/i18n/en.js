@@ -882,6 +882,9 @@ export default {
     celebrationAnimation: 'Animation',
     celebrationDisabledHint: 'Set a daily goal first to enable celebration.',
 
+    // Health mode (counter and checklist modules)
+    healthModeEnabled: 'Available in Health mode',
+
     bedTime: 'Bedtime',
     wakeTime: 'Wake-up',
     morningScore: 'Morning score',
@@ -1210,6 +1213,7 @@ export default {
     mood: { name: 'Mood', options: ['Good', 'OK', 'Meh'] },
     productiveWork: { name: 'Productive work' },
     drinking: { name: 'Drinking', categories: ['Water', 'Tea', 'Coffee', 'Soft drinks'] },
+    calories: { name: 'Calories' },
     reading: { name: 'Reading' },
     steps: { name: 'Steps' },
     beweging: { name: 'Movement', categories: ['Walking', 'Cycling', 'Strength', 'Swimming'] },
