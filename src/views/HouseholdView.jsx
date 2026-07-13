@@ -22,7 +22,7 @@ import { activeSeries, seriesStats } from '../utils/investments';
 import { migrateHousehold } from '../utils/migrate';
 import { useTranslation, getLocale } from '../i18n/useTranslation';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { emptyWeekMenu, normalizeWeekMenu, filledSlotCount, MENU_DAYS, MENU_SLOTS } from '../utils/mealplan';
+import { emptyWeekMenu, normalizeWeekMenu, normalizeChecked, filledSlotCount, MENU_DAYS, MENU_SLOTS } from '../utils/mealplan';
 import { moveById } from '../utils/reorder';
 
 const newId = () => (typeof crypto !== 'undefined' && crypto.randomUUID
@@ -126,6 +126,10 @@ export default function HouseholdView({ theme, darkMode }) {
   const [config, setConfig] = useStoredState('household:config', {});
   const [mealPlanRaw, setMealPlan] = useStoredState('household:mealplan:plan', emptyWeekMenu());
   const mealPlanMenu = useMemo(() => normalizeWeekMenu(mealPlanRaw), [mealPlanRaw]);
+  // Aparte, opt-in afvinkstatus per weekdag/slot (H11). Losstaand van het plan
+  // zelf: nooit gemuteerd door de paste-parser, geen migratie nodig.
+  const [mealPlanCheckedRaw, setMealPlanChecked] = useStoredState('household:mealplan:checked', {});
+  const mealPlanChecked = useMemo(() => normalizeChecked(mealPlanCheckedRaw), [mealPlanCheckedRaw]);
   const [investments, setInvestments] = useStoredState('household:investments', {
     mode: 'total', total: { events: [] }, holdings: [],
   });
@@ -247,7 +251,13 @@ export default function HouseholdView({ theme, darkMode }) {
         expanded={expanded.menu}
         onToggle={() => toggle('menu')}
       >
-        <MealPlanSection theme={theme} menu={mealPlanMenu} setMenu={setMealPlan} />
+        <MealPlanSection
+          theme={theme}
+          menu={mealPlanMenu}
+          setMenu={setMealPlan}
+          checked={mealPlanChecked}
+          setChecked={setMealPlanChecked}
+        />
       </Section>
     ),
     fixedCosts: () => (

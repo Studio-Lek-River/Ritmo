@@ -342,6 +342,8 @@ export default {
       pasteConfirmDescription: '{n} maaltijd(en) worden aan je weekmenu toegevoegd. Bestaande velden blijven behouden.',
       pasteConfirmDescriptionNone: 'Er is niets herkend in de tekst. Je weekmenu blijft ongewijzigd.',
       pasteConfirmConfirm: 'Toevoegen',
+      dayProgress: '{done}/{total}',
+      clearAllChecked: 'Alles uitvinken',
     },
     sections: {
       manageToggle: 'Secties beheren',
@@ -884,6 +886,9 @@ export default {
     celebrationAnimation: 'Animatie',
     celebrationDisabledHint: 'Stel eerst een dagdoel in om celebratie aan te zetten.',
 
+    // health-modus (counter- en checklist-modules)
+    healthModeEnabled: 'Beschikbaar in Health-modus',
+
     // sleep
     bedTime: 'Bedtijd',
     wakeTime: 'Opstaan',
@@ -1217,6 +1222,7 @@ export default {
     mood: { name: 'Stemming', options: ['Goed', 'Oké', 'Mwah'] },
     productiveWork: { name: 'Productief werk' },
     drinking: { name: 'Drinken', categories: ['Water', 'Thee', 'Koffie', 'Frisdrank'] },
+    calories: { name: 'Calorieën' },
     reading: { name: 'Lezen' },
     steps: { name: 'Stappen' },
     beweging: { name: 'Beweging', categories: ['Wandelen', 'Fietsen', 'Kracht', 'Zwemmen'] },

@@ -1,8 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { ClipboardPaste } from 'lucide-react';
+import { ClipboardPaste, Check } from 'lucide-react';
 import { useTranslation } from '../../i18n/useTranslation';
 import ConfirmDialog from '../../components/ConfirmDialog';
-import { MENU_DAYS, MENU_SLOTS, normalizeWeekMenu, parseWeekMenuText } from '../../utils/mealplan';
+import {
+  MENU_DAYS, MENU_SLOTS, normalizeWeekMenu, parseWeekMenuText,
+  normalizeChecked, toggleSlotChecked, checkedCountForDay, filledCountForDay,
+} from '../../utils/mealplan';
 import { WEEKDAY_KEYS, weekdayKeyForDate, weekdayLabelLong, shortWeekdayLabelsMondayFirst } from '../../utils/dates';
 
 // Elke slot-id gebruikt één van deze vier labels (de drie snack-slots delen
@@ -21,7 +24,7 @@ function defaultSelectedDay() {
   return MENU_DAYS[idx >= 0 ? idx : 0];
 }
 
-export default function MealPlanSection({ theme, menu, setMenu }) {
+export default function MealPlanSection({ theme, menu, setMenu, checked, setChecked }) {
   const { t } = useTranslation();
 
   const [selectedDay, setSelectedDay] = useState(defaultSelectedDay);
@@ -30,9 +33,11 @@ export default function MealPlanSection({ theme, menu, setMenu }) {
   const [pendingParse, setPendingParse] = useState(null);
 
   const safeMenu = useMemo(() => normalizeWeekMenu(menu), [menu]);
+  const safeChecked = useMemo(() => normalizeChecked(checked), [checked]);
   const dayShortLabels = useMemo(() => shortWeekdayLabelsMondayFirst(), []);
   const selectedDayIndex = MENU_DAYS.indexOf(selectedDay);
   const selectedDayLabel = weekdayLabelLong(WEEKDAY_KEYS[selectedDayIndex >= 0 ? selectedDayIndex : 0]);
+  const hasAnyChecked = Object.keys(safeChecked).length > 0;
 
   function updateSlot(slotId, value) {
     setMenu(prev => {
@@ -42,6 +47,14 @@ export default function MealPlanSection({ theme, menu, setMenu }) {
         [selectedDay]: { ...base[selectedDay], [slotId]: value },
       };
     });
+  }
+
+  function toggleChecked(slotId) {
+    setChecked(prev => toggleSlotChecked(prev, selectedDay, slotId));
+  }
+
+  function clearAllChecked() {
+    setChecked({});
   }
 
   function handleParse() {
@@ -70,22 +83,33 @@ export default function MealPlanSection({ theme, menu, setMenu }) {
 
   return (
     <div className="space-y-4">
-      {/* Dag-kiezer */}
+      {/* Dag-kiezer, met een subtiele "gedaan"-indicator per dag */}
       <div className="grid grid-cols-7 gap-1">
         {MENU_DAYS.map((day, idx) => {
           const isSelected = day === selectedDay;
+          const filled = filledCountForDay(safeMenu, day);
+          const done = checkedCountForDay(safeChecked, safeMenu, day);
+          const allDone = filled > 0 && done === filled;
           return (
             <button
               key={day}
               type="button"
               onClick={() => setSelectedDay(day)}
-              className={`py-2 rounded-lg text-xs font-medium transition ${
+              className={`py-2 rounded-lg text-xs font-medium transition flex flex-col items-center gap-0.5 ${
                 isSelected
                   ? 'bg-amber-500 text-white'
                   : `${theme.cardSecondary} ${theme.textMuted} ${theme.hover}`
               }`}
             >
-              {dayShortLabels[idx]}
+              <span className="flex items-center gap-1">
+                {dayShortLabels[idx]}
+                {allDone && <Check className="w-3 h-3" aria-label={t('common.done')} />}
+              </span>
+              {filled > 0 && !allDone && (
+                <span className={`text-[10px] leading-none ${isSelected ? 'text-white/80' : theme.textMuted}`}>
+                  {t('household.mealPlan.dayProgress', { done, total: filled })}
+                </span>
+              )}
             </button>
           );
         })}
@@ -93,21 +117,54 @@ export default function MealPlanSection({ theme, menu, setMenu }) {
 
       {/* Geselecteerde dag: 6 slots */}
       <div className="space-y-2">
-        <div className={`text-sm font-semibold ${theme.text}`}>{selectedDayLabel}</div>
-        {MENU_SLOTS.map(slot => (
-          <div key={slot.id} className="space-y-1">
-            <label className={`text-xs font-medium ${theme.textMuted}`}>
-              {t(`household.mealPlan.slots.${SLOT_LABEL_KEY[slot.id]}`)}
-            </label>
-            <input
-              type="text"
-              value={safeMenu[selectedDay][slot.id]}
-              onChange={e => updateSlot(slot.id, e.target.value)}
-              placeholder={t('household.mealPlan.slotPlaceholder')}
-              className={`w-full px-3 py-2 rounded-lg text-sm ${theme.input} border ${theme.border} outline-none`}
-            />
-          </div>
-        ))}
+        <div className="flex items-center justify-between">
+          <div className={`text-sm font-semibold ${theme.text}`}>{selectedDayLabel}</div>
+          {hasAnyChecked && (
+            <button
+              type="button"
+              onClick={clearAllChecked}
+              className={`text-xs font-medium ${theme.textMuted} ${theme.hover} px-2 py-1 rounded-lg transition`}
+            >
+              {t('household.mealPlan.clearAllChecked')}
+            </button>
+          )}
+        </div>
+        {MENU_SLOTS.map(slot => {
+          const value = safeMenu[selectedDay][slot.id];
+          const isFilled = !!value.trim();
+          const isChecked = isFilled && !!safeChecked[selectedDay]?.[slot.id];
+          return (
+            <div key={slot.id} className="space-y-1">
+              <label className={`text-xs font-medium ${theme.textMuted}`}>
+                {t(`household.mealPlan.slots.${SLOT_LABEL_KEY[slot.id]}`)}
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={value}
+                  onChange={e => updateSlot(slot.id, e.target.value)}
+                  placeholder={t('household.mealPlan.slotPlaceholder')}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm ${theme.input} border ${theme.border} outline-none`}
+                />
+                {isFilled && (
+                  <button
+                    type="button"
+                    onClick={() => toggleChecked(slot.id)}
+                    aria-pressed={isChecked}
+                    aria-label={isChecked ? t('modules.uncheckAria') : t('modules.checkAria')}
+                    className={`w-9 h-9 rounded-lg border-2 flex items-center justify-center shrink-0 transition ${
+                      isChecked
+                        ? 'bg-amber-500 border-amber-500 text-white'
+                        : `border-slate-300 ${theme.hover}`
+                    }`}
+                  >
+                    {isChecked && <Check className="w-4 h-4" />}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Tekst plakken */}
