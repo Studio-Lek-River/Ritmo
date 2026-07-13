@@ -25,10 +25,13 @@ export function windowDaysFor(windowId) {
 // tie-break in suggestNextZone en de weergavevolgorde in de bodymap.
 export const INJECTION_ZONES = [
   { id: 'abdomenUpperL', labelKey: 'bodymap.zoneAbdomenUpperL' },
+  { id: 'abdomenUpperM', labelKey: 'bodymap.zoneAbdomenUpperM' },
   { id: 'abdomenUpperR', labelKey: 'bodymap.zoneAbdomenUpperR' },
   { id: 'abdomenMidL', labelKey: 'bodymap.zoneAbdomenMidL' },
+  { id: 'abdomenMidM', labelKey: 'bodymap.zoneAbdomenMidM' },
   { id: 'abdomenMidR', labelKey: 'bodymap.zoneAbdomenMidR' },
   { id: 'abdomenLowerL', labelKey: 'bodymap.zoneAbdomenLowerL' },
+  { id: 'abdomenLowerM', labelKey: 'bodymap.zoneAbdomenLowerM' },
   { id: 'abdomenLowerR', labelKey: 'bodymap.zoneAbdomenLowerR' },
   { id: 'armL', labelKey: 'bodymap.zoneArmL' },
   { id: 'armR', labelKey: 'bodymap.zoneArmR' },
@@ -36,9 +39,10 @@ export const INJECTION_ZONES = [
   { id: 'thighR', labelKey: 'bodymap.zoneThighR' },
 ];
 
-// H09: de buik ging van 2 naar 6 zones (boven/midden/onder x links/rechts).
-// Oude prikken op de enkele buikzone landen niet-destructief in de middenrij,
-// gebruikt door migrate.js voor zowel het bodymap-log als injectionSchedule.
+// H09 bracht de buik van 2 naar 6 zones; later uitgebreid naar 9 (boven/midden/
+// onder x links/midden/rechts). Oude prikken op de enkele buikzone landen
+// niet-destructief in de middenrij-links/rechts, gebruikt door migrate.js voor
+// zowel het bodymap-log als injectionSchedule.
 export const LEGACY_ZONE_ID_MAP = { abdomenL: 'abdomenMidL', abdomenR: 'abdomenMidR' };
 
 // Mirror van collections.js's logEvent: `date` mag door de caller worden
