@@ -1,3 +1,11 @@
+# [0.44.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.43.0...v0.44.0) (2026-07-13)
+
+
+### Features
+
+* **build:** expose app version to runtime via __APP_VERSION__ define ([d6cfd67](https://github.com/Studio-Lek-River/Ritmo/commit/d6cfd67395ac490ff59075d30aa243e5ceb3701c))
+* **ui:** toon versienummer op splash en in help ([a55ef04](https://github.com/Studio-Lek-River/Ritmo/commit/a55ef04b758f9d8413d6dbf84c15573e73f9c6c4))
+
 # [0.43.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.42.0...v0.43.0) (2026-07-13)
 
 
