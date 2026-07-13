@@ -5,6 +5,7 @@ import ReadOnlyBanner from '../components/ReadOnlyBanner';
 import InstallBanner from '../components/InstallBanner';
 import { formatDayTitle, formatDaySubtitle } from '../utils/dates';
 import { resolveModuleName } from '../i18n/useTranslation';
+import { MedicationScheduleCard } from './MedicationView';
 
 export default function TodayView({
   t,
@@ -17,6 +18,7 @@ export default function TodayView({
   totalCompletionItems, completedItems, overallPercentage,
   setShowSettings,
   StreakBadge,
+  modules, onLogMedIntake,
 }) {
   return (
     <div className={`slide-in ${(goldenBorderEnabled && todayFullyComplete) ? 'ritmo-golden-border rounded-2xl' : ''}`}>
@@ -50,6 +52,8 @@ export default function TodayView({
           </div>
         </div>
       )}
+
+      <MedicationScheduleCard modules={modules} onLogIntake={onLogMedIntake} theme={theme} />
 
       {totalCompletionItems > 0 && (
         <div className={`${theme.card} rounded-2xl p-5 shadow-sm mb-4`}>
