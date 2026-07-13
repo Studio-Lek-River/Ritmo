@@ -49,11 +49,17 @@ ALTER TABLE ONLY "public"."connections"
 
 -- Uniek per account/provider/extern account, zodat meerdere Trello-borden of
 -- Outlook-mailboxen naast elkaar kunnen bestaan (ROADMAP S04) zonder duplicaten.
--- `external_account` mag NULL zijn (nog geen sub-account gekozen); Postgres
--- behandelt elke NULL in een unique-constraint als uniek, dus per provider kan
--- er precies één rij zonder external_account bestaan -- gewenst voor S03.
+-- LET OP: in Postgres is NULL nooit gelijk aan NULL binnen een unique-constraint,
+-- dus deze constraint alleen laat wél meerdere rijen met dezelfde
+-- (account_id, provider) en external_account IS NULL toe. De partial index
+-- hieronder dicht precies dat gat voor providers zonder sub-account (S03
+-- Outlook: één connectie, geen external_account).
 ALTER TABLE ONLY "public"."connections"
     ADD CONSTRAINT "connections_account_provider_external_key" UNIQUE ("account_id", "provider", "external_account");
+
+-- Garandeert alsnog precies één rij per (account_id, provider) zolang
+-- external_account NULL is (de gewone unique-constraint hierboven dekt dat niet).
+CREATE UNIQUE INDEX "connections_account_provider_no_ext_uidx" ON "public"."connections" USING "btree" ("account_id", "provider") WHERE ("external_account" IS NULL);
 
 
 CREATE INDEX "connections_account_idx" ON "public"."connections" USING "btree" ("account_id");
@@ -87,10 +93,24 @@ CREATE OR REPLACE FUNCTION "public"."connections_set_secret"("p_connection_id" "
     SET "search_path" TO 'public', 'vault', 'pg_temp'
     AS $$
 DECLARE
+  v_owner uuid;
   v_existing uuid;
   v_secret_id uuid;
 BEGIN
-  SELECT token_secret_id INTO v_existing FROM public.connections WHERE id = p_connection_id;
+  SELECT account_id, token_secret_id INTO v_owner, v_existing FROM public.connections WHERE id = p_connection_id;
+
+  IF v_owner IS NULL THEN
+    RAISE EXCEPTION 'connection_not_found';
+  END IF;
+
+  -- Defense-in-depth: auth.uid() is NULL wanneer deze functie via de
+  -- service-role wordt aangeroepen (de api/-laag, die de JWT al zelf
+  -- verifieerde) -- die weg blijft toegestaan. Loopt de aanroep ooit toch met
+  -- een gebruikerssessie (bv. door een toekomstige verkeerde grant), dan mag
+  -- die alleen zijn eigen connection-rij raken.
+  IF auth.uid() IS NOT NULL AND v_owner <> auth.uid() THEN
+    RAISE EXCEPTION 'not_authorized';
+  END IF;
 
   IF v_existing IS NOT NULL THEN
     PERFORM vault.update_secret(v_existing, p_secret);
@@ -111,7 +131,15 @@ ALTER FUNCTION "public"."connections_set_secret"("p_connection_id" "uuid", "p_se
 COMMENT ON FUNCTION "public"."connections_set_secret"("p_connection_id" "uuid", "p_secret" "text") IS
   'S02: schrijft het vault-secret voor een connection (service-role only). Voorbereid voor S03+.';
 
+-- REVOKE ... FROM PUBLIC dekt named roles NIET: de baseline geeft elke nieuwe
+-- functie in dit schema via ALTER DEFAULT PRIVILEGES al standaard EXECUTE aan
+-- anon/authenticated/service_role (20260708084246_baseline_schema.sql). Zonder
+-- de expliciete REVOKEs hieronder zou elke ingelogde gebruiker (en zelfs anon)
+-- deze functie alsnog kunnen aanroepen. Zelfde patroon als
+-- 20260708093000_redeem_invite_revoke_anon.sql.
 REVOKE ALL ON FUNCTION "public"."connections_set_secret"("p_connection_id" "uuid", "p_secret" "text") FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."connections_set_secret"("p_connection_id" "uuid", "p_secret" "text") FROM "anon";
+REVOKE ALL ON FUNCTION "public"."connections_set_secret"("p_connection_id" "uuid", "p_secret" "text") FROM "authenticated";
 GRANT EXECUTE ON FUNCTION "public"."connections_set_secret"("p_connection_id" "uuid", "p_secret" "text") TO "service_role";
 
 
@@ -123,10 +151,20 @@ CREATE OR REPLACE FUNCTION "public"."connections_get_secret"("p_connection_id" "
     SET "search_path" TO 'public', 'vault', 'pg_temp'
     AS $$
 DECLARE
+  v_owner uuid;
   v_secret_id uuid;
   v_secret text;
 BEGIN
-  SELECT token_secret_id INTO v_secret_id FROM public.connections WHERE id = p_connection_id;
+  SELECT account_id, token_secret_id INTO v_owner, v_secret_id FROM public.connections WHERE id = p_connection_id;
+
+  IF v_owner IS NULL THEN
+    RAISE EXCEPTION 'connection_not_found';
+  END IF;
+
+  -- Defense-in-depth: zie connections_set_secret hierboven.
+  IF auth.uid() IS NOT NULL AND v_owner <> auth.uid() THEN
+    RAISE EXCEPTION 'not_authorized';
+  END IF;
 
   IF v_secret_id IS NULL THEN
     RETURN NULL;
@@ -143,7 +181,11 @@ ALTER FUNCTION "public"."connections_get_secret"("p_connection_id" "uuid") OWNER
 COMMENT ON FUNCTION "public"."connections_get_secret"("p_connection_id" "uuid") IS
   'S02: decrypt van het vault-secret voor een connection (service-role only). Enige leesweg naar het token.';
 
+-- REVOKE ... FROM PUBLIC dekt named roles NIET, zie toelichting bij
+-- connections_set_secret hierboven.
 REVOKE ALL ON FUNCTION "public"."connections_get_secret"("p_connection_id" "uuid") FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."connections_get_secret"("p_connection_id" "uuid") FROM "anon";
+REVOKE ALL ON FUNCTION "public"."connections_get_secret"("p_connection_id" "uuid") FROM "authenticated";
 GRANT EXECUTE ON FUNCTION "public"."connections_get_secret"("p_connection_id" "uuid") TO "service_role";
 
 
@@ -154,9 +196,19 @@ CREATE OR REPLACE FUNCTION "public"."connections_clear_secret"("p_connection_id"
     SET "search_path" TO 'public', 'vault', 'pg_temp'
     AS $$
 DECLARE
+  v_owner uuid;
   v_secret_id uuid;
 BEGIN
-  SELECT token_secret_id INTO v_secret_id FROM public.connections WHERE id = p_connection_id;
+  SELECT account_id, token_secret_id INTO v_owner, v_secret_id FROM public.connections WHERE id = p_connection_id;
+
+  IF v_owner IS NULL THEN
+    RAISE EXCEPTION 'connection_not_found';
+  END IF;
+
+  -- Defense-in-depth: zie connections_set_secret hierboven.
+  IF auth.uid() IS NOT NULL AND v_owner <> auth.uid() THEN
+    RAISE EXCEPTION 'not_authorized';
+  END IF;
 
   IF v_secret_id IS NOT NULL THEN
     PERFORM vault.delete_secret(v_secret_id);
@@ -174,13 +226,22 @@ ALTER FUNCTION "public"."connections_clear_secret"("p_connection_id" "uuid") OWN
 COMMENT ON FUNCTION "public"."connections_clear_secret"("p_connection_id" "uuid") IS
   'S02: verwijdert het vault-secret van een connection en zet status disconnected (service-role only).';
 
+-- REVOKE ... FROM PUBLIC dekt named roles NIET, zie toelichting bij
+-- connections_set_secret hierboven.
 REVOKE ALL ON FUNCTION "public"."connections_clear_secret"("p_connection_id" "uuid") FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."connections_clear_secret"("p_connection_id" "uuid") FROM "anon";
+REVOKE ALL ON FUNCTION "public"."connections_clear_secret"("p_connection_id" "uuid") FROM "authenticated";
 GRANT EXECUTE ON FUNCTION "public"."connections_clear_secret"("p_connection_id" "uuid") TO "service_role";
 
 
--- 4. Grants op de tabel zelf: `authenticated` mag onder RLS (policy hierboven)
--- uitsluitend zijn eigen rijen zien/beheren. `anon` krijgt bewust niets: anders
--- dan user_data (waar RLS toch alles blokkeert zonder sessie) heeft een
--- niet-ingelogde rol hier geen enkel legitiem gebruik.
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."connections" TO "authenticated";
+-- 4. Grants op de tabel zelf: `authenticated` krijgt alleen SELECT (metadata,
+-- onder RLS hierboven dus uitsluitend de eigen rijen) -- de frontend gebruikt
+-- uitsluitend `.select()` (src/sync/connections.js). Schrijven (status zetten,
+-- token_secret_id koppelen, rijen verwijderen) loopt uitsluitend via de
+-- service-role in de api/-laag, zodat een directe client-write nooit een
+-- valse status='connected' kan zetten of een Vault-secret wees kan maken door
+-- de rij zonder de bijbehorende RPC te verwijderen. `anon` krijgt bewust
+-- niets: anders dan user_data (waar RLS toch alles blokkeert zonder sessie)
+-- heeft een niet-ingelogde rol hier geen enkel legitiem gebruik.
+GRANT SELECT ON TABLE "public"."connections" TO "authenticated";
 GRANT ALL ON TABLE "public"."connections" TO "service_role";
