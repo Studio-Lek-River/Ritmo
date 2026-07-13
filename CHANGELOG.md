@@ -1,3 +1,11 @@
+# [0.43.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.42.0...v0.43.0) (2026-07-13)
+
+
+### Features
+
+* **health:** calorieen-teller en health-modus toggle voor tellers ([691705c](https://github.com/Studio-Lek-River/Ritmo/commit/691705c81ea6fcb1da5ee2d1415099bbf2f2a267))
+* **household:** afvinkbaar weekmenu per dag ([4a096de](https://github.com/Studio-Lek-River/Ritmo/commit/4a096dec5c5c6f81ea2ddd6ed386254c605b484c))
+
 # [0.42.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.41.0...v0.42.0) (2026-07-13)
 
 
