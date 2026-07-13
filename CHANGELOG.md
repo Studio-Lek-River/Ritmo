@@ -1,3 +1,10 @@
+# [0.42.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.41.0...v0.42.0) (2026-07-13)
+
+
+### Features
+
+* **sync:** synchroniseer household-modules via user_data ([5f41815](https://github.com/Studio-Lek-River/Ritmo/commit/5f41815cd203388f693c14ec601a7ddd73454594))
+
 # [0.41.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.40.0...v0.41.0) (2026-07-13)
 
 
