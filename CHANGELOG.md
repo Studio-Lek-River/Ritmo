@@ -1,3 +1,11 @@
+# [0.45.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.44.0...v0.45.0) (2026-07-13)
+
+
+### Features
+
+* **ui:** accent-helpers in theme + shell/planner/kanban naar accent ([bffed26](https://github.com/Studio-Lek-River/Ritmo/commit/bffed268a44a95c54f5b4c4f2569e5dd12652b37))
+* **ui:** Monday-tokenset en accent-token in index.css ([4b20d28](https://github.com/Studio-Lek-River/Ritmo/commit/4b20d285607b94318b5e9e002338b53deb9df571))
+
 # [0.44.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.43.0...v0.44.0) (2026-07-13)
 
 
