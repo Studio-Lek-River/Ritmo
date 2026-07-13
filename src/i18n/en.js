@@ -341,6 +341,8 @@ export default {
       pasteConfirmDescription: '{n} meal(s) will be added to your weekly menu. Existing entries are kept.',
       pasteConfirmDescriptionNone: 'Nothing was recognised in the text. Your weekly menu stays unchanged.',
       pasteConfirmConfirm: 'Add',
+      dayProgress: '{done}/{total}',
+      clearAllChecked: 'Uncheck all',
     },
     sections: {
       manageToggle: 'Manage sections',

@@ -57,6 +57,73 @@ export function filledSlotCount(menu) {
   return count;
 }
 
+// --- Afvinken ----------------------------------------------------------------
+// Terugkerend per weekdag (geen datums, geen automatische weekreset): een
+// aparte, kleine "checked"-shape naast het plan zelf. Wordt nooit gemuteerd
+// door de plan-opslag of de paste-parser hierboven.
+
+// Bouwt altijd een verse, geldige checked-shape en kopieert alléén herkende
+// boolean-waarden uit `raw`. Onbekende dagen/slot-ids en niet-`true`-waarden
+// worden genegeerd, nooit een crash bij een oude/vreemde shape.
+export function normalizeChecked(raw) {
+  const checked = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return checked;
+  for (const day of MENU_DAYS) {
+    const rawDay = raw[day];
+    if (!rawDay || typeof rawDay !== 'object' || Array.isArray(rawDay)) continue;
+    const dayChecked = {};
+    for (const slot of MENU_SLOTS) {
+      if (rawDay[slot.id] === true) dayChecked[slot.id] = true;
+    }
+    if (Object.keys(dayChecked).length > 0) checked[day] = dayChecked;
+  }
+  return checked;
+}
+
+// Immutabele toggle van één slot binnen een dag. Verwijdert de key in plaats
+// van 'm op false te zetten, zodat de shape compact blijft.
+export function toggleSlotChecked(checked, day, slotId) {
+  const safe = normalizeChecked(checked);
+  const dayChecked = { ...(safe[day] || {}) };
+  if (dayChecked[slotId]) {
+    delete dayChecked[slotId];
+  } else {
+    dayChecked[slotId] = true;
+  }
+  const next = { ...safe };
+  if (Object.keys(dayChecked).length > 0) {
+    next[day] = dayChecked;
+  } else {
+    delete next[day];
+  }
+  return next;
+}
+
+// Aantal afgevinkte slots voor een dag, geteld t.o.v. alléén gevulde slots
+// (een vinkje op een leeg/verwijderd slot telt niet mee).
+export function checkedCountForDay(checked, menu, day) {
+  const dayChecked = (checked && checked[day]) || {};
+  const dayMenu = (menu && menu[day]) || {};
+  let count = 0;
+  for (const slot of MENU_SLOTS) {
+    const value = dayMenu[slot.id];
+    const filled = typeof value === 'string' && !!value.trim();
+    if (filled && dayChecked[slot.id]) count += 1;
+  }
+  return count;
+}
+
+// Aantal gevulde slots voor een dag (de noemer van de "x/y gedaan"-indicator).
+export function filledCountForDay(menu, day) {
+  const dayMenu = (menu && menu[day]) || {};
+  let count = 0;
+  for (const slot of MENU_SLOTS) {
+    const value = dayMenu[slot.id];
+    if (typeof value === 'string' && value.trim()) count += 1;
+  }
+  return count;
+}
+
 // --- Tekst-parser -----------------------------------------------------------
 
 // Default dag-herkenners: nl + en, case-insensitief. Elke entry mag meerdere

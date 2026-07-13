@@ -342,6 +342,8 @@ export default {
       pasteConfirmDescription: '{n} maaltijd(en) worden aan je weekmenu toegevoegd. Bestaande velden blijven behouden.',
       pasteConfirmDescriptionNone: 'Er is niets herkend in de tekst. Je weekmenu blijft ongewijzigd.',
       pasteConfirmConfirm: 'Toevoegen',
+      dayProgress: '{done}/{total}',
+      clearAllChecked: 'Alles uitvinken',
     },
     sections: {
       manageToggle: 'Secties beheren',
