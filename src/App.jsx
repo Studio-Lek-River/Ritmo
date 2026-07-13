@@ -134,13 +134,14 @@ export default function Ritmo() {
     setDarkMode(isDark);
   }, []);
 
-  // Zet de weergavestijl en het thema op <html>, zodat de CSS-variabele
-  // token-laag (index.css) de juiste oppervlakte-kleuren kiest.
+  // Zet het thema op <html>, zodat de CSS-variabele token-laag (index.css)
+  // de juiste oppervlakte-kleuren kiest. De look is altijd Monday
+  // (data-style is niet meer instelbaar); alleen dark/light varieert nog.
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute('data-theme', darkMode ? 'dark' : 'light');
-    root.setAttribute('data-style', uiStyle);
-  }, [darkMode, uiStyle]);
+    root.setAttribute('data-style', 'monday');
+  }, [darkMode]);
 
   // Auth state
   useEffect(() => {
@@ -1160,6 +1161,10 @@ export default function Ritmo() {
     radiusControl: 'r-radius-control',
     padCard: 'r-pad-card',
     padRow: 'r-pad-row',
+    accentBg: 'r-accent-bg',
+    accentText: 'r-accent-text',
+    accentRing: 'r-accent-ring',
+    accentWeak: 'r-accent-weak',
   };
 
   // Overall completion
@@ -2284,28 +2289,6 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
               >
                 <Moon className="w-4 h-4" /> {t('settings.themeDark')}
               </button>
-            </div>
-
-            <div className={`mt-6 pt-6 border-t ${theme.border}`}>
-              <h3 className={`font-semibold ${theme.textSecondary} mb-1`}>{t('settings.uiStyle')}</h3>
-              <p className={`text-xs ${theme.textMuted} mb-3`}>{t('settings.uiStyleHint')}</p>
-              <div className="flex gap-2">
-                {[
-                  { id: 'strak', label: t('settings.uiStyleStrak') },
-                  { id: 'levendig', label: t('settings.uiStyleLevendig') },
-                  { id: 'compact', label: t('settings.uiStyleCompact') },
-                ].map(opt => (
-                  <button
-                    key={opt.id}
-                    onClick={() => setUiStyle(opt.id)}
-                    className={`flex-1 py-3 px-3 rounded-lg text-sm font-medium transition ${
-                      uiStyle === opt.id ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
             </div>
 
             <div className={`mt-6 pt-6 border-t ${theme.border}`}>

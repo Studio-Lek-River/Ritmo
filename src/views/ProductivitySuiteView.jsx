@@ -40,7 +40,7 @@ export default function ProductivitySuiteView({
               onClick={() => setTab(id)}
               aria-pressed={tab === id}
               className={`px-4 py-2 ${theme.radiusControl} text-sm font-medium transition ${
-                tab === id ? 'bg-blue-500 text-white shadow' : `${theme.textMuted} ${theme.hover}`
+                tab === id ? `${theme.accentBg} shadow` : `${theme.textMuted} ${theme.hover}`
               }`}
             >
               {t(`productivity.${id}`)}

@@ -4,6 +4,14 @@ import { useTranslation } from '../i18n/useTranslation';
 import { getColorClasses } from '../utils/colors';
 import { buildTaskBoard, KANBAN_COLUMNS } from '../utils/taskBoard';
 
+// Kleur per statuskolom, puur visueel (Monday-persoonlijkheid). Leesbaar in
+// zowel light als dark; raakt geen kaart-logica of drag-and-drop.
+const COLUMN_HEAD = {
+  todo: 'text-slate-500 dark:text-slate-400',
+  bezig: 'text-blue-500 dark:text-blue-400',
+  klaar: 'text-emerald-500 dark:text-emerald-400',
+};
+
 // Kanban-bord voor de Planner: losse taken (vandaag) en projecttaken (alle,
 // ongeacht deadline) als kaartjes in drie kolommen op status. De drie kolommen
 // zijn altijd zichtbaar, ook bij een leeg bord. Hergebruikt bestaande handlers
@@ -52,9 +60,9 @@ export default function KanbanView({ modules, customTasks, onAddTask, onAddSubgo
           key={col}
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDrop(col)}
-          className={`${theme.cardSecondary} ${theme.radiusCard} ${theme.padRow} space-y-2 min-h-[8rem]`}
+          className={`${theme.cardSecondary} ${theme.radiusCard} ${theme.padRow} space-y-2 min-h-[8rem] border-t-2 border-current ${COLUMN_HEAD[col]}`}
         >
-          <h2 className={`text-xs font-semibold uppercase tracking-wide mb-1 ${theme.textMuted}`}>
+          <h2 className={`text-xs font-semibold uppercase tracking-wide mb-1 ${COLUMN_HEAD[col]}`}>
             {t(`productivity.kanbanColumns.${col}`)}
           </h2>
           {board[col].length === 0 ? (
@@ -132,7 +140,7 @@ function AddCardForm({ onAddTask, onAddSubgoal, projectOptions = [], theme, t })
               onClick={() => setType(id)}
               aria-pressed={type === id}
               className={`flex-1 px-2 py-1 ${theme.radiusControl} text-xs font-medium transition ${
-                type === id ? 'bg-blue-500 text-white shadow' : `${theme.textMuted} ${theme.hover}`
+                type === id ? `${theme.accentBg} shadow` : `${theme.textMuted} ${theme.hover}`
               }`}
             >
               {t(`productivity.${key}`)}
