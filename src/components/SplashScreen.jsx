@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import RitmoLogo from './RitmoLogo';
 import { useTranslation } from '../i18n/useTranslation';
+import { APP_VERSION } from '../utils/appVersion';
 
 /**
  * SplashScreen - eerste scherm dat verschijnt bij het openen van Ritmo.
@@ -87,6 +88,19 @@ export default function SplashScreen({
       >
         {t('splash.tagline')}
       </p>
+      {APP_VERSION && (
+        <p
+          className={`text-xs tracking-wide ${
+            darkMode ? 'text-stone-600' : 'text-stone-400'
+          }`}
+          style={{
+            opacity: 0,
+            animation: 'ritmo-tagline-fade 0.8s ease-out 1.2s forwards',
+          }}
+        >
+          {t('splash.version', { version: APP_VERSION })}
+        </p>
+      )}
       <style>{`
         @keyframes ritmo-tagline-fade {
           to { opacity: 1; }

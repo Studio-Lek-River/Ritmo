@@ -2,6 +2,7 @@ import React from 'react';
 import { GraduationCap, Smartphone, MessageSquare } from 'lucide-react';
 import HelpItemRow from './HelpItemRow';
 import { useTranslation } from '../../i18n/useTranslation';
+import { APP_VERSION } from '../../utils/appVersion';
 
 export default function HelpOverlay({ theme, onSelect, showTour }) {
   const { t } = useTranslation();
@@ -38,6 +39,11 @@ export default function HelpOverlay({ theme, onSelect, showTour }) {
           theme={theme}
         />
       ))}
+      {APP_VERSION && (
+        <div className={`pt-2 text-center text-xs ${theme.textMuted}`}>
+          {t('help.version', { version: APP_VERSION })}
+        </div>
+      )}
     </div>
   );
 }
