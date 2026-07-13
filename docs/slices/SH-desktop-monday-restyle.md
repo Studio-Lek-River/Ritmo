@@ -1,7 +1,7 @@
 # SH — Desktop UI naar Monday (Board-look implementatie)
 
 Issue: https://github.com/Studio-Lek-River/Ritmo/issues/88
-**Status:** concept
+**Status:** geïmplementeerd — klaar voor Poort 2 (test + merge)
 
 ## Doel
 
