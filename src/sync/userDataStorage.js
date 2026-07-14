@@ -14,6 +14,10 @@ import { markSyncing, markSynced, markError, refreshPending } from './syncStatus
 const store = createStore('ritmo-db', 'ritmo-store');
 const TABLE = 'user_data';
 const ON_CONFLICT = 'user_id,key';
+// Onthoudt per apparaat de conflictkeuze. Valt onder de bestaande
+// `__sync:`-uitsluiting in storage.js, dus lekt niet in list() en telt niet
+// als sync-key. Alleen 'cloud' wordt bewaard (zie pullUserData).
+const CONFLICT_POLICY_KEY = '__sync:conflict_policy';
 
 let currentUserId = null;
 
@@ -188,13 +192,26 @@ export async function pullUserData(userId, resolveConflict) {
     pushed += 1;
   }
 
-  if (conflicts.length > 0 && typeof resolveConflict === 'function') {
-    const choice = await resolveConflict(
-      conflicts.map((c) => ({ key: c.key, cloudUpdatedAt: c.cloud.updated_at })),
-    );
+  if (conflicts.length > 0) {
+    // Zodra de gebruiker één keer 'cloud' koos, onthouden we dat op dit
+    // apparaat en lossen we volgende conflicten stil op zonder opnieuw te
+    // vragen. 'local' wordt bewust niet onthouden (blijft eenmalig).
+    const savedPolicy = await idbGet(CONFLICT_POLICY_KEY, store);
+    let choice = null;
+    if (savedPolicy === 'cloud') {
+      choice = 'cloud';
+    } else if (typeof resolveConflict === 'function') {
+      choice = await resolveConflict(
+        conflicts.map((c) => ({ key: c.key, cloudUpdatedAt: c.cloud.updated_at })),
+      );
+      if (choice === 'cloud') {
+        await idbSet(CONFLICT_POLICY_KEY, 'cloud', store);
+      }
+    }
 
     const resolutionNow = new Date().toISOString();
     for (const { key, cloud } of conflicts) {
+      if (!choice) break;
       if (choice === 'cloud') {
         await idbSet(key, toStorageValue(cloud.value), store);
         await idbSet(metaKey(key), cloud.updated_at, store);
