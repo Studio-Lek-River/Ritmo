@@ -17,13 +17,24 @@ const ON_CONFLICT = 'user_id,key';
 
 let currentUserId = null;
 
+// Resolvet zodra de initiële auth-status bekend is. setUserData/deleteUserData
+// wachten hierop, zodat een write vlak na het openen (vóór getCurrentUser klaar
+// is) niet stilletjes zonder sync-metadata en cloud-push wordt weggeschreven.
+let resolveAuthReady;
+const authReady = new Promise((r) => {
+  resolveAuthReady = r;
+});
+
 if (isSyncEnabled()) {
   getCurrentUser().then((u) => {
     currentUserId = u?.id ?? null;
+    resolveAuthReady();
   });
   onAuthChange((user) => {
     currentUserId = user?.id ?? null;
   });
+} else {
+  resolveAuthReady();
 }
 
 export function isUserSyncKey(key) {
@@ -60,7 +71,9 @@ export async function getUserData(key) {
 export async function setUserData(key, value) {
   await idbSet(key, value, store);
 
-  if (!isSyncEnabled() || !currentUserId) return;
+  if (!isSyncEnabled()) return;
+  await authReady;
+  if (!currentUserId) return;
 
   const now = new Date().toISOString();
   await idbSet(metaKey(key), now, store);
@@ -85,7 +98,9 @@ export async function deleteUserData(key) {
   await idbDel(key, store);
   await idbDel(metaKey(key), store);
 
-  if (!isSyncEnabled() || !currentUserId) return;
+  if (!isSyncEnabled()) return;
+  await authReady;
+  if (!currentUserId) return;
 
   await enqueue({
     op: 'delete',
