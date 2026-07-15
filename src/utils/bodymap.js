@@ -45,12 +45,102 @@ export const INJECTION_ZONES = [
 // zowel het bodymap-log als injectionSchedule.
 export const LEGACY_ZONE_ID_MAP = { abdomenL: 'abdomenMidL', abdomenR: 'abdomenMidR' };
 
+// H12: viewBox-afmetingen van het silhouet, gedeeld tussen de view (rendering)
+// en deze module (zone-afleiding uit een punt).
+export const VIEW_W = 200;
+export const VIEW_H = 320;
+
+// H12: dezelfde 13 zone-coördinaten die eerder alleen in de view leefden
+// (ZONE_DOTS), nu hier zodat zoneFor() en normalizeInjectionEvent() ze ook
+// kunnen gebruiken. `front` is de enige aanzicht in deze slice; `back` volgt
+// in H12b. De buik is een 3x3 raster (kolommen x 80/100/120, rijen y
+// 82/112/142); de torso-rect in de view is verbreed/verlengd zodat alle negen
+// punten erbinnen vallen.
+export const ZONE_ANCHORS = {
+  front: [
+    { id: 'abdomenUpperL', x: 80, y: 82 },
+    { id: 'abdomenUpperM', x: 100, y: 82 },
+    { id: 'abdomenUpperR', x: 120, y: 82 },
+    { id: 'abdomenMidL', x: 80, y: 112 },
+    { id: 'abdomenMidM', x: 100, y: 112 },
+    { id: 'abdomenMidR', x: 120, y: 112 },
+    { id: 'abdomenLowerL', x: 80, y: 142 },
+    { id: 'abdomenLowerM', x: 100, y: 142 },
+    { id: 'abdomenLowerR', x: 120, y: 142 },
+    { id: 'armL', x: 52, y: 92 },
+    { id: 'armR', x: 148, y: 92 },
+    { id: 'thighL', x: 86, y: 224 },
+    { id: 'thighR', x: 114, y: 224 },
+  ],
+};
+
+// Zone-afleiding uit een precies punt: dichtstbijzijnde zone-anker (Euclidisch).
+// Onbekende aanzichten vallen terug op 'front'; retourneert altijd een geldige
+// zone-id (mirror van suggestNextZone's "altijd geldig"-garantie).
+export function zoneFor(x, y, view = 'front') {
+  const anchors = ZONE_ANCHORS[view] || ZONE_ANCHORS.front;
+  let best = anchors[0];
+  let bestDist = Infinity;
+  for (const anchor of anchors) {
+    const dist = (anchor.x - x) ** 2 + (anchor.y - y) ** 2;
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = anchor;
+    }
+  }
+  return best.id;
+}
+
+// Stabiele client-side id voor een nieuw geplaatste prik. Alleen gebruikt op
+// het moment van loggen (runtime), dus Date.now()/Math.random() zijn hier ok.
+export function makeInjectionId() {
+  return `p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+// Kleine deterministische string-hash (geen crypto-doel, alleen jitter-seed).
+function hashStr(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (h * 31 + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
+// Lazy, niet-destructieve normalisatie van een logregel (mirror van
+// normalizeChecklistItemData in dayProgress.js): puur, idempotent, leest
+// alleen. Oude events zonder id/x/y/view krijgen die on-the-fly: een
+// gesynthetiseerde id, view='front', en een positie op het zone-anker met
+// deterministische jitter (±6) zodat gestapelde oude prikken in dezelfde zone
+// niet exact overlappen. Bestaat het event al met x/y, dan blijft alles
+// ongemoeid.
+export function normalizeInjectionEvent(event, index) {
+  if (!event) return event;
+  const id = event.id || `${event.date}-${event.zoneId}-${index}`;
+  const view = event.view || 'front';
+  let { x, y } = event;
+  if (x == null || y == null) {
+    const anchors = ZONE_ANCHORS[view] || ZONE_ANCHORS.front;
+    const anchor = anchors.find((a) => a.id === event.zoneId) || ZONE_ANCHORS.front[0];
+    const h = hashStr(id);
+    const jitterX = (h % 13) - 6;
+    const jitterY = (Math.floor(h / 13) % 13) - 6;
+    x = anchor.x + jitterX;
+    y = anchor.y + jitterY;
+  }
+  return { ...event, id, view, x, y };
+}
+
 // Mirror van collections.js's logEvent: `date` mag door de caller worden
-// meegegeven (bv. om een undo exact te herstellen), anders vandaag.
+// meegegeven (bv. om een undo exact te herstellen), anders vandaag. H12:
+// bewaart nu ook de precieze plaatsing (id/x/y/view) naast de afgeleide zone.
 export function logInjection(module, event = {}) {
   const newEvent = {
+    id: event.id || makeInjectionId(),
     date: event.date || todayKey(),
     zoneId: event.zoneId,
+    x: event.x,
+    y: event.y,
+    view: event.view || 'front',
     medId: event.medId,
     medModuleId: event.medModuleId,
     medName: event.medName,
@@ -58,11 +148,19 @@ export function logInjection(module, event = {}) {
   return { ...module, log: [newEvent, ...(module.log || [])] };
 }
 
-export function removeInjection(module, index) {
+// H12: verplaatst een bestaande prik (verslepen). Raakt de voorraad niet.
+export function updateInjectionPosition(module, id, { x, y, zoneId } = {}) {
   return {
     ...module,
-    log: (module.log || []).filter((_, i) => i !== index),
+    log: (module.log || []).map((e) =>
+      e.id === id ? { ...e, x, y, ...(zoneId !== undefined ? { zoneId } : {}) } : e
+    ),
   };
+}
+
+// H12: id-gebaseerde verwijdering.
+export function removeInjectionById(module, id) {
+  return { ...module, log: (module.log || []).filter((e) => e.id !== id) };
 }
 
 // Zone met de oudste laatste-prik (nooit geprikt telt als oudst). Bij een
