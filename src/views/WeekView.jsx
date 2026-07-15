@@ -35,6 +35,16 @@ function timeToMinutesLocal(time) {
   return Number(match[1]) * 60 + Number(match[2]);
 }
 
+// Duur (minuten) tussen twee kloktijden voor een agenda-blok (S07); valt
+// terug op `DEFAULT_BLOCK_MINUTES` bij ontbrekende/omgekeerde tijden, net als
+// `blockStyle` hieronder voor een ontbrekende `duration`.
+function agendaDurationMinutes(start, end) {
+  const startMin = timeToMinutesLocal(start);
+  const endMin = timeToMinutesLocal(end);
+  if (startMin == null || endMin == null || endMin <= startMin) return DEFAULT_BLOCK_MINUTES;
+  return endMin - startMin;
+}
+
 // `duration` (minuten) bepaalt de bloks-hoogte; ontbrekende/ongeldige duur
 // valt terug op `DEFAULT_BLOCK_MINUTES` (ook de drag-snap-granulariteit,
 // hieronder ongewijzigd).
@@ -76,6 +86,7 @@ export default function WeekView({
   onAcceptAllPending,
   onDiscardAllPending,
   onMovePendingItem,
+  agendaByDate,
   theme,
 }) {
   const { t } = useTranslation();
@@ -194,6 +205,9 @@ export default function WeekView({
             const label = shortLabels[weekdayIndex >= 0 ? weekdayIndex : idx];
             const isSelected = day.dateKey === selectedDateKey;
             const isTodayCol = isToday(day.date);
+            const dayAgendaBlocks = (agendaByDate?.[day.dateKey] || []);
+            const allDayAgendaBlocks = dayAgendaBlocks.filter(b => b.allDay);
+            const timedAgendaBlocks = dayAgendaBlocks.filter(b => !b.allDay);
 
             return (
               <div key={day.dateKey} className={`flex-1 min-w-[140px] border-l ${theme.border}`}>
@@ -206,6 +220,20 @@ export default function WeekView({
                   <span>{label} {day.date.getDate()}</span>
                   {isTodayCol && <span className="text-[10px]">{t('common.today')}</span>}
                 </div>
+
+                {allDayAgendaBlocks.length > 0 && (
+                  <div className="flex flex-wrap gap-1 px-1 py-1">
+                    {allDayAgendaBlocks.map(block => (
+                      <span
+                        key={`agenda-allday:${block.id}`}
+                        title={block.title}
+                        className={`r-block-agenda text-[10px] px-1.5 py-0.5 rounded truncate max-w-full ${theme.textSecondary}`}
+                      >
+                        {t('planner.agenda.allDay')}: {block.title}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 <div
                   className={`relative ${theme.cardSecondary} ${isSelected ? `ring-2 ${theme.accentRing}` : ''}`}
@@ -220,6 +248,21 @@ export default function WeekView({
                       style={{ top: hourIdx * ROW_HEIGHT }}
                     />
                   ))}
+
+                  {timedAgendaBlocks.map(block => {
+                    const duration = agendaDurationMinutes(block.start, block.end);
+                    const { top, height } = blockStyle(block.start, duration);
+                    return (
+                      <div
+                        key={`agenda:${block.id}`}
+                        style={{ top, height }}
+                        title={block.title}
+                        className={`r-block-agenda absolute left-1 right-1 rounded-md px-1.5 py-1 text-[11px] overflow-hidden ${theme.textSecondary}`}
+                      >
+                        <span className="truncate block">{block.title}</span>
+                      </div>
+                    );
+                  })}
 
                   {(dayTimelines[day.dateKey] || []).filter(item => item.time).map(item => {
                     const { top, height } = blockStyle(item.time, item.duration);

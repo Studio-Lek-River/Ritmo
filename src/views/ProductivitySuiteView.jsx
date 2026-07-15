@@ -23,6 +23,7 @@ export default function ProductivitySuiteView({
   customTasks,
   weekDays,
   todayKey,
+  agendaByDate,
   onAddTask,
   onAddSubgoal,
   onToggleTask,
@@ -148,6 +149,7 @@ export default function ProductivitySuiteView({
             <WeekView
               weekDays={weekDays || []}
               modules={modules}
+              agendaByDate={agendaByDate}
               selectedDateKey={selectedDay?.dateKey || todayKey}
               onSelectDate={setSelectedDateKey}
               onToggleTask={onToggleTaskInDay}
