@@ -2000,6 +2000,8 @@ export default function Ritmo() {
             onAcceptAllPending={acceptAllPending}
             onDiscardAllPending={discardAllPending}
             onMovePendingItem={movePendingItem}
+            planPrefs={planPrefs}
+            setPlanPrefs={setPlanPrefs}
             theme={theme}
           />
         )}

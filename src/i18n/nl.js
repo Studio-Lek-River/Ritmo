@@ -1586,6 +1586,7 @@ export default {
     title: 'Planner',
     dag: 'Dag',
     kanban: 'Kanban',
+    voorkeuren: 'Voorkeuren',
     taskListTitle: 'Taken',
     addCard: 'Taak toevoegen',
     cardTypeTask: 'Taak',
@@ -1664,6 +1665,29 @@ export default {
       label: 'Vrij blok (geen deadline, terugkerend)',
       short: 'Vrij blok',
       chip: 'Vrij blok',
+    },
+  },
+
+  planPrefs: {
+    title: 'Afstem-voorkeuren',
+    hint: 'Leeg of neutraal laten verandert niets aan hoe "Deel mijn dag in" taken plaatst.',
+    energy: {
+      title: 'Energie per dagdeel',
+      hint: 'Automatisch geplande taken zonder dagdeel-voorkeur landen bij voorkeur in het dagdeel met de hoogste energie.',
+      high: 'Hoog',
+      neutral: 'Neutraal',
+      low: 'Laag',
+    },
+    deepWork: {
+      title: 'Diepwerk-vensters',
+      hint: 'Taken met de diepwerk-tag plaatsen zich bij voorkeur binnen deze dagdelen.',
+    },
+    rest: {
+      title: 'Rust tussen taken',
+      hint: 'Minimale buffer tussen automatisch geplande taken.',
+      none: 'Geen',
+      light: 'Licht (15 min)',
+      ample: 'Ruim (30 min)',
     },
   },
 

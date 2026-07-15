@@ -6,10 +6,11 @@ import WeekView from './WeekView';
 import KanbanView from './KanbanView';
 import TaskListPanel from '../components/TaskListPanel';
 import TaskPoolPanel from '../components/TaskPoolPanel';
+import PlanPreferencesPanel from '../components/PlanPreferencesPanel';
 import { buildDayTimeline } from '../utils/dayTimeline';
 import { shortWeekdayLabelsMondayFirst } from '../utils/dates';
 
-const TABS = ['dag', 'kanban'];
+const TABS = ['dag', 'kanban', 'voorkeuren'];
 
 // Werkruimte voor de Planner: kop + Dag/Kanban-toggle. Dag rendert het
 // weekrooster (WeekView, met zijn eigen interne Dag/Week-toggle) met de
@@ -30,6 +31,7 @@ export default function ProductivitySuiteView({
   onSetTaskDuration,
   onSetTaskWindow,
   onSetTaskAutoPlan,
+  onSetTaskDeepWork,
   onToggleProjectSubgoal,
   onSetTaskStatus,
   onSetSubgoalStatus,
@@ -42,6 +44,8 @@ export default function ProductivitySuiteView({
   onAcceptAllPending,
   onDiscardAllPending,
   onMovePendingItem,
+  planPrefs,
+  setPlanPrefs,
   theme,
 }) {
   const { t } = useTranslation();
@@ -106,61 +110,70 @@ export default function ProductivitySuiteView({
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-[minmax(240px,300px)_1fr] items-start">
-        {tab === 'dag' ? (
-          <TaskPoolPanel
-            items={poolItems}
-            dayOptions={dayOptions}
-            selectedDateKey={selectedDay?.dateKey || todayKey}
-            canAddTask={(selectedDay?.dateKey || todayKey) === todayKey}
-            onAddTask={onAddTask}
-            onMoveItem={onMoveItem}
-            theme={theme}
-          />
-        ) : (
-          <TaskListPanel
-            tasks={customTasks}
-            color={tasksColor}
-            onAddTask={onAddTask}
-            onToggleTask={onToggleTask}
-            onDeleteTask={onDeleteTask}
-            onSetTaskTime={onSetTaskTime}
-            onSetTaskDuration={onSetTaskDuration}
-            onSetTaskWindow={onSetTaskWindow}
-            onSetTaskAutoPlan={onSetTaskAutoPlan}
-            theme={theme}
-          />
-        )}
+      {tab === 'voorkeuren' ? (
+        <PlanPreferencesPanel
+          planPrefs={planPrefs}
+          setPlanPrefs={setPlanPrefs}
+          theme={theme}
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-[minmax(240px,300px)_1fr] items-start">
+          {tab === 'dag' ? (
+            <TaskPoolPanel
+              items={poolItems}
+              dayOptions={dayOptions}
+              selectedDateKey={selectedDay?.dateKey || todayKey}
+              canAddTask={(selectedDay?.dateKey || todayKey) === todayKey}
+              onAddTask={onAddTask}
+              onMoveItem={onMoveItem}
+              theme={theme}
+            />
+          ) : (
+            <TaskListPanel
+              tasks={customTasks}
+              color={tasksColor}
+              onAddTask={onAddTask}
+              onToggleTask={onToggleTask}
+              onDeleteTask={onDeleteTask}
+              onSetTaskTime={onSetTaskTime}
+              onSetTaskDuration={onSetTaskDuration}
+              onSetTaskWindow={onSetTaskWindow}
+              onSetTaskAutoPlan={onSetTaskAutoPlan}
+              onSetTaskDeepWork={onSetTaskDeepWork}
+              theme={theme}
+            />
+          )}
 
-        {tab === 'dag' ? (
-          <WeekView
-            weekDays={weekDays || []}
-            modules={modules}
-            selectedDateKey={selectedDay?.dateKey || todayKey}
-            onSelectDate={setSelectedDateKey}
-            onToggleTask={onToggleTaskInDay}
-            onToggleProjectSubgoal={onToggleProjectSubgoal}
-            onMoveItem={onMoveItem}
-            pendingPlan={pendingPlan}
-            onAcceptPendingItem={onAcceptPendingItem}
-            onDiscardPendingItem={onDiscardPendingItem}
-            onAcceptAllPending={onAcceptAllPending}
-            onDiscardAllPending={onDiscardAllPending}
-            onMovePendingItem={onMovePendingItem}
-            theme={theme}
-          />
-        ) : (
-          <KanbanView
-            modules={modules}
-            customTasks={customTasks}
-            onAddTask={onAddTask}
-            onAddSubgoal={onAddSubgoal}
-            onSetTaskStatus={onSetTaskStatus}
-            onSetSubgoalStatus={onSetSubgoalStatus}
-            theme={theme}
-          />
-        )}
-      </div>
+          {tab === 'dag' ? (
+            <WeekView
+              weekDays={weekDays || []}
+              modules={modules}
+              selectedDateKey={selectedDay?.dateKey || todayKey}
+              onSelectDate={setSelectedDateKey}
+              onToggleTask={onToggleTaskInDay}
+              onToggleProjectSubgoal={onToggleProjectSubgoal}
+              onMoveItem={onMoveItem}
+              pendingPlan={pendingPlan}
+              onAcceptPendingItem={onAcceptPendingItem}
+              onDiscardPendingItem={onDiscardPendingItem}
+              onAcceptAllPending={onAcceptAllPending}
+              onDiscardAllPending={onDiscardAllPending}
+              onMovePendingItem={onMovePendingItem}
+              theme={theme}
+            />
+          ) : (
+            <KanbanView
+              modules={modules}
+              customTasks={customTasks}
+              onAddTask={onAddTask}
+              onAddSubgoal={onAddSubgoal}
+              onSetTaskStatus={onSetTaskStatus}
+              onSetSubgoalStatus={onSetSubgoalStatus}
+              theme={theme}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
