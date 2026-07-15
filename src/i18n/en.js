@@ -1629,6 +1629,11 @@ export default {
       label: 'Auto-plan (available later)',
       short: 'Auto',
     },
+    freeBlock: {
+      label: 'Free block (no deadline, recurring)',
+      short: 'Free block',
+      chip: 'Free block',
+    },
   },
 
   connections: {

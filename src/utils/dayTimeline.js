@@ -76,7 +76,14 @@ export function buildDayTimeline({
     if (mod.type === 'projects') {
       (mod.subjects || []).forEach(subject => {
         (subject.subgoals || []).forEach(goal => {
-          if (goal.deadline !== todayDateKey) return;
+          // Een gewoon subgoal zonder deadline (en zonder `freeBlock`) mag niet
+          // in de pool verschijnen (geen overspoeling, principe 2). Een
+          // `freeBlock`-subgoal verschijnt elke dag; een subgoal met deadline
+          // vandaag verschijnt zoals voorheen. Eén enkele push dekt beide
+          // gevallen, dus geen dubbele emit als een goal toevallig allebei is.
+          const isFreeBlock = !!goal.freeBlock;
+          const isDueToday = goal.deadline === todayDateKey;
+          if (!isFreeBlock && !isDueToday) return;
           const time = goal.time || '';
           pushItem(items, {
             key: `subgoal:${mod.id}:${subject.id}:${goal.id}`,

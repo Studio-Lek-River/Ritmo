@@ -1640,6 +1640,11 @@ export default {
       label: 'Automatisch inplannen (later beschikbaar)',
       short: 'Auto',
     },
+    freeBlock: {
+      label: 'Vrij blok (geen deadline, terugkerend)',
+      short: 'Vrij blok',
+      chip: 'Vrij blok',
+    },
   },
 
   connections: {

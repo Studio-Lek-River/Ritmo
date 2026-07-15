@@ -55,6 +55,7 @@ export default function ProjectsView({
   const [newSubgoalTime, setNewSubgoalTime] = useState('');
   const [newSubgoalDuration, setNewSubgoalDuration] = useState(undefined);
   const [newSubgoalWindow, setNewSubgoalWindow] = useState('');
+  const [newSubgoalFreeBlock, setNewSubgoalFreeBlock] = useState(false);
   const [newSubgoalAutoPlan, setNewSubgoalAutoPlan] = useState(false);
   const [confirmDeleteSubject, setConfirmDeleteSubject] = useState(null);
   const [confirmDeleteSubgoal, setConfirmDeleteSubgoal] = useState(null);
@@ -137,6 +138,7 @@ export default function ProjectsView({
             ...(newSubgoalTime ? { time: newSubgoalTime } : {}),
             ...(newSubgoalDuration ? { duration: newSubgoalDuration } : {}),
             ...(newSubgoalWindow ? { window: newSubgoalWindow } : {}),
+            ...(newSubgoalFreeBlock ? { freeBlock: true } : {}),
             ...(newSubgoalAutoPlan ? { autoPlan: true } : {}),
           }] }
         : s
@@ -147,6 +149,7 @@ export default function ProjectsView({
     setNewSubgoalTime('');
     setNewSubgoalDuration(undefined);
     setNewSubgoalWindow('');
+    setNewSubgoalFreeBlock(false);
     setNewSubgoalAutoPlan(false);
   };
 
@@ -187,6 +190,16 @@ export default function ProjectsView({
       subjects: p.subjects.map(s => s.id !== subjectId ? s : {
         ...s,
         subgoals: s.subgoals.map(g => g.id !== goalId ? g : { ...g, window: windowValue || undefined }),
+      }),
+    }));
+  };
+
+  const setSubgoalFreeBlock = (subjectId, goalId, freeBlock) => {
+    updateProject(p => ({
+      ...p,
+      subjects: p.subjects.map(s => s.id !== subjectId ? s : {
+        ...s,
+        subgoals: s.subgoals.map(g => g.id !== goalId ? g : { ...g, freeBlock: freeBlock || undefined }),
       }),
     }));
   };
@@ -440,6 +453,7 @@ export default function ProjectsView({
                 onSetTime={(goalId, time) => setSubgoalTime(activeSubject.id, goalId, time)}
                 onSetDuration={(goalId, duration) => setSubgoalDuration(activeSubject.id, goalId, duration)}
                 onSetWindow={(goalId, windowValue) => setSubgoalWindow(activeSubject.id, goalId, windowValue)}
+                onSetFreeBlock={(goalId, freeBlock) => setSubgoalFreeBlock(activeSubject.id, goalId, freeBlock)}
                 onSetAutoPlan={(goalId, autoPlan) => setSubgoalAutoPlan(activeSubject.id, goalId, autoPlan)}
                 onRequestDelete={(goal) => setConfirmDeleteSubgoal({ subjectId: activeSubject.id, goal })}
                 onFirstSwipe={onFirstSwipe}
@@ -459,7 +473,8 @@ export default function ProjectsView({
                     type="date"
                     value={newSubgoalDeadline}
                     onChange={(e) => setNewSubgoalDeadline(e.target.value)}
-                    className={`flex-1 min-w-0 px-2 py-2 ${theme.input} rounded-lg text-sm`}
+                    disabled={newSubgoalFreeBlock}
+                    className={`flex-1 min-w-0 px-2 py-2 ${theme.input} rounded-lg text-sm disabled:opacity-60`}
                   />
                   <TimeInput value={newSubgoalTime} onChange={setNewSubgoalTime} theme={theme} />
                   <DurationInput value={newSubgoalDuration} onChange={setNewSubgoalDuration} theme={theme} className="w-20" />
@@ -473,15 +488,30 @@ export default function ProjectsView({
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
-                <label className={`flex items-center gap-1.5 text-xs ${theme.textMuted}`}>
-                  <input
-                    type="checkbox"
-                    checked={newSubgoalAutoPlan}
-                    onChange={(e) => setNewSubgoalAutoPlan(e.target.checked)}
-                    className="w-3.5 h-3.5"
-                  />
-                  {t('planner.autoPlan.label')}
-                </label>
+                <div className="flex items-center gap-4 flex-wrap">
+                  <label className={`flex items-center gap-1.5 text-xs ${theme.textMuted}`}>
+                    <input
+                      type="checkbox"
+                      checked={newSubgoalFreeBlock}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setNewSubgoalFreeBlock(checked);
+                        if (checked) setNewSubgoalDeadline('');
+                      }}
+                      className="w-3.5 h-3.5"
+                    />
+                    {t('planner.freeBlock.label')}
+                  </label>
+                  <label className={`flex items-center gap-1.5 text-xs ${theme.textMuted}`}>
+                    <input
+                      type="checkbox"
+                      checked={newSubgoalAutoPlan}
+                      onChange={(e) => setNewSubgoalAutoPlan(e.target.checked)}
+                      className="w-3.5 h-3.5"
+                    />
+                    {t('planner.autoPlan.label')}
+                  </label>
+                </div>
               </div>
             </>
           ) : (
@@ -537,6 +567,7 @@ function SubgoalList({
   onSetTime,
   onSetDuration,
   onSetWindow,
+  onSetFreeBlock,
   onSetAutoPlan,
   onRequestDelete,
   onFirstSwipe,
@@ -586,6 +617,11 @@ function SubgoalList({
                   } truncate`}>
                     {g.label}
                   </span>
+                  {g.freeBlock && (
+                    <span className={`text-[11px] shrink-0 r-chip ${theme.cardSecondary} ${theme.textMuted} border ${theme.border}`}>
+                      {t('planner.freeBlock.chip')}
+                    </span>
+                  )}
                   {g.deadline && (
                     <span className={`text-xs flex items-center gap-1 shrink-0 ${
                       overdue ? 'text-red-500' : theme.textMuted
@@ -625,6 +661,15 @@ function SubgoalList({
                     theme={theme}
                     className="shrink-0"
                   />
+                  <label className={`flex items-center gap-1 text-[11px] shrink-0 ${theme.textMuted}`}>
+                    <input
+                      type="checkbox"
+                      checked={!!g.freeBlock}
+                      onChange={(e) => onSetFreeBlock(g.id, e.target.checked)}
+                      className="w-3.5 h-3.5"
+                    />
+                    {t('planner.freeBlock.short')}
+                  </label>
                   <label className={`flex items-center gap-1 text-[11px] shrink-0 ${theme.textMuted}`}>
                     <input
                       type="checkbox"
