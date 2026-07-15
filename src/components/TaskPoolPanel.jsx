@@ -2,15 +2,18 @@ import React, { useState } from 'react';
 import { Check, Plus } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { getColorClasses } from '../utils/colors';
-import { encodeDragPayload } from '../utils/dragPayload';
+import { encodeDragPayload, decodeDragPayload } from '../utils/dragPayload';
 import TimeInput from './TimeInput';
 
 // Takenpool voor de WeekView: alle items zonder `time` van de geselecteerde
 // dag (losse taken + projecttaken), gegroepeerd per bron. Sleepbaar naar een
-// dagkolom in WeekView (native HTML5 DnD, `draggable` + dataTransfer). Naast
-// slepen heeft elk item ook een tijd-invoer (plant het meteen in de
-// geselecteerde dag) en een dag-kiesveld (verplaatst het naar een andere dag,
-// zonder tijd) — geen enkele interactievorm is verplicht (principe 2).
+// dagkolom in WeekView (native HTML5 DnD, `draggable` + dataTransfer) én zelf
+// een drop-target (zelfde patroon: onDragOver preventDefault + onDrop decode
+// + handler) — een geagendeerd blok terugslepen naar de pool verplaatst het
+// naar de geselecteerde dag en wist `time`. Naast slepen heeft elk item ook
+// een tijd-invoer (plant het meteen in de geselecteerde dag) en een
+// dag-kiesveld (verplaatst het naar een andere dag, zonder tijd) — geen
+// enkele interactievorm is verplicht (principe 2).
 export default function TaskPoolPanel({
   items = [],
   dayOptions = [],
@@ -28,6 +31,13 @@ export default function TaskPoolPanel({
     if (!trimmed) return;
     onAddTask?.(trimmed);
     setText('');
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const { key, sourceDateKey } = decodeDragPayload(e.dataTransfer.getData('text/plain'));
+    if (!key || !sourceDateKey) return;
+    onMoveItem(key, sourceDateKey, selectedDateKey, '');
   };
 
   const groups = [
@@ -62,7 +72,11 @@ export default function TaskPoolPanel({
         </div>
       )}
 
-      <div className="space-y-3">
+      <div
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleDrop}
+        className="space-y-3 min-h-[3rem]"
+      >
         {items.length === 0 ? (
           <p className={`text-sm ${theme.textMuted} text-center py-4`}>
             {t('planner.pool.empty')}
