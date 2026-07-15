@@ -10,9 +10,9 @@ Dit is het **leidende, levende werkdocument** voor Ritmo Verbonden: de bron van 
 
 Het einddoel is Ritmo als **integrale planner**: één geïntegreerd toegangspunt waar je inlogt en op al je apparaten ziet wat je kunt of moet doen, met voortgang per project of kaartje of vak. De bronnen (GitHub-issues, Trello-kaarten, Outlook-afspraken, huishoudtaken, schoolvakken) komen genormaliseerd samen in één lijst. Je kunt vragen "deel mijn dag in", waarna Ritmo je taken rond je Outlook-afspraken plant en die indeling terugschrijft naar de agenda's die jij kiest.
 
-De integrale planner is bereikt wanneer Fase 3 staat: de Vandaag-feed (S06) brengt alle bronnen op één plek, "deel mijn dag in" (S07) plant je taken rond je afspraken, en de write-back (S08) legt die indeling vast in je agenda. De slices hieronder zijn de route naar dat einddoel; de fasering loopt van het fundament naar de volledige planner.
+De integrale planner is bereikt wanneer Fase C staat: de Vandaag-feed (S10) brengt alle bronnen op één plek, "deel mijn dag in" (S11) plant je taken rond je afspraken, en de write-back (S12) legt die indeling vast in je agenda. De slices hieronder zijn de route naar dat einddoel; de fasering loopt van het fundament naar de volledige planner.
 
-Het volgende einddoel na de Planner: Ritmo wordt je one-stop-shop voor productiviteit, waar Claude een kaartje niet alleen inplant maar ook uitvoert. Vanuit één plek pak je een GitHub-issue, een Trello-kaartje, een mod-wijziging of een afspraak op, en Claude doet het werk met zijn eigen gereedschap. Bereikt wanneer Fase 4 staat.
+Het volgende einddoel na de Planner: Ritmo wordt je one-stop-shop voor productiviteit, waar Claude een kaartje niet alleen inplant maar ook uitvoert. Vanuit één plek pak je een GitHub-issue, een Trello-kaartje, een mod-wijziging of een afspraak op, en Claude doet het werk met zijn eigen gereedschap. Bereikt wanneer Fase D staat.
 
 ## Waar we nu staan
 
@@ -31,13 +31,37 @@ Het volgende einddoel na de Planner: Ritmo wordt je one-stop-shop voor productiv
 - **Sync:** last-write-wins op `updated_at`, achter de `window.storage`-abstractie. De UI verandert niet mee.
 - **Externe bron is geen nieuw module-type:** een bestaande `tasks`- of `projects`-module plus een `source`-binding (`{ provider, connectionId, ... }`). Trouw aan principe 1.
 - **Genormaliseerd item:** `source`, `account` of `household`, `project`, `title`, `status`, `due`, `priority`, `progress`, `url`. Alle bronnen mappen hierop; voortgang per project is een aggregatie over `(source, project)`.
-- **Outlook:** eigen Azure-app die persoonlijke Microsoft-accounts ondersteunt, OAuth-authority `consumers`, plus `offline_access`. In twee stappen: eerst lezen om omheen te plannen (S03, scope `Calendars.Read`), later schrijven naar een instelbare bestemming (S08, scope `Calendars.ReadWrite`; Ritmo-agenda en/of hoofdagenda, beide mag).
+- **Outlook:** eigen Azure-app die persoonlijke Microsoft-accounts ondersteunt, OAuth-authority `consumers`, plus `offline_access`. In twee stappen: eerst lezen om omheen te plannen (S07, scope `Calendars.Read`), later schrijven naar een instelbare bestemming (S12, scope `Calendars.ReadWrite`; Ritmo-agenda en/of hoofdagenda, beide mag).
 - **Planner:** de LLM plant rond de Outlook-afspraken; de write-back naar de agenda is deterministisch via directe Graph-calls, niet via de LLM.
-- **Claude als uitvoerder (MCP-first):** de koppeling tussen Ritmo en Claude loopt via een Ritmo-eigen MCP-server bovenop het genormaliseerde items-model (S02). Claude leest en muteert items via MCP; het echte werk (code en mods, issues, research) draait in Claude's eigen runtime, niet in de PWA. Write-back is deterministisch en standaard achter een bevestiging, zelfde filosofie als de agenda-write-back in S07/S08. Autonome of geplande uitvoering is een optionele laag (Claude Agent SDK) bovenop dezelfde MCP-surface, opt-in per bron. Een deep-link kan als lichte start-knop dienen, maar is niet de ruggengraat.
+- **Claude als uitvoerder (MCP-first):** de koppeling tussen Ritmo en Claude loopt via een Ritmo-eigen MCP-server bovenop het genormaliseerde items-model (S02). Claude leest en muteert items via MCP; het echte werk (code en mods, issues, research) draait in Claude's eigen runtime, niet in de PWA. Write-back is deterministisch en standaard achter een bevestiging, zelfde filosofie als de agenda-write-back in S11/S12. Autonome of geplande uitvoering is een optionele laag (Claude Agent SDK) bovenop dezelfde MCP-surface, opt-in per bron. Een deep-link kan als lichte start-knop dienen, maar is niet de ruggengraat.
 
 ---
 
 ## De slices
+
+### Bouwvolgorde (lineaire S-reeks)
+
+De open slices lopen als één doorlopende reeks in bouwvolgorde. De volgende te bouwen slice is altijd de laagste open S-code. Tracking in GitHub: milestone **Ritmo Verbonden: bouwvolgorde** onder epic-issue #33.
+
+| Slice | Issue | Status | Wat |
+|---|---|---|---|
+| S01 | — | KLAAR | Schema plus RLS baseline |
+| S01b | — | IN UITVOERING | RLS-fix invite-lek (B1) |
+| S02 | — | IN UITVOERING | Connections-infra plus items-model |
+| S03 | #96 | Todo | Week-UI (weekrooster + takenpool + legenda + cross-day) |
+| S04 | #97 | Todo | Planning-metadata + vrije blokken (autoPlan) |
+| S05 | #98 | Todo | Lokale dag-indeler + drie standen |
+| S06 | #99 | Todo | Afstem-voorkeuren |
+| S07 | #36 | Todo | Outlook lezen |
+| S08 | #37 | Todo | Trello lezen |
+| S09 | #38 | Todo | GitHub lezen |
+| S10 | #39 | Todo | Vandaag-feed |
+| S11 | #40 | Todo | Deel mijn dag in |
+| S12 | #41 | Todo | Outlook wegschrijven |
+| S13 | #42 | Todo | Ritmo MCP-server (lezen) |
+| S14 | #43 | Todo | Uitvoer-context per bron |
+| S15 | #44 | Todo | MCP write-back (status + resultaat) |
+| S16 | #45 | Todo | Autonome en geplande uitvoering (optioneel) |
 
 ### Fase 0, Fundament: KLAAR
 Account plus login (magic link, wachtwoord, reset), persoonlijke sync (`settings`, `day:*`) achter `window.storage`, sync-status en Account-scherm.
@@ -45,7 +69,7 @@ Account plus login (magic link, wachtwoord, reset), persoonlijke sync (`settings
 ### Fase 1, Delen: KLAAR
 Deelbare huishoudens: `households`, `household_members` (admin/member), invite-tokens. Gedeeld oppervlak nu: de mealplan-module. Klein en optioneel open: household bulk-pull (nu komt gedeelde data alleen via realtime binnen).
 
-### Fase 2, Hygiëne plus Koppelingen
+### Fase 2, Hygiëne plus basis
 
 #### S01, Schema plus RLS baseline. KLAAR (gemerged)
 Het live schema (7 tabellen) en de RLS als versioned migrations in de repo, plus een verificatierapport. Bevinding: het invite-lek B1.
@@ -60,89 +84,91 @@ Een `redeem_invite`-RPC (`SECURITY DEFINER`) plus strakke policies, zodat invite
 - **Aandacht:** externe bron = bestaande module plus `source`-binding, geen nieuw module-type. Hergebruik het bestaande sync- en storage-patroon.
 - **Openstaand:** de migration (`supabase/migrations/20260713120000_connections.sql`) is geschreven maar nog niet via `db push` toegepast op de live database; dat is een handmatige stap voor Bas (backup plus bevestigingspauze, S01b-workflow), net als het instellen van `SUPABASE_SERVICE_ROLE_KEY` als env-var op de deploy.
 
-#### S03, Outlook lezen
+### Fase A, Planner lokaal (offline). S03–S06
+
+Een lokale, offline versie van de planner die volledig op bestaande data draait, zodat er waarde is lang voordat de koppelingen (Outlook e.a.) klaar zijn. Hangt van niets externs af en kan nu starten. De heuristische indeler uit S05 wordt de deterministische ruggengraat waar de LLM-laag (S11) later op voortbouwt en op terugvalt.
+
+**Ordening-notitie:** deze lokale planner komt bewust **vóór** de Outlook-keten (S07/S12). Fase A levert direct waarde op bestaande data; de LLM-laag (S11) bouwt straks op de lokale indeler (S05) voort in plaats van vanaf nul te beginnen.
+
+#### S03, Week-UI (weekrooster + takenpool + legenda + cross-day). #96
+- **Doel:** de dag-gerichte Planner omvormen naar een weekrooster in Outlook-vorm met een takenpool links en een legenda, inclusief cross-day versleping.
+- **Oplevering:** `src/views/WeekView.jsx` (7 dagkolommen + uur-rijen, blokken op `time`), takenpool per geselecteerde dag, legenda (Agenda vast / Ingepland / Voorstel), een handler om een taak tussen `day:<date>`-records te verplaatsen, en het laden van de zichtbare week. Stijl exact volgens `RitmoPlannerPrototype.jsx`, met repo-patronen (`theme`/`r-*`, `getColorClasses`/`getColorHex`).
+- **Afhankelijk van:** niets (bestaande data).
+
+#### S04, Planning-metadata + vrije blokken (autoPlan). #97
+- **Doel:** optioneel `duration`, `window` en `autoPlan` op de bronnen, plus vrije blokken als tijd-reservering op de bestaande `projects`-module (geen nieuw type).
+- **Afhankelijk van:** S03.
+
+#### S05, Lokale dag-indeler + drie standen. #98
+- **Doel:** een heuristische "deel mijn dag in" (`src/utils/planDay.js`): ankers, dagdeel-vensters, gaten, ontwijkt agenda-blokken. Drie standen als instelling (alleen voorstellen / concept / direct) met ongedaan-maken. Deterministische ruggengraat en fallback voor S11.
+- **Afhankelijk van:** S04.
+
+#### S06, Afstem-voorkeuren. #99
+- **Doel:** een klein voorkeuren-stuk in settings (energie per dagdeel, diepwerk-vensters, hoeveel rust) dat de indeler leest. Legt de basis voor de afstem-vragen die S11 later kan stellen.
+- **Afhankelijk van:** S05.
+
+### Fase B, Koppelingen (lezen). S07–S09
+
+#### S07, Outlook lezen. #36
 - **Doel:** je Outlook-afspraken ophalen, zodat de planner er later omheen kan plannen, en agenda-items als bron tonen.
 - **Oplevering:** Microsoft Graph-integratie via een eigen Azure-app, OAuth-flow (`consumers`-authority, `Calendars.Read`), token-refresh server-side, afspraken genormaliseerd naar items.
 - **Afhankelijk van:** S02.
 - **Aandacht:** Azure-app-registratie is een eenmalige stap voor jou. Authority `consumers` is verplicht voor je persoonlijke account, anders sneuvelt de refresh-token na een uur.
 
-#### S04, Trello lezen
+#### S08, Trello lezen. #37
 - **Doel:** kaarten uit meerdere Trello-borden en accounts als items.
 - **Oplevering:** Trello-koppeling voor meerdere accounts en borden, kaarten naar items, voortgang per bord of lijst.
 - **Afhankelijk van:** S02.
 
-#### S05, GitHub lezen
+#### S09, GitHub lezen. #38
 - **Doel:** issues en hun voortgang als items.
 - **Oplevering:** GitHub-koppeling (issues naar items), voortgang per repo of project. De `api/`-laag heeft al een `GITHUB_TOKEN`-patroon voor feedback; hergebruik dat.
 - **Afhankelijk van:** S02.
 
-### Fase A, Planner lokaal (offline)
+### Fase C, Integrale planner. S10–S12
 
-Een lokale, offline versie van de planner die volledig op bestaande data draait, zodat er waarde is lang voordat de koppelingen (Outlook e.a.) klaar zijn. Hangt van niets externs af en kan nu starten. De heuristische indeler uit A3 wordt de deterministische ruggengraat waar de LLM-laag (S07) later op voortbouwt en op terugvalt.
-
-**Ordening-notitie:** deze lokale S07-lite komt bewust **vóór** de Outlook-keten. Waar de oude volgorde S07 pas na S03 plaatste, levert Fase A nu direct waarde op bestaande data; de LLM-laag (S07) bouwt straks op de lokale indeler (A3) voort in plaats van vanaf nul te beginnen.
-
-#### A1, Week-UI (weekrooster + takenpool + legenda + cross-day). #96
-- **Doel:** de dag-gerichte Planner omvormen naar een weekrooster in Outlook-vorm met een takenpool links en een legenda, inclusief cross-day versleping.
-- **Oplevering:** `src/views/WeekView.jsx` (7 dagkolommen + uur-rijen, blokken op `time`), takenpool per geselecteerde dag, legenda (Agenda vast / Ingepland / Voorstel), een handler om een taak tussen `day:<date>`-records te verplaatsen, en het laden van de zichtbare week. Stijl exact volgens `RitmoPlannerPrototype.jsx`, met repo-patronen (`theme`/`r-*`, `getColorClasses`/`getColorHex`).
-- **Afhankelijk van:** niets (bestaande data).
-
-#### A2, Planning-metadata + vrije blokken (autoPlan). #97
-- **Doel:** optioneel `duration`, `window` en `autoPlan` op de bronnen, plus vrije blokken als tijd-reservering op de bestaande `projects`-module (geen nieuw type).
-- **Afhankelijk van:** A1.
-
-#### A3, Lokale dag-indeler + drie standen. #98
-- **Doel:** een heuristische "deel mijn dag in" (`src/utils/planDay.js`): ankers, dagdeel-vensters, gaten, ontwijkt agenda-blokken. Drie standen als instelling (alleen voorstellen / concept / direct) met ongedaan-maken. Deterministische ruggengraat en fallback voor S07.
-- **Afhankelijk van:** A2.
-
-#### A4, Afstem-voorkeuren. #99
-- **Doel:** een klein voorkeuren-stuk in settings (energie per dagdeel, diepwerk-vensters, hoeveel rust) dat de indeler leest. Legt de basis voor de afstem-vragen die S07 later kan stellen.
-- **Afhankelijk van:** A3.
-
-### Fase 3, Planner
-
-#### S06, Vandaag-feed
+#### S10, Vandaag-feed. #39
 - **Doel:** alle items uit alle bronnen op één plek, gegroepeerd per project, met voortgang.
 - **Oplevering:** een aggregatie-cache (via een scheduled functie), een feed-view in Ritmo, filters per bron, voortgang per project. De prototype-UX uit Claude.ai is de referentie.
-- **Afhankelijk van:** minstens één leesbron (S03, S04 of S05).
+- **Afhankelijk van:** minstens één leesbron (S07, S08 of S09).
 
-#### S07, Deel mijn dag in
+#### S11, Deel mijn dag in. #40
 - **Doel:** de planner die je taken rond je Outlook-afspraken indeelt.
 - **Oplevering:** een plan-endpoint (Claude-API via de `api/`-laag) dat de dag-items plus de Outlook-afspraken neemt en een tijdgeblokte indeling teruggeeft, plus de planner-UI. Nog geen write-back.
-- **Lokale voorloper:** de heuristische indeler uit A3 is de deterministische ruggengraat en fallback; S07 is de LLM-laag daarbovenop. De planner-UI komt uit A1.
-- **Afhankelijk van:** S03 (Outlook lezen) en S06 (feed); bouwt voort op Fase A (A1–A4).
+- **Lokale voorloper:** de heuristische indeler uit S05 is de deterministische ruggengraat en fallback; S11 is de LLM-laag daarbovenop. De planner-UI komt uit S03.
+- **Afhankelijk van:** S07 (Outlook lezen) en S10 (feed); bouwt voort op Fase A (S03–S06).
 
-#### S08, Outlook wegschrijven
+#### S12, Outlook wegschrijven. #41
 - **Doel:** de gegenereerde indeling naar Outlook schrijven.
 - **Oplevering:** `Calendars.ReadWrite`, een aparte "Ritmo"-agenda die via Graph wordt aangemaakt, getagde en regenereerbare blokken, en een instelbare bestemming (Ritmo-agenda en/of hoofdagenda). De write is deterministisch via directe Graph-calls.
-- **Afhankelijk van:** S07.
+- **Afhankelijk van:** S11.
 
-### Fase 4, Uitvoeren (Claude als uitvoerder)
+### Fase D, Uitvoeren (Claude als uitvoerder). S13–S16
 
-Het sluitstuk van de one-stop-shop: Claude pakt items uit Ritmo op en voert ze uit. Bouwt voort op het items-model (S02) en de Vandaag-feed (S06).
+Het sluitstuk van de one-stop-shop: Claude pakt items uit Ritmo op en voert ze uit. Bouwt voort op het items-model (S02) en de Vandaag-feed (S10).
 
-#### S09, Ritmo MCP-server (lezen)
+#### S13, Ritmo MCP-server (lezen). #42
 - **Doel:** Claude toegang geven tot je Ritmo-items vanuit elke Claude-surface (Code, desktop, claude.ai).
 - **Oplevering:** een MCP-server die genormaliseerde items als resources of tools aanbiedt: lijst met filters (bron, status, due) en item-detail met context (gekoppeld project of repo of bord, url, notities). Read-only. Per-gebruiker token, alleen je eigen items (RLS).
-- **Afhankelijk van:** S02 (items-model), S06 (feed-aggregatie).
+- **Afhankelijk van:** S02 (items-model), S10 (feed-aggregatie).
 - **Aandacht:** hergebruik het bestaande items-model, geen nieuw model (principe 1); token-scoping en dataveiligheid; docs voor het registreren in Claude Code of desktop.
 
-#### S10, Uitvoer-context per bron
+#### S14, Uitvoer-context per bron. #43
 - **Doel:** elk item genoeg meegeven zodat Claude het werk echt kan doen.
 - **Oplevering:** per bron een actionable context-blob: GitHub-issue naar repo plus body plus labels; Trello-kaart naar bord of lijst plus beschrijving plus checklists; mod-taak naar project- en mod-pad; afspraak naar agenda-doel. Mapping-laag bovenop de bron-connecties.
-- **Afhankelijk van:** S03/S04/S05 (leesbronnen), S09.
+- **Afhankelijk van:** S07/S08/S09 (leesbronnen), S13.
 - **Aandacht:** geen secrets in de context lekken; consistente normalisatie met S02.
 
-#### S11, MCP write-back (status plus resultaat)
+#### S15, MCP write-back (status plus resultaat). #44
 - **Doel:** de lus sluiten nadat Claude werk heeft gedaan.
 - **Oplevering:** MCP-tools om een item te muteren: status zetten (bezig of klaar), resultaat koppelen (PR-url, agenda-event, notitie). Deterministisch, standaard achter bevestiging.
-- **Afhankelijk van:** S09, S08 (agenda-write-back voor afspraken).
+- **Afhankelijk van:** S13, S12 (agenda-write-back voor afspraken).
 - **Aandacht:** write-back nooit via een LLM-gok maar via expliciete tool-calls; approval-gate; audit-spoor in Ritmo (principe 2).
 
-#### S12, Autonome en geplande uitvoering (optioneel)
+#### S16, Autonome en geplande uitvoering (optioneel). #45
 - **Doel:** Claude proactief items laten oppakken zonder dat je een sessie opent.
 - **Oplevering:** een headless runner (Claude Agent SDK) die op schema of trigger draait ("pak nieuwe issues elke ochtend"), met dry-run of approval, scope-limieten en audit-log terug in Ritmo. Opt-in per gebruiker en per bron.
-- **Afhankelijk van:** S09, S10, S11.
+- **Afhankelijk van:** S13, S14, S15.
 - **Aandacht:** guardrails en gebruikerskeuze (principe 2) wegen hier het zwaarst; kosten- en runtime-bewaking.
 
 ### Optioneel of later
