@@ -123,10 +123,10 @@ slice voorbereid:
   `https://<prod-host>/api/connections/outlook/callback` toevoegen).
 - Server-env-vars in het host-dashboard (zelfde plek als `GITHUB_TOKEN`): `MS_CLIENT_ID`,
   `MS_CLIENT_SECRET`, `MS_OAUTH_REDIRECT_URI`, `OAUTH_STATE_SECRET`.
-- **Hosting-check:** de `api/`-handlers zijn Vercel-stijl terwijl de docs "Netlify-preview" noemen en er
-  geen `netlify.toml`/`vercel.json` in de repo staat. Bevestig hoe `api/` op de host wordt
-  gebouwd/gerouteerd zodat de callback-URL klopt. Kale `vite` serveert `api/` niet — lokaal end-to-end
-  testen vereist de dev-runner van de host. Raakt config, niet de code.
+- **Hosting-check (opgelost, #108):** host = Vercel. De `api/`-handlers zijn Vercel-stijl en worden
+  zero-config gerouteerd (`api/**.js` naar `/api/...`); er is geen `vercel.json` nodig. Het volledige
+  stappenplan (env-vars, productie-deploy + test, lokaal `vercel dev`-fallback, Azure-checklist,
+  troubleshooting) staat in `docs/DEPLOY.md`.
 
 ## Acceptatiecriteria
 
