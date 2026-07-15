@@ -1,3 +1,13 @@
+# [0.52.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.51.0...v0.52.0) (2026-07-15)
+
+
+### Features
+
+* **planner:** per-taak diepwerk-tag ([2e958b1](https://github.com/Studio-Lek-River/Ritmo/commit/2e958b17ffdac9fa5cf06f91bfa3fa62180df59e))
+* **planner:** planDay leest energie/diepwerk/rust ([9c6e600](https://github.com/Studio-Lek-River/Ritmo/commit/9c6e6002c51868a02ebd7015ed3b3460f6909539))
+* **planner:** planPrefs afstem-voorkeuren in settings ([f84d9b4](https://github.com/Studio-Lek-River/Ritmo/commit/f84d9b422d5ace65f41b817d233b6e7cc8cfafd0))
+* **planner:** Voorkeuren-tab + paneel in suite ([dd5cd30](https://github.com/Studio-Lek-River/Ritmo/commit/dd5cd305b2deae9e5bcf04b9037ebb906bd7e74d))
+
 # [0.51.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.50.0...v0.51.0) (2026-07-15)
 
 
