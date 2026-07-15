@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { getColorClasses, getColorHex } from '../utils/colors';
-import { buildDayTimeline } from '../utils/dayTimeline';
+import { buildDayTimeline, DEFAULT_BLOCK_MINUTES } from '../utils/dayTimeline';
 import { isToday, shortWeekdayLabelsMondayFirst } from '../utils/dates';
 import { encodeDragPayload, decodeDragPayload } from '../utils/dragPayload';
 
@@ -19,7 +19,6 @@ const HOUR_START = 7;
 const HOUR_END = 22;
 const ROW_HEIGHT = 64; // px per uur
 const HEADER_HEIGHT = 44; // px
-const DEFAULT_BLOCK_MINUTES = 30;
 
 function timeToMinutesLocal(time) {
   if (!time || typeof time !== 'string') return null;
@@ -28,14 +27,18 @@ function timeToMinutesLocal(time) {
   return Number(match[1]) * 60 + Number(match[2]);
 }
 
-function blockStyle(time) {
+// `duration` (minuten) bepaalt de bloks-hoogte; ontbrekende/ongeldige duur
+// valt terug op `DEFAULT_BLOCK_MINUTES` (ook de drag-snap-granulariteit,
+// hieronder ongewijzigd).
+function blockStyle(time, duration) {
   const rangeStart = HOUR_START * 60;
   const rangeEnd = (HOUR_END + 1) * 60;
   const minutes = timeToMinutesLocal(time) ?? rangeStart;
-  const clamped = Math.min(Math.max(minutes, rangeStart), rangeEnd - DEFAULT_BLOCK_MINUTES);
+  const durationMinutes = Number.isFinite(duration) && duration > 0 ? duration : DEFAULT_BLOCK_MINUTES;
+  const clamped = Math.min(Math.max(minutes, rangeStart), rangeEnd - durationMinutes);
   return {
     top: ((clamped - rangeStart) / 60) * ROW_HEIGHT,
-    height: (DEFAULT_BLOCK_MINUTES / 60) * ROW_HEIGHT,
+    height: (durationMinutes / 60) * ROW_HEIGHT,
   };
 }
 
@@ -186,7 +189,7 @@ export default function WeekView({
                   ))}
 
                   {(dayTimelines[day.dateKey] || []).filter(item => item.time).map(item => {
-                    const { top, height } = blockStyle(item.time);
+                    const { top, height } = blockStyle(item.time, item.duration);
                     const c = getColorClasses(item.color);
                     return (
                       <div

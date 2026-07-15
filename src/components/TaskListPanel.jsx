@@ -3,6 +3,8 @@ import { Check, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { getColorClasses } from '../utils/colors';
 import TimeInput from './TimeInput';
+import DurationInput from './DurationInput';
+import DagdeelSelect from './DagdeelSelect';
 
 // Gedeelde takenlijst voor de Planner: een vaste linkerkolom met een toevoeg-veld
 // en de losse taken (customTasks). Zichtbaar in zowel Dag als Kanban, zodat een
@@ -15,18 +17,27 @@ export default function TaskListPanel({
   onToggleTask,
   onDeleteTask,
   onSetTaskTime,
+  onSetTaskDuration,
+  onSetTaskWindow,
+  onSetTaskAutoPlan,
   theme,
 }) {
   const { t } = useTranslation();
   const [text, setText] = useState('');
   const [time, setTime] = useState('');
+  const [duration, setDuration] = useState(undefined);
+  const [windowValue, setWindowValue] = useState('');
+  const [autoPlan, setAutoPlan] = useState(false);
   const c = getColorClasses(color);
 
   const submit = () => {
     if (!text.trim()) return;
-    onAddTask?.(text.trim(), time || undefined);
+    onAddTask?.(text.trim(), time || undefined, { duration, window: windowValue, autoPlan });
     setText('');
     setTime('');
+    setDuration(undefined);
+    setWindowValue('');
+    setAutoPlan(false);
   };
 
   return (
@@ -35,7 +46,7 @@ export default function TaskListPanel({
         {t('productivity.taskListTitle')}
       </h2>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <input
           type="text"
           value={text}
@@ -45,6 +56,8 @@ export default function TaskListPanel({
           className={`flex-1 min-w-0 px-3 py-2 ${theme.input} ${theme.radiusControl} text-sm focus:outline-none focus:ring-2 focus:ring-blue-300`}
         />
         <TimeInput value={time} onChange={setTime} theme={theme} />
+        <DurationInput value={duration} onChange={setDuration} theme={theme} className="w-20" />
+        <DagdeelSelect value={windowValue} onChange={setWindowValue} theme={theme} />
         <button
           type="button"
           onClick={submit}
@@ -55,6 +68,16 @@ export default function TaskListPanel({
         </button>
       </div>
 
+      <label className={`flex items-center gap-1.5 text-xs ${theme.textMuted}`}>
+        <input
+          type="checkbox"
+          checked={autoPlan}
+          onChange={(e) => setAutoPlan(e.target.checked)}
+          className="w-3.5 h-3.5"
+        />
+        {t('planner.autoPlan.label')}
+      </label>
+
       <div className="space-y-2">
         {tasks.length === 0 ? (
           <p className={`text-sm ${theme.textMuted} text-center py-4`}>
@@ -62,7 +85,7 @@ export default function TaskListPanel({
           </p>
         ) : (
           tasks.map(task => (
-            <div key={task.id} className={`flex items-center gap-2 ${theme.padRow} ${theme.cardSecondary} ${theme.radiusControl} group`}>
+            <div key={task.id} className={`flex items-center gap-2 flex-wrap ${theme.padRow} ${theme.cardSecondary} ${theme.radiusControl} group`}>
               <button
                 type="button"
                 onClick={() => onToggleTask?.(task.id)}
@@ -77,6 +100,17 @@ export default function TaskListPanel({
                 {task.text}
               </span>
               <TimeInput value={task.time} onChange={(v) => onSetTaskTime?.(task.id, v)} theme={theme} className="w-20" />
+              <DurationInput value={task.duration} onChange={(v) => onSetTaskDuration?.(task.id, v)} theme={theme} className="w-16" />
+              <DagdeelSelect value={task.window} onChange={(v) => onSetTaskWindow?.(task.id, v)} theme={theme} />
+              <label className={`flex items-center gap-1 text-[11px] ${theme.textMuted}`}>
+                <input
+                  type="checkbox"
+                  checked={!!task.autoPlan}
+                  onChange={(e) => onSetTaskAutoPlan?.(task.id, e.target.checked)}
+                  className="w-3.5 h-3.5"
+                />
+                {t('planner.autoPlan.short')}
+              </label>
               <button
                 type="button"
                 onClick={() => onDeleteTask?.(task.id)}

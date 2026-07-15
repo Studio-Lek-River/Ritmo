@@ -1620,13 +1620,25 @@ export default {
     pool: {
       title: 'Takenpool',
       empty: 'Geen ongeplande taken voor deze dag.',
-      durationHint: '±30 min',
+      durationMinutes: '{min} min',
       moveToDayAria: 'Verplaats naar dag',
     },
     legend: {
       agenda: 'Agenda',
       ingepland: 'Ingepland',
       voorstel: 'Voorstel',
+    },
+    duration: {
+      label: 'Duur (minuten)',
+      placeholder: 'min',
+    },
+    window: {
+      label: 'Dagdeel-voorkeur',
+      none: 'Geen voorkeur',
+    },
+    autoPlan: {
+      label: 'Automatisch inplannen (later beschikbaar)',
+      short: 'Auto',
     },
   },
 

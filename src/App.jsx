@@ -35,6 +35,8 @@ import ConnectionsSection from './components/ConnectionsSection';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
 import TimeInput from './components/TimeInput';
+import DurationInput from './components/DurationInput';
+import DagdeelSelect from './components/DagdeelSelect';
 import ChecklistModule from './modules/ChecklistModule';
 import CelebrationOverlay from './components/CelebrationOverlay';
 import ConfirmDialog from './components/ConfirmDialog';
@@ -365,6 +367,9 @@ export default function Ritmo() {
             text: rt.text,
             done: false,
             ...(rt.time ? { time: rt.time } : {}),
+            ...(rt.duration ? { duration: rt.duration } : {}),
+            ...(rt.window ? { window: rt.window } : {}),
+            ...(rt.autoPlan ? { autoPlan: rt.autoPlan } : {}),
           }]);
         }
       }
@@ -553,16 +558,27 @@ export default function Ritmo() {
   // Voegt een nieuw project-subgoal ("projecttaak") toe aan een bestaand project,
   // gebruikt door het kaart-toevoegveld in de Planner (Kanban). Nieuwe subgoals
   // hebben geen status/completed en belanden zo via deriveTaskStatus in Te doen.
-  const addProjectSubgoal = (projectId, subjectId, label) => {
+  // `extra` (duration/window/autoPlan) is optioneel en wordt weggelaten als
+  // leeg; de Kanban-kaartvorm zelf blijft ongewijzigd (geen UI voor deze
+  // velden daar), maar de creator kan ze al dragen zoals de andere bronnen.
+  const addProjectSubgoal = (projectId, subjectId, label, extra = {}) => {
     const trimmed = (label || '').trim();
     if (!trimmed) return;
+    const { duration, window, autoPlan } = extra;
     setModules(prev => prev.map(m => {
       if (m.id !== projectId) return m;
       return {
         ...m,
         subjects: (m.subjects || []).map(s => s.id !== subjectId ? s : {
           ...s,
-          subgoals: [...(s.subgoals || []), { id: Date.now(), label: trimmed, completed: false }],
+          subgoals: [...(s.subgoals || []), {
+            id: Date.now(),
+            label: trimmed,
+            completed: false,
+            ...(duration ? { duration } : {}),
+            ...(window ? { window } : {}),
+            ...(autoPlan ? { autoPlan } : {}),
+          }],
         }),
       };
     }));
@@ -1028,14 +1044,18 @@ export default function Ritmo() {
   // Kern-functie: voegt een losse taak toe. Hergebruikt door zowel het
   // Tasks-module-invoerveld (addTask) als het toevoeg-veld in de Planner
   // (TaskListPanel / Kanban Te doen-kolom).
-  const addCustomTask = (text, time) => {
+  const addCustomTask = (text, time, extra = {}) => {
     const trimmed = (text || '').trim();
     if (!trimmed) return;
+    const { duration, window, autoPlan } = extra;
     setCustomTasks(prev => [...prev, {
       id: Date.now(),
       text: trimmed,
       done: false,
       ...(time ? { time } : {}),
+      ...(duration ? { duration } : {}),
+      ...(window ? { window } : {}),
+      ...(autoPlan ? { autoPlan } : {}),
     }]);
   };
 
@@ -1060,6 +1080,18 @@ export default function Ritmo() {
 
   const setTaskTime = (id, time) => {
     setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, time: time || undefined } : t));
+  };
+
+  const setTaskDuration = (id, duration) => {
+    setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, duration: duration || undefined } : t));
+  };
+
+  const setTaskWindow = (id, windowValue) => {
+    setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, window: windowValue || undefined } : t));
+  };
+
+  const setTaskAutoPlan = (id, autoPlan) => {
+    setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, autoPlan: autoPlan || undefined } : t));
   };
 
   // Zet de Kanban-status van een losse taak. Houdt `done` consistent met de
@@ -1141,7 +1173,15 @@ export default function Ritmo() {
       if (virtualDateKey === sourceDateKey) {
         const rt = recurringTasks.find(r => String(r.id) === rtId);
         if (rt) {
-          moved = { recurringId: rt.id, text: rt.text, done: false, ...(rt.time ? { time: rt.time } : {}) };
+          moved = {
+            recurringId: rt.id,
+            text: rt.text,
+            done: false,
+            ...(rt.time ? { time: rt.time } : {}),
+            ...(rt.duration ? { duration: rt.duration } : {}),
+            ...(rt.window ? { window: rt.window } : {}),
+            ...(rt.autoPlan ? { autoPlan: rt.autoPlan } : {}),
+          };
           isVirtual = true;
         }
       }
@@ -1193,6 +1233,9 @@ export default function Ritmo() {
             done: false,
             virtual: true,
             ...(rt.time ? { time: rt.time } : {}),
+            ...(rt.duration ? { duration: rt.duration } : {}),
+            ...(rt.window ? { window: rt.window } : {}),
+            ...(rt.autoPlan ? { autoPlan: rt.autoPlan } : {}),
           }));
         dayTasks = [...stored, ...missing];
       }
@@ -1696,6 +1739,9 @@ export default function Ritmo() {
             onToggleTask={toggleTask}
             onDeleteTask={deleteTask}
             onSetTaskTime={setTaskTime}
+            onSetTaskDuration={setTaskDuration}
+            onSetTaskWindow={setTaskWindow}
+            onSetTaskAutoPlan={setTaskAutoPlan}
             onToggleProjectSubgoal={toggleProjectSubgoal}
             onSetTaskStatus={setTaskStatus}
             onSetSubgoalStatus={setSubgoalStatus}
@@ -4080,6 +4126,9 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
   const [newRecurringText, setNewRecurringText] = useState('');
   const [newRecurringDays, setNewRecurringDays] = useState([]);
   const [newRecurringTime, setNewRecurringTime] = useState('');
+  const [newRecurringDuration, setNewRecurringDuration] = useState(undefined);
+  const [newRecurringWindow, setNewRecurringWindow] = useState('');
+  const [newRecurringAutoPlan, setNewRecurringAutoPlan] = useState(false);
 
   const toggleDay = (day) => {
     setNewRecurringDays(prev =>
@@ -4094,10 +4143,16 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
         text: newRecurringText.trim(),
         days: newRecurringDays,
         ...(newRecurringTime ? { time: newRecurringTime } : {}),
+        ...(newRecurringDuration ? { duration: newRecurringDuration } : {}),
+        ...(newRecurringWindow ? { window: newRecurringWindow } : {}),
+        ...(newRecurringAutoPlan ? { autoPlan: true } : {}),
       }]);
       setNewRecurringText('');
       setNewRecurringDays([]);
       setNewRecurringTime('');
+      setNewRecurringDuration(undefined);
+      setNewRecurringWindow('');
+      setNewRecurringAutoPlan(false);
     }
   };
 
@@ -4109,6 +4164,18 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
     setRecurringTasks(prev => prev.map(rt => rt.id === id ? { ...rt, time: time || undefined } : rt));
   };
 
+  const setRecurringDuration = (id, duration) => {
+    setRecurringTasks(prev => prev.map(rt => rt.id === id ? { ...rt, duration: duration || undefined } : rt));
+  };
+
+  const setRecurringWindow = (id, windowValue) => {
+    setRecurringTasks(prev => prev.map(rt => rt.id === id ? { ...rt, window: windowValue || undefined } : rt));
+  };
+
+  const setRecurringAutoPlan = (id, autoPlan) => {
+    setRecurringTasks(prev => prev.map(rt => rt.id === id ? { ...rt, autoPlan: autoPlan || undefined } : rt));
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -4118,7 +4185,7 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
             <p className={`text-sm ${theme.textMuted} text-center py-2`}>{t('settings.recurringEmpty')}</p>
           ) : (
             recurringTasks.map(rt => (
-              <div key={rt.id} className={`flex items-center gap-2 p-2 ${theme.cardSecondary} rounded-lg`}>
+              <div key={rt.id} className={`flex items-center gap-2 flex-wrap p-2 ${theme.cardSecondary} rounded-lg`}>
                 <Repeat className={`w-4 h-4 ${theme.textMuted}`} />
                 <div className="flex-1">
                   <div className={`text-sm ${theme.textSecondary}`}>{rt.text}</div>
@@ -4127,6 +4194,17 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
                   </div>
                 </div>
                 <TimeInput value={rt.time} onChange={(v) => setRecurringTime(rt.id, v)} theme={theme} className="w-24" />
+                <DurationInput value={rt.duration} onChange={(v) => setRecurringDuration(rt.id, v)} theme={theme} className="w-16" />
+                <DagdeelSelect value={rt.window} onChange={(v) => setRecurringWindow(rt.id, v)} theme={theme} />
+                <label className={`flex items-center gap-1 text-[11px] ${theme.textMuted}`}>
+                  <input
+                    type="checkbox"
+                    checked={!!rt.autoPlan}
+                    onChange={(e) => setRecurringAutoPlan(rt.id, e.target.checked)}
+                    className="w-3.5 h-3.5"
+                  />
+                  {t('planner.autoPlan.short')}
+                </label>
                 <button onClick={() => removeRecurring(rt.id)} className="text-slate-400 hover:text-red-500">
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -4134,18 +4212,29 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
             ))
           )}
         </div>
-        
+
         <div className="space-y-2">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <input
               type="text"
               value={newRecurringText}
               onChange={(e) => setNewRecurringText(e.target.value)}
               placeholder={t('settings.recurringExamplePlaceholder')}
-              className={`flex-1 px-3 py-2 ${theme.input} rounded-lg text-sm`}
+              className={`flex-1 min-w-[8rem] px-3 py-2 ${theme.input} rounded-lg text-sm`}
             />
             <TimeInput value={newRecurringTime} onChange={setNewRecurringTime} theme={theme} />
+            <DurationInput value={newRecurringDuration} onChange={setNewRecurringDuration} theme={theme} className="w-20" />
+            <DagdeelSelect value={newRecurringWindow} onChange={setNewRecurringWindow} theme={theme} />
           </div>
+          <label className={`flex items-center gap-1.5 text-xs ${theme.textMuted}`}>
+            <input
+              type="checkbox"
+              checked={newRecurringAutoPlan}
+              onChange={(e) => setNewRecurringAutoPlan(e.target.checked)}
+              className="w-3.5 h-3.5"
+            />
+            {t('planner.autoPlan.label')}
+          </label>
           <div className="flex gap-1">
             {dayNames.map((day, i) => (
               <button

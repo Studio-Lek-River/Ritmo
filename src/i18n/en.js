@@ -1609,13 +1609,25 @@ export default {
     pool: {
       title: 'Task pool',
       empty: 'No unscheduled tasks for this day.',
-      durationHint: '±30 min',
+      durationMinutes: '{min} min',
       moveToDayAria: 'Move to day',
     },
     legend: {
       agenda: 'Agenda',
       ingepland: 'Scheduled',
       voorstel: 'Suggestion',
+    },
+    duration: {
+      label: 'Duration (minutes)',
+      placeholder: 'min',
+    },
+    window: {
+      label: 'Time-of-day preference',
+      none: 'No preference',
+    },
+    autoPlan: {
+      label: 'Auto-plan (available later)',
+      short: 'Auto',
     },
   },
 

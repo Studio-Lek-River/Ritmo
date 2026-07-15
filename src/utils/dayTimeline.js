@@ -16,6 +16,22 @@ export const DAGDEEL_THRESHOLDS = {
 
 export const DAGDEEL_ORDER = ['ochtend', 'middag', 'avond', 'ongepland'];
 
+// Default blok-duur (minuten) als een item geen `duration` heeft: bepaalt de
+// WeekView-blokhoogte en de TaskPoolPanel-duurhint. Eén centrale plek zodat
+// beide views dezelfde aanname delen (geen losse magic numbers).
+export const DEFAULT_BLOCK_MINUTES = 30;
+
+// Keuzelijst voor de dagdeel-voorkeur (`window`) op customTasks, project-
+// subgoals en recurringTasks. '' = geen voorkeur (veld weglaten bij opslag).
+// Hergebruikt de bestaande `productivity.dagdelen.*`-labels; alleen de lege
+// optie krijgt een nieuwe key (`planner.window.none`).
+export const WINDOW_OPTIONS = [
+  { id: '', labelKey: 'planner.window.none' },
+  { id: 'ochtend', labelKey: 'productivity.dagdelen.ochtend' },
+  { id: 'middag', labelKey: 'productivity.dagdelen.middag' },
+  { id: 'avond', labelKey: 'productivity.dagdelen.avond' },
+];
+
 function timeToMinutes(time) {
   if (!time || typeof time !== 'string') return null;
   const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
@@ -68,6 +84,8 @@ export function buildDayTimeline({
             label: goal.label,
             time,
             dagdeel: dagdeelForTime(time),
+            duration: goal.duration,
+            window: goal.window || '',
             status: !!goal.completed,
             color: mod.color,
             toggle: handlers.onToggleProjectSubgoal
@@ -88,6 +106,8 @@ export function buildDayTimeline({
       label: task.text,
       time,
       dagdeel: dagdeelForTime(time),
+      duration: task.duration,
+      window: task.window || '',
       status: !!task.done,
       color: tasksModuleColor,
       toggle: handlers.onToggleTask ? () => handlers.onToggleTask(task.id) : undefined,
