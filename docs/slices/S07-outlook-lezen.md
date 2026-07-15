@@ -119,8 +119,9 @@ slice voorbereid:
 ## Prerequisites (Bas, eenmalig — buiten de code)
 
 - Azure-app: authority **`consumers`**, scopes `Calendars.Read` + `offline_access` (+ `openid`/`User.Read`),
-  redirect-URI `http://localhost:5173/api/connections/outlook/callback` (dev; vóór productie ook
-  `https://<prod-host>/api/connections/outlook/callback` toevoegen).
+  redirect-URI `http://localhost:3000/api/connections/outlook/callback` (dev via `vercel dev`; kale
+  Vite op 5173 serveert `api/` niet, zie `docs/DEPLOY.md`); vóór productie ook
+  `https://<prod-host>/api/connections/outlook/callback` toevoegen.
 - Server-env-vars in het host-dashboard (zelfde plek als `GITHUB_TOKEN`): `MS_CLIENT_ID`,
   `MS_CLIENT_SECRET`, `MS_OAUTH_REDIRECT_URI`, `OAUTH_STATE_SECRET`.
 - **Hosting-check (opgelost, #108):** host = Vercel. De `api/`-handlers zijn Vercel-stijl en worden
