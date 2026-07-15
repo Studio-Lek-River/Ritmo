@@ -1,7 +1,9 @@
 // "Koppelingen"-sectie in het Account-scherm (S02). Toont Outlook, Trello en
 // GitHub met een status-chip (stijl SyncStatusRow.jsx) en verbind/verbreek.
-// Verbreken werkt end-to-end tegen een bestaande connection-rij; verbinden
-// roept de stub aan tot de echte OAuth-handshake per provider landt (S03-S05).
+// Verbreken toont zich alleen bij een verbonden koppeling (status
+// 'connected'), niet bij het enkel bestaan van een rij (S07b, issue #110);
+// verbinden roept de stub aan tot de echte OAuth-handshake per provider landt
+// (S03-S05).
 // Alleen gerenderd door de aanroeper wanneer er een account is en sync aan
 // staat (opt-in, principe 2).
 import { useState } from 'react';
