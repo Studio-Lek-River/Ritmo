@@ -1,3 +1,16 @@
+# [0.55.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.54.0...v0.55.0) (2026-07-15)
+
+
+### Bug Fixes
+
+* **connections:** toon Verbreken alleen bij verbonden koppeling ([c5ba1e4](https://github.com/Studio-Lek-River/Ritmo/commit/c5ba1e475ca2e73e140a0fab7b002476b0772ec2))
+* **planner:** voorkom verouderde Outlook-agenda bij overlappende refetch ([7b23a0d](https://github.com/Studio-Lek-River/Ritmo/commit/7b23a0d4f857dc80db5885cdb43dae6e5c4a51fa))
+
+
+### Features
+
+* **planner:** expliciete knop om Outlook-agenda te importeren en vernieuwen ([36645e1](https://github.com/Studio-Lek-River/Ritmo/commit/36645e17fd3ea311f0234f819edd5daedb3df394))
+
 # [0.54.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.53.0...v0.54.0) (2026-07-15)
 
 
