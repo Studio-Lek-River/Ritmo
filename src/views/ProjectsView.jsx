@@ -57,6 +57,7 @@ export default function ProjectsView({
   const [newSubgoalWindow, setNewSubgoalWindow] = useState('');
   const [newSubgoalFreeBlock, setNewSubgoalFreeBlock] = useState(false);
   const [newSubgoalAutoPlan, setNewSubgoalAutoPlan] = useState(false);
+  const [newSubgoalDeepWork, setNewSubgoalDeepWork] = useState(false);
   const [confirmDeleteSubject, setConfirmDeleteSubject] = useState(null);
   const [confirmDeleteSubgoal, setConfirmDeleteSubgoal] = useState(null);
   const [confirmDeleteProject, setConfirmDeleteProject] = useState(null);
@@ -140,6 +141,7 @@ export default function ProjectsView({
             ...(newSubgoalWindow ? { window: newSubgoalWindow } : {}),
             ...(newSubgoalFreeBlock ? { freeBlock: true } : {}),
             ...(newSubgoalAutoPlan ? { autoPlan: true } : {}),
+            ...(newSubgoalDeepWork ? { deepWork: true } : {}),
           }] }
         : s
       ),
@@ -151,6 +153,7 @@ export default function ProjectsView({
     setNewSubgoalWindow('');
     setNewSubgoalFreeBlock(false);
     setNewSubgoalAutoPlan(false);
+    setNewSubgoalDeepWork(false);
   };
 
   const toggleSubgoal = (subjectId, goalId) => {
@@ -210,6 +213,16 @@ export default function ProjectsView({
       subjects: p.subjects.map(s => s.id !== subjectId ? s : {
         ...s,
         subgoals: s.subgoals.map(g => g.id !== goalId ? g : { ...g, autoPlan: autoPlan || undefined }),
+      }),
+    }));
+  };
+
+  const setSubgoalDeepWork = (subjectId, goalId, deepWork) => {
+    updateProject(p => ({
+      ...p,
+      subjects: p.subjects.map(s => s.id !== subjectId ? s : {
+        ...s,
+        subgoals: s.subgoals.map(g => g.id !== goalId ? g : { ...g, deepWork: deepWork || undefined }),
       }),
     }));
   };
@@ -455,6 +468,7 @@ export default function ProjectsView({
                 onSetWindow={(goalId, windowValue) => setSubgoalWindow(activeSubject.id, goalId, windowValue)}
                 onSetFreeBlock={(goalId, freeBlock) => setSubgoalFreeBlock(activeSubject.id, goalId, freeBlock)}
                 onSetAutoPlan={(goalId, autoPlan) => setSubgoalAutoPlan(activeSubject.id, goalId, autoPlan)}
+                onSetDeepWork={(goalId, deepWork) => setSubgoalDeepWork(activeSubject.id, goalId, deepWork)}
                 onRequestDelete={(goal) => setConfirmDeleteSubgoal({ subjectId: activeSubject.id, goal })}
                 onFirstSwipe={onFirstSwipe}
               />
@@ -510,6 +524,15 @@ export default function ProjectsView({
                       className="w-3.5 h-3.5"
                     />
                     {t('planner.autoPlan.label')}
+                  </label>
+                  <label className={`flex items-center gap-1.5 text-xs ${theme.textMuted}`}>
+                    <input
+                      type="checkbox"
+                      checked={newSubgoalDeepWork}
+                      onChange={(e) => setNewSubgoalDeepWork(e.target.checked)}
+                      className="w-3.5 h-3.5"
+                    />
+                    {t('planner.deepWork.label')}
                   </label>
                 </div>
               </div>
@@ -569,6 +592,7 @@ function SubgoalList({
   onSetWindow,
   onSetFreeBlock,
   onSetAutoPlan,
+  onSetDeepWork,
   onRequestDelete,
   onFirstSwipe,
 }) {
@@ -678,6 +702,15 @@ function SubgoalList({
                       className="w-3.5 h-3.5"
                     />
                     {t('planner.autoPlan.short')}
+                  </label>
+                  <label className={`flex items-center gap-1 text-[11px] shrink-0 ${theme.textMuted}`}>
+                    <input
+                      type="checkbox"
+                      checked={!!g.deepWork}
+                      onChange={(e) => onSetDeepWork(g.id, e.target.checked)}
+                      className="w-3.5 h-3.5"
+                    />
+                    {t('planner.deepWork.short')}
                   </label>
                 </div>
               </div>

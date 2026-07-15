@@ -247,6 +247,15 @@ export function migrateSettings(settings) {
   if (out.appMode === undefined) out.appMode = 'standard';
   if (out.onboardingProfile === undefined) out.onboardingProfile = 'full';
   if (out.hasSeenHealthTour === undefined) out.hasSeenHealthTour = false;
+  // S06: neutrale afstem-voorkeuren voor de dag-indeler (planDay). Neutraal =
+  // identiek aan S05-gedrag (principe 2: geen opgelegde verandering).
+  if (out.planPrefs === undefined) {
+    out.planPrefs = {
+      energy: { ochtend: 'neutral', middag: 'neutral', avond: 'neutral' },
+      deepWorkWindows: [],
+      rest: 'none',
+    };
+  }
   return out;
 }
 

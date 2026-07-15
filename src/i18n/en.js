@@ -1575,6 +1575,7 @@ export default {
     title: 'Planner',
     dag: 'Day',
     kanban: 'Kanban',
+    voorkeuren: 'Preferences',
     taskListTitle: 'Tasks',
     addCard: 'Add task',
     cardTypeTask: 'Task',
@@ -1645,10 +1646,37 @@ export default {
       label: 'Auto-plan (available later)',
       short: 'Auto',
     },
+    deepWork: {
+      label: 'Deep work task (matches deep-work windows)',
+      short: 'Deep work',
+    },
     freeBlock: {
       label: 'Free block (no deadline, recurring)',
       short: 'Free block',
       chip: 'Free block',
+    },
+  },
+
+  planPrefs: {
+    title: 'Tuning preferences',
+    hint: 'Leaving this empty or neutral changes nothing about how "Plan my day" places tasks.',
+    energy: {
+      title: 'Energy per time of day',
+      hint: 'Auto-planned tasks without a time-of-day preference land preferably in the time of day with the highest energy.',
+      high: 'High',
+      neutral: 'Neutral',
+      low: 'Low',
+    },
+    deepWork: {
+      title: 'Deep-work windows',
+      hint: 'Tasks tagged as deep work land preferably within these times of day.',
+    },
+    rest: {
+      title: 'Rest between tasks',
+      hint: 'Minimum buffer between auto-planned tasks.',
+      none: 'None',
+      light: 'Light (15 min)',
+      ample: 'Ample (30 min)',
     },
   },
 

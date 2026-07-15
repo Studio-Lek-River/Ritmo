@@ -101,6 +101,16 @@ const PLAN_MODE_OPTIONS = [
   { id: 'direct', labelKey: 'settings.planModeDirect' },
 ];
 
+// Neutrale S06-default voor de dag-indeler-voorkeuren: energie per dagdeel
+// 'neutral', geen diepwerk-vensters, geen rustbuffer — identiek aan S05-
+// gedrag (principe 2: geen opgelegde verandering zonder actie van de
+// gebruiker in het Voorkeuren-paneel).
+const DEFAULT_PLAN_PREFS = {
+  energy: { ochtend: 'neutral', middag: 'neutral', avond: 'neutral' },
+  deepWorkWindows: [],
+  rest: 'none',
+};
+
 // Dag-einde voor de indeler; spiegelt WeekView's HOUR_END (die module
 // exporteert 'm niet). Dag-start komt per aanroep uit de slaap-wake of deze
 // fallback (zie handleShareDay).
@@ -140,6 +150,7 @@ export default function Ritmo() {
   const [goldenBorderEnabled, setGoldenBorderEnabled] = useState(true);
   const [appMode, setAppMode] = useState('standard');
   const [planMode, setPlanMode] = useState('propose');
+  const [planPrefs, setPlanPrefs] = useState(DEFAULT_PLAN_PREFS);
   // Ephemere uitkomst van "Deel mijn dag in" (propose/concept-standen). Nooit
   // gepersisteerd — alleen bij expliciete acceptatie schrijft een handler via
   // de bestaande moveItemToDay/setTaskTime. Shape: { dateKey, mode, items }.
@@ -206,6 +217,7 @@ export default function Ritmo() {
         if (settings.goldenBorderEnabled !== undefined) setGoldenBorderEnabled(settings.goldenBorderEnabled);
         if (settings.appMode !== undefined) setAppMode(settings.appMode);
         if (settings.planMode !== undefined) setPlanMode(settings.planMode);
+        if (settings.planPrefs !== undefined) setPlanPrefs(settings.planPrefs);
         if (settings.onboardingProfile !== undefined) setOnboardingProfile(settings.onboardingProfile);
         if (settings.hasUsedSwipe !== undefined) setHasUsedSwipe(settings.hasUsedSwipe);
         if (settings.hasDismissedInstallBanner !== undefined) setHasDismissedInstallBanner(settings.hasDismissedInstallBanner);
@@ -341,6 +353,7 @@ export default function Ritmo() {
           goldenBorderEnabled,
           appMode,
           planMode,
+          planPrefs,
           onboardingProfile,
           hasUsedSwipe,
           hasDismissedInstallBanner,
@@ -352,7 +365,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, planPrefs, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
 
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
@@ -403,6 +416,7 @@ export default function Ritmo() {
             ...(rt.duration ? { duration: rt.duration } : {}),
             ...(rt.window ? { window: rt.window } : {}),
             ...(rt.autoPlan ? { autoPlan: rt.autoPlan } : {}),
+            ...(rt.deepWork ? { deepWork: rt.deepWork } : {}),
           }]);
         }
       }
@@ -597,7 +611,7 @@ export default function Ritmo() {
   const addProjectSubgoal = (projectId, subjectId, label, extra = {}) => {
     const trimmed = (label || '').trim();
     if (!trimmed) return;
-    const { duration, window, autoPlan } = extra;
+    const { duration, window, autoPlan, deepWork } = extra;
     setModules(prev => prev.map(m => {
       if (m.id !== projectId) return m;
       return {
@@ -611,6 +625,7 @@ export default function Ritmo() {
             ...(duration ? { duration } : {}),
             ...(window ? { window } : {}),
             ...(autoPlan ? { autoPlan } : {}),
+            ...(deepWork ? { deepWork } : {}),
           }],
         }),
       };
@@ -1107,7 +1122,7 @@ export default function Ritmo() {
   const addCustomTask = (text, time, extra = {}) => {
     const trimmed = (text || '').trim();
     if (!trimmed) return;
-    const { duration, window, autoPlan } = extra;
+    const { duration, window, autoPlan, deepWork } = extra;
     setCustomTasks(prev => [...prev, {
       id: Date.now(),
       text: trimmed,
@@ -1116,6 +1131,7 @@ export default function Ritmo() {
       ...(duration ? { duration } : {}),
       ...(window ? { window } : {}),
       ...(autoPlan ? { autoPlan } : {}),
+      ...(deepWork ? { deepWork } : {}),
     }]);
   };
 
@@ -1152,6 +1168,10 @@ export default function Ritmo() {
 
   const setTaskAutoPlan = (id, autoPlan) => {
     setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, autoPlan: autoPlan || undefined } : t));
+  };
+
+  const setTaskDeepWork = (id, deepWork) => {
+    setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, deepWork: deepWork || undefined } : t));
   };
 
   // Zet de Kanban-status van een losse taak. Houdt `done` consistent met de
@@ -1241,6 +1261,7 @@ export default function Ritmo() {
             ...(rt.duration ? { duration: rt.duration } : {}),
             ...(rt.window ? { window: rt.window } : {}),
             ...(rt.autoPlan ? { autoPlan: rt.autoPlan } : {}),
+            ...(rt.deepWork ? { deepWork: rt.deepWork } : {}),
           };
           isVirtual = true;
         }
@@ -1296,6 +1317,7 @@ export default function Ritmo() {
             ...(rt.duration ? { duration: rt.duration } : {}),
             ...(rt.window ? { window: rt.window } : {}),
             ...(rt.autoPlan ? { autoPlan: rt.autoPlan } : {}),
+            ...(rt.deepWork ? { deepWork: rt.deepWork } : {}),
           }));
         dayTasks = [...stored, ...missing];
       }
@@ -1331,7 +1353,7 @@ export default function Ritmo() {
           if (goal.time) {
             fixed.push({ time: goal.time, duration: goal.duration });
           } else if (goal.autoPlan) {
-            candidates.push({ key, duration: goal.duration, window: goal.window || '', order: order++ });
+            candidates.push({ key, duration: goal.duration, window: goal.window || '', deepWork: !!goal.deepWork, order: order++ });
           }
         });
       });
@@ -1344,7 +1366,7 @@ export default function Ritmo() {
       if (task.time) {
         fixed.push({ time: task.time, duration: task.duration });
       } else if (task.autoPlan) {
-        candidates.push({ key, duration: task.duration, window: task.window || '', order: order++ });
+        candidates.push({ key, duration: task.duration, window: task.window || '', deepWork: !!task.deepWork, order: order++ });
       }
     });
 
@@ -1380,6 +1402,7 @@ export default function Ritmo() {
       dayStart,
       dayEnd: PLAN_DAY_END,
       slotStep: DEFAULT_BLOCK_MINUTES,
+      prefs: planPrefs,
     });
     if (assignments.length === 0) return;
 
@@ -1422,7 +1445,7 @@ export default function Ritmo() {
         kind: meta[a.key]?.kind,
       })),
     });
-  }, [buildPlanInputs, modules, planMode, applyPendingAssignment, writeTasksForDay, t]);
+  }, [buildPlanInputs, modules, planMode, planPrefs, applyPendingAssignment, writeTasksForDay, t]);
 
   // Eén voorstel-/concept-blok overnemen resp. vastzetten: schrijft via de
   // bestaande handler en haalt het item uit de ephemere pendingPlan-state.
@@ -1964,6 +1987,7 @@ export default function Ritmo() {
             onSetTaskDuration={setTaskDuration}
             onSetTaskWindow={setTaskWindow}
             onSetTaskAutoPlan={setTaskAutoPlan}
+            onSetTaskDeepWork={setTaskDeepWork}
             onToggleProjectSubgoal={toggleProjectSubgoal}
             onSetTaskStatus={setTaskStatus}
             onSetSubgoalStatus={setSubgoalStatus}
@@ -1976,6 +2000,8 @@ export default function Ritmo() {
             onAcceptAllPending={acceptAllPending}
             onDiscardAllPending={discardAllPending}
             onMovePendingItem={movePendingItem}
+            planPrefs={planPrefs}
+            setPlanPrefs={setPlanPrefs}
             theme={theme}
           />
         )}
@@ -4383,6 +4409,7 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
   const [newRecurringDuration, setNewRecurringDuration] = useState(undefined);
   const [newRecurringWindow, setNewRecurringWindow] = useState('');
   const [newRecurringAutoPlan, setNewRecurringAutoPlan] = useState(false);
+  const [newRecurringDeepWork, setNewRecurringDeepWork] = useState(false);
 
   const toggleDay = (day) => {
     setNewRecurringDays(prev =>
@@ -4400,6 +4427,7 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
         ...(newRecurringDuration ? { duration: newRecurringDuration } : {}),
         ...(newRecurringWindow ? { window: newRecurringWindow } : {}),
         ...(newRecurringAutoPlan ? { autoPlan: true } : {}),
+        ...(newRecurringDeepWork ? { deepWork: true } : {}),
       }]);
       setNewRecurringText('');
       setNewRecurringDays([]);
@@ -4407,6 +4435,7 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
       setNewRecurringDuration(undefined);
       setNewRecurringWindow('');
       setNewRecurringAutoPlan(false);
+      setNewRecurringDeepWork(false);
     }
   };
 
@@ -4428,6 +4457,10 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
 
   const setRecurringAutoPlan = (id, autoPlan) => {
     setRecurringTasks(prev => prev.map(rt => rt.id === id ? { ...rt, autoPlan: autoPlan || undefined } : rt));
+  };
+
+  const setRecurringDeepWork = (id, deepWork) => {
+    setRecurringTasks(prev => prev.map(rt => rt.id === id ? { ...rt, deepWork: deepWork || undefined } : rt));
   };
 
   return (
@@ -4459,6 +4492,15 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
                   />
                   {t('planner.autoPlan.short')}
                 </label>
+                <label className={`flex items-center gap-1 text-[11px] ${theme.textMuted}`}>
+                  <input
+                    type="checkbox"
+                    checked={!!rt.deepWork}
+                    onChange={(e) => setRecurringDeepWork(rt.id, e.target.checked)}
+                    className="w-3.5 h-3.5"
+                  />
+                  {t('planner.deepWork.short')}
+                </label>
                 <button onClick={() => removeRecurring(rt.id)} className="text-slate-400 hover:text-red-500">
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -4488,6 +4530,15 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
               className="w-3.5 h-3.5"
             />
             {t('planner.autoPlan.label')}
+          </label>
+          <label className={`flex items-center gap-1.5 text-xs ${theme.textMuted}`}>
+            <input
+              type="checkbox"
+              checked={newRecurringDeepWork}
+              onChange={(e) => setNewRecurringDeepWork(e.target.checked)}
+              className="w-3.5 h-3.5"
+            />
+            {t('planner.deepWork.label')}
           </label>
           <div className="flex gap-1">
             {dayNames.map((day, i) => (
