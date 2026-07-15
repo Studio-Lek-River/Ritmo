@@ -1645,6 +1645,10 @@ export default {
       label: 'Auto-plan (available later)',
       short: 'Auto',
     },
+    deepWork: {
+      label: 'Deep work task (matches deep-work windows)',
+      short: 'Deep work',
+    },
     freeBlock: {
       label: 'Free block (no deadline, recurring)',
       short: 'Free block',

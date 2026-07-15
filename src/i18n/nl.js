@@ -1656,6 +1656,10 @@ export default {
       label: 'Automatisch inplannen (later beschikbaar)',
       short: 'Auto',
     },
+    deepWork: {
+      label: 'Diepwerktaak (matcht met diepwerk-vensters)',
+      short: 'Diepwerk',
+    },
     freeBlock: {
       label: 'Vrij blok (geen deadline, terugkerend)',
       short: 'Vrij blok',

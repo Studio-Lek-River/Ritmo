@@ -20,6 +20,7 @@ export default function TaskListPanel({
   onSetTaskDuration,
   onSetTaskWindow,
   onSetTaskAutoPlan,
+  onSetTaskDeepWork,
   theme,
 }) {
   const { t } = useTranslation();
@@ -28,16 +29,18 @@ export default function TaskListPanel({
   const [duration, setDuration] = useState(undefined);
   const [windowValue, setWindowValue] = useState('');
   const [autoPlan, setAutoPlan] = useState(false);
+  const [deepWork, setDeepWork] = useState(false);
   const c = getColorClasses(color);
 
   const submit = () => {
     if (!text.trim()) return;
-    onAddTask?.(text.trim(), time || undefined, { duration, window: windowValue, autoPlan });
+    onAddTask?.(text.trim(), time || undefined, { duration, window: windowValue, autoPlan, deepWork });
     setText('');
     setTime('');
     setDuration(undefined);
     setWindowValue('');
     setAutoPlan(false);
+    setDeepWork(false);
   };
 
   return (
@@ -78,6 +81,16 @@ export default function TaskListPanel({
         {t('planner.autoPlan.label')}
       </label>
 
+      <label className={`flex items-center gap-1.5 text-xs ${theme.textMuted}`}>
+        <input
+          type="checkbox"
+          checked={deepWork}
+          onChange={(e) => setDeepWork(e.target.checked)}
+          className="w-3.5 h-3.5"
+        />
+        {t('planner.deepWork.label')}
+      </label>
+
       <div className="space-y-2">
         {tasks.length === 0 ? (
           <p className={`text-sm ${theme.textMuted} text-center py-4`}>
@@ -110,6 +123,15 @@ export default function TaskListPanel({
                   className="w-3.5 h-3.5"
                 />
                 {t('planner.autoPlan.short')}
+              </label>
+              <label className={`flex items-center gap-1 text-[11px] ${theme.textMuted}`}>
+                <input
+                  type="checkbox"
+                  checked={!!task.deepWork}
+                  onChange={(e) => onSetTaskDeepWork?.(task.id, e.target.checked)}
+                  className="w-3.5 h-3.5"
+                />
+                {t('planner.deepWork.short')}
               </label>
               <button
                 type="button"

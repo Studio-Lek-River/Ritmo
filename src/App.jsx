@@ -416,6 +416,7 @@ export default function Ritmo() {
             ...(rt.duration ? { duration: rt.duration } : {}),
             ...(rt.window ? { window: rt.window } : {}),
             ...(rt.autoPlan ? { autoPlan: rt.autoPlan } : {}),
+            ...(rt.deepWork ? { deepWork: rt.deepWork } : {}),
           }]);
         }
       }
@@ -610,7 +611,7 @@ export default function Ritmo() {
   const addProjectSubgoal = (projectId, subjectId, label, extra = {}) => {
     const trimmed = (label || '').trim();
     if (!trimmed) return;
-    const { duration, window, autoPlan } = extra;
+    const { duration, window, autoPlan, deepWork } = extra;
     setModules(prev => prev.map(m => {
       if (m.id !== projectId) return m;
       return {
@@ -624,6 +625,7 @@ export default function Ritmo() {
             ...(duration ? { duration } : {}),
             ...(window ? { window } : {}),
             ...(autoPlan ? { autoPlan } : {}),
+            ...(deepWork ? { deepWork } : {}),
           }],
         }),
       };
@@ -1120,7 +1122,7 @@ export default function Ritmo() {
   const addCustomTask = (text, time, extra = {}) => {
     const trimmed = (text || '').trim();
     if (!trimmed) return;
-    const { duration, window, autoPlan } = extra;
+    const { duration, window, autoPlan, deepWork } = extra;
     setCustomTasks(prev => [...prev, {
       id: Date.now(),
       text: trimmed,
@@ -1129,6 +1131,7 @@ export default function Ritmo() {
       ...(duration ? { duration } : {}),
       ...(window ? { window } : {}),
       ...(autoPlan ? { autoPlan } : {}),
+      ...(deepWork ? { deepWork } : {}),
     }]);
   };
 
@@ -1165,6 +1168,10 @@ export default function Ritmo() {
 
   const setTaskAutoPlan = (id, autoPlan) => {
     setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, autoPlan: autoPlan || undefined } : t));
+  };
+
+  const setTaskDeepWork = (id, deepWork) => {
+    setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, deepWork: deepWork || undefined } : t));
   };
 
   // Zet de Kanban-status van een losse taak. Houdt `done` consistent met de
@@ -1254,6 +1261,7 @@ export default function Ritmo() {
             ...(rt.duration ? { duration: rt.duration } : {}),
             ...(rt.window ? { window: rt.window } : {}),
             ...(rt.autoPlan ? { autoPlan: rt.autoPlan } : {}),
+            ...(rt.deepWork ? { deepWork: rt.deepWork } : {}),
           };
           isVirtual = true;
         }
@@ -1309,6 +1317,7 @@ export default function Ritmo() {
             ...(rt.duration ? { duration: rt.duration } : {}),
             ...(rt.window ? { window: rt.window } : {}),
             ...(rt.autoPlan ? { autoPlan: rt.autoPlan } : {}),
+            ...(rt.deepWork ? { deepWork: rt.deepWork } : {}),
           }));
         dayTasks = [...stored, ...missing];
       }
@@ -1977,6 +1986,7 @@ export default function Ritmo() {
             onSetTaskDuration={setTaskDuration}
             onSetTaskWindow={setTaskWindow}
             onSetTaskAutoPlan={setTaskAutoPlan}
+            onSetTaskDeepWork={setTaskDeepWork}
             onToggleProjectSubgoal={toggleProjectSubgoal}
             onSetTaskStatus={setTaskStatus}
             onSetSubgoalStatus={setSubgoalStatus}
@@ -4396,6 +4406,7 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
   const [newRecurringDuration, setNewRecurringDuration] = useState(undefined);
   const [newRecurringWindow, setNewRecurringWindow] = useState('');
   const [newRecurringAutoPlan, setNewRecurringAutoPlan] = useState(false);
+  const [newRecurringDeepWork, setNewRecurringDeepWork] = useState(false);
 
   const toggleDay = (day) => {
     setNewRecurringDays(prev =>
@@ -4413,6 +4424,7 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
         ...(newRecurringDuration ? { duration: newRecurringDuration } : {}),
         ...(newRecurringWindow ? { window: newRecurringWindow } : {}),
         ...(newRecurringAutoPlan ? { autoPlan: true } : {}),
+        ...(newRecurringDeepWork ? { deepWork: true } : {}),
       }]);
       setNewRecurringText('');
       setNewRecurringDays([]);
@@ -4420,6 +4432,7 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
       setNewRecurringDuration(undefined);
       setNewRecurringWindow('');
       setNewRecurringAutoPlan(false);
+      setNewRecurringDeepWork(false);
     }
   };
 
@@ -4441,6 +4454,10 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
 
   const setRecurringAutoPlan = (id, autoPlan) => {
     setRecurringTasks(prev => prev.map(rt => rt.id === id ? { ...rt, autoPlan: autoPlan || undefined } : rt));
+  };
+
+  const setRecurringDeepWork = (id, deepWork) => {
+    setRecurringTasks(prev => prev.map(rt => rt.id === id ? { ...rt, deepWork: deepWork || undefined } : rt));
   };
 
   return (
@@ -4472,6 +4489,15 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
                   />
                   {t('planner.autoPlan.short')}
                 </label>
+                <label className={`flex items-center gap-1 text-[11px] ${theme.textMuted}`}>
+                  <input
+                    type="checkbox"
+                    checked={!!rt.deepWork}
+                    onChange={(e) => setRecurringDeepWork(rt.id, e.target.checked)}
+                    className="w-3.5 h-3.5"
+                  />
+                  {t('planner.deepWork.short')}
+                </label>
                 <button onClick={() => removeRecurring(rt.id)} className="text-slate-400 hover:text-red-500">
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -4501,6 +4527,15 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
               className="w-3.5 h-3.5"
             />
             {t('planner.autoPlan.label')}
+          </label>
+          <label className={`flex items-center gap-1.5 text-xs ${theme.textMuted}`}>
+            <input
+              type="checkbox"
+              checked={newRecurringDeepWork}
+              onChange={(e) => setNewRecurringDeepWork(e.target.checked)}
+              className="w-3.5 h-3.5"
+            />
+            {t('planner.deepWork.label')}
           </label>
           <div className="flex gap-1">
             {dayNames.map((day, i) => (
