@@ -49,7 +49,7 @@ Onderzoek gericht — geen tussentijdse permissie-pauzes:
   - UI-tekst → `src/i18n/nl.js` + `src/i18n/en.js` (key-pariteit verplicht)
   - Opslag → `window.storage` / `useStoredState` i.p.v. directe `localStorage`
   - Componenten/utils → bestaande in `src/components/` en `src/utils/`
-  Toets tegen de twee principes; de volledige checklist staat in `.claude/skills/kwaliteitscheck/SKILL.md` (Dimensie 4).
+  Toets tegen de Ritmo-uitgangspunten (`.claude/docs/PROJECT_INSTRUCTIONS.md`); de volledige checklist staat in `.claude/skills/kwaliteitscheck/SKILL.md` (Dimensie 4).
 
 ### Stap 3 — Branch
 
@@ -70,7 +70,7 @@ Schrijf `docs/slices/SXX-<kebab>.md` op basis van `docs/slices/SXX-template.md`.
 - **Acceptatiecriteria:** toetsbaar geformuleerd, inclusief de vaste criteria:
   - [ ] i18n key-pariteit (`npm run check:i18n` slaagt) voor elke nieuwe UI-string.
   - [ ] Geen wijzigingen buiten de scope van deze slice.
-  - [ ] Nieuw gedrag is configureerbaar of uitschakelbaar (principe 2); bestaande data blijft veilig.
+  - [ ] Nieuw gedrag is configureerbaar of uitschakelbaar (uitgangspunt "werkt voor de gebruiker"); bestaande data blijft veilig.
 
 Commit op de branch:
 ```
@@ -103,7 +103,7 @@ AskUserQuestion:
 Bij "Ja": orkestreer sequentieel vanuit deze hoofdsessie (subagents starten zelf geen subagents):
 
 1. `Agent` **implementer** — geef de slice-spec-path mee; voert de wijzigingen uit op de branch.
-2. `Agent` **reviewer** (read-only) — code, principes, i18n-regel, scope-discipline.
+2. `Agent` **reviewer** (read-only) — code, uitgangspunten, i18n-regel, scope-discipline.
 3. `Agent` **verifier** (read-only) — resultaat punt voor punt tegen de acceptatiecriteria.
 
 Vat elk resultaat kort samen. Bij bevindingen van reviewer/verifier: terug naar de implementer voor een fix, of terug naar Bas als het een scope-/ontwerpvraag is.
@@ -124,7 +124,7 @@ gh pr create --repo Studio-Lek-River/Ritmo --base main --head slice/SXX-<kebab> 
 Closes #<n>"
 ```
 
-De PR-body benoemt de wijzigingen (samenvatting per acceptatiecriterium) en bevat `Closes #<n>` op een eigen regel, zodat GitHub de issue automatisch sluit wanneer de PR naar `main` gemerged wordt. Sluit af met de samenvatting per acceptatiecriterium en de Netlify-preview-verwijzing. **Poort 2** (Bas test en merge) blijft bij Bas.
+De PR-body benoemt de wijzigingen (samenvatting per acceptatiecriterium) en bevat `Closes #<n>` op een eigen regel, zodat GitHub de issue automatisch sluit wanneer de PR naar `main` gemerged wordt. Sluit af met de samenvatting per acceptatiecriterium en de Vercel-preview-verwijzing. **Poort 2** (Bas test en merge) blijft bij Bas.
 
 ## AskUserQuestion-richtlijn
 

@@ -31,9 +31,16 @@ import InstallGuide from './components/help/InstallGuide';
 import BackupSection from './components/BackupSection';
 import AuthSection from './components/auth/AuthSection';
 import SyncStatusRow from './components/SyncStatusRow';
+import ConnectionsSection from './components/ConnectionsSection';
+import OutlookOAuthReturn from './components/OutlookOAuthReturn';
+import useConnections from './hooks/useConnections';
+import useOutlookEvents from './hooks/useOutlookEvents';
+import { externalBlocksForDay } from './utils/outlookEvents';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
 import TimeInput from './components/TimeInput';
+import DurationInput from './components/DurationInput';
+import DagdeelSelect from './components/DagdeelSelect';
 import ChecklistModule from './modules/ChecklistModule';
 import CelebrationOverlay from './components/CelebrationOverlay';
 import ConfirmDialog from './components/ConfirmDialog';
@@ -43,7 +50,16 @@ import { CELEBRATION_ANIMATIONS, CONFETTI_CONFIG, buildConfetti } from './utils/
 import { migrateModuleConfig, migrateDayModuleData, migrateSettings } from './utils/migrate';
 import { useTranslation, resolveModuleName } from './i18n/useTranslation';
 import { logEvent, removeEvent, generateTagId, generateTagGroupId } from './utils/collections';
-import { logInjection, removeInjection, injectableMeds, INJECTION_ZONES } from './utils/bodymap';
+import {
+  logInjection,
+  removeInjectionById,
+  updateInjectionPosition,
+  normalizeInjectionEvent,
+  makeInjectionId,
+  zoneFor,
+  injectableMeds,
+  INJECTION_ZONES,
+} from './utils/bodymap';
 import { FREQUENCY_LABEL_KEYS } from './utils/medication';
 import { scheduleEntryMed } from './utils/injectionSchedule';
 import { ScheduleEntryFormModal } from './views/InjectionScheduleView';
@@ -66,6 +82,8 @@ import {
   WEEKDAY_KEYS, shortWeekdayLabelsMondayFirst, weekdayLabelLong,
 } from './utils/dates';
 import { goalsForNight, isOnTarget } from './utils/sleep';
+import { DEFAULT_BLOCK_MINUTES } from './utils/dayTimeline';
+import { planDay } from './utils/planDay';
 import {
   buildDayCellBackground, moduleStatusForDay, isDayFullyComplete,
   normalizeChecklistItemData, isChecklistItemComplete,
@@ -77,6 +95,31 @@ import { buildDaysWithActive } from './utils/insights';
 import CounterDisplay, { DISPLAY_STYLE_KEYS } from './components/CounterDisplay';
 import { DEFAULT_MODULES, instantiateDefaults, ensureStandardModules } from './utils/defaultModules';
 import { playSound } from './utils/sound';
+
+// De drie standen voor "Deel mijn dag in" (S05). Instelling, geen vaste
+// keuze (principe 2): `propose` is de minst ingrijpende default. Volgt het
+// `.map()`-patroon voor de segmented control in SettingsModal.
+const PLAN_MODE_OPTIONS = [
+  { id: 'propose', labelKey: 'settings.planModePropose' },
+  { id: 'concept', labelKey: 'settings.planModeConcept' },
+  { id: 'direct', labelKey: 'settings.planModeDirect' },
+];
+
+// Neutrale S06-default voor de dag-indeler-voorkeuren: energie per dagdeel
+// 'neutral', geen diepwerk-vensters, geen rustbuffer — identiek aan S05-
+// gedrag (principe 2: geen opgelegde verandering zonder actie van de
+// gebruiker in het Voorkeuren-paneel).
+const DEFAULT_PLAN_PREFS = {
+  energy: { ochtend: 'neutral', middag: 'neutral', avond: 'neutral' },
+  deepWorkWindows: [],
+  rest: 'none',
+};
+
+// Dag-einde voor de indeler; spiegelt WeekView's HOUR_END (die module
+// exporteert 'm niet). Dag-start komt per aanroep uit de slaap-wake of deze
+// fallback (zie handleShareDay).
+const PLAN_DAY_END = '22:00';
+const PLAN_DAY_START_FALLBACK = '08:00';
 
 export default function Ritmo() {
   const { t, language, languageSetting, setLanguage } = useTranslation();
@@ -110,6 +153,12 @@ export default function Ritmo() {
   const [soundVolume, setSoundVolume] = useState(80);
   const [goldenBorderEnabled, setGoldenBorderEnabled] = useState(true);
   const [appMode, setAppMode] = useState('standard');
+  const [planMode, setPlanMode] = useState('propose');
+  const [planPrefs, setPlanPrefs] = useState(DEFAULT_PLAN_PREFS);
+  // Ephemere uitkomst van "Deel mijn dag in" (propose/concept-standen). Nooit
+  // gepersisteerd — alleen bij expliciete acceptatie schrijft een handler via
+  // de bestaande moveItemToDay/setTaskTime. Shape: { dateKey, mode, items }.
+  const [pendingPlan, setPendingPlan] = useState(null);
   const isDesktop = useIsDesktop();
   const [onboardingProfile, setOnboardingProfile] = useState('full');
   const [hasUsedSwipe, setHasUsedSwipe] = useState(false);
@@ -171,6 +220,8 @@ export default function Ritmo() {
         if (settings.soundVolume !== undefined) setSoundVolume(settings.soundVolume);
         if (settings.goldenBorderEnabled !== undefined) setGoldenBorderEnabled(settings.goldenBorderEnabled);
         if (settings.appMode !== undefined) setAppMode(settings.appMode);
+        if (settings.planMode !== undefined) setPlanMode(settings.planMode);
+        if (settings.planPrefs !== undefined) setPlanPrefs(settings.planPrefs);
         if (settings.onboardingProfile !== undefined) setOnboardingProfile(settings.onboardingProfile);
         if (settings.hasUsedSwipe !== undefined) setHasUsedSwipe(settings.hasUsedSwipe);
         if (settings.hasDismissedInstallBanner !== undefined) setHasDismissedInstallBanner(settings.hasDismissedInstallBanner);
@@ -305,6 +356,8 @@ export default function Ritmo() {
           soundVolume,
           goldenBorderEnabled,
           appMode,
+          planMode,
+          planPrefs,
           onboardingProfile,
           hasUsedSwipe,
           hasDismissedInstallBanner,
@@ -316,7 +369,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, planPrefs, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
 
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
@@ -364,6 +417,10 @@ export default function Ritmo() {
             text: rt.text,
             done: false,
             ...(rt.time ? { time: rt.time } : {}),
+            ...(rt.duration ? { duration: rt.duration } : {}),
+            ...(rt.window ? { window: rt.window } : {}),
+            ...(rt.autoPlan ? { autoPlan: rt.autoPlan } : {}),
+            ...(rt.deepWork ? { deepWork: rt.deepWork } : {}),
           }]);
         }
       }
@@ -552,16 +609,28 @@ export default function Ritmo() {
   // Voegt een nieuw project-subgoal ("projecttaak") toe aan een bestaand project,
   // gebruikt door het kaart-toevoegveld in de Planner (Kanban). Nieuwe subgoals
   // hebben geen status/completed en belanden zo via deriveTaskStatus in Te doen.
-  const addProjectSubgoal = (projectId, subjectId, label) => {
+  // `extra` (duration/window/autoPlan) is optioneel en wordt weggelaten als
+  // leeg; de Kanban-kaartvorm zelf blijft ongewijzigd (geen UI voor deze
+  // velden daar), maar de creator kan ze al dragen zoals de andere bronnen.
+  const addProjectSubgoal = (projectId, subjectId, label, extra = {}) => {
     const trimmed = (label || '').trim();
     if (!trimmed) return;
+    const { duration, window, autoPlan, deepWork } = extra;
     setModules(prev => prev.map(m => {
       if (m.id !== projectId) return m;
       return {
         ...m,
         subjects: (m.subjects || []).map(s => s.id !== subjectId ? s : {
           ...s,
-          subgoals: [...(s.subgoals || []), { id: Date.now(), label: trimmed, completed: false }],
+          subgoals: [...(s.subgoals || []), {
+            id: Date.now(),
+            label: trimmed,
+            completed: false,
+            ...(duration ? { duration } : {}),
+            ...(window ? { window } : {}),
+            ...(autoPlan ? { autoPlan } : {}),
+            ...(deepWork ? { deepWork } : {}),
+          }],
         }),
       };
     }));
@@ -795,9 +864,21 @@ export default function Ritmo() {
   // Eén pass die atomair de prik logt én de voorraad van het bronmedicijn
   // verlaagt (geklemd op 0), zodat log en voorraad nooit uit de pas lopen.
   // `date` mag worden meegegeven (undo van een verwijdering herstelt zo de
-  // oorspronkelijke datum); zonder `date` wordt vandaag gebruikt.
-  const logInjectionEvent = (bodymapModuleId, { zoneId, medId, medModuleId, medName, date } = {}) => {
-    const event = { date: date || todayKey, zoneId, medId, medModuleId, medName };
+  // oorspronkelijke datum); zonder `date` wordt vandaag gebruikt. H12: `id`/
+  // `x`/`y`/`view` zijn de precieze plaatsing; `id` mag worden meegegeven
+  // (undo re-logt zo exact hetzelfde event) anders wordt er een nieuwe gemaakt.
+  const logInjectionEvent = (bodymapModuleId, { id, zoneId, x, y, view, medId, medModuleId, medName, date } = {}) => {
+    const event = {
+      id: id || makeInjectionId(),
+      date: date || todayKey,
+      zoneId,
+      x,
+      y,
+      view: view || 'front',
+      medId,
+      medModuleId,
+      medName,
+    };
     setModules(prev => prev.map(m => {
       if (m.id === bodymapModuleId && m.type === 'bodymap') {
         return logInjection(m, event);
@@ -815,15 +896,30 @@ export default function Ritmo() {
     return event;
   };
 
-  // Verwijdert de logregel én herstelt de voorraad van het bronmedicijn met 1.
-  // Als het event of het bronmedicijn niet meer bestaat: alleen de logregel
-  // verwijderen, voorraad met rust laten (defensief).
-  const removeInjectionEvent = (bodymapModuleId, index) => {
-    const bodymapModule = modules.find(m => m.id === bodymapModuleId && m.type === 'bodymap');
-    const removedEvent = bodymapModule?.log?.[index] || null;
+  // H12: verplaatst een bestaande prik (verslepen). De zone wordt opnieuw
+  // afgeleid uit het nieuwe punt; voorraad blijft ongemoeid.
+  const moveInjectionEvent = (bodymapModuleId, id, { x, y, view } = {}) => {
+    const zoneId = zoneFor(x, y, view || 'front');
     setModules(prev => prev.map(m => {
       if (m.id === bodymapModuleId && m.type === 'bodymap') {
-        return removeInjection(m, index);
+        return updateInjectionPosition(m, id, { x, y, zoneId });
+      }
+      return m;
+    }));
+  };
+
+  // Verwijdert de logregel (op id, H12) én herstelt de voorraad van het
+  // bronmedicijn met 1. Als het event of het bronmedicijn niet meer bestaat:
+  // alleen de logregel verwijderen, voorraad met rust laten (defensief). De
+  // log wordt eerst genormaliseerd zodat ook pre-H12 events (zonder eigen id)
+  // op dezelfde gesynthetiseerde id matchen als de view gebruikte.
+  const removeInjectionEvent = (bodymapModuleId, id) => {
+    const bodymapModule = modules.find(m => m.id === bodymapModuleId && m.type === 'bodymap');
+    const normalizedLog = (bodymapModule?.log || []).map((event, index) => normalizeInjectionEvent(event, index));
+    const removedEvent = normalizedLog.find((event) => event.id === id) || null;
+    setModules(prev => prev.map(m => {
+      if (m.id === bodymapModuleId && m.type === 'bodymap') {
+        return removeInjectionById(m, id);
       }
       if (removedEvent && m.id === removedEvent.medModuleId && m.type === 'medication') {
         return {
@@ -1027,14 +1123,19 @@ export default function Ritmo() {
   // Kern-functie: voegt een losse taak toe. Hergebruikt door zowel het
   // Tasks-module-invoerveld (addTask) als het toevoeg-veld in de Planner
   // (TaskListPanel / Kanban Te doen-kolom).
-  const addCustomTask = (text, time) => {
+  const addCustomTask = (text, time, extra = {}) => {
     const trimmed = (text || '').trim();
     if (!trimmed) return;
+    const { duration, window, autoPlan, deepWork } = extra;
     setCustomTasks(prev => [...prev, {
       id: Date.now(),
       text: trimmed,
       done: false,
       ...(time ? { time } : {}),
+      ...(duration ? { duration } : {}),
+      ...(window ? { window } : {}),
+      ...(autoPlan ? { autoPlan } : {}),
+      ...(deepWork ? { deepWork } : {}),
     }]);
   };
 
@@ -1061,12 +1162,350 @@ export default function Ritmo() {
     setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, time: time || undefined } : t));
   };
 
+  const setTaskDuration = (id, duration) => {
+    setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, duration: duration || undefined } : t));
+  };
+
+  const setTaskWindow = (id, windowValue) => {
+    setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, window: windowValue || undefined } : t));
+  };
+
+  const setTaskAutoPlan = (id, autoPlan) => {
+    setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, autoPlan: autoPlan || undefined } : t));
+  };
+
+  const setTaskDeepWork = (id, deepWork) => {
+    setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, deepWork: deepWork || undefined } : t));
+  };
+
   // Zet de Kanban-status van een losse taak. Houdt `done` consistent met de
   // bestaande toggle (Today/Dag-view): `klaar` zet `done = true`, elke andere
   // kolom zet het weer op false.
   const setTaskStatus = (id, status) => {
     setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, status, done: status === 'klaar' } : t));
   };
+
+  // ---- WeekView (Planner) handlers ---------------------------------------
+  // De WeekView toont alle dagen van de huidige week, niet alleen de actieve
+  // dag. Deze twee helpers lezen/schrijven de customTasks van een willekeurige
+  // dag: de actieve dag via de live state (customTasks/setCustomTasks, zoals
+  // de rest van de app), elke andere dag rechtstreeks via history + storage.
+  // Hierop bouwen zowel het afvinken op een niet-actieve dag als de
+  // cross-day-drag (verplaatsen + tijd zetten) voort.
+  const readTasksForDay = useCallback((dateKey) => {
+    if (dateKey === activeDateKey) return customTasks;
+    return history[dateKey]?.customTasks || [];
+  }, [activeDateKey, customTasks, history]);
+
+  const writeTasksForDay = useCallback((dateKey, updater) => {
+    if (dateKey === activeDateKey) {
+      setCustomTasks(prev => updater(prev));
+      return;
+    }
+    setHistory(prev => {
+      const day = prev[dateKey] || { moduleData: {}, customTasks: [] };
+      const nextCustomTasks = updater(day.customTasks || []);
+      const nextDay = { ...day, customTasks: nextCustomTasks };
+      window.storage.set(`day:${dateKey}`, JSON.stringify(nextDay)).catch(() => {});
+      return { ...prev, [dateKey]: nextDay };
+    });
+  }, [activeDateKey]);
+
+  // Afvinken van een losse taak op een willekeurige dag van de zichtbare week.
+  // Op de actieve dag hergebruikt dit de bestaande toggleTask (incl. geluid);
+  // op elke andere dag schrijft het rechtstreeks naar dat day:<date>-record.
+  const toggleTaskInDay = useCallback((dateKey, taskId) => {
+    if (dateKey === activeDateKey) { toggleTask(taskId); return; }
+    writeTasksForDay(dateKey, tasks => tasks.map(t =>
+      String(t.id) === String(taskId) ? { ...t, done: !t.done } : t
+    ));
+  }, [activeDateKey, writeTasksForDay]);
+
+  // De ene nieuwe cross-day-handler uit de S03-spec: verplaatst een pool-item
+  // (losse taak of projecttaak) naar een dag + tijd. Losse taken verhuizen
+  // tussen day:<date>-records; project-subgoals leven niet per dag maar op de
+  // module zelf, dus daar past deze handler `deadline` + `time` aan. Een nog
+  // niet gematerialiseerde recurring-instantie (virtual, zie weekDays) wordt
+  // pas nu voor het eerst als echte taak opgeslagen — nooit eager (principe 2).
+  const moveItemToDay = useCallback((itemKey, sourceDateKey, targetDateKey, time) => {
+    if (itemKey.startsWith('subgoal:')) {
+      const [, projectId, subjectId, goalIdRaw] = itemKey.split(':');
+      setModules(prev => prev.map(m => {
+        if (m.id !== projectId) return m;
+        return {
+          ...m,
+          subjects: (m.subjects || []).map(s => s.id !== subjectId ? s : {
+            ...s,
+            subgoals: (s.subgoals || []).map(g => String(g.id) !== goalIdRaw ? g : {
+              ...g,
+              deadline: targetDateKey,
+              time: time || undefined,
+            }),
+          }),
+        };
+      }));
+      return;
+    }
+
+    if (!itemKey.startsWith('task:')) return;
+    const taskId = itemKey.slice('task:'.length);
+
+    let moved = null;
+    let isVirtual = false;
+    if (taskId.startsWith('virtual:')) {
+      const [, rtId, virtualDateKey] = taskId.split(':');
+      if (virtualDateKey === sourceDateKey) {
+        const rt = recurringTasks.find(r => String(r.id) === rtId);
+        if (rt) {
+          moved = {
+            recurringId: rt.id,
+            text: rt.text,
+            done: false,
+            ...(rt.time ? { time: rt.time } : {}),
+            ...(rt.duration ? { duration: rt.duration } : {}),
+            ...(rt.window ? { window: rt.window } : {}),
+            ...(rt.autoPlan ? { autoPlan: rt.autoPlan } : {}),
+            ...(rt.deepWork ? { deepWork: rt.deepWork } : {}),
+          };
+          isVirtual = true;
+        }
+      }
+    } else {
+      moved = readTasksForDay(sourceDateKey).find(t => String(t.id) === taskId) || null;
+    }
+    if (!moved) return;
+
+    const nextTask = { ...moved, time: time || undefined, ...(isVirtual ? { id: genId('task') } : {}) };
+
+    if (sourceDateKey === targetDateKey) {
+      writeTasksForDay(targetDateKey, tasks => tasks.some(t => String(t.id) === taskId)
+        ? tasks.map(t => String(t.id) === taskId ? nextTask : t)
+        : [...tasks, nextTask]);
+      return;
+    }
+
+    writeTasksForDay(targetDateKey, tasks => [...tasks, nextTask]);
+    if (!isVirtual) {
+      writeTasksForDay(sourceDateKey, tasks => tasks.filter(t => String(t.id) !== taskId));
+    }
+  }, [readTasksForDay, writeTasksForDay, recurringTasks]);
+
+  // Zichtbare week voor de WeekView: de 7 dagen (ma-zo) van de huidige
+  // kalenderweek. De actieve dag (altijd "vandaag" binnen de Planner, zie de
+  // view==='productivity'-guard hierboven) leest de live customTasks-state;
+  // elke andere dag leest de al-in-geheugen history-map. Voor dagen ná vandaag
+  // worden terugkerende taken die daar nog niet gematerialiseerd zijn er
+  // alleen virtueel (in-memory, `virtual: true`) bijgevoegd zodat de week zich
+  // als agenda gedraagt — pas een gebruikersactie (slepen/tijd zetten, via
+  // moveItemToDay) schrijft zo'n instantie echt naar het dagrecord. Zo blijft
+  // het tonen van een toekomstige dag veilig voor bestaande opslag (principe 2).
+  const weekDays = useMemo(() => {
+    const monday = startOfWeek(new Date());
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = addDays(monday, i);
+      const dateKey = fmtDateKey(date);
+      const stored = dateKey === activeDateKey ? customTasks : (history[dateKey]?.customTasks || []);
+
+      let dayTasks = stored;
+      if (dateKey > todayKey) {
+        const missing = recurringTasks
+          .filter(rt => rt.days.includes(i))
+          .filter(rt => !stored.some(t => t.recurringId === rt.id))
+          .map(rt => ({
+            id: `virtual:${rt.id}:${dateKey}`,
+            recurringId: rt.id,
+            text: rt.text,
+            done: false,
+            virtual: true,
+            ...(rt.time ? { time: rt.time } : {}),
+            ...(rt.duration ? { duration: rt.duration } : {}),
+            ...(rt.window ? { window: rt.window } : {}),
+            ...(rt.autoPlan ? { autoPlan: rt.autoPlan } : {}),
+            ...(rt.deepWork ? { deepWork: rt.deepWork } : {}),
+          }));
+        dayTasks = [...stored, ...missing];
+      }
+
+      return { date, dateKey, customTasks: dayTasks };
+    });
+  }, [activeDateKey, customTasks, history, recurringTasks, todayKey]);
+
+  // ---- Outlook-agenda (S07) ------------------------------------------------
+  // Eigen useConnections-instantie (naast die van ConnectionsSection) puur om
+  // hier te kunnen afleiden of Outlook verbonden is; App.jsx zelf schrijft er
+  // niets mee weg. Agenda-ophalen is een no-op zonder verbonden Outlook of
+  // buiten de Planner-view (principe 2).
+  const outlookConnectionState = useConnections(currentUser?.id);
+  const outlookConnection = outlookConnectionState.connections.find(
+    c => c.provider === 'outlook' && c.status === 'connected'
+  ) || null;
+  const { eventsByDate: outlookEventsByDate } = useOutlookEvents({
+    enabled: !!outlookConnection && view === 'productivity',
+    weekDays,
+    connectionId: outlookConnection?.id,
+  });
+
+  // ---- "Deel mijn dag in" (S05) -------------------------------------------
+  // Bouwt de input voor de pure planDay-motor voor één dag: candidates zijn
+  // pool-items (autoPlan === true, zonder tijd), fixed zijn items die al een
+  // tijd hebben. Spiegelt dayTimeline.js' bronnen (project-subgoals +
+  // customTasks, incl. gematerialiseerde recurring via weekDays) maar geeft
+  // ook `autoPlan` door — dat veld heeft de Dag-tijdlijn zelf niet nodig.
+  // `meta` onthoudt per key de weergave-info (label/kleur/soort) voor de
+  // pending-blokken; planDay zelf blijft puur en krijgt alleen platte data.
+  const buildPlanInputs = useCallback((dateKey) => {
+    const dayTasks = weekDays.find(d => d.dateKey === dateKey)?.customTasks || [];
+    const candidates = [];
+    const fixed = [];
+    const meta = {};
+    let order = 0;
+
+    modules.forEach(mod => {
+      if (!mod.enabled || mod.type !== 'projects') return;
+      (mod.subjects || []).forEach(subject => {
+        (subject.subgoals || []).forEach(goal => {
+          const isFreeBlock = !!goal.freeBlock;
+          const isDueToday = goal.deadline === dateKey;
+          if (!isFreeBlock && !isDueToday) return;
+          const key = `subgoal:${mod.id}:${subject.id}:${goal.id}`;
+          meta[key] = { label: goal.label, color: mod.color, kind: 'projecttaak' };
+          if (goal.time) {
+            fixed.push({ time: goal.time, duration: goal.duration });
+          } else if (goal.autoPlan) {
+            candidates.push({ key, duration: goal.duration, window: goal.window || '', deepWork: !!goal.deepWork, order: order++ });
+          }
+        });
+      });
+    });
+
+    const tasksModuleColor = modules.find(m => m.enabled && m.type === 'tasks')?.color;
+    dayTasks.forEach(task => {
+      const key = `task:${task.id}`;
+      meta[key] = { label: task.text, color: tasksModuleColor, kind: 'losseTaak' };
+      if (task.time) {
+        fixed.push({ time: task.time, duration: task.duration });
+      } else if (task.autoPlan) {
+        candidates.push({ key, duration: task.duration, window: task.window || '', deepWork: !!task.deepWork, order: order++ });
+      }
+    });
+
+    return { candidates, fixed, meta };
+  }, [weekDays, modules]);
+
+  // Past één plan-toewijzing toe via de bestaande cross-day-handler
+  // (moveItemToDay dekt zowel losse taken, gematerialiseerde recurring als
+  // project-subgoals) — dezelfde dag als bron en doel, want de indeler werkt
+  // op de geselecteerde dag zelf (geen dag-wissel).
+  const applyPendingAssignment = useCallback((dateKey, key, time) => {
+    moveItemToDay(key, dateKey, dateKey, time);
+  }, [moveItemToDay]);
+
+  // Hoofd-handler: verzamelt candidates/fixed voor `dateKey`, leidt dayStart
+  // af uit een actieve slaap-module (of de nette fallback) en vertakt op
+  // planMode. `notify` is optioneel en alleen nodig voor de ongedaan-maken-
+  // toast van de direct-stand; App.jsx zelf zit niet onder ToastProvider, dus
+  // de aanroeper (ProductivitySuiteView, wél een ToastProvider-kind) geeft
+  // zijn eigen `showToast` mee.
+  const handleShareDay = useCallback((dateKey, notify) => {
+    const { candidates, fixed, meta } = buildPlanInputs(dateKey);
+    if (candidates.length === 0) return;
+
+    const sleepModule = modules.find(m => m.enabled && m.type === 'sleep');
+    const wake = sleepModule ? goalsForNight(sleepModule.goals, parseDateKey(dateKey)).wake : null;
+    const dayStart = wake || PLAN_DAY_START_FALLBACK;
+
+    const { assignments } = planDay({
+      candidates,
+      fixed,
+      external: externalBlocksForDay(outlookEventsByDate[dateKey], dateKey),
+      dayStart,
+      dayEnd: PLAN_DAY_END,
+      slotStep: DEFAULT_BLOCK_MINUTES,
+      prefs: planPrefs,
+    });
+    if (assignments.length === 0) return;
+
+    if (planMode === 'direct') {
+      assignments.forEach(a => applyPendingAssignment(dateKey, a.key, a.time));
+      if (typeof notify === 'function') {
+        notify({
+          message: t('planner.toast.planned'),
+          actionLabel: t('common.undo'),
+          onAction: () => {
+            // Een nog niet gematerialiseerde recurring-instantie (virtual key)
+            // krijgt bij het eerste apply-moment een nieuwe, echte task-id
+            // (zie moveItemToDay); de oorspronkelijke virtuele key opnieuw
+            // aanroepen zou een tweede, lege taak toevoegen in plaats van de
+            // net geplaatste te wissen. Ongedaan maken voor zo'n item
+            // verwijdert daarom de gematerialiseerde taak weer (terug naar
+            // virtueel) via recurringId, in plaats van de tijd te wissen.
+            assignments.forEach(a => {
+              const virtualMatch = /^task:virtual:([^:]+):/.exec(a.key);
+              if (virtualMatch) {
+                const rtId = virtualMatch[1];
+                writeTasksForDay(dateKey, tasks => tasks.filter(t => String(t.recurringId) !== rtId));
+              } else {
+                applyPendingAssignment(dateKey, a.key, '');
+              }
+            });
+          },
+        });
+      }
+      return;
+    }
+
+    setPendingPlan({
+      dateKey,
+      mode: planMode,
+      items: assignments.map(a => ({
+        ...a,
+        label: meta[a.key]?.label || '',
+        color: meta[a.key]?.color,
+        kind: meta[a.key]?.kind,
+      })),
+    });
+  }, [buildPlanInputs, modules, planMode, planPrefs, applyPendingAssignment, writeTasksForDay, t, outlookEventsByDate]);
+
+  // Eén voorstel-/concept-blok overnemen resp. vastzetten: schrijft via de
+  // bestaande handler en haalt het item uit de ephemere pendingPlan-state.
+  const acceptPendingItem = useCallback((key) => {
+    setPendingPlan(prev => {
+      if (!prev) return prev;
+      const item = prev.items.find(i => i.key === key);
+      if (item) applyPendingAssignment(prev.dateKey, key, item.time);
+      const items = prev.items.filter(i => i.key !== key);
+      return items.length ? { ...prev, items } : null;
+    });
+  }, [applyPendingAssignment]);
+
+  const discardPendingItem = useCallback((key) => {
+    setPendingPlan(prev => {
+      if (!prev) return prev;
+      const items = prev.items.filter(i => i.key !== key);
+      return items.length ? { ...prev, items } : null;
+    });
+  }, []);
+
+  // Bulk "alles overnemen" (propose-stand).
+  const acceptAllPending = useCallback(() => {
+    setPendingPlan(prev => {
+      if (!prev) return prev;
+      prev.items.forEach(item => applyPendingAssignment(prev.dateKey, item.key, item.time));
+      return null;
+    });
+  }, [applyPendingAssignment]);
+
+  const discardAllPending = useCallback(() => setPendingPlan(null), []);
+
+  // Concept-blokken zijn aanpasbaar vóór vastzetten (S03-slepen hergebruikt,
+  // zie WeekView): dit verandert alleen de ephemere tijd in pendingPlan, nooit
+  // de echte opslag — pas acceptPendingItem/acceptAllPending schrijft.
+  const movePendingItem = useCallback((key, time) => {
+    setPendingPlan(prev => {
+      if (!prev) return prev;
+      return { ...prev, items: prev.items.map(i => i.key === key ? { ...i, time } : i) };
+    });
+  }, []);
 
   // Streak calculation. moduleData is the source of truth for the active
   // date; for any other day, fall back to history (which is updated on save).
@@ -1348,6 +1787,7 @@ export default function Ritmo() {
     onLogMedIntake: logMedIntake,
     onLogInjection: logInjectionEvent,
     onRemoveInjection: removeInjectionEvent,
+    onMoveInjection: moveInjectionEvent,
     onSetHeatWindow: setBodymapHeatWindow,
     onAddScheduleEntry: addScheduleEntry,
     onUpdateScheduleEntry: updateScheduleEntry,
@@ -1361,6 +1801,7 @@ export default function Ritmo() {
     <ToastProvider>
     <div className={`min-h-screen ${theme.bg} p-4 transition-colors duration-300 relative overflow-hidden`}>
       <Toast theme={theme} />
+      <OutlookOAuthReturn onConnected={outlookConnectionState.refresh} />
       <SyncConflictDialog
         open={Boolean(pendingConflicts && pendingConflicts.length > 0)}
         conflicts={pendingConflicts || []}
@@ -1556,14 +1997,32 @@ export default function Ritmo() {
           <ProductivitySuiteView
             modules={modules}
             customTasks={customTasks}
+            weekDays={weekDays}
+            todayKey={todayKey}
+            agendaByDate={outlookEventsByDate}
             onAddTask={addCustomTask}
             onAddSubgoal={addProjectSubgoal}
             onToggleTask={toggleTask}
             onDeleteTask={deleteTask}
             onSetTaskTime={setTaskTime}
+            onSetTaskDuration={setTaskDuration}
+            onSetTaskWindow={setTaskWindow}
+            onSetTaskAutoPlan={setTaskAutoPlan}
+            onSetTaskDeepWork={setTaskDeepWork}
             onToggleProjectSubgoal={toggleProjectSubgoal}
             onSetTaskStatus={setTaskStatus}
             onSetSubgoalStatus={setSubgoalStatus}
+            onToggleTaskInDay={toggleTaskInDay}
+            onMoveItem={moveItemToDay}
+            pendingPlan={pendingPlan}
+            onShareDay={handleShareDay}
+            onAcceptPendingItem={acceptPendingItem}
+            onDiscardPendingItem={discardPendingItem}
+            onAcceptAllPending={acceptAllPending}
+            onDiscardAllPending={discardAllPending}
+            onMovePendingItem={movePendingItem}
+            planPrefs={planPrefs}
+            setPlanPrefs={setPlanPrefs}
             theme={theme}
           />
         )}
@@ -1628,6 +2087,8 @@ export default function Ritmo() {
           setGoldenBorderEnabled={setGoldenBorderEnabled}
           appMode={appMode}
           setAppMode={setAppMode}
+          planMode={planMode}
+          setPlanMode={setPlanMode}
           switchToStandard={switchToStandard}
           theme={theme}
           dayNames={dayNames}
@@ -1850,7 +2311,7 @@ function StreakBadge({ label, days, color, theme }) {
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, switchToStandard, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour }) {
+function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, planMode, setPlanMode, switchToStandard, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
   const [helpView, setHelpView] = useState(initialHelp ? 'list' : null); // null | 'list' | 'install' | 'feedback'
@@ -2315,6 +2776,24 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
             </div>
 
             <div className={`mt-6 pt-6 border-t ${theme.border}`}>
+              <h3 className={`font-semibold ${theme.textSecondary} mb-1`}>{t('settings.planMode')}</h3>
+              <p className={`text-xs ${theme.textMuted} mb-3`}>{t('settings.planModeHint')}</p>
+              <div className="flex gap-2">
+                {PLAN_MODE_OPTIONS.map(({ id, labelKey }) => (
+                  <button
+                    key={id}
+                    onClick={() => setPlanMode(id)}
+                    className={`flex-1 py-3 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 ${
+                      planMode === id ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
+                    }`}
+                  >
+                    {t(labelKey)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className={`mt-6 pt-6 border-t ${theme.border}`}>
               <h3 className={`font-semibold ${theme.textSecondary} mb-3`}>{t('settings.effects')}</h3>
 
               <label className={`flex items-center justify-between gap-3 p-3 ${theme.cardSecondary} rounded-lg mb-3`}>
@@ -2457,6 +2936,9 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
               <AuthSection theme={theme} />
             )}
             <SyncStatusRow theme={theme} signedIn={!!currentUser} userId={currentUser?.id} />
+            {isSyncEnabled() && currentUser && (
+              <ConnectionsSection theme={theme} accountId={currentUser.id} />
+            )}
           </div>
         )}
 
@@ -3802,7 +4284,12 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
                 meds={injMeds}
                 iconOptions={ICON_OPTIONS}
                 onLogInjection={(modId, event) => setEditing(prev => logInjection(prev, event))}
-                onRemoveInjection={(modId, index) => setEditing(prev => removeInjection(prev, index))}
+                onRemoveInjection={(modId, id) => setEditing(prev => removeInjectionById(prev, id))}
+                onMoveInjection={(modId, id, patch) => setEditing(prev => updateInjectionPosition(prev, id, {
+                  x: patch.x,
+                  y: patch.y,
+                  zoneId: zoneFor(patch.x, patch.y, patch.view || 'front'),
+                }))}
                 onSetHeatWindow={(modId, windowId) => setEditing(prev => ({ ...prev, heatWindow: windowId }))}
                 theme={theme}
               />
@@ -3940,6 +4427,10 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
   const [newRecurringText, setNewRecurringText] = useState('');
   const [newRecurringDays, setNewRecurringDays] = useState([]);
   const [newRecurringTime, setNewRecurringTime] = useState('');
+  const [newRecurringDuration, setNewRecurringDuration] = useState(undefined);
+  const [newRecurringWindow, setNewRecurringWindow] = useState('');
+  const [newRecurringAutoPlan, setNewRecurringAutoPlan] = useState(false);
+  const [newRecurringDeepWork, setNewRecurringDeepWork] = useState(false);
 
   const toggleDay = (day) => {
     setNewRecurringDays(prev =>
@@ -3954,10 +4445,18 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
         text: newRecurringText.trim(),
         days: newRecurringDays,
         ...(newRecurringTime ? { time: newRecurringTime } : {}),
+        ...(newRecurringDuration ? { duration: newRecurringDuration } : {}),
+        ...(newRecurringWindow ? { window: newRecurringWindow } : {}),
+        ...(newRecurringAutoPlan ? { autoPlan: true } : {}),
+        ...(newRecurringDeepWork ? { deepWork: true } : {}),
       }]);
       setNewRecurringText('');
       setNewRecurringDays([]);
       setNewRecurringTime('');
+      setNewRecurringDuration(undefined);
+      setNewRecurringWindow('');
+      setNewRecurringAutoPlan(false);
+      setNewRecurringDeepWork(false);
     }
   };
 
@@ -3969,6 +4468,22 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
     setRecurringTasks(prev => prev.map(rt => rt.id === id ? { ...rt, time: time || undefined } : rt));
   };
 
+  const setRecurringDuration = (id, duration) => {
+    setRecurringTasks(prev => prev.map(rt => rt.id === id ? { ...rt, duration: duration || undefined } : rt));
+  };
+
+  const setRecurringWindow = (id, windowValue) => {
+    setRecurringTasks(prev => prev.map(rt => rt.id === id ? { ...rt, window: windowValue || undefined } : rt));
+  };
+
+  const setRecurringAutoPlan = (id, autoPlan) => {
+    setRecurringTasks(prev => prev.map(rt => rt.id === id ? { ...rt, autoPlan: autoPlan || undefined } : rt));
+  };
+
+  const setRecurringDeepWork = (id, deepWork) => {
+    setRecurringTasks(prev => prev.map(rt => rt.id === id ? { ...rt, deepWork: deepWork || undefined } : rt));
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -3978,7 +4493,7 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
             <p className={`text-sm ${theme.textMuted} text-center py-2`}>{t('settings.recurringEmpty')}</p>
           ) : (
             recurringTasks.map(rt => (
-              <div key={rt.id} className={`flex items-center gap-2 p-2 ${theme.cardSecondary} rounded-lg`}>
+              <div key={rt.id} className={`flex items-center gap-2 flex-wrap p-2 ${theme.cardSecondary} rounded-lg`}>
                 <Repeat className={`w-4 h-4 ${theme.textMuted}`} />
                 <div className="flex-1">
                   <div className={`text-sm ${theme.textSecondary}`}>{rt.text}</div>
@@ -3987,6 +4502,26 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
                   </div>
                 </div>
                 <TimeInput value={rt.time} onChange={(v) => setRecurringTime(rt.id, v)} theme={theme} className="w-24" />
+                <DurationInput value={rt.duration} onChange={(v) => setRecurringDuration(rt.id, v)} theme={theme} className="w-16" />
+                <DagdeelSelect value={rt.window} onChange={(v) => setRecurringWindow(rt.id, v)} theme={theme} />
+                <label className={`flex items-center gap-1 text-[11px] ${theme.textMuted}`}>
+                  <input
+                    type="checkbox"
+                    checked={!!rt.autoPlan}
+                    onChange={(e) => setRecurringAutoPlan(rt.id, e.target.checked)}
+                    className="w-3.5 h-3.5"
+                  />
+                  {t('planner.autoPlan.short')}
+                </label>
+                <label className={`flex items-center gap-1 text-[11px] ${theme.textMuted}`}>
+                  <input
+                    type="checkbox"
+                    checked={!!rt.deepWork}
+                    onChange={(e) => setRecurringDeepWork(rt.id, e.target.checked)}
+                    className="w-3.5 h-3.5"
+                  />
+                  {t('planner.deepWork.short')}
+                </label>
                 <button onClick={() => removeRecurring(rt.id)} className="text-slate-400 hover:text-red-500">
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -3994,18 +4529,38 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
             ))
           )}
         </div>
-        
+
         <div className="space-y-2">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <input
               type="text"
               value={newRecurringText}
               onChange={(e) => setNewRecurringText(e.target.value)}
               placeholder={t('settings.recurringExamplePlaceholder')}
-              className={`flex-1 px-3 py-2 ${theme.input} rounded-lg text-sm`}
+              className={`flex-1 min-w-[8rem] px-3 py-2 ${theme.input} rounded-lg text-sm`}
             />
             <TimeInput value={newRecurringTime} onChange={setNewRecurringTime} theme={theme} />
+            <DurationInput value={newRecurringDuration} onChange={setNewRecurringDuration} theme={theme} className="w-20" />
+            <DagdeelSelect value={newRecurringWindow} onChange={setNewRecurringWindow} theme={theme} />
           </div>
+          <label className={`flex items-center gap-1.5 text-xs ${theme.textMuted}`}>
+            <input
+              type="checkbox"
+              checked={newRecurringAutoPlan}
+              onChange={(e) => setNewRecurringAutoPlan(e.target.checked)}
+              className="w-3.5 h-3.5"
+            />
+            {t('planner.autoPlan.label')}
+          </label>
+          <label className={`flex items-center gap-1.5 text-xs ${theme.textMuted}`}>
+            <input
+              type="checkbox"
+              checked={newRecurringDeepWork}
+              onChange={(e) => setNewRecurringDeepWork(e.target.checked)}
+              className="w-3.5 h-3.5"
+            />
+            {t('planner.deepWork.label')}
+          </label>
           <div className="flex gap-1">
             {dayNames.map((day, i) => (
               <button

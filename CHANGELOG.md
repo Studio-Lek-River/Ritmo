@@ -1,3 +1,77 @@
+# [0.53.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.52.0...v0.53.0) (2026-07-15)
+
+
+### Features
+
+* **connections:** koppel Outlook-connect-knop en agenda-state in de Planner ([906604c](https://github.com/Studio-Lek-River/Ritmo/commit/906604c160f293664b0a7ed56e68ad31337ace36))
+* **connections:** Outlook OAuth authorization-code flow (S07) ([db25b59](https://github.com/Studio-Lek-River/Ritmo/commit/db25b594786dec2e4cb1c63ee75e0c7162006561))
+* **connections:** Outlook-connect-redirect en ephemere agenda-fetch ([f2b1b42](https://github.com/Studio-Lek-River/Ritmo/commit/f2b1b42436146a67911cd8ce4bdcc55f9f09f82e))
+* **i18n:** teksten voor Outlook-OAuth-fouten en agenda-weergave (S07) ([ff7583c](https://github.com/Studio-Lek-River/Ritmo/commit/ff7583ccb168431f933b9561eae157d3356721e2))
+* **planner:** normaliseer Outlook-agenda-events naar weergave- en planblokken ([53cb4b4](https://github.com/Studio-Lek-River/Ritmo/commit/53cb4b4b548fa4efd81fcf587017d246fe8eb7c7))
+* **planner:** render Outlook-afspraken als read-only agenda-blokken ([8bdd1bf](https://github.com/Studio-Lek-River/Ritmo/commit/8bdd1bf86232dd69cbb18278045a10acc33966b3))
+
+# [0.52.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.51.0...v0.52.0) (2026-07-15)
+
+
+### Features
+
+* **planner:** per-taak diepwerk-tag ([2e958b1](https://github.com/Studio-Lek-River/Ritmo/commit/2e958b17ffdac9fa5cf06f91bfa3fa62180df59e))
+* **planner:** planDay leest energie/diepwerk/rust ([9c6e600](https://github.com/Studio-Lek-River/Ritmo/commit/9c6e6002c51868a02ebd7015ed3b3460f6909539))
+* **planner:** planPrefs afstem-voorkeuren in settings ([f84d9b4](https://github.com/Studio-Lek-River/Ritmo/commit/f84d9b422d5ace65f41b817d233b6e7cc8cfafd0))
+* **planner:** Voorkeuren-tab + paneel in suite ([dd5cd30](https://github.com/Studio-Lek-River/Ritmo/commit/dd5cd305b2deae9e5bcf04b9037ebb906bd7e74d))
+
+# [0.51.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.50.0...v0.51.0) (2026-07-15)
+
+
+### Features
+
+* **planner:** deel-mijn-dag knop + voorstel/concept/direct blokken ([4c0d799](https://github.com/Studio-Lek-River/Ritmo/commit/4c0d7991fa9568d8aa78bcb6e0a7f9be92a6d0ce))
+* **planner:** drie standen als instelling (planMode) ([d5db11a](https://github.com/Studio-Lek-River/Ritmo/commit/d5db11a8623c6817768182ffcc8c6bbbe7ab218d))
+* **planner:** heuristische dag-indeler planDay.js ([6f13b2a](https://github.com/Studio-Lek-River/Ritmo/commit/6f13b2a2078416d9ee808191819d792323a47f3b))
+
+# [0.50.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.49.0...v0.50.0) (2026-07-15)
+
+
+### Features
+
+* **bodymap:** precieze vrije plaatsing van prikken op het silhouet ([9a6f7df](https://github.com/Studio-Lek-River/Ritmo/commit/9a6f7df46b19d542e3a65d751aa41c4d9dc8d696))
+
+# [0.49.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.48.0...v0.49.0) (2026-07-15)
+
+
+### Features
+
+* **planner:** planning-metadata (duration/window/autoPlan) op taken-bronnen ([d91c16f](https://github.com/Studio-Lek-River/Ritmo/commit/d91c16f318c2e1daf2b583b9fe14b39fbc6dabba))
+* **planner:** vrije blokken als project-subgoal-reservering ([f3d6d92](https://github.com/Studio-Lek-River/Ritmo/commit/f3d6d92191890d568b79522f122bbdea09a29e4f))
+
+# [0.48.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.47.0...v0.48.0) (2026-07-15)
+
+
+### Bug Fixes
+
+* **planner:** expliciete i18n-keys voor Dag/Week-toggle in WeekView ([6bcbb5f](https://github.com/Studio-Lek-River/Ritmo/commit/6bcbb5f306aedbe23d48a95e5d232b60f4c7043a))
+* **planner:** TaskPoolPanel accepteert drop om tijd te wissen ([93c86c8](https://github.com/Studio-Lek-River/Ritmo/commit/93c86c8249cc95f8531f1f8236e78dedb0f09ec8))
+
+
+### Features
+
+* **planner:** weekrooster met takenpool, legenda en cross-day-slepen (S03) ([a7aab0b](https://github.com/Studio-Lek-River/Ritmo/commit/a7aab0b7a06625f1a28ad1da238a30fd935ca0c6))
+
+# [0.47.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.46.0...v0.47.0) (2026-07-15)
+
+
+### Bug Fixes
+
+* **db:** sluit named-role EXECUTE-lek, verklein connections-grant, fix NULL-unique ([d7f4bc3](https://github.com/Studio-Lek-River/Ritmo/commit/d7f4bc3c71e38aece0cb2711e6eaad684943e95d))
+
+
+### Features
+
+* **api:** connections disconnect-endpoint en connect-stub (S02) ([acafe16](https://github.com/Studio-Lek-River/Ritmo/commit/acafe16630117437e07bc646c7a54421ae2f7402))
+* **connections:** Koppelingen-UI met verbind/verbreek en status (S02) ([e8d460e](https://github.com/Studio-Lek-River/Ritmo/commit/e8d460e7fa163ea2a8cde6a6498cc5feb31486d3))
+* **db:** connections-tabel met RLS en Vault-only tokens (S02) ([bc3508f](https://github.com/Studio-Lek-River/Ritmo/commit/bc3508f3430ead293d75e86397f8690ac5f6d383))
+* **items:** genormaliseerd items-model over tasks/projects-modules (S02) ([6cc2e74](https://github.com/Studio-Lek-River/Ritmo/commit/6cc2e74619294fbe118245ca3fe155a198ff6a0b))
+
 # [0.46.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.45.0...v0.46.0) (2026-07-13)
 
 

@@ -1,6 +1,6 @@
 # Ritmo — Claude Code instructies
 
-Dit bestand bevat instructies voor Claude Code in deze repo. De projectinhoud (wat is Ritmo, design-principes, architectuur) leid je af uit de code zelf en uit `README.md` / `CONTRIBUTING.md` — geen apart instructiedocument.
+Dit bestand bevat instructies voor Claude Code in deze repo. De projectinhoud (wat is Ritmo, architectuur) leid je af uit de code zelf en uit `README.md` / `CONTRIBUTING.md` — geen apart algemeen instructiedocument. De Ritmo-uitgangspunten staan wel expliciet in `.claude/docs/PROJECT_INSTRUCTIONS.md`.
 
 ## Werkwijze: research vrij, bij twijfel vragen
 
@@ -70,13 +70,15 @@ Per slice gelden vijf rollen en twee poorten:
 
 1. Toetsen (PO, in Claude.ai): slice-spec met acceptatiecriteria in docs/slices/SXX-*.md. Poort 1: Bas keurt de spec goed.
 2. Uitvoering (implementer-subagent): op de huidige branch, volgens de spec en deze CLAUDE.md.
-3. Controle uitvoering (reviewer-subagent, read-only): code, principes, i18n-regel.
+3. Controle uitvoering (reviewer-subagent, read-only): code, uitgangspunten, i18n-regel.
 4. Controle vereisten (verifier-subagent, read-only): resultaat tegen de acceptatiecriteria.
-5. Terug naar Bas: PR plus Netlify-preview plus samenvatting per criterium. Poort 2: Bas test en keurt goed, dan merge.
+5. Terug naar Bas: PR plus Vercel-preview plus samenvatting per criterium. Poort 2: Bas test en keurt goed, dan merge.
 
 De hoofdsessie orkestreert: roep implementer, dan reviewer, dan verifier, sequentieel.
 Subagents kunnen zelf geen subagents starten.
 
+Reviewer en verifier bepalen hun eigen scope via `git diff` tegen `main` (plus werkboom-status) en beoordelen alleen de gewijzigde bestanden; de hoofdsessie hoeft geen change-set in de prompt te plakken. "Read-only" = geen code-edits: beide mogen wél niet-muterende commando's draaien (`git diff`/`git status`, en de reviewer `npm run check:i18n`).
+
 Harde regel (afgedwongen via hook): nl.js en en.js hebben dezelfde keys.
 De reviewer let daarnaast op: geen hardcoded UI-tekst, geen wijzigingen buiten de slice-scope,
-en naleving van de twee design-principes.
+en naleving van de Ritmo-uitgangspunten.
