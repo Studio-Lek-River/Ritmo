@@ -88,6 +88,19 @@
     line-height: 1rem;
     font-weight: 500;
   }
+
+  /* Planner-legenda (S03): stijl-haken voor extern gesynchroniseerde
+     agenda-items en voor toekomstige AI-voorstellen (de indeler, latere
+     slice). In S03 alleen gebruikt door de legenda-swatches zelf; er zijn nog
+     geen echte agenda- of voorstel-blokken. */
+  .r-block-agenda {
+    border: 1.5px solid var(--r-border);
+    background-color: var(--r-card-2);
+  }
+  .r-block-proposal {
+    border: 1.5px dashed var(--r-text-muted);
+    background-color: transparent;
+  }
 }
 
 html, body {
