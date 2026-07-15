@@ -90,6 +90,15 @@ import CounterDisplay, { DISPLAY_STYLE_KEYS } from './components/CounterDisplay'
 import { DEFAULT_MODULES, instantiateDefaults, ensureStandardModules } from './utils/defaultModules';
 import { playSound } from './utils/sound';
 
+// De drie standen voor "Deel mijn dag in" (S05). Instelling, geen vaste
+// keuze (principe 2): `propose` is de minst ingrijpende default. Volgt het
+// `.map()`-patroon voor de segmented control in SettingsModal.
+const PLAN_MODE_OPTIONS = [
+  { id: 'propose', labelKey: 'settings.planModePropose' },
+  { id: 'concept', labelKey: 'settings.planModeConcept' },
+  { id: 'direct', labelKey: 'settings.planModeDirect' },
+];
+
 export default function Ritmo() {
   const { t, language, languageSetting, setLanguage } = useTranslation();
   const [view, setView] = useState('today');
@@ -122,6 +131,7 @@ export default function Ritmo() {
   const [soundVolume, setSoundVolume] = useState(80);
   const [goldenBorderEnabled, setGoldenBorderEnabled] = useState(true);
   const [appMode, setAppMode] = useState('standard');
+  const [planMode, setPlanMode] = useState('propose');
   const isDesktop = useIsDesktop();
   const [onboardingProfile, setOnboardingProfile] = useState('full');
   const [hasUsedSwipe, setHasUsedSwipe] = useState(false);
@@ -183,6 +193,7 @@ export default function Ritmo() {
         if (settings.soundVolume !== undefined) setSoundVolume(settings.soundVolume);
         if (settings.goldenBorderEnabled !== undefined) setGoldenBorderEnabled(settings.goldenBorderEnabled);
         if (settings.appMode !== undefined) setAppMode(settings.appMode);
+        if (settings.planMode !== undefined) setPlanMode(settings.planMode);
         if (settings.onboardingProfile !== undefined) setOnboardingProfile(settings.onboardingProfile);
         if (settings.hasUsedSwipe !== undefined) setHasUsedSwipe(settings.hasUsedSwipe);
         if (settings.hasDismissedInstallBanner !== undefined) setHasDismissedInstallBanner(settings.hasDismissedInstallBanner);
@@ -317,6 +328,7 @@ export default function Ritmo() {
           soundVolume,
           goldenBorderEnabled,
           appMode,
+          planMode,
           onboardingProfile,
           hasUsedSwipe,
           hasDismissedInstallBanner,
@@ -328,7 +340,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
 
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
@@ -1848,6 +1860,8 @@ export default function Ritmo() {
           setGoldenBorderEnabled={setGoldenBorderEnabled}
           appMode={appMode}
           setAppMode={setAppMode}
+          planMode={planMode}
+          setPlanMode={setPlanMode}
           switchToStandard={switchToStandard}
           theme={theme}
           dayNames={dayNames}
@@ -2070,7 +2084,7 @@ function StreakBadge({ label, days, color, theme }) {
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, switchToStandard, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour }) {
+function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, planMode, setPlanMode, switchToStandard, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
   const [helpView, setHelpView] = useState(initialHelp ? 'list' : null); // null | 'list' | 'install' | 'feedback'
@@ -2531,6 +2545,24 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
                 >
                   {t('settings.appModeHealth')}
                 </button>
+              </div>
+            </div>
+
+            <div className={`mt-6 pt-6 border-t ${theme.border}`}>
+              <h3 className={`font-semibold ${theme.textSecondary} mb-1`}>{t('settings.planMode')}</h3>
+              <p className={`text-xs ${theme.textMuted} mb-3`}>{t('settings.planModeHint')}</p>
+              <div className="flex gap-2">
+                {PLAN_MODE_OPTIONS.map(({ id, labelKey }) => (
+                  <button
+                    key={id}
+                    onClick={() => setPlanMode(id)}
+                    className={`flex-1 py-3 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 ${
+                      planMode === id ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
+                    }`}
+                  >
+                    {t(labelKey)}
+                  </button>
+                ))}
               </div>
             </div>
 
