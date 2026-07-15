@@ -101,6 +101,22 @@
     border: 1.5px dashed var(--r-text-muted);
     background-color: transparent;
   }
+
+  /* S05: concept-stand van de dag-indeler — zelfde tokenstijl als
+     .r-block-proposal, maar solide (niet gestreept) en lichtjes gevuld, zodat
+     een concept-blok zich onderscheidt als "aanpasbaar, bijna vast" i.p.v.
+     een los voorstel. */
+  .r-block-draft {
+    border: 1.5px solid var(--r-accent);
+    background-color: var(--r-accent-weak);
+  }
+
+  /* Klein accept/checkmark-knopje op voorstel- en concept-blokken: een dunne
+     "kaart"-kleurige rand zodat de gevulde module-kleur ook op een
+     transparante/lichte blok-achtergrond leesbaar afsteekt. */
+  .r-plan-accept {
+    box-shadow: 0 0 0 1px var(--r-card);
+  }
 }
 
 html, body {

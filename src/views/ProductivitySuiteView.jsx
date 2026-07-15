@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
+import { WandSparkles } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
+import { useToast } from '../hooks/useToast';
 import WeekView from './WeekView';
 import KanbanView from './KanbanView';
 import TaskListPanel from '../components/TaskListPanel';
@@ -33,9 +35,17 @@ export default function ProductivitySuiteView({
   onSetSubgoalStatus,
   onToggleTaskInDay,
   onMoveItem,
+  pendingPlan,
+  onShareDay,
+  onAcceptPendingItem,
+  onDiscardPendingItem,
+  onAcceptAllPending,
+  onDiscardAllPending,
+  onMovePendingItem,
   theme,
 }) {
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const [tab, setTab] = useState('dag');
   const [selectedDateKey, setSelectedDateKey] = useState(todayKey);
 
@@ -69,20 +79,30 @@ export default function ProductivitySuiteView({
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h1 className={`text-2xl font-bold ${theme.text}`}>{t('productivity.title')}</h1>
-        <div className={`flex gap-1 p-1 ${theme.cardSecondary} ${theme.radiusControl}`}>
-          {TABS.map(id => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setTab(id)}
-              aria-pressed={tab === id}
-              className={`px-4 py-2 ${theme.radiusControl} text-sm font-medium transition ${
-                tab === id ? `${theme.accentBg} shadow` : `${theme.textMuted} ${theme.hover}`
-              }`}
-            >
-              {t(`productivity.${id}`)}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => onShareDay(selectedDay?.dateKey || todayKey, showToast)}
+            className={`flex items-center gap-1.5 px-3 py-2 ${theme.radiusControl} text-sm font-medium transition ${theme.accentBg} shadow`}
+          >
+            <WandSparkles className="w-4 h-4" />
+            {t('planner.actions.shareDay')}
+          </button>
+          <div className={`flex gap-1 p-1 ${theme.cardSecondary} ${theme.radiusControl}`}>
+            {TABS.map(id => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setTab(id)}
+                aria-pressed={tab === id}
+                className={`px-4 py-2 ${theme.radiusControl} text-sm font-medium transition ${
+                  tab === id ? `${theme.accentBg} shadow` : `${theme.textMuted} ${theme.hover}`
+                }`}
+              >
+                {t(`productivity.${id}`)}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -121,6 +141,12 @@ export default function ProductivitySuiteView({
             onToggleTask={onToggleTaskInDay}
             onToggleProjectSubgoal={onToggleProjectSubgoal}
             onMoveItem={onMoveItem}
+            pendingPlan={pendingPlan}
+            onAcceptPendingItem={onAcceptPendingItem}
+            onDiscardPendingItem={onDiscardPendingItem}
+            onAcceptAllPending={onAcceptAllPending}
+            onDiscardAllPending={onDiscardAllPending}
+            onMovePendingItem={onMovePendingItem}
             theme={theme}
           />
         ) : (

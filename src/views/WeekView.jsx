@@ -20,6 +20,14 @@ const HOUR_END = 22;
 const ROW_HEIGHT = 64; // px per uur
 const HEADER_HEIGHT = 44; // px
 
+// Eigen dataTransfer-type voor het slepen van een pending (propose/concept)
+// blok, los van de bestaande "text/plain"-payload (dragPayload.js) van echte
+// items. Zo kan handleColumnDrop de twee soorten drags uit elkaar houden
+// zonder het gedeelde encode/decode-formaat aan te passen: een concept-drag
+// verandert alleen de ephemere tijd in pendingPlan (onMovePendingItem), nooit
+// de echte opslag.
+const PENDING_DRAG_MIME = 'application/x-ritmo-pending-key';
+
 function timeToMinutesLocal(time) {
   if (!time || typeof time !== 'string') return null;
   const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
@@ -62,6 +70,12 @@ export default function WeekView({
   onToggleTask,
   onToggleProjectSubgoal,
   onMoveItem,
+  pendingPlan,
+  onAcceptPendingItem,
+  onDiscardPendingItem,
+  onAcceptAllPending,
+  onDiscardAllPending,
+  onMovePendingItem,
   theme,
 }) {
   const { t } = useTranslation();
@@ -102,6 +116,15 @@ export default function WeekView({
   // brondag kan dus niet in lokale state van deze kolom leven.
   const handleColumnDrop = (dateKey) => (e) => {
     e.preventDefault();
+    const pendingKey = e.dataTransfer.getData(PENDING_DRAG_MIME);
+    if (pendingKey) {
+      if (dateKey === pendingPlan?.dateKey && onMovePendingItem) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const time = timeFromOffset(e.clientY - rect.top);
+        onMovePendingItem(pendingKey, time);
+      }
+      return;
+    }
     const { key, sourceDateKey } = decodeDragPayload(e.dataTransfer.getData('text/plain'));
     if (!key || !sourceDateKey) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -132,6 +155,16 @@ export default function WeekView({
         </div>
         <Legend theme={theme} t={t} />
       </div>
+
+      {pendingPlan && pendingPlan.items.length > 0 && (
+        <PendingPlanBar
+          pendingPlan={pendingPlan}
+          onAcceptAllPending={onAcceptAllPending}
+          onDiscardAllPending={onDiscardAllPending}
+          theme={theme}
+          t={t}
+        />
+      )}
 
       <DayStrip
         weekDays={weekDays || []}
@@ -229,11 +262,88 @@ export default function WeekView({
                       </div>
                     );
                   })}
+
+                  {pendingPlan?.dateKey === day.dateKey && pendingPlan.items.map(item => {
+                    const { top, height } = blockStyle(item.time, item.duration);
+                    const c = getColorClasses(item.color);
+                    const isConcept = pendingPlan.mode === 'concept';
+                    return (
+                      <div
+                        key={`pending:${item.key}`}
+                        draggable={isConcept}
+                        onDragStart={isConcept ? (e) => {
+                          e.dataTransfer.setData(PENDING_DRAG_MIME, item.key);
+                        } : undefined}
+                        style={{ top, height, borderColor: getColorHex(item.color) }}
+                        className={`absolute left-1 right-1 rounded-md px-1.5 py-1 text-[11px] overflow-hidden ${
+                          isConcept ? 'r-block-draft cursor-grab active:cursor-grabbing' : 'r-block-proposal'
+                        }`}
+                        title={item.label}
+                      >
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => onAcceptPendingItem(item.key)}
+                            aria-label={isConcept ? t('planner.actions.confirm') : t('planner.actions.accept')}
+                            title={isConcept ? t('planner.actions.confirm') : t('planner.actions.accept')}
+                            className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 r-plan-accept ${c.bar} border-transparent`}
+                          >
+                            <Check className="w-2.5 h-2.5 text-white" />
+                          </button>
+                          <span className={`truncate flex-1 ${theme.textSecondary}`}>
+                            {item.label}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => onDiscardPendingItem(item.key)}
+                            aria-label={t('planner.actions.discard')}
+                            title={t('planner.actions.discard')}
+                            className="shrink-0 opacity-60 hover:opacity-100"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
           })}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Ephemere balk boven het rooster wanneer een propose-/concept-plan actief
+// is: toont de bulk-"alles overnemen" (alleen propose, zie S05-spec — concept
+// blijft per-blok "vastzetten") en een generieke "alles weggooien"-uitgang
+// voor beide standen (principe 2: nooit vastzitten aan een voorstel).
+function PendingPlanBar({ pendingPlan, onAcceptAllPending, onDiscardAllPending, theme, t }) {
+  const isConcept = pendingPlan.mode === 'concept';
+  return (
+    <div className={`flex items-center justify-between gap-3 flex-wrap ${theme.cardSecondary} ${theme.radiusControl} ${theme.padRow}`}>
+      <span className={`text-xs ${theme.textMuted}`}>
+        {t(isConcept ? 'settings.planModeConcept' : 'settings.planModePropose')}
+      </span>
+      <div className="flex items-center gap-2">
+        {!isConcept && (
+          <button
+            type="button"
+            onClick={onAcceptAllPending}
+            className={`px-3 py-1.5 ${theme.radiusControl} text-xs font-medium transition ${theme.accentBg} shadow`}
+          >
+            {t('planner.actions.acceptAll')}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onDiscardAllPending}
+          className={`px-3 py-1.5 ${theme.radiusControl} text-xs font-medium transition ${theme.cardSecondary} ${theme.textMuted} ${theme.hover}`}
+        >
+          {t('planner.actions.discard')}
+        </button>
       </div>
     </div>
   );

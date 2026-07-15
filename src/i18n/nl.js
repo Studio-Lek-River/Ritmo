@@ -1617,6 +1617,16 @@ export default {
   },
 
   planner: {
+    actions: {
+      shareDay: 'Deel mijn dag in',
+      acceptAll: 'Alles overnemen',
+      accept: 'Overnemen',
+      discard: 'Weggooien',
+      confirm: 'Vastzetten',
+    },
+    toast: {
+      planned: 'Je dag is ingedeeld.',
+    },
     week: {
       viewDag: 'Dag',
       viewWeek: 'Week',

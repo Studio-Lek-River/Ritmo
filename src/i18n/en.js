@@ -1606,6 +1606,16 @@ export default {
   },
 
   planner: {
+    actions: {
+      shareDay: 'Plan my day',
+      acceptAll: 'Accept all',
+      accept: 'Accept',
+      discard: 'Discard',
+      confirm: 'Confirm',
+    },
+    toast: {
+      planned: 'Your day has been planned.',
+    },
     week: {
       viewDag: 'Day',
       viewWeek: 'Week',
