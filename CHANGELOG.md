@@ -1,3 +1,15 @@
+# [0.54.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.53.0...v0.54.0) (2026-07-15)
+
+
+### Bug Fixes
+
+* **sync:** schrijf sync-metadata ook bij edits vlak na inloggen ([c43ec9c](https://github.com/Studio-Lek-River/Ritmo/commit/c43ec9c0f35ff6b418dd5289c01c2b8d94d2cc9f))
+
+
+### Features
+
+* **sync:** onthoud 'Behoud cloud' zodat de sync-prompt niet terugkeert ([e8dadc8](https://github.com/Studio-Lek-River/Ritmo/commit/e8dadc88e5c4f425bba9ebdee91baa714cf6b10d))
+
 # [0.53.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.52.0...v0.53.0) (2026-07-15)
 
 
