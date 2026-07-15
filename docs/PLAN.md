@@ -11,7 +11,7 @@ Dit document beschrijft de **werkwijze**. Het **wat**, de **volgorde** en de **a
 2. **Uitvoering (implementer-subagent).** Op de huidige branch, volgens de spec en `CLAUDE.md`.
 3. **Controle uitvoering (reviewer-subagent, read-only).** Code, uitgangspunten, i18n-regel.
 4. **Controle vereisten (verifier-subagent, read-only).** Resultaat tegen de acceptatiecriteria.
-5. **Terug naar Bas.** PR plus Netlify-preview plus samenvatting per criterium.
+5. **Terug naar Bas.** PR plus Vercel-preview plus samenvatting per criterium.
    **Poort 2:** Bas test en keurt goed, dan merge.
 
 De hoofdsessie orkestreert: roep implementer, dan reviewer, dan verifier, sequentieel. Subagents kunnen zelf geen subagents starten.
