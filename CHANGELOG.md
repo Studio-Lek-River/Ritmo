@@ -1,3 +1,15 @@
+# [0.53.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.52.0...v0.53.0) (2026-07-15)
+
+
+### Features
+
+* **connections:** koppel Outlook-connect-knop en agenda-state in de Planner ([906604c](https://github.com/Studio-Lek-River/Ritmo/commit/906604c160f293664b0a7ed56e68ad31337ace36))
+* **connections:** Outlook OAuth authorization-code flow (S07) ([db25b59](https://github.com/Studio-Lek-River/Ritmo/commit/db25b594786dec2e4cb1c63ee75e0c7162006561))
+* **connections:** Outlook-connect-redirect en ephemere agenda-fetch ([f2b1b42](https://github.com/Studio-Lek-River/Ritmo/commit/f2b1b42436146a67911cd8ce4bdcc55f9f09f82e))
+* **i18n:** teksten voor Outlook-OAuth-fouten en agenda-weergave (S07) ([ff7583c](https://github.com/Studio-Lek-River/Ritmo/commit/ff7583ccb168431f933b9561eae157d3356721e2))
+* **planner:** normaliseer Outlook-agenda-events naar weergave- en planblokken ([53cb4b4](https://github.com/Studio-Lek-River/Ritmo/commit/53cb4b4b548fa4efd81fcf587017d246fe8eb7c7))
+* **planner:** render Outlook-afspraken als read-only agenda-blokken ([8bdd1bf](https://github.com/Studio-Lek-River/Ritmo/commit/8bdd1bf86232dd69cbb18278045a10acc33966b3))
+
 # [0.52.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.51.0...v0.52.0) (2026-07-15)
 
 
