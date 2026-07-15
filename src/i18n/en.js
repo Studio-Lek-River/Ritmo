@@ -1599,6 +1599,26 @@ export default {
     },
   },
 
+  planner: {
+    week: {
+      viewDag: 'Day',
+      viewWeek: 'Week',
+      unschedule: 'Move back to pool',
+      selectDayAria: 'Show {day}',
+    },
+    pool: {
+      title: 'Task pool',
+      empty: 'No unscheduled tasks for this day.',
+      durationHint: '±30 min',
+      moveToDayAria: 'Move to day',
+    },
+    legend: {
+      agenda: 'Agenda',
+      ingepland: 'Scheduled',
+      voorstel: 'Suggestion',
+    },
+  },
+
   connections: {
     title: 'Connections',
     intro: 'Connect external sources so their items show up in Ritmo.',

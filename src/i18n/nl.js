@@ -1610,6 +1610,26 @@ export default {
     },
   },
 
+  planner: {
+    week: {
+      viewDag: 'Dag',
+      viewWeek: 'Week',
+      unschedule: 'Terug naar takenpool',
+      selectDayAria: 'Toon {day}',
+    },
+    pool: {
+      title: 'Takenpool',
+      empty: 'Geen ongeplande taken voor deze dag.',
+      durationHint: '±30 min',
+      moveToDayAria: 'Verplaats naar dag',
+    },
+    legend: {
+      agenda: 'Agenda',
+      ingepland: 'Ingepland',
+      voorstel: 'Voorstel',
+    },
+  },
+
   connections: {
     title: 'Koppelingen',
     intro: 'Verbind externe bronnen zodat hun items in Ritmo verschijnen.',
