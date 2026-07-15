@@ -1,3 +1,12 @@
+# [0.51.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.50.0...v0.51.0) (2026-07-15)
+
+
+### Features
+
+* **planner:** deel-mijn-dag knop + voorstel/concept/direct blokken ([4c0d799](https://github.com/Studio-Lek-River/Ritmo/commit/4c0d7991fa9568d8aa78bcb6e0a7f9be92a6d0ce))
+* **planner:** drie standen als instelling (planMode) ([d5db11a](https://github.com/Studio-Lek-River/Ritmo/commit/d5db11a8623c6817768182ffcc8c6bbbe7ab218d))
+* **planner:** heuristische dag-indeler planDay.js ([6f13b2a](https://github.com/Studio-Lek-River/Ritmo/commit/6f13b2a2078416d9ee808191819d792323a47f3b))
+
 # [0.50.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.49.0...v0.50.0) (2026-07-15)
 
 
