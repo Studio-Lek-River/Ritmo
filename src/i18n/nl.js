@@ -1614,6 +1614,7 @@ export default {
     types: {
       losseTaak: 'Losse taak',
       projecttaak: 'Projecttaak',
+      agenda: 'Agenda',
     },
   },
 
@@ -1644,6 +1645,9 @@ export default {
       agenda: 'Agenda',
       ingepland: 'Ingepland',
       voorstel: 'Voorstel',
+    },
+    agenda: {
+      allDay: 'Hele dag',
     },
     duration: {
       label: 'Duur (minuten)',
@@ -1713,6 +1717,15 @@ export default {
       notImplemented: 'Deze koppeling is nog niet beschikbaar.',
       serverConfig: 'Koppelingen zijn nog niet volledig ingesteld.',
       unexpected: 'Er ging iets onverwachts mis. Probeer het later opnieuw.',
+      invalidState: 'De koppel-aanvraag is verlopen of ongeldig. Probeer het opnieuw.',
+      msAuth: 'Microsoft heeft de aanmelding geweigerd of onderbroken. Probeer het opnieuw.',
+      msRateLimit: 'Microsoft limiteert dit moment de aanvragen. Probeer het straks opnieuw.',
+      msError: 'Microsoft gaf een onverwachte fout terug. Probeer het later opnieuw.',
+      tokenRefreshFailed: 'Vernieuwen van de Outlook-koppeling is mislukt. Verbind opnieuw.',
+      notConnected: 'Outlook is niet (meer) gekoppeld.',
+    },
+    toast: {
+      outlookConnected: 'Outlook is verbonden.',
     },
   },
 };
