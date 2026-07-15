@@ -1330,20 +1330,42 @@ export default function Ritmo() {
     });
   }, [activeDateKey, customTasks, history, recurringTasks, todayKey]);
 
-  // ---- Outlook-agenda (S07) ------------------------------------------------
+  // ---- Outlook-agenda (S07 / S07a) ------------------------------------------
   // Eigen useConnections-instantie (naast die van ConnectionsSection) puur om
   // hier te kunnen afleiden of Outlook verbonden is; App.jsx zelf schrijft er
-  // niets mee weg. Agenda-ophalen is een no-op zonder verbonden Outlook of
-  // buiten de Planner-view (principe 2).
+  // niets mee weg. Agenda-ophalen is een no-op zonder verbonden Outlook,
+  // buiten de Planner-view, of zolang de gebruiker niet expliciet op
+  // "importeren" heeft geklikt (principe 2, S07a: geen fetch bij Planner-open
+  // zonder klik). `agendaShown` is bewust niet-persistent: elke sessie start
+  // de Planner leeg tot de knop wordt gebruikt.
+  const [agendaShown, setAgendaShown] = useState(false);
   const outlookConnectionState = useConnections(currentUser?.id);
   const outlookConnection = outlookConnectionState.connections.find(
     c => c.provider === 'outlook' && c.status === 'connected'
   ) || null;
-  const { eventsByDate: outlookEventsByDate } = useOutlookEvents({
-    enabled: !!outlookConnection && view === 'productivity',
+  const {
+    eventsByDate: outlookEventsByDate,
+    loading: outlookAgendaLoading,
+    error: outlookAgendaError,
+    refetch: refetchOutlookAgenda,
+  } = useOutlookEvents({
+    enabled: !!outlookConnection && view === 'productivity' && agendaShown,
     weekDays,
     connectionId: outlookConnection?.id,
   });
+
+  const handleImportOrRefreshAgenda = useCallback(() => {
+    if (!agendaShown) {
+      setAgendaShown(true);
+    } else {
+      refetchOutlookAgenda();
+    }
+  }, [agendaShown, refetchOutlookAgenda]);
+
+  const handleOpenConnections = useCallback(() => {
+    setSettingsInitialTab('account');
+    setShowSettings(true);
+  }, []);
 
   // ---- "Deel mijn dag in" (S05) -------------------------------------------
   // Bouwt de input voor de pure planDay-motor voor één dag: candidates zijn
@@ -2000,6 +2022,12 @@ export default function Ritmo() {
             weekDays={weekDays}
             todayKey={todayKey}
             agendaByDate={outlookEventsByDate}
+            outlookConnected={!!outlookConnection}
+            agendaShown={agendaShown}
+            agendaLoading={outlookAgendaLoading}
+            agendaError={outlookAgendaError}
+            onImportOrRefreshAgenda={handleImportOrRefreshAgenda}
+            onOpenConnections={handleOpenConnections}
             onAddTask={addCustomTask}
             onAddSubgoal={addProjectSubgoal}
             onToggleTask={toggleTask}

@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { WandSparkles } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Calendar, Loader2, WandSparkles } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { useToast } from '../hooks/useToast';
 import WeekView from './WeekView';
@@ -24,6 +24,12 @@ export default function ProductivitySuiteView({
   weekDays,
   todayKey,
   agendaByDate,
+  outlookConnected,
+  agendaShown,
+  agendaLoading,
+  agendaError,
+  onImportOrRefreshAgenda,
+  onOpenConnections,
   onAddTask,
   onAddSubgoal,
   onToggleTask,
@@ -53,6 +59,16 @@ export default function ProductivitySuiteView({
   const { showToast } = useToast();
   const [tab, setTab] = useState('dag');
   const [selectedDateKey, setSelectedDateKey] = useState(todayKey);
+
+  // App.jsx zelf zit niet onder ToastProvider (zie App.jsx), dus een mislukte
+  // Outlook-fetch wordt hier gemeld zodra `agendaError` verandert — één toast
+  // per nieuwe fout, geen stil console.warn-slikken (AC6).
+  useEffect(() => {
+    if (agendaError) {
+      showToast({ message: t('planner.outlook.fetchFailed') });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agendaError]);
 
   const tasksColor = modules.find(m => m.enabled && m.type === 'tasks')?.color;
 
@@ -93,6 +109,32 @@ export default function ProductivitySuiteView({
             <WandSparkles className="w-4 h-4" />
             {t('planner.actions.shareDay')}
           </button>
+          {tab === 'dag' && (
+            outlookConnected ? (
+              <button
+                type="button"
+                onClick={onImportOrRefreshAgenda}
+                disabled={agendaLoading}
+                aria-label={agendaLoading ? t('planner.outlook.loading') : undefined}
+                className={`flex items-center gap-1.5 px-3 py-2 ${theme.radiusControl} text-sm font-medium transition ${theme.cardSecondary} ${theme.hover} disabled:opacity-60 disabled:cursor-not-allowed`}
+              >
+                {agendaLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Calendar className="w-4 h-4" />
+                )}
+                {agendaShown ? t('planner.outlook.refresh') : t('planner.outlook.import')}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onOpenConnections}
+                className={`flex items-center gap-1.5 px-3 py-2 ${theme.radiusControl} text-sm ${theme.textMuted} ${theme.hover} transition`}
+              >
+                {t('planner.outlook.notConnectedHint')}
+              </button>
+            )
+          )}
           <div className={`flex gap-1 p-1 ${theme.cardSecondary} ${theme.radiusControl}`}>
             {TABS.map(id => (
               <button
