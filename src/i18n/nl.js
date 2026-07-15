@@ -1106,6 +1106,11 @@ export default {
     appModeHint: 'Health toont alleen je gezondheidsmodules en past de menubalk aan. Standaard toont alles.',
     appModeStandard: 'Standaard',
     appModeHealth: 'Health',
+    planMode: 'Dag-indeler',
+    planModeHint: 'Hoe "Deel mijn dag in" pooled taken plaatst: alleen voorstellen, als aanpasbaar concept, of meteen vast inplannen.',
+    planModePropose: 'Alleen voorstellen',
+    planModeConcept: 'Concept',
+    planModeDirect: 'Direct inplannen',
     effects: 'Effecten',
     goldenBorder: 'Gouden rand bij voltooide dagen',
     goldenBorderHint: 'Animatie rond dagen waarop alles afgevinkt is.',
@@ -1612,6 +1617,16 @@ export default {
   },
 
   planner: {
+    actions: {
+      shareDay: 'Deel mijn dag in',
+      acceptAll: 'Alles overnemen',
+      accept: 'Overnemen',
+      discard: 'Weggooien',
+      confirm: 'Vastzetten',
+    },
+    toast: {
+      planned: 'Je dag is ingedeeld.',
+    },
     week: {
       viewDag: 'Dag',
       viewWeek: 'Week',

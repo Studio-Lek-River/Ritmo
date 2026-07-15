@@ -78,6 +78,8 @@ import {
   WEEKDAY_KEYS, shortWeekdayLabelsMondayFirst, weekdayLabelLong,
 } from './utils/dates';
 import { goalsForNight, isOnTarget } from './utils/sleep';
+import { DEFAULT_BLOCK_MINUTES } from './utils/dayTimeline';
+import { planDay } from './utils/planDay';
 import {
   buildDayCellBackground, moduleStatusForDay, isDayFullyComplete,
   normalizeChecklistItemData, isChecklistItemComplete,
@@ -89,6 +91,21 @@ import { buildDaysWithActive } from './utils/insights';
 import CounterDisplay, { DISPLAY_STYLE_KEYS } from './components/CounterDisplay';
 import { DEFAULT_MODULES, instantiateDefaults, ensureStandardModules } from './utils/defaultModules';
 import { playSound } from './utils/sound';
+
+// De drie standen voor "Deel mijn dag in" (S05). Instelling, geen vaste
+// keuze (principe 2): `propose` is de minst ingrijpende default. Volgt het
+// `.map()`-patroon voor de segmented control in SettingsModal.
+const PLAN_MODE_OPTIONS = [
+  { id: 'propose', labelKey: 'settings.planModePropose' },
+  { id: 'concept', labelKey: 'settings.planModeConcept' },
+  { id: 'direct', labelKey: 'settings.planModeDirect' },
+];
+
+// Dag-einde voor de indeler; spiegelt WeekView's HOUR_END (die module
+// exporteert 'm niet). Dag-start komt per aanroep uit de slaap-wake of deze
+// fallback (zie handleShareDay).
+const PLAN_DAY_END = '22:00';
+const PLAN_DAY_START_FALLBACK = '08:00';
 
 export default function Ritmo() {
   const { t, language, languageSetting, setLanguage } = useTranslation();
@@ -122,6 +139,11 @@ export default function Ritmo() {
   const [soundVolume, setSoundVolume] = useState(80);
   const [goldenBorderEnabled, setGoldenBorderEnabled] = useState(true);
   const [appMode, setAppMode] = useState('standard');
+  const [planMode, setPlanMode] = useState('propose');
+  // Ephemere uitkomst van "Deel mijn dag in" (propose/concept-standen). Nooit
+  // gepersisteerd — alleen bij expliciete acceptatie schrijft een handler via
+  // de bestaande moveItemToDay/setTaskTime. Shape: { dateKey, mode, items }.
+  const [pendingPlan, setPendingPlan] = useState(null);
   const isDesktop = useIsDesktop();
   const [onboardingProfile, setOnboardingProfile] = useState('full');
   const [hasUsedSwipe, setHasUsedSwipe] = useState(false);
@@ -183,6 +205,7 @@ export default function Ritmo() {
         if (settings.soundVolume !== undefined) setSoundVolume(settings.soundVolume);
         if (settings.goldenBorderEnabled !== undefined) setGoldenBorderEnabled(settings.goldenBorderEnabled);
         if (settings.appMode !== undefined) setAppMode(settings.appMode);
+        if (settings.planMode !== undefined) setPlanMode(settings.planMode);
         if (settings.onboardingProfile !== undefined) setOnboardingProfile(settings.onboardingProfile);
         if (settings.hasUsedSwipe !== undefined) setHasUsedSwipe(settings.hasUsedSwipe);
         if (settings.hasDismissedInstallBanner !== undefined) setHasDismissedInstallBanner(settings.hasDismissedInstallBanner);
@@ -317,6 +340,7 @@ export default function Ritmo() {
           soundVolume,
           goldenBorderEnabled,
           appMode,
+          planMode,
           onboardingProfile,
           hasUsedSwipe,
           hasDismissedInstallBanner,
@@ -328,7 +352,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
 
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
@@ -1280,6 +1304,167 @@ export default function Ritmo() {
     });
   }, [activeDateKey, customTasks, history, recurringTasks, todayKey]);
 
+  // ---- "Deel mijn dag in" (S05) -------------------------------------------
+  // Bouwt de input voor de pure planDay-motor voor één dag: candidates zijn
+  // pool-items (autoPlan === true, zonder tijd), fixed zijn items die al een
+  // tijd hebben. Spiegelt dayTimeline.js' bronnen (project-subgoals +
+  // customTasks, incl. gematerialiseerde recurring via weekDays) maar geeft
+  // ook `autoPlan` door — dat veld heeft de Dag-tijdlijn zelf niet nodig.
+  // `meta` onthoudt per key de weergave-info (label/kleur/soort) voor de
+  // pending-blokken; planDay zelf blijft puur en krijgt alleen platte data.
+  const buildPlanInputs = useCallback((dateKey) => {
+    const dayTasks = weekDays.find(d => d.dateKey === dateKey)?.customTasks || [];
+    const candidates = [];
+    const fixed = [];
+    const meta = {};
+    let order = 0;
+
+    modules.forEach(mod => {
+      if (!mod.enabled || mod.type !== 'projects') return;
+      (mod.subjects || []).forEach(subject => {
+        (subject.subgoals || []).forEach(goal => {
+          const isFreeBlock = !!goal.freeBlock;
+          const isDueToday = goal.deadline === dateKey;
+          if (!isFreeBlock && !isDueToday) return;
+          const key = `subgoal:${mod.id}:${subject.id}:${goal.id}`;
+          meta[key] = { label: goal.label, color: mod.color, kind: 'projecttaak' };
+          if (goal.time) {
+            fixed.push({ time: goal.time, duration: goal.duration });
+          } else if (goal.autoPlan) {
+            candidates.push({ key, duration: goal.duration, window: goal.window || '', order: order++ });
+          }
+        });
+      });
+    });
+
+    const tasksModuleColor = modules.find(m => m.enabled && m.type === 'tasks')?.color;
+    dayTasks.forEach(task => {
+      const key = `task:${task.id}`;
+      meta[key] = { label: task.text, color: tasksModuleColor, kind: 'losseTaak' };
+      if (task.time) {
+        fixed.push({ time: task.time, duration: task.duration });
+      } else if (task.autoPlan) {
+        candidates.push({ key, duration: task.duration, window: task.window || '', order: order++ });
+      }
+    });
+
+    return { candidates, fixed, meta };
+  }, [weekDays, modules]);
+
+  // Past één plan-toewijzing toe via de bestaande cross-day-handler
+  // (moveItemToDay dekt zowel losse taken, gematerialiseerde recurring als
+  // project-subgoals) — dezelfde dag als bron en doel, want de indeler werkt
+  // op de geselecteerde dag zelf (geen dag-wissel).
+  const applyPendingAssignment = useCallback((dateKey, key, time) => {
+    moveItemToDay(key, dateKey, dateKey, time);
+  }, [moveItemToDay]);
+
+  // Hoofd-handler: verzamelt candidates/fixed voor `dateKey`, leidt dayStart
+  // af uit een actieve slaap-module (of de nette fallback) en vertakt op
+  // planMode. `notify` is optioneel en alleen nodig voor de ongedaan-maken-
+  // toast van de direct-stand; App.jsx zelf zit niet onder ToastProvider, dus
+  // de aanroeper (ProductivitySuiteView, wél een ToastProvider-kind) geeft
+  // zijn eigen `showToast` mee.
+  const handleShareDay = useCallback((dateKey, notify) => {
+    const { candidates, fixed, meta } = buildPlanInputs(dateKey);
+    if (candidates.length === 0) return;
+
+    const sleepModule = modules.find(m => m.enabled && m.type === 'sleep');
+    const wake = sleepModule ? goalsForNight(sleepModule.goals, parseDateKey(dateKey)).wake : null;
+    const dayStart = wake || PLAN_DAY_START_FALLBACK;
+
+    const { assignments } = planDay({
+      candidates,
+      fixed,
+      external: [],
+      dayStart,
+      dayEnd: PLAN_DAY_END,
+      slotStep: DEFAULT_BLOCK_MINUTES,
+    });
+    if (assignments.length === 0) return;
+
+    if (planMode === 'direct') {
+      assignments.forEach(a => applyPendingAssignment(dateKey, a.key, a.time));
+      if (typeof notify === 'function') {
+        notify({
+          message: t('planner.toast.planned'),
+          actionLabel: t('common.undo'),
+          onAction: () => {
+            // Een nog niet gematerialiseerde recurring-instantie (virtual key)
+            // krijgt bij het eerste apply-moment een nieuwe, echte task-id
+            // (zie moveItemToDay); de oorspronkelijke virtuele key opnieuw
+            // aanroepen zou een tweede, lege taak toevoegen in plaats van de
+            // net geplaatste te wissen. Ongedaan maken voor zo'n item
+            // verwijdert daarom de gematerialiseerde taak weer (terug naar
+            // virtueel) via recurringId, in plaats van de tijd te wissen.
+            assignments.forEach(a => {
+              const virtualMatch = /^task:virtual:([^:]+):/.exec(a.key);
+              if (virtualMatch) {
+                const rtId = virtualMatch[1];
+                writeTasksForDay(dateKey, tasks => tasks.filter(t => String(t.recurringId) !== rtId));
+              } else {
+                applyPendingAssignment(dateKey, a.key, '');
+              }
+            });
+          },
+        });
+      }
+      return;
+    }
+
+    setPendingPlan({
+      dateKey,
+      mode: planMode,
+      items: assignments.map(a => ({
+        ...a,
+        label: meta[a.key]?.label || '',
+        color: meta[a.key]?.color,
+        kind: meta[a.key]?.kind,
+      })),
+    });
+  }, [buildPlanInputs, modules, planMode, applyPendingAssignment, writeTasksForDay, t]);
+
+  // Eén voorstel-/concept-blok overnemen resp. vastzetten: schrijft via de
+  // bestaande handler en haalt het item uit de ephemere pendingPlan-state.
+  const acceptPendingItem = useCallback((key) => {
+    setPendingPlan(prev => {
+      if (!prev) return prev;
+      const item = prev.items.find(i => i.key === key);
+      if (item) applyPendingAssignment(prev.dateKey, key, item.time);
+      const items = prev.items.filter(i => i.key !== key);
+      return items.length ? { ...prev, items } : null;
+    });
+  }, [applyPendingAssignment]);
+
+  const discardPendingItem = useCallback((key) => {
+    setPendingPlan(prev => {
+      if (!prev) return prev;
+      const items = prev.items.filter(i => i.key !== key);
+      return items.length ? { ...prev, items } : null;
+    });
+  }, []);
+
+  // Bulk "alles overnemen" (propose-stand).
+  const acceptAllPending = useCallback(() => {
+    setPendingPlan(prev => {
+      if (!prev) return prev;
+      prev.items.forEach(item => applyPendingAssignment(prev.dateKey, item.key, item.time));
+      return null;
+    });
+  }, [applyPendingAssignment]);
+
+  const discardAllPending = useCallback(() => setPendingPlan(null), []);
+
+  // Concept-blokken zijn aanpasbaar vóór vastzetten (S03-slepen hergebruikt,
+  // zie WeekView): dit verandert alleen de ephemere tijd in pendingPlan, nooit
+  // de echte opslag — pas acceptPendingItem/acceptAllPending schrijft.
+  const movePendingItem = useCallback((key, time) => {
+    setPendingPlan(prev => {
+      if (!prev) return prev;
+      return { ...prev, items: prev.items.map(i => i.key === key ? { ...i, time } : i) };
+    });
+  }, []);
+
   // Streak calculation. moduleData is the source of truth for the active
   // date; for any other day, fall back to history (which is updated on save).
   const calculateStreak = (checkFn) => {
@@ -1784,6 +1969,13 @@ export default function Ritmo() {
             onSetSubgoalStatus={setSubgoalStatus}
             onToggleTaskInDay={toggleTaskInDay}
             onMoveItem={moveItemToDay}
+            pendingPlan={pendingPlan}
+            onShareDay={handleShareDay}
+            onAcceptPendingItem={acceptPendingItem}
+            onDiscardPendingItem={discardPendingItem}
+            onAcceptAllPending={acceptAllPending}
+            onDiscardAllPending={discardAllPending}
+            onMovePendingItem={movePendingItem}
             theme={theme}
           />
         )}
@@ -1848,6 +2040,8 @@ export default function Ritmo() {
           setGoldenBorderEnabled={setGoldenBorderEnabled}
           appMode={appMode}
           setAppMode={setAppMode}
+          planMode={planMode}
+          setPlanMode={setPlanMode}
           switchToStandard={switchToStandard}
           theme={theme}
           dayNames={dayNames}
@@ -2070,7 +2264,7 @@ function StreakBadge({ label, days, color, theme }) {
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, switchToStandard, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour }) {
+function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, planMode, setPlanMode, switchToStandard, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
   const [helpView, setHelpView] = useState(initialHelp ? 'list' : null); // null | 'list' | 'install' | 'feedback'
@@ -2531,6 +2725,24 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
                 >
                   {t('settings.appModeHealth')}
                 </button>
+              </div>
+            </div>
+
+            <div className={`mt-6 pt-6 border-t ${theme.border}`}>
+              <h3 className={`font-semibold ${theme.textSecondary} mb-1`}>{t('settings.planMode')}</h3>
+              <p className={`text-xs ${theme.textMuted} mb-3`}>{t('settings.planModeHint')}</p>
+              <div className="flex gap-2">
+                {PLAN_MODE_OPTIONS.map(({ id, labelKey }) => (
+                  <button
+                    key={id}
+                    onClick={() => setPlanMode(id)}
+                    className={`flex-1 py-3 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 ${
+                      planMode === id ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
+                    }`}
+                  >
+                    {t(labelKey)}
+                  </button>
+                ))}
               </div>
             </div>
 

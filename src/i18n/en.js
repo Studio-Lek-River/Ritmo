@@ -1097,6 +1097,11 @@ export default {
     appModeHint: 'Health shows only your health modules and adjusts the menu bar. Standard shows everything.',
     appModeStandard: 'Standard',
     appModeHealth: 'Health',
+    planMode: 'Day planner',
+    planModeHint: 'How "Plan my day" places pooled tasks: suggest only, as an adjustable draft, or schedule right away.',
+    planModePropose: 'Suggest only',
+    planModeConcept: 'Draft',
+    planModeDirect: 'Schedule directly',
     effects: 'Effects',
     goldenBorder: 'Golden border on completed days',
     goldenBorderHint: 'Animation around days where everything is ticked off.',
@@ -1601,6 +1606,16 @@ export default {
   },
 
   planner: {
+    actions: {
+      shareDay: 'Plan my day',
+      acceptAll: 'Accept all',
+      accept: 'Accept',
+      discard: 'Discard',
+      confirm: 'Confirm',
+    },
+    toast: {
+      planned: 'Your day has been planned.',
+    },
     week: {
       viewDag: 'Day',
       viewWeek: 'Week',
