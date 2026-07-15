@@ -110,7 +110,10 @@ export default function WeekView({
     <div className={`${theme.card} ${theme.radiusCard} ${theme.padRow} space-y-3`}>
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className={`flex gap-1 p-1 ${theme.cardSecondary} ${theme.radiusControl}`}>
-          {['dag', 'week'].map(id => (
+          {[
+            { id: 'dag', labelKey: 'planner.week.viewDag' },
+            { id: 'week', labelKey: 'planner.week.viewWeek' },
+          ].map(({ id, labelKey }) => (
             <button
               key={id}
               type="button"
@@ -120,7 +123,7 @@ export default function WeekView({
                 viewMode === id ? `${theme.accentBg} shadow` : `${theme.textMuted} ${theme.hover}`
               }`}
             >
-              {t(`productivity.${id}`)}
+              {t(labelKey)}
             </button>
           ))}
         </div>

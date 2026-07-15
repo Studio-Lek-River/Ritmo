@@ -1612,6 +1612,8 @@ export default {
 
   planner: {
     week: {
+      viewDag: 'Dag',
+      viewWeek: 'Week',
       unschedule: 'Terug naar takenpool',
       selectDayAria: 'Toon {day}',
     },
