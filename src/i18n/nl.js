@@ -1649,6 +1649,13 @@ export default {
     agenda: {
       allDay: 'Hele dag',
     },
+    outlook: {
+      import: 'Outlook-agenda importeren',
+      refresh: 'Outlook-agenda vernieuwen',
+      loading: 'Outlook-agenda laden…',
+      notConnectedHint: 'Koppel Outlook via Account → Koppelingen',
+      fetchFailed: 'Outlook-agenda ophalen is mislukt.',
+    },
     duration: {
       label: 'Duur (minuten)',
       placeholder: 'min',

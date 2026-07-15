@@ -1638,6 +1638,13 @@ export default {
     agenda: {
       allDay: 'All day',
     },
+    outlook: {
+      import: 'Import Outlook calendar',
+      refresh: 'Refresh Outlook calendar',
+      loading: 'Loading Outlook calendar…',
+      notConnectedHint: 'Connect Outlook via Account → Connections',
+      fetchFailed: 'Failed to fetch the Outlook calendar.',
+    },
     duration: {
       label: 'Duration (minutes)',
       placeholder: 'min',
