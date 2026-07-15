@@ -165,12 +165,21 @@ export function migrateModuleConfig(module) {
       ...m,
       // H09: de buik ging van 2 naar 6 zones; oude abdomenL/R-prikken migreren
       // niet-destructief naar de middenrij. Onbekende/nieuwe ids blijven ongemoeid.
+      // H12: precieze plaatsing voegt id/view toe; alleen als ze ontbreken (guard
+      // per veld, dus idempotent). x/y worden hier bewust NIET gevuld: die blijven
+      // lazy afgeleid bij het lezen (normalizeInjectionEvent), zodat de jitter
+      // niet in de opgeslagen data wordt gebakken.
       log: Array.isArray(m.log)
-        ? m.log.map((event) => (
-            event && LEGACY_ZONE_ID_MAP[event.zoneId]
-              ? { ...event, zoneId: LEGACY_ZONE_ID_MAP[event.zoneId] }
-              : event
-          ))
+        ? m.log.map((event, index) => {
+            if (!event) return event;
+            const zoneId = LEGACY_ZONE_ID_MAP[event.zoneId] || event.zoneId;
+            return {
+              ...event,
+              zoneId,
+              id: event.id || `${event.date}-${zoneId}-${index}`,
+              view: event.view || 'front',
+            };
+          })
         : [],
     };
   }

@@ -46,7 +46,16 @@ import { CELEBRATION_ANIMATIONS, CONFETTI_CONFIG, buildConfetti } from './utils/
 import { migrateModuleConfig, migrateDayModuleData, migrateSettings } from './utils/migrate';
 import { useTranslation, resolveModuleName } from './i18n/useTranslation';
 import { logEvent, removeEvent, generateTagId, generateTagGroupId } from './utils/collections';
-import { logInjection, removeInjection, injectableMeds, INJECTION_ZONES } from './utils/bodymap';
+import {
+  logInjection,
+  removeInjectionById,
+  updateInjectionPosition,
+  normalizeInjectionEvent,
+  makeInjectionId,
+  zoneFor,
+  injectableMeds,
+  INJECTION_ZONES,
+} from './utils/bodymap';
 import { FREQUENCY_LABEL_KEYS } from './utils/medication';
 import { scheduleEntryMed } from './utils/injectionSchedule';
 import { ScheduleEntryFormModal } from './views/InjectionScheduleView';
@@ -812,9 +821,21 @@ export default function Ritmo() {
   // Eén pass die atomair de prik logt én de voorraad van het bronmedicijn
   // verlaagt (geklemd op 0), zodat log en voorraad nooit uit de pas lopen.
   // `date` mag worden meegegeven (undo van een verwijdering herstelt zo de
-  // oorspronkelijke datum); zonder `date` wordt vandaag gebruikt.
-  const logInjectionEvent = (bodymapModuleId, { zoneId, medId, medModuleId, medName, date } = {}) => {
-    const event = { date: date || todayKey, zoneId, medId, medModuleId, medName };
+  // oorspronkelijke datum); zonder `date` wordt vandaag gebruikt. H12: `id`/
+  // `x`/`y`/`view` zijn de precieze plaatsing; `id` mag worden meegegeven
+  // (undo re-logt zo exact hetzelfde event) anders wordt er een nieuwe gemaakt.
+  const logInjectionEvent = (bodymapModuleId, { id, zoneId, x, y, view, medId, medModuleId, medName, date } = {}) => {
+    const event = {
+      id: id || makeInjectionId(),
+      date: date || todayKey,
+      zoneId,
+      x,
+      y,
+      view: view || 'front',
+      medId,
+      medModuleId,
+      medName,
+    };
     setModules(prev => prev.map(m => {
       if (m.id === bodymapModuleId && m.type === 'bodymap') {
         return logInjection(m, event);
@@ -832,15 +853,30 @@ export default function Ritmo() {
     return event;
   };
 
-  // Verwijdert de logregel én herstelt de voorraad van het bronmedicijn met 1.
-  // Als het event of het bronmedicijn niet meer bestaat: alleen de logregel
-  // verwijderen, voorraad met rust laten (defensief).
-  const removeInjectionEvent = (bodymapModuleId, index) => {
-    const bodymapModule = modules.find(m => m.id === bodymapModuleId && m.type === 'bodymap');
-    const removedEvent = bodymapModule?.log?.[index] || null;
+  // H12: verplaatst een bestaande prik (verslepen). De zone wordt opnieuw
+  // afgeleid uit het nieuwe punt; voorraad blijft ongemoeid.
+  const moveInjectionEvent = (bodymapModuleId, id, { x, y, view } = {}) => {
+    const zoneId = zoneFor(x, y, view || 'front');
     setModules(prev => prev.map(m => {
       if (m.id === bodymapModuleId && m.type === 'bodymap') {
-        return removeInjection(m, index);
+        return updateInjectionPosition(m, id, { x, y, zoneId });
+      }
+      return m;
+    }));
+  };
+
+  // Verwijdert de logregel (op id, H12) én herstelt de voorraad van het
+  // bronmedicijn met 1. Als het event of het bronmedicijn niet meer bestaat:
+  // alleen de logregel verwijderen, voorraad met rust laten (defensief). De
+  // log wordt eerst genormaliseerd zodat ook pre-H12 events (zonder eigen id)
+  // op dezelfde gesynthetiseerde id matchen als de view gebruikte.
+  const removeInjectionEvent = (bodymapModuleId, id) => {
+    const bodymapModule = modules.find(m => m.id === bodymapModuleId && m.type === 'bodymap');
+    const normalizedLog = (bodymapModule?.log || []).map((event, index) => normalizeInjectionEvent(event, index));
+    const removedEvent = normalizedLog.find((event) => event.id === id) || null;
+    setModules(prev => prev.map(m => {
+      if (m.id === bodymapModuleId && m.type === 'bodymap') {
+        return removeInjectionById(m, id);
       }
       if (removedEvent && m.id === removedEvent.medModuleId && m.type === 'medication') {
         return {
@@ -1524,6 +1560,7 @@ export default function Ritmo() {
     onLogMedIntake: logMedIntake,
     onLogInjection: logInjectionEvent,
     onRemoveInjection: removeInjectionEvent,
+    onMoveInjection: moveInjectionEvent,
     onSetHeatWindow: setBodymapHeatWindow,
     onAddScheduleEntry: addScheduleEntry,
     onUpdateScheduleEntry: updateScheduleEntry,
@@ -3988,7 +4025,12 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
                 meds={injMeds}
                 iconOptions={ICON_OPTIONS}
                 onLogInjection={(modId, event) => setEditing(prev => logInjection(prev, event))}
-                onRemoveInjection={(modId, index) => setEditing(prev => removeInjection(prev, index))}
+                onRemoveInjection={(modId, id) => setEditing(prev => removeInjectionById(prev, id))}
+                onMoveInjection={(modId, id, patch) => setEditing(prev => updateInjectionPosition(prev, id, {
+                  x: patch.x,
+                  y: patch.y,
+                  zoneId: zoneFor(patch.x, patch.y, patch.view || 'front'),
+                }))}
                 onSetHeatWindow={(modId, windowId) => setEditing(prev => ({ ...prev, heatWindow: windowId }))}
                 theme={theme}
               />
