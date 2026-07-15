@@ -74,10 +74,10 @@ function windowRangeMinutes(window, startMin, endMin) {
 // de kandidaat-starttijd ook getoetst aan `dagdeelForTime` (de canonieke
 // dagdeel-indeling), zodat deze module geen eigen kopie van die regel
 // onderhoudt naast dayTimeline.js.
-function findSlot(rangeStart, rangeEnd, duration, slotStep, busy, window) {
+function findSlot(rangeStart, rangeEnd, duration, slotStep, busy, windowPref) {
   const snappedStart = Math.ceil(rangeStart / slotStep) * slotStep;
   for (let start = snappedStart; start + duration <= rangeEnd; start += slotStep) {
-    if (window && dagdeelForTime(minutesToHHMM(start)) !== window) continue;
+    if (windowPref && dagdeelForTime(minutesToHHMM(start)) !== windowPref) continue;
     const end = start + duration;
     const overlaps = busy.some(([busyStart, busyEnd]) => start < busyEnd && end > busyStart);
     if (!overlaps) return [start, end];
