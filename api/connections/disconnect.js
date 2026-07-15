@@ -5,7 +5,9 @@
 // nooit in de browser-bundel terecht.
 import { createClient } from '@supabase/supabase-js';
 
-function getBearerToken(req) {
+// Geëxporteerd zodat api/connections/outlook/*.js 'm kan hergebruiken
+// (S07-spec: "Hergebruik de getBearerToken-helper uit disconnect.js").
+export function getBearerToken(req) {
   const header = req.headers['authorization'] || req.headers['Authorization'];
   if (typeof header !== 'string') return null;
   const match = /^Bearer\s+(.+)$/i.exec(header.trim());

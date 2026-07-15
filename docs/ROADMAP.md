@@ -223,7 +223,7 @@ Volgorde: **H01 → H03 → H04 → H05 → H06 → H07 → H02**; **H02** en **
 
 1. In Claude.ai (met de PO): vraag om de kickoff-bundel voor de eerstvolgende slice met status Todo. Dat is de spec plus de uitvoerinstructie in één. Dit is Poort 1.
 2. Geef die bundel aan Claude Code. Claude Code schrijft de spec weg in `docs/slices/`, maakt een branch en draait de rol-cyclus (implementer, reviewer, verifier).
-3. Poort 2: test de Netlify-preview, keur de PR goed en merge.
+3. Poort 2: test de Vercel-preview, keur de PR goed en merge.
 4. Werk de status van de slice in dit document bij.
 
 De statussen hierboven zijn de bron van waarheid voor de voortgang. Houd ze actueel per afgeronde slice.

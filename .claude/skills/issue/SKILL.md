@@ -124,7 +124,7 @@ gh pr create --repo Studio-Lek-River/Ritmo --base main --head slice/SXX-<kebab> 
 Closes #<n>"
 ```
 
-De PR-body benoemt de wijzigingen (samenvatting per acceptatiecriterium) en bevat `Closes #<n>` op een eigen regel, zodat GitHub de issue automatisch sluit wanneer de PR naar `main` gemerged wordt. Sluit af met de samenvatting per acceptatiecriterium en de Netlify-preview-verwijzing. **Poort 2** (Bas test en merge) blijft bij Bas.
+De PR-body benoemt de wijzigingen (samenvatting per acceptatiecriterium) en bevat `Closes #<n>` op een eigen regel, zodat GitHub de issue automatisch sluit wanneer de PR naar `main` gemerged wordt. Sluit af met de samenvatting per acceptatiecriterium en de Vercel-preview-verwijzing. **Poort 2** (Bas test en merge) blijft bij Bas.
 
 ## AskUserQuestion-richtlijn
 

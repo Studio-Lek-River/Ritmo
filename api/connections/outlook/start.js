@@ -1,0 +1,77 @@
+// Start van de Outlook-OAuth-flow (S07, authority `consumers`): verifieert de
+// Supabase-JWT van de aanroepende gebruiker, zorgt dat er een connections-rij
+// bestaat voor dit account (provider='outlook', external_account=NULL) en
+// geeft een `authorizeUrl` terug met een HMAC-ondertekende `state` (CSRF).
+// Draait server-side met de service-role-key; die komt nooit in de
+// browser-bundel terecht. Zie docs/slices/S07-outlook-lezen.md.
+import {
+  getBearerToken,
+  getServiceClient,
+  missingOutlookEnv,
+  signOAuthState,
+  MS_AUTHORIZE_URL,
+  OUTLOOK_SCOPES,
+} from './_shared.js';
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed', code: 'method_not_allowed' });
+  }
+
+  if (missingOutlookEnv()) {
+    return res.status(500).json({ error: 'Server niet correct geconfigureerd', code: 'server_config' });
+  }
+
+  const jwt = getBearerToken(req);
+  if (!jwt) {
+    return res.status(401).json({ error: 'Niet geauthenticeerd', code: 'unauthenticated' });
+  }
+
+  const supabase = getServiceClient();
+  const { data: userData, error: userError } = await supabase.auth.getUser(jwt);
+  if (userError || !userData?.user) {
+    return res.status(401).json({ error: 'Ongeldige sessie', code: 'unauthenticated' });
+  }
+
+  const accountId = userData.user.id;
+
+  try {
+    const { data: existing, error: fetchError } = await supabase
+      .from('connections')
+      .select('id')
+      .eq('account_id', accountId)
+      .eq('provider', 'outlook')
+      .is('external_account', null)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('connections/outlook/start fetch failed', fetchError);
+      return res.status(500).json({ error: 'Kon koppeling niet voorbereiden', code: 'unexpected' });
+    }
+
+    if (!existing) {
+      const { error: insertError } = await supabase
+        .from('connections')
+        .insert({ account_id: accountId, provider: 'outlook', external_account: null });
+      if (insertError) {
+        console.error('connections/outlook/start insert failed', insertError);
+        return res.status(500).json({ error: 'Kon koppeling niet voorbereiden', code: 'unexpected' });
+      }
+    }
+
+    const state = signOAuthState({ accountId });
+    const params = new URLSearchParams({
+      client_id: process.env.MS_CLIENT_ID,
+      redirect_uri: process.env.MS_OAUTH_REDIRECT_URI,
+      response_type: 'code',
+      response_mode: 'query',
+      scope: OUTLOOK_SCOPES,
+      state,
+    });
+
+    return res.status(200).json({ authorizeUrl: `${MS_AUTHORIZE_URL}?${params.toString()}` });
+  } catch (err) {
+    console.error('connections/outlook/start error', err);
+    return res.status(500).json({ error: 'Onverwachte fout', code: 'unexpected' });
+  }
+}

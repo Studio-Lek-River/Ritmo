@@ -66,3 +66,21 @@ export async function disconnectConnection(connectionId) {
 export async function connectProvider(provider) {
   return callConnectionsApi('connect', { provider });
 }
+
+// Start de echte Outlook-OAuth-redirect (S07): haalt de authorize-URL op
+// (server-side state, zie api/connections/outlook/start.js) en navigeert de
+// hele pagina naar Microsoft (Poort-0-keuze: volledige redirect, geen popup).
+export async function startOutlookConnect() {
+  const data = await callConnectionsApi('outlook/start', {});
+  if (data?.authorizeUrl) {
+    window.location.assign(data.authorizeUrl);
+  }
+  return data;
+}
+
+// Haalt de Outlook-agenda op voor een datum-range (S07, ephemeer — zie
+// api/connections/outlook/events.js). `range` = { start, end, timeZone }
+// (ISO-strings + optionele IANA-tijdzone voor de Prefer-header server-side).
+export async function fetchOutlookEvents(range) {
+  return callConnectionsApi('outlook/events', range || {});
+}

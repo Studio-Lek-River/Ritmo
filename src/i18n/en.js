@@ -1603,6 +1603,7 @@ export default {
     types: {
       losseTaak: 'Task',
       projecttaak: 'Project task',
+      agenda: 'Agenda',
     },
   },
 
@@ -1633,6 +1634,9 @@ export default {
       agenda: 'Agenda',
       ingepland: 'Scheduled',
       voorstel: 'Suggestion',
+    },
+    agenda: {
+      allDay: 'All day',
     },
     duration: {
       label: 'Duration (minutes)',
@@ -1702,6 +1706,15 @@ export default {
       notImplemented: 'This connection is not available yet.',
       serverConfig: 'Connections are not fully configured yet.',
       unexpected: 'Something unexpected went wrong. Please try again later.',
+      invalidState: 'The connection request expired or is invalid. Please try again.',
+      msAuth: 'Microsoft declined or interrupted the sign-in. Please try again.',
+      msRateLimit: 'Microsoft is currently rate-limiting requests. Please try again shortly.',
+      msError: 'Microsoft returned an unexpected error. Please try again later.',
+      tokenRefreshFailed: 'Renewing the Outlook connection failed. Please reconnect.',
+      notConnected: 'Outlook is not (or no longer) connected.',
+    },
+    toast: {
+      outlookConnected: 'Outlook is connected.',
     },
   },
 };

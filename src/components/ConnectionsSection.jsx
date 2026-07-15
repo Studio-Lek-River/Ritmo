@@ -4,10 +4,11 @@
 // roept de stub aan tot de echte OAuth-handshake per provider landt (S03-S05).
 // Alleen gerenderd door de aanroeper wanneer er een account is en sync aan
 // staat (opt-in, principe 2).
+import { useState } from 'react';
 import { Check, CloudOff, AlertTriangle } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import useConnections from '../hooks/useConnections';
-import { CONNECTION_PROVIDERS } from '../sync/connections';
+import { CONNECTION_PROVIDERS, startOutlookConnect } from '../sync/connections';
 
 const STATUS_ICON = {
   connected: { Icon: Check, color: 'text-teal-500' },
@@ -17,7 +18,10 @@ const STATUS_ICON = {
 
 // Expliciete allow-list: backend-`code` -> i18n-key (zelfde patroon als
 // FeedbackForm.jsx). Bewust geen blinde `t('connections.errors.' + code)`.
-const ERROR_KEYS = {
+// Named export zodat OutlookOAuthReturn.jsx (de terugkeer van de
+// OAuth-redirect, S07) dezelfde mapping hergebruikt in plaats van een tweede
+// kopie te onderhouden.
+export const ERROR_KEYS = {
   unauthenticated: 'connections.errors.unauthenticated',
   not_found: 'connections.errors.notFound',
   disconnect_failed: 'connections.errors.disconnectFailed',
@@ -25,11 +29,42 @@ const ERROR_KEYS = {
   server_config: 'connections.errors.serverConfig',
   invalid_request: 'connections.errors.unexpected',
   unexpected: 'connections.errors.unexpected',
+  // S07: OAuth-specifieke codes van api/connections/outlook/*.js.
+  invalid_state: 'connections.errors.invalidState',
+  ms_auth: 'connections.errors.msAuth',
+  ms_rate_limit: 'connections.errors.msRateLimit',
+  ms_error: 'connections.errors.msError',
+  token_refresh_failed: 'connections.errors.tokenRefreshFailed',
+  not_connected: 'connections.errors.notConnected',
 };
 
 export default function ConnectionsSection({ theme, accountId }) {
   const { t } = useTranslation();
   const { connections, busyId, error, disconnect, connect } = useConnections(accountId);
+  // Outlook start zijn eigen OAuth-redirect (i.p.v. de generieke connect-stub)
+  // en heeft dus losse busy/error-state: de hook's `connect`/`busyId` blijven
+  // voor Trello/GitHub, die nog steeds de stub gebruiken (S08/S09).
+  const [outlookBusy, setOutlookBusy] = useState(false);
+  const [outlookError, setOutlookError] = useState(null);
+
+  const handleConnect = async (provider) => {
+    if (provider !== 'outlook') {
+      connect(provider);
+      return;
+    }
+    setOutlookBusy(true);
+    setOutlookError(null);
+    try {
+      await startOutlookConnect();
+      // Bij succes navigeert de browser weg (window.location.assign); er
+      // volgt dan geen render meer die outlookBusy hoeft te resetten.
+    } catch (err) {
+      setOutlookError(err.code || 'unexpected');
+      setOutlookBusy(false);
+    }
+  };
+
+  const displayError = outlookError || error;
 
   return (
     <div className="space-y-3">
@@ -41,7 +76,9 @@ export default function ConnectionsSection({ theme, accountId }) {
           const connection = connections.find((c) => c.provider === provider);
           const status = connection?.status || 'disconnected';
           const { Icon, color } = STATUS_ICON[status] || STATUS_ICON.disconnected;
-          const busy = busyId === provider || (connection && busyId === connection.id);
+          const busy = provider === 'outlook'
+            ? outlookBusy
+            : (busyId === provider || (connection && busyId === connection.id));
 
           return (
             <div
@@ -72,7 +109,7 @@ export default function ConnectionsSection({ theme, accountId }) {
               ) : (
                 <button
                   type="button"
-                  onClick={() => connect(provider)}
+                  onClick={() => handleConnect(provider)}
                   disabled={busy}
                   className={`text-xs font-medium shrink-0 ${theme.textMuted} hover:underline disabled:opacity-50`}
                 >
@@ -84,8 +121,8 @@ export default function ConnectionsSection({ theme, accountId }) {
         })}
       </div>
 
-      {error && (
-        <p className="text-xs text-red-500">{t(ERROR_KEYS[error] || 'connections.errors.unexpected')}</p>
+      {displayError && (
+        <p className="text-xs text-red-500">{t(ERROR_KEYS[displayError] || 'connections.errors.unexpected')}</p>
       )}
     </div>
   );

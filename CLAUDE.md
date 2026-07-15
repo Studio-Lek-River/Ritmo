@@ -72,7 +72,7 @@ Per slice gelden vijf rollen en twee poorten:
 2. Uitvoering (implementer-subagent): op de huidige branch, volgens de spec en deze CLAUDE.md.
 3. Controle uitvoering (reviewer-subagent, read-only): code, uitgangspunten, i18n-regel.
 4. Controle vereisten (verifier-subagent, read-only): resultaat tegen de acceptatiecriteria.
-5. Terug naar Bas: PR plus Netlify-preview plus samenvatting per criterium. Poort 2: Bas test en keurt goed, dan merge.
+5. Terug naar Bas: PR plus Vercel-preview plus samenvatting per criterium. Poort 2: Bas test en keurt goed, dan merge.
 
 De hoofdsessie orkestreert: roep implementer, dan reviewer, dan verifier, sequentieel.
 Subagents kunnen zelf geen subagents starten.

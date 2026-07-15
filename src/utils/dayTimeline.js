@@ -141,22 +141,3 @@ export function groupDayTimelineByDagdeel(items) {
   });
   return grouped;
 }
-
-// Groepeert een platte tijdlijn per uur (00:00–23:00) voor een agenda-weergave.
-// Items zonder geldige tijd komen in `untimed`. Binnen een uur en binnen
-// `untimed`: sorteren op tijd, daarna op bronvolgorde (stabiele tiebreaker).
-export function groupDayTimelineByHour(items) {
-  const untimed = [];
-  const hours = Array.from({ length: 24 }, (_, hour) => ({ hour, items: [] }));
-  items.forEach(item => {
-    const minutes = timeToMinutes(item.time);
-    if (minutes == null) {
-      untimed.push(item);
-      return;
-    }
-    hours[Math.floor(minutes / 60)].items.push(item);
-  });
-  hours.forEach(slot => slot.items.sort(byTimeThenOrder));
-  untimed.sort(byTimeThenOrder);
-  return { untimed, hours };
-}
