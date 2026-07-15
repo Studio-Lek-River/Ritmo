@@ -1,3 +1,10 @@
+# [0.50.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.49.0...v0.50.0) (2026-07-15)
+
+
+### Features
+
+* **bodymap:** precieze vrije plaatsing van prikken op het silhouet ([9a6f7df](https://github.com/Studio-Lek-River/Ritmo/commit/9a6f7df46b19d542e3a65d751aa41c4d9dc8d696))
+
 # [0.49.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.48.0...v0.49.0) (2026-07-15)
 
 
