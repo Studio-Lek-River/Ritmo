@@ -32,6 +32,10 @@ import BackupSection from './components/BackupSection';
 import AuthSection from './components/auth/AuthSection';
 import SyncStatusRow from './components/SyncStatusRow';
 import ConnectionsSection from './components/ConnectionsSection';
+import OutlookOAuthReturn from './components/OutlookOAuthReturn';
+import useConnections from './hooks/useConnections';
+import useOutlookEvents from './hooks/useOutlookEvents';
+import { externalBlocksForDay } from './utils/outlookEvents';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
 import TimeInput from './components/TimeInput';
@@ -1326,6 +1330,21 @@ export default function Ritmo() {
     });
   }, [activeDateKey, customTasks, history, recurringTasks, todayKey]);
 
+  // ---- Outlook-agenda (S07) ------------------------------------------------
+  // Eigen useConnections-instantie (naast die van ConnectionsSection) puur om
+  // hier te kunnen afleiden of Outlook verbonden is; App.jsx zelf schrijft er
+  // niets mee weg. Agenda-ophalen is een no-op zonder verbonden Outlook of
+  // buiten de Planner-view (principe 2).
+  const outlookConnectionState = useConnections(currentUser?.id);
+  const outlookConnection = outlookConnectionState.connections.find(
+    c => c.provider === 'outlook' && c.status === 'connected'
+  ) || null;
+  const { eventsByDate: outlookEventsByDate } = useOutlookEvents({
+    enabled: !!outlookConnection && view === 'productivity',
+    weekDays,
+    connectionId: outlookConnection?.id,
+  });
+
   // ---- "Deel mijn dag in" (S05) -------------------------------------------
   // Bouwt de input voor de pure planDay-motor voor één dag: candidates zijn
   // pool-items (autoPlan === true, zonder tijd), fixed zijn items die al een
@@ -1398,7 +1417,7 @@ export default function Ritmo() {
     const { assignments } = planDay({
       candidates,
       fixed,
-      external: [],
+      external: externalBlocksForDay(outlookEventsByDate[dateKey], dateKey),
       dayStart,
       dayEnd: PLAN_DAY_END,
       slotStep: DEFAULT_BLOCK_MINUTES,
@@ -1445,7 +1464,7 @@ export default function Ritmo() {
         kind: meta[a.key]?.kind,
       })),
     });
-  }, [buildPlanInputs, modules, planMode, planPrefs, applyPendingAssignment, writeTasksForDay, t]);
+  }, [buildPlanInputs, modules, planMode, planPrefs, applyPendingAssignment, writeTasksForDay, t, outlookEventsByDate]);
 
   // Eén voorstel-/concept-blok overnemen resp. vastzetten: schrijft via de
   // bestaande handler en haalt het item uit de ephemere pendingPlan-state.
@@ -1782,6 +1801,7 @@ export default function Ritmo() {
     <ToastProvider>
     <div className={`min-h-screen ${theme.bg} p-4 transition-colors duration-300 relative overflow-hidden`}>
       <Toast theme={theme} />
+      <OutlookOAuthReturn onConnected={outlookConnectionState.refresh} />
       <SyncConflictDialog
         open={Boolean(pendingConflicts && pendingConflicts.length > 0)}
         conflicts={pendingConflicts || []}
@@ -1979,6 +1999,7 @@ export default function Ritmo() {
             customTasks={customTasks}
             weekDays={weekDays}
             todayKey={todayKey}
+            agendaByDate={outlookEventsByDate}
             onAddTask={addCustomTask}
             onAddSubgoal={addProjectSubgoal}
             onToggleTask={toggleTask}
