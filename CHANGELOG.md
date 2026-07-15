@@ -1,3 +1,11 @@
+# [0.49.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.48.0...v0.49.0) (2026-07-15)
+
+
+### Features
+
+* **planner:** planning-metadata (duration/window/autoPlan) op taken-bronnen ([d91c16f](https://github.com/Studio-Lek-River/Ritmo/commit/d91c16f318c2e1daf2b583b9fe14b39fbc6dabba))
+* **planner:** vrije blokken als project-subgoal-reservering ([f3d6d92](https://github.com/Studio-Lek-River/Ritmo/commit/f3d6d92191890d568b79522f122bbdea09a29e4f))
+
 # [0.48.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.47.0...v0.48.0) (2026-07-15)
 
 
