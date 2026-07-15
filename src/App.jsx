@@ -1353,7 +1353,7 @@ export default function Ritmo() {
           if (goal.time) {
             fixed.push({ time: goal.time, duration: goal.duration });
           } else if (goal.autoPlan) {
-            candidates.push({ key, duration: goal.duration, window: goal.window || '', order: order++ });
+            candidates.push({ key, duration: goal.duration, window: goal.window || '', deepWork: !!goal.deepWork, order: order++ });
           }
         });
       });
@@ -1366,7 +1366,7 @@ export default function Ritmo() {
       if (task.time) {
         fixed.push({ time: task.time, duration: task.duration });
       } else if (task.autoPlan) {
-        candidates.push({ key, duration: task.duration, window: task.window || '', order: order++ });
+        candidates.push({ key, duration: task.duration, window: task.window || '', deepWork: !!task.deepWork, order: order++ });
       }
     });
 
@@ -1402,6 +1402,7 @@ export default function Ritmo() {
       dayStart,
       dayEnd: PLAN_DAY_END,
       slotStep: DEFAULT_BLOCK_MINUTES,
+      prefs: planPrefs,
     });
     if (assignments.length === 0) return;
 
@@ -1444,7 +1445,7 @@ export default function Ritmo() {
         kind: meta[a.key]?.kind,
       })),
     });
-  }, [buildPlanInputs, modules, planMode, applyPendingAssignment, writeTasksForDay, t]);
+  }, [buildPlanInputs, modules, planMode, planPrefs, applyPendingAssignment, writeTasksForDay, t]);
 
   // Eén voorstel-/concept-blok overnemen resp. vastzetten: schrijft via de
   // bestaande handler en haalt het item uit de ephemere pendingPlan-state.
