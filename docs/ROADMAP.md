@@ -53,11 +53,12 @@ Het live schema (7 tabellen) en de RLS als versioned migrations in de repo, plus
 #### S01b, RLS-fix invite-lek (B1). IN UITVOERING
 Een `redeem_invite`-RPC (`SECURITY DEFINER`) plus strakke policies, zodat invite-tokens niet meer leesbaar zijn en de isolatie tussen huishoudens hersteld is. Tegelijk gaan we migration-gedreven werken (`migration repair`, daarna `db push`).
 
-#### S02, Connections-infra plus genormaliseerd items-model
+#### S02, Connections-infra plus genormaliseerd items-model. IN UITVOERING
 - **Doel:** de basis voor alle externe bronnen leggen.
 - **Oplevering:** een `connections`-tabel (per account, provider, versleutelde tokens server-side, met RLS); het genormaliseerde items-model plus een normalisatie-laag; een verbind- en verbreek-UI met status. Tokens leven server-side via de `api/`-laag, nooit in de browser.
 - **Afhankelijk van:** S01b (veilige RLS-basis).
 - **Aandacht:** externe bron = bestaande module plus `source`-binding, geen nieuw module-type. Hergebruik het bestaande sync- en storage-patroon.
+- **Openstaand:** de migration (`supabase/migrations/20260713120000_connections.sql`) is geschreven maar nog niet via `db push` toegepast op de live database; dat is een handmatige stap voor Bas (backup plus bevestigingspauze, S01b-workflow), net als het instellen van `SUPABASE_SERVICE_ROLE_KEY` als env-var op de deploy.
 
 #### S03, Outlook lezen
 - **Doel:** je Outlook-afspraken ophalen, zodat de planner er later omheen kan plannen, en agenda-items als bron tonen.
@@ -75,6 +76,29 @@ Een `redeem_invite`-RPC (`SECURITY DEFINER`) plus strakke policies, zodat invite
 - **Oplevering:** GitHub-koppeling (issues naar items), voortgang per repo of project. De `api/`-laag heeft al een `GITHUB_TOKEN`-patroon voor feedback; hergebruik dat.
 - **Afhankelijk van:** S02.
 
+### Fase A, Planner lokaal (offline)
+
+Een lokale, offline versie van de planner die volledig op bestaande data draait, zodat er waarde is lang voordat de koppelingen (Outlook e.a.) klaar zijn. Hangt van niets externs af en kan nu starten. De heuristische indeler uit A3 wordt de deterministische ruggengraat waar de LLM-laag (S07) later op voortbouwt en op terugvalt.
+
+**Ordening-notitie:** deze lokale S07-lite komt bewust **vóór** de Outlook-keten. Waar de oude volgorde S07 pas na S03 plaatste, levert Fase A nu direct waarde op bestaande data; de LLM-laag (S07) bouwt straks op de lokale indeler (A3) voort in plaats van vanaf nul te beginnen.
+
+#### A1, Week-UI (weekrooster + takenpool + legenda + cross-day). #96
+- **Doel:** de dag-gerichte Planner omvormen naar een weekrooster in Outlook-vorm met een takenpool links en een legenda, inclusief cross-day versleping.
+- **Oplevering:** `src/views/WeekView.jsx` (7 dagkolommen + uur-rijen, blokken op `time`), takenpool per geselecteerde dag, legenda (Agenda vast / Ingepland / Voorstel), een handler om een taak tussen `day:<date>`-records te verplaatsen, en het laden van de zichtbare week. Stijl exact volgens `RitmoPlannerPrototype.jsx`, met repo-patronen (`theme`/`r-*`, `getColorClasses`/`getColorHex`).
+- **Afhankelijk van:** niets (bestaande data).
+
+#### A2, Planning-metadata + vrije blokken (autoPlan). #97
+- **Doel:** optioneel `duration`, `window` en `autoPlan` op de bronnen, plus vrije blokken als tijd-reservering op de bestaande `projects`-module (geen nieuw type).
+- **Afhankelijk van:** A1.
+
+#### A3, Lokale dag-indeler + drie standen. #98
+- **Doel:** een heuristische "deel mijn dag in" (`src/utils/planDay.js`): ankers, dagdeel-vensters, gaten, ontwijkt agenda-blokken. Drie standen als instelling (alleen voorstellen / concept / direct) met ongedaan-maken. Deterministische ruggengraat en fallback voor S07.
+- **Afhankelijk van:** A2.
+
+#### A4, Afstem-voorkeuren. #99
+- **Doel:** een klein voorkeuren-stuk in settings (energie per dagdeel, diepwerk-vensters, hoeveel rust) dat de indeler leest. Legt de basis voor de afstem-vragen die S07 later kan stellen.
+- **Afhankelijk van:** A3.
+
 ### Fase 3, Planner
 
 #### S06, Vandaag-feed
@@ -85,7 +109,8 @@ Een `redeem_invite`-RPC (`SECURITY DEFINER`) plus strakke policies, zodat invite
 #### S07, Deel mijn dag in
 - **Doel:** de planner die je taken rond je Outlook-afspraken indeelt.
 - **Oplevering:** een plan-endpoint (Claude-API via de `api/`-laag) dat de dag-items plus de Outlook-afspraken neemt en een tijdgeblokte indeling teruggeeft, plus de planner-UI. Nog geen write-back.
-- **Afhankelijk van:** S03 (Outlook lezen) en S06 (feed).
+- **Lokale voorloper:** de heuristische indeler uit A3 is de deterministische ruggengraat en fallback; S07 is de LLM-laag daarbovenop. De planner-UI komt uit A1.
+- **Afhankelijk van:** S03 (Outlook lezen) en S06 (feed); bouwt voort op Fase A (A1–A4).
 
 #### S08, Outlook wegschrijven
 - **Doel:** de gegenereerde indeling naar Outlook schrijven.

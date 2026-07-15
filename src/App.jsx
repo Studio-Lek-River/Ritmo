@@ -31,6 +31,7 @@ import InstallGuide from './components/help/InstallGuide';
 import BackupSection from './components/BackupSection';
 import AuthSection from './components/auth/AuthSection';
 import SyncStatusRow from './components/SyncStatusRow';
+import ConnectionsSection from './components/ConnectionsSection';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
 import TimeInput from './components/TimeInput';
@@ -2457,6 +2458,9 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
               <AuthSection theme={theme} />
             )}
             <SyncStatusRow theme={theme} signedIn={!!currentUser} userId={currentUser?.id} />
+            {isSyncEnabled() && currentUser && (
+              <ConnectionsSection theme={theme} accountId={currentUser.id} />
+            )}
           </div>
         )}
 

@@ -1598,4 +1598,29 @@ export default {
       projecttaak: 'Project task',
     },
   },
+
+  connections: {
+    title: 'Connections',
+    intro: 'Connect external sources so their items show up in Ritmo.',
+    connect: 'Connect',
+    disconnect: 'Disconnect',
+    providers: {
+      outlook: 'Outlook',
+      trello: 'Trello',
+      github: 'GitHub',
+    },
+    status: {
+      connected: 'Connected',
+      disconnected: 'Not connected',
+      error: 'Error',
+    },
+    errors: {
+      unauthenticated: 'You are no longer signed in. Sign in again and try again.',
+      notFound: 'This connection no longer exists.',
+      disconnectFailed: 'Disconnecting failed. Please try again later.',
+      notImplemented: 'This connection is not available yet.',
+      serverConfig: 'Connections are not fully configured yet.',
+      unexpected: 'Something unexpected went wrong. Please try again later.',
+    },
+  },
 };

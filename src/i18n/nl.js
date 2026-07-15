@@ -1609,4 +1609,29 @@ export default {
       projecttaak: 'Projecttaak',
     },
   },
+
+  connections: {
+    title: 'Koppelingen',
+    intro: 'Verbind externe bronnen zodat hun items in Ritmo verschijnen.',
+    connect: 'Verbinden',
+    disconnect: 'Verbreken',
+    providers: {
+      outlook: 'Outlook',
+      trello: 'Trello',
+      github: 'GitHub',
+    },
+    status: {
+      connected: 'Verbonden',
+      disconnected: 'Niet verbonden',
+      error: 'Fout',
+    },
+    errors: {
+      unauthenticated: 'Je bent niet (meer) ingelogd. Log opnieuw in en probeer het nogmaals.',
+      notFound: 'Deze koppeling bestaat niet (meer).',
+      disconnectFailed: 'Verbreken is niet gelukt. Probeer het later opnieuw.',
+      notImplemented: 'Deze koppeling is nog niet beschikbaar.',
+      serverConfig: 'Koppelingen zijn nog niet volledig ingesteld.',
+      unexpected: 'Er ging iets onverwachts mis. Probeer het later opnieuw.',
+    },
+  },
 };
