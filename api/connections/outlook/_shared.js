@@ -21,8 +21,11 @@ export const REQUIRED_OUTLOOK_ENV = [
   'OAUTH_STATE_SECRET',
 ];
 
+// Retourneert de namen van de ontbrekende REQUIRED_OUTLOOK_ENV-vars ([] = alles
+// aanwezig). Callers loggen de lijst server-side (Vercel Runtime Logs) en geven de
+// client alleen de generieke code `server_config` — geen interne details lekken.
 export function missingOutlookEnv() {
-  return REQUIRED_OUTLOOK_ENV.some((name) => !process.env[name]);
+  return REQUIRED_OUTLOOK_ENV.filter((name) => !process.env[name]);
 }
 
 export function getServiceClient() {

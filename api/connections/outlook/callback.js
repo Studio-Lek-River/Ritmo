@@ -32,7 +32,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed', code: 'method_not_allowed' });
   }
 
-  if (missingOutlookEnv()) {
+  const missingEnv = missingOutlookEnv();
+  if (missingEnv.length) {
+    console.error('connections/outlook/callback missing env:', missingEnv.join(', '));
     return redirectError(res, 'server_config');
   }
 

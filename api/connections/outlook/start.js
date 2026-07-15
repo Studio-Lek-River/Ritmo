@@ -18,7 +18,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed', code: 'method_not_allowed' });
   }
 
-  if (missingOutlookEnv()) {
+  const missingEnv = missingOutlookEnv();
+  if (missingEnv.length) {
+    console.error('connections/outlook/start missing env:', missingEnv.join(', '));
     return res.status(500).json({ error: 'Server niet correct geconfigureerd', code: 'server_config' });
   }
 
