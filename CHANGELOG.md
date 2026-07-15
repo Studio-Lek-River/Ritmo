@@ -1,3 +1,18 @@
+# [0.47.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.46.0...v0.47.0) (2026-07-15)
+
+
+### Bug Fixes
+
+* **db:** sluit named-role EXECUTE-lek, verklein connections-grant, fix NULL-unique ([d7f4bc3](https://github.com/Studio-Lek-River/Ritmo/commit/d7f4bc3c71e38aece0cb2711e6eaad684943e95d))
+
+
+### Features
+
+* **api:** connections disconnect-endpoint en connect-stub (S02) ([acafe16](https://github.com/Studio-Lek-River/Ritmo/commit/acafe16630117437e07bc646c7a54421ae2f7402))
+* **connections:** Koppelingen-UI met verbind/verbreek en status (S02) ([e8d460e](https://github.com/Studio-Lek-River/Ritmo/commit/e8d460e7fa163ea2a8cde6a6498cc5feb31486d3))
+* **db:** connections-tabel met RLS en Vault-only tokens (S02) ([bc3508f](https://github.com/Studio-Lek-River/Ritmo/commit/bc3508f3430ead293d75e86397f8690ac5f6d383))
+* **items:** genormaliseerd items-model over tasks/projects-modules (S02) ([6cc2e74](https://github.com/Studio-Lek-River/Ritmo/commit/6cc2e74619294fbe118245ca3fe155a198ff6a0b))
+
 # [0.46.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.45.0...v0.46.0) (2026-07-13)
 
 
