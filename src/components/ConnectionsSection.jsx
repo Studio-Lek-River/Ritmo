@@ -75,6 +75,7 @@ export default function ConnectionsSection({ theme, accountId }) {
         {CONNECTION_PROVIDERS.map((provider) => {
           const connection = connections.find((c) => c.provider === provider);
           const status = connection?.status || 'disconnected';
+          const isConnected = status === 'connected';
           const { Icon, color } = STATUS_ICON[status] || STATUS_ICON.disconnected;
           const busy = provider === 'outlook'
             ? outlookBusy
@@ -97,7 +98,7 @@ export default function ConnectionsSection({ theme, accountId }) {
                 </div>
               </div>
 
-              {connection ? (
+              {connection && isConnected ? (
                 <button
                   type="button"
                   onClick={() => disconnect(connection.id)}
