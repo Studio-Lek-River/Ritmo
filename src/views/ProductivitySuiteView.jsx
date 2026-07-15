@@ -1,18 +1,25 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from '../i18n/useTranslation';
-import DagView from './DagView';
+import WeekView from './WeekView';
 import KanbanView from './KanbanView';
 import TaskListPanel from '../components/TaskListPanel';
+import TaskPoolPanel from '../components/TaskPoolPanel';
+import { buildDayTimeline } from '../utils/dayTimeline';
+import { shortWeekdayLabelsMondayFirst } from '../utils/dates';
 
 const TABS = ['dag', 'kanban'];
 
-// Werkruimte voor de Planner: kop + Dag/Kanban-toggle, met links een gedeelde
-// takenlijst en rechts de actieve weergave. Dag rendert de geaggregeerde
-// uur-agenda, Kanban het statusbord. Lokale useState zodat de tabkeuze een
-// lichte, niet-persistente UI-voorkeur blijft (principe 2: geen gedrag opgelegd).
+// Werkruimte voor de Planner: kop + Dag/Kanban-toggle. Dag rendert het
+// weekrooster (WeekView, met zijn eigen interne Dag/Week-toggle) met de
+// takenpool van de geselecteerde dag ernaast; Kanban rendert het ongewijzigde
+// statusbord met de gedeelde takenlijst. Lokale useState zodat de tabkeuze en
+// de geselecteerde dag lichte, niet-persistente UI-voorkeuren blijven
+// (principe 2: geen gedrag opgelegd).
 export default function ProductivitySuiteView({
   modules,
   customTasks,
+  weekDays,
+  todayKey,
   onAddTask,
   onAddSubgoal,
   onToggleTask,
@@ -21,12 +28,39 @@ export default function ProductivitySuiteView({
   onToggleProjectSubgoal,
   onSetTaskStatus,
   onSetSubgoalStatus,
+  onToggleTaskInDay,
+  onMoveItem,
   theme,
 }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState('dag');
+  const [selectedDateKey, setSelectedDateKey] = useState(todayKey);
 
   const tasksColor = modules.find(m => m.enabled && m.type === 'tasks')?.color;
+
+  const selectedDay = (weekDays || []).find(d => d.dateKey === selectedDateKey) || weekDays?.[0];
+
+  const shortLabels = useMemo(() => shortWeekdayLabelsMondayFirst(), []);
+  const dayOptions = useMemo(() => (weekDays || []).map((d, idx) => ({
+    dateKey: d.dateKey,
+    label: `${shortLabels[idx]} ${d.date.getDate()}`,
+  })), [weekDays, shortLabels]);
+
+  const poolItems = useMemo(() => {
+    if (!selectedDay) return [];
+    const items = buildDayTimeline({
+      modules,
+      customTasks: selectedDay.customTasks,
+      referenceDate: selectedDay.date,
+      handlers: {
+        onToggleTask: (id) => onToggleTaskInDay(selectedDay.dateKey, id),
+        onToggleProjectSubgoal,
+      },
+    });
+    return items
+      .filter(item => !item.time)
+      .map(item => (item.key.startsWith('task:virtual:') ? { ...item, toggle: undefined } : item));
+  }, [selectedDay, modules, onToggleTaskInDay, onToggleProjectSubgoal]);
 
   return (
     <div className="space-y-4">
@@ -50,22 +84,37 @@ export default function ProductivitySuiteView({
       </div>
 
       <div className="grid gap-4 md:grid-cols-[minmax(240px,300px)_1fr] items-start">
-        <TaskListPanel
-          tasks={customTasks}
-          color={tasksColor}
-          onAddTask={onAddTask}
-          onToggleTask={onToggleTask}
-          onDeleteTask={onDeleteTask}
-          onSetTaskTime={onSetTaskTime}
-          theme={theme}
-        />
+        {tab === 'dag' ? (
+          <TaskPoolPanel
+            items={poolItems}
+            dayOptions={dayOptions}
+            selectedDateKey={selectedDay?.dateKey || todayKey}
+            canAddTask={(selectedDay?.dateKey || todayKey) === todayKey}
+            onAddTask={onAddTask}
+            onMoveItem={onMoveItem}
+            theme={theme}
+          />
+        ) : (
+          <TaskListPanel
+            tasks={customTasks}
+            color={tasksColor}
+            onAddTask={onAddTask}
+            onToggleTask={onToggleTask}
+            onDeleteTask={onDeleteTask}
+            onSetTaskTime={onSetTaskTime}
+            theme={theme}
+          />
+        )}
 
         {tab === 'dag' ? (
-          <DagView
+          <WeekView
+            weekDays={weekDays || []}
             modules={modules}
-            customTasks={customTasks}
-            onToggleTask={onToggleTask}
+            selectedDateKey={selectedDay?.dateKey || todayKey}
+            onSelectDate={setSelectedDateKey}
+            onToggleTask={onToggleTaskInDay}
             onToggleProjectSubgoal={onToggleProjectSubgoal}
+            onMoveItem={onMoveItem}
             theme={theme}
           />
         ) : (

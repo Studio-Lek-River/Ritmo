@@ -1069,6 +1069,138 @@ export default function Ritmo() {
     setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, status, done: status === 'klaar' } : t));
   };
 
+  // ---- WeekView (Planner) handlers ---------------------------------------
+  // De WeekView toont alle dagen van de huidige week, niet alleen de actieve
+  // dag. Deze twee helpers lezen/schrijven de customTasks van een willekeurige
+  // dag: de actieve dag via de live state (customTasks/setCustomTasks, zoals
+  // de rest van de app), elke andere dag rechtstreeks via history + storage.
+  // Hierop bouwen zowel het afvinken op een niet-actieve dag als de
+  // cross-day-drag (verplaatsen + tijd zetten) voort.
+  const readTasksForDay = useCallback((dateKey) => {
+    if (dateKey === activeDateKey) return customTasks;
+    return history[dateKey]?.customTasks || [];
+  }, [activeDateKey, customTasks, history]);
+
+  const writeTasksForDay = useCallback((dateKey, updater) => {
+    if (dateKey === activeDateKey) {
+      setCustomTasks(prev => updater(prev));
+      return;
+    }
+    setHistory(prev => {
+      const day = prev[dateKey] || { moduleData: {}, customTasks: [] };
+      const nextCustomTasks = updater(day.customTasks || []);
+      const nextDay = { ...day, customTasks: nextCustomTasks };
+      window.storage.set(`day:${dateKey}`, JSON.stringify(nextDay)).catch(() => {});
+      return { ...prev, [dateKey]: nextDay };
+    });
+  }, [activeDateKey]);
+
+  // Afvinken van een losse taak op een willekeurige dag van de zichtbare week.
+  // Op de actieve dag hergebruikt dit de bestaande toggleTask (incl. geluid);
+  // op elke andere dag schrijft het rechtstreeks naar dat day:<date>-record.
+  const toggleTaskInDay = useCallback((dateKey, taskId) => {
+    if (dateKey === activeDateKey) { toggleTask(taskId); return; }
+    writeTasksForDay(dateKey, tasks => tasks.map(t =>
+      String(t.id) === String(taskId) ? { ...t, done: !t.done } : t
+    ));
+  }, [activeDateKey, writeTasksForDay]);
+
+  // De ene nieuwe cross-day-handler uit de S03-spec: verplaatst een pool-item
+  // (losse taak of projecttaak) naar een dag + tijd. Losse taken verhuizen
+  // tussen day:<date>-records; project-subgoals leven niet per dag maar op de
+  // module zelf, dus daar past deze handler `deadline` + `time` aan. Een nog
+  // niet gematerialiseerde recurring-instantie (virtual, zie weekDays) wordt
+  // pas nu voor het eerst als echte taak opgeslagen — nooit eager (principe 2).
+  const moveItemToDay = useCallback((itemKey, sourceDateKey, targetDateKey, time) => {
+    if (itemKey.startsWith('subgoal:')) {
+      const [, projectId, subjectId, goalIdRaw] = itemKey.split(':');
+      setModules(prev => prev.map(m => {
+        if (m.id !== projectId) return m;
+        return {
+          ...m,
+          subjects: (m.subjects || []).map(s => s.id !== subjectId ? s : {
+            ...s,
+            subgoals: (s.subgoals || []).map(g => String(g.id) !== goalIdRaw ? g : {
+              ...g,
+              deadline: targetDateKey,
+              time: time || undefined,
+            }),
+          }),
+        };
+      }));
+      return;
+    }
+
+    if (!itemKey.startsWith('task:')) return;
+    const taskId = itemKey.slice('task:'.length);
+
+    let moved = null;
+    let isVirtual = false;
+    if (taskId.startsWith('virtual:')) {
+      const [, rtId, virtualDateKey] = taskId.split(':');
+      if (virtualDateKey === sourceDateKey) {
+        const rt = recurringTasks.find(r => String(r.id) === rtId);
+        if (rt) {
+          moved = { recurringId: rt.id, text: rt.text, done: false, ...(rt.time ? { time: rt.time } : {}) };
+          isVirtual = true;
+        }
+      }
+    } else {
+      moved = readTasksForDay(sourceDateKey).find(t => String(t.id) === taskId) || null;
+    }
+    if (!moved) return;
+
+    const nextTask = { ...moved, time: time || undefined, ...(isVirtual ? { id: genId('task') } : {}) };
+
+    if (sourceDateKey === targetDateKey) {
+      writeTasksForDay(targetDateKey, tasks => tasks.some(t => String(t.id) === taskId)
+        ? tasks.map(t => String(t.id) === taskId ? nextTask : t)
+        : [...tasks, nextTask]);
+      return;
+    }
+
+    writeTasksForDay(targetDateKey, tasks => [...tasks, nextTask]);
+    if (!isVirtual) {
+      writeTasksForDay(sourceDateKey, tasks => tasks.filter(t => String(t.id) !== taskId));
+    }
+  }, [readTasksForDay, writeTasksForDay, recurringTasks]);
+
+  // Zichtbare week voor de WeekView: de 7 dagen (ma-zo) van de huidige
+  // kalenderweek. De actieve dag (altijd "vandaag" binnen de Planner, zie de
+  // view==='productivity'-guard hierboven) leest de live customTasks-state;
+  // elke andere dag leest de al-in-geheugen history-map. Voor dagen ná vandaag
+  // worden terugkerende taken die daar nog niet gematerialiseerd zijn er
+  // alleen virtueel (in-memory, `virtual: true`) bijgevoegd zodat de week zich
+  // als agenda gedraagt — pas een gebruikersactie (slepen/tijd zetten, via
+  // moveItemToDay) schrijft zo'n instantie echt naar het dagrecord. Zo blijft
+  // het tonen van een toekomstige dag veilig voor bestaande opslag (principe 2).
+  const weekDays = useMemo(() => {
+    const monday = startOfWeek(new Date());
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = addDays(monday, i);
+      const dateKey = fmtDateKey(date);
+      const stored = dateKey === activeDateKey ? customTasks : (history[dateKey]?.customTasks || []);
+
+      let dayTasks = stored;
+      if (dateKey > todayKey) {
+        const missing = recurringTasks
+          .filter(rt => rt.days.includes(i))
+          .filter(rt => !stored.some(t => t.recurringId === rt.id))
+          .map(rt => ({
+            id: `virtual:${rt.id}:${dateKey}`,
+            recurringId: rt.id,
+            text: rt.text,
+            done: false,
+            virtual: true,
+            ...(rt.time ? { time: rt.time } : {}),
+          }));
+        dayTasks = [...stored, ...missing];
+      }
+
+      return { date, dateKey, customTasks: dayTasks };
+    });
+  }, [activeDateKey, customTasks, history, recurringTasks, todayKey]);
+
   // Streak calculation. moduleData is the source of truth for the active
   // date; for any other day, fall back to history (which is updated on save).
   const calculateStreak = (checkFn) => {
@@ -1557,6 +1689,8 @@ export default function Ritmo() {
           <ProductivitySuiteView
             modules={modules}
             customTasks={customTasks}
+            weekDays={weekDays}
+            todayKey={todayKey}
             onAddTask={addCustomTask}
             onAddSubgoal={addProjectSubgoal}
             onToggleTask={toggleTask}
@@ -1565,6 +1699,8 @@ export default function Ritmo() {
             onToggleProjectSubgoal={toggleProjectSubgoal}
             onSetTaskStatus={setTaskStatus}
             onSetSubgoalStatus={setSubgoalStatus}
+            onToggleTaskInDay={toggleTaskInDay}
+            onMoveItem={moveItemToDay}
             theme={theme}
           />
         )}
