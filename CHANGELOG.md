@@ -1,3 +1,16 @@
+# [0.48.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.47.0...v0.48.0) (2026-07-15)
+
+
+### Bug Fixes
+
+* **planner:** expliciete i18n-keys voor Dag/Week-toggle in WeekView ([6bcbb5f](https://github.com/Studio-Lek-River/Ritmo/commit/6bcbb5f306aedbe23d48a95e5d232b60f4c7043a))
+* **planner:** TaskPoolPanel accepteert drop om tijd te wissen ([93c86c8](https://github.com/Studio-Lek-River/Ritmo/commit/93c86c8249cc95f8531f1f8236e78dedb0f09ec8))
+
+
+### Features
+
+* **planner:** weekrooster met takenpool, legenda en cross-day-slepen (S03) ([a7aab0b](https://github.com/Studio-Lek-River/Ritmo/commit/a7aab0b7a06625f1a28ad1da238a30fd935ca0c6))
+
 # [0.47.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.46.0...v0.47.0) (2026-07-15)
 
 
