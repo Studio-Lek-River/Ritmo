@@ -26,12 +26,18 @@ export default async function handler(req, res) {
 
   const jwt = getBearerToken(req);
   if (!jwt) {
+    console.error('connections/outlook/start no bearer token on request');
     return res.status(401).json({ error: 'Niet geauthenticeerd', code: 'unauthenticated' });
   }
 
   const supabase = getServiceClient();
   const { data: userData, error: userError } = await supabase.auth.getUser(jwt);
   if (userError || !userData?.user) {
+    console.error(
+      'connections/outlook/start getUser failed:',
+      userError?.status || '', userError?.message || userError || '(no error object)',
+      '| has user:', !!userData?.user,
+    );
     return res.status(401).json({ error: 'Ongeldige sessie', code: 'unauthenticated' });
   }
 
