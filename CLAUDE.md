@@ -77,6 +77,8 @@ Per slice gelden vijf rollen en twee poorten:
 De hoofdsessie orkestreert: roep implementer, dan reviewer, dan verifier, sequentieel.
 Subagents kunnen zelf geen subagents starten.
 
+Reviewer en verifier bepalen hun eigen scope via `git diff` tegen `main` (plus werkboom-status) en beoordelen alleen de gewijzigde bestanden; de hoofdsessie hoeft geen change-set in de prompt te plakken. "Read-only" = geen code-edits: beide mogen wél niet-muterende commando's draaien (`git diff`/`git status`, en de reviewer `npm run check:i18n`).
+
 Harde regel (afgedwongen via hook): nl.js en en.js hebben dezelfde keys.
 De reviewer let daarnaast op: geen hardcoded UI-tekst, geen wijzigingen buiten de slice-scope,
 en naleving van de Ritmo-uitgangspunten.
