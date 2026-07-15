@@ -101,6 +101,16 @@ const PLAN_MODE_OPTIONS = [
   { id: 'direct', labelKey: 'settings.planModeDirect' },
 ];
 
+// Neutrale S06-default voor de dag-indeler-voorkeuren: energie per dagdeel
+// 'neutral', geen diepwerk-vensters, geen rustbuffer — identiek aan S05-
+// gedrag (principe 2: geen opgelegde verandering zonder actie van de
+// gebruiker in het Voorkeuren-paneel).
+const DEFAULT_PLAN_PREFS = {
+  energy: { ochtend: 'neutral', middag: 'neutral', avond: 'neutral' },
+  deepWorkWindows: [],
+  rest: 'none',
+};
+
 // Dag-einde voor de indeler; spiegelt WeekView's HOUR_END (die module
 // exporteert 'm niet). Dag-start komt per aanroep uit de slaap-wake of deze
 // fallback (zie handleShareDay).
@@ -140,6 +150,7 @@ export default function Ritmo() {
   const [goldenBorderEnabled, setGoldenBorderEnabled] = useState(true);
   const [appMode, setAppMode] = useState('standard');
   const [planMode, setPlanMode] = useState('propose');
+  const [planPrefs, setPlanPrefs] = useState(DEFAULT_PLAN_PREFS);
   // Ephemere uitkomst van "Deel mijn dag in" (propose/concept-standen). Nooit
   // gepersisteerd — alleen bij expliciete acceptatie schrijft een handler via
   // de bestaande moveItemToDay/setTaskTime. Shape: { dateKey, mode, items }.
@@ -206,6 +217,7 @@ export default function Ritmo() {
         if (settings.goldenBorderEnabled !== undefined) setGoldenBorderEnabled(settings.goldenBorderEnabled);
         if (settings.appMode !== undefined) setAppMode(settings.appMode);
         if (settings.planMode !== undefined) setPlanMode(settings.planMode);
+        if (settings.planPrefs !== undefined) setPlanPrefs(settings.planPrefs);
         if (settings.onboardingProfile !== undefined) setOnboardingProfile(settings.onboardingProfile);
         if (settings.hasUsedSwipe !== undefined) setHasUsedSwipe(settings.hasUsedSwipe);
         if (settings.hasDismissedInstallBanner !== undefined) setHasDismissedInstallBanner(settings.hasDismissedInstallBanner);
@@ -341,6 +353,7 @@ export default function Ritmo() {
           goldenBorderEnabled,
           appMode,
           planMode,
+          planPrefs,
           onboardingProfile,
           hasUsedSwipe,
           hasDismissedInstallBanner,
@@ -352,7 +365,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, planPrefs, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
 
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
