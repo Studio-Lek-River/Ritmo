@@ -3,6 +3,7 @@ import { Check, Plus } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { getColorClasses } from '../utils/colors';
 import { encodeDragPayload, decodeDragPayload } from '../utils/dragPayload';
+import { DEFAULT_BLOCK_MINUTES } from '../utils/dayTimeline';
 import TimeInput from './TimeInput';
 
 // Takenpool voor de WeekView: alle items zonder `time` van de geselecteerde
@@ -131,7 +132,10 @@ function PoolItemRow({ item, dayOptions, selectedDateKey, onMoveItem, theme, t }
         <div className={`text-sm truncate ${item.status ? `line-through ${theme.textMuted}` : theme.textSecondary}`}>
           {item.label}
         </div>
-        <div className={`text-[11px] ${theme.textMuted}`}>{t('planner.pool.durationHint')}</div>
+        <div className={`text-[11px] ${theme.textMuted}`}>
+          {t('planner.pool.durationMinutes', { min: item.duration ?? DEFAULT_BLOCK_MINUTES })}
+          {item.window && <span> · {t(`productivity.dagdelen.${item.window}`)}</span>}
+        </div>
       </div>
 
       <TimeInput

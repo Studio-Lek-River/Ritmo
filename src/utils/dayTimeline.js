@@ -16,6 +16,22 @@ export const DAGDEEL_THRESHOLDS = {
 
 export const DAGDEEL_ORDER = ['ochtend', 'middag', 'avond', 'ongepland'];
 
+// Default blok-duur (minuten) als een item geen `duration` heeft: bepaalt de
+// WeekView-blokhoogte en de TaskPoolPanel-duurhint. Eén centrale plek zodat
+// beide views dezelfde aanname delen (geen losse magic numbers).
+export const DEFAULT_BLOCK_MINUTES = 30;
+
+// Keuzelijst voor de dagdeel-voorkeur (`window`) op customTasks, project-
+// subgoals en recurringTasks. '' = geen voorkeur (veld weglaten bij opslag).
+// Hergebruikt de bestaande `productivity.dagdelen.*`-labels; alleen de lege
+// optie krijgt een nieuwe key (`planner.window.none`).
+export const WINDOW_OPTIONS = [
+  { id: '', labelKey: 'planner.window.none' },
+  { id: 'ochtend', labelKey: 'productivity.dagdelen.ochtend' },
+  { id: 'middag', labelKey: 'productivity.dagdelen.middag' },
+  { id: 'avond', labelKey: 'productivity.dagdelen.avond' },
+];
+
 function timeToMinutes(time) {
   if (!time || typeof time !== 'string') return null;
   const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
@@ -60,7 +76,14 @@ export function buildDayTimeline({
     if (mod.type === 'projects') {
       (mod.subjects || []).forEach(subject => {
         (subject.subgoals || []).forEach(goal => {
-          if (goal.deadline !== todayDateKey) return;
+          // Een gewoon subgoal zonder deadline (en zonder `freeBlock`) mag niet
+          // in de pool verschijnen (geen overspoeling, principe 2). Een
+          // `freeBlock`-subgoal verschijnt elke dag; een subgoal met deadline
+          // vandaag verschijnt zoals voorheen. Eén enkele push dekt beide
+          // gevallen, dus geen dubbele emit als een goal toevallig allebei is.
+          const isFreeBlock = !!goal.freeBlock;
+          const isDueToday = goal.deadline === todayDateKey;
+          if (!isFreeBlock && !isDueToday) return;
           const time = goal.time || '';
           pushItem(items, {
             key: `subgoal:${mod.id}:${subject.id}:${goal.id}`,
@@ -68,6 +91,8 @@ export function buildDayTimeline({
             label: goal.label,
             time,
             dagdeel: dagdeelForTime(time),
+            duration: goal.duration,
+            window: goal.window || '',
             status: !!goal.completed,
             color: mod.color,
             toggle: handlers.onToggleProjectSubgoal
@@ -88,6 +113,8 @@ export function buildDayTimeline({
       label: task.text,
       time,
       dagdeel: dagdeelForTime(time),
+      duration: task.duration,
+      window: task.window || '',
       status: !!task.done,
       color: tasksModuleColor,
       toggle: handlers.onToggleTask ? () => handlers.onToggleTask(task.id) : undefined,
