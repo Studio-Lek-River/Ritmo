@@ -2,7 +2,7 @@
 // (S07). Mapt een licht Graph-event (zoals `api/connections/outlook/events.js`
 // teruggeeft: { id, subject, start, end, isAllDay }) naar (a) per-dag
 // weergaveblokken { id, dateKey, start, end, title, allDay, source } voor
-// WeekView/DagView en (b) het planDay-`external`-shape { start, end } per dag.
+// WeekView en (b) het planDay-`external`-shape { start, end } per dag.
 // Meerdaagse en all-day-events worden per kalenderdag gesplitst. Schrijft
 // nooit naar opslag, gebruikt geen randomness/kloktijd in de mapping zelf:
 // dezelfde Graph-response geeft altijd dezelfde output (AC6).
