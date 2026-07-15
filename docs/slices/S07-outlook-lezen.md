@@ -72,8 +72,9 @@ slice voorbereid:
     `buildPlanInputs`/`handleShareDay` met de afspraken van die dag (nu `external: []`).
   - **Afspraken ophalen** (ephemeer, geen persistentie): fetch de zichtbare week wanneer Outlook
     `connected` is en de Planner open is; houd in React-state gekeyd op `dateKey`.
-  - **Renderen** als `r-block-agenda` (read-only, niet-versleepbaar) in `src/views/WeekView.jsx` +
-    `src/views/DagView.jsx` met de bestaande `blockStyle(time, duration)`.
+  - **Renderen** als `r-block-agenda` (read-only, niet-versleepbaar) in `src/views/WeekView.jsx` met de
+    bestaande `blockStyle(time, duration)`. De dag-weergave van de agenda loopt via WeekViews interne
+    Dag/Week-toggle; de nooit-gemounte `DagView.jsx` is als dode code verwijderd (#107).
 - **i18n** (nl + en, key-pariteit): nieuwe `connections.errors.*` (OAuth-codes) + eventuele toast/label
   onder `connections.*` / `planner.*`. `planner.legend.agenda` bestaat al.
 - Documenteer de nieuwe server-env-vars naast `GITHUB_TOKEN` / `SUPABASE_SERVICE_ROLE_KEY`.
@@ -100,7 +101,8 @@ slice voorbereid:
 - `src/hooks/useConnections.js` of een kleine `useOutlookEvents(dateKeys)` — ephemere fetch-state.
 - `src/App.jsx` — `?outlook=…`-afhandeling + toast; agenda-state naar de views; `external` in
   `buildPlanInputs`/`handleShareDay`.
-- `src/views/WeekView.jsx` + `src/views/DagView.jsx` — `r-block-agenda`-blokken renderen.
+- `src/views/WeekView.jsx` — `r-block-agenda`-blokken renderen (dag-weergave via de interne
+  Dag/Week-toggle). De ongebruikte `src/views/DagView.jsx` is verwijderd (#107).
 - `src/components/ConnectionsSection.jsx` — Outlook-connect start de redirect; nieuwe error-keys.
 - `src/i18n/nl.js` + `src/i18n/en.js` — nieuwe keys met pariteit.
 
@@ -137,8 +139,9 @@ De verifier toetst deze punt voor punt.
   teruggeschreven via `connections_set_secret`. Een verlopen access-token blokkeert de fetch niet.
 - [ ] **AC3** — `POST /api/connections/outlook/events` geeft genormaliseerde afspraken voor een
   datum-range; agenda-inhoud wordt **niet** persistent opgeslagen (ephemere fetch).
-- [ ] **AC4** — Afspraken verschijnen als read-only `r-block-agenda`-blokken in WeekView + DagView
-  (light + dark, geen hardcoded oppervlakte-kleuren of UI-tekst).
+- [ ] **AC4** — Afspraken verschijnen als read-only `r-block-agenda`-blokken in WeekView, zowel in de
+  week- als in de dag-modus van WeekViews interne Dag/Week-toggle (light + dark, geen hardcoded
+  oppervlakte-kleuren of UI-tekst).
 - [ ] **AC5** — "Deel mijn dag in" plant om de afspraken heen (`planDay.external` gevuld) en overschrijft
   ze niet.
 - [ ] **AC6** — `src/utils/outlookEvents.js` is puur/deterministisch en schrijft nooit naar opslag.
