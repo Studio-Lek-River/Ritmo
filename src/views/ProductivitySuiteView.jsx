@@ -23,6 +23,8 @@ export default function ProductivitySuiteView({
   modules,
   customTasks,
   weekDays,
+  weekOffset,
+  onWeekOffsetChange,
   todayKey,
   agendaByDate,
   includedAgendaIds,
@@ -76,6 +78,17 @@ export default function ProductivitySuiteView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agendaError]);
+
+  // De selectie volgt de getoonde week: bij het bladeren valt de oude keuze
+  // buiten `weekDays`. Vandaag als die in de week zit, anders de maandag van die
+  // week — zonder dit bleef `selectedDateKey` op een dag uit een andere week
+  // staan en week de selectie af van wat het rooster oplichtte.
+  useEffect(() => {
+    const days = weekDays || [];
+    if (days.length === 0) return;
+    if (days.some(d => d.dateKey === selectedDateKey)) return;
+    setSelectedDateKey(days.some(d => d.dateKey === todayKey) ? todayKey : days[0].dateKey);
+  }, [weekDays, selectedDateKey, todayKey]);
 
   const tasksColor = modules.find(m => m.enabled && m.type === 'tasks')?.color;
 
@@ -162,12 +175,16 @@ export default function ProductivitySuiteView({
         <div className="grid gap-4 md:grid-cols-[minmax(240px,300px)_1fr] items-start">
           {tab === 'dag' ? (
             <div className="space-y-4">
+              {/* Toevoegen kan op elke dag van de getoonde week, niet alleen
+                  vandaag: `addCustomTask` schrijft de meegegeven dag via
+                  writeTasksForDay rechtstreeks naar het dagrecord. Zonder die
+                  dag mee te geven zou een taak stilletjes op vandaag landen. */}
               <TaskPoolPanel
                 items={poolItems}
                 dayOptions={dayOptions}
                 selectedDateKey={selectedDay?.dateKey || todayKey}
-                canAddTask={(selectedDay?.dateKey || todayKey) === todayKey}
-                onAddTask={onAddTask}
+                canAddTask
+                onAddTask={(text) => onAddTask(text, undefined, {}, selectedDay?.dateKey || todayKey)}
                 onMoveItem={onMoveItem}
                 theme={theme}
               />
@@ -199,6 +216,8 @@ export default function ProductivitySuiteView({
           {tab === 'dag' ? (
             <WeekView
               weekDays={weekDays || []}
+              weekOffset={weekOffset}
+              onWeekOffsetChange={onWeekOffsetChange}
               modules={modules}
               agendaByDate={agendaByDate}
               includedAgendaIds={includedAgendaIds}

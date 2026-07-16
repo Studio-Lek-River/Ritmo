@@ -1650,6 +1650,7 @@ export default {
       allDay: 'Hele dag',
       includeAria: '{title} meenemen in de planning',
       excludeAria: '{title} niet meenemen in de planning',
+      hideExcluded: 'Verberg afspraken die niet meetellen',
     },
     outlook: {
       import: 'Outlook-agenda importeren',

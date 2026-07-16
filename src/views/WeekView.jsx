@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { COLOR_OPTIONS, getColorClasses, getColorHex } from '../utils/colors';
 import { SOURCE_ICONS, getSourcePref } from '../utils/sourcePrefs';
 import { buildDayTimeline, DEFAULT_BLOCK_MINUTES } from '../utils/dayTimeline';
-import { isToday, shortWeekdayLabelsMondayFirst } from '../utils/dates';
+import { formatWeekRange, formatWeekTitle, isToday, shortWeekdayLabelsMondayFirst } from '../utils/dates';
 import { encodeDragPayload, decodeDragPayload } from '../utils/dragPayload';
 
 // Weekrooster in Outlook-vorm voor de Planner: 7 dagkolommen (ma-zo van de
@@ -19,7 +19,8 @@ import { encodeDragPayload, decodeDragPayload } from '../utils/dragPayload';
 const HOUR_START = 7;
 const HOUR_END = 22;
 const ROW_HEIGHT = 64; // px per uur
-const HEADER_HEIGHT = 44; // px
+const MIN_BLOCK_HEIGHT = 16; // px — ondergrens zodat een blok altijd klikbaar blijft
+const ALL_DAY_ROW_HEIGHT = 26; // px — rij met all-day-chips boven de uurrijen
 
 // Eigen dataTransfer-type voor het slepen van een pending (propose/concept)
 // blok, los van de bestaande "text/plain"-payload (dragPayload.js) van echte
@@ -49,15 +50,27 @@ function agendaDurationMinutes(start, end) {
 // `duration` (minuten) bepaalt de bloks-hoogte; ontbrekende/ongeldige duur
 // valt terug op `DEFAULT_BLOCK_MINUTES` (ook de drag-snap-granulariteit,
 // hieronder ongewijzigd).
+//
+// Begin én eind worden op het zichtbare venster (HOUR_START-HOUR_END) geklemd,
+// niet alleen het begin: een agendablok kan langer duren dan het venster toont
+// (een meerdaagse Outlook-afspraak wordt per dag op 00:00-23:59 geknipt, zie
+// utils/outlookEvents.js). Zonder de eind-klem leverde dat een negatieve `top`
+// en een hoogte die de hele kolom overdekte — het blok liep dan zichtbaar door
+// het rooster heen. MIN_BLOCK_HEIGHT houdt een blok dat maar net binnen het
+// venster valt aanklikbaar in plaats van tot 0px samengevallen.
 function blockStyle(time, duration) {
   const rangeStart = HOUR_START * 60;
   const rangeEnd = (HOUR_END + 1) * 60;
   const minutes = timeToMinutesLocal(time) ?? rangeStart;
   const durationMinutes = Number.isFinite(duration) && duration > 0 ? duration : DEFAULT_BLOCK_MINUTES;
-  const clamped = Math.min(Math.max(minutes, rangeStart), rangeEnd - durationMinutes);
+  const start = Math.min(Math.max(minutes, rangeStart), rangeEnd);
+  const end = Math.min(Math.max(minutes + durationMinutes, start), rangeEnd);
+  const gridHeight = ((rangeEnd - rangeStart) / 60) * ROW_HEIGHT;
+  const height = Math.max(((end - start) / 60) * ROW_HEIGHT, MIN_BLOCK_HEIGHT);
+  const top = ((start - rangeStart) / 60) * ROW_HEIGHT;
   return {
-    top: ((clamped - rangeStart) / 60) * ROW_HEIGHT,
-    height: (durationMinutes / 60) * ROW_HEIGHT,
+    top: Math.min(top, gridHeight - height),
+    height,
   };
 }
 
@@ -97,6 +110,8 @@ function agendaBlockAppearance(block, sourcePrefs, theme) {
 
 export default function WeekView({
   weekDays,
+  weekOffset = 0,
+  onWeekOffsetChange,
   modules,
   selectedDateKey,
   onSelectDate,
@@ -117,6 +132,12 @@ export default function WeekView({
 }) {
   const { t } = useTranslation();
   const [viewMode, setViewMode] = useState('week');
+  // Lichte UI-voorkeur, net als `viewMode` hierboven: bewust niet persistent,
+  // zodat het rooster na een herlaad altijd alles laat zien. Standaard uit —
+  // de meenemen-selectie is opt-in (leeg = niets telt mee, zie
+  // utils/agendaSelection.js), dus aan-als-default zou bij een verse agenda een
+  // leeg rooster geven.
+  const [hideExcludedAgenda, setHideExcludedAgenda] = useState(false);
 
   const shortLabels = useMemo(() => shortWeekdayLabelsMondayFirst(), []);
 
@@ -141,9 +162,41 @@ export default function WeekView({
     return map;
   }, [weekDays, modules, onToggleTask, onToggleProjectSubgoal]);
 
-  const columns = viewMode === 'dag'
-    ? (weekDays || []).filter(d => d.dateKey === selectedDateKey)
-    : (weekDays || []);
+  // Gememoiseerd omdat `agendaColumns` hieronder erop indexeert: de
+  // Dag-stand filtert en levert dus elke render een nieuwe array-identiteit,
+  // waardoor die memo anders nooit zou aanslaan.
+  const columns = useMemo(() => (
+    viewMode === 'dag'
+      ? (weekDays || []).filter(d => d.dateKey === selectedDateKey)
+      : (weekDays || [])
+  ), [viewMode, weekDays, selectedDateKey]);
+
+  // Twee filters bepalen welke agendablokken in het rooster staan. Het oog uit
+  // in het Koppelingen-blok (SourcesPanel) betekent "deze bron telt niet mee":
+  // die blokken verdwijnen hier (planDay.js filtert diezelfde bron al vóór de
+  // aanroep in App.jsx, zodat "deel mijn dag in" er ook overheen plant). De
+  // verbergknop hierboven werkt daarbinnen per afspraak: een afspraak zonder
+  // vinkje telt niet mee bij het indelen en mag dus ook uit beeld.
+  const agendaColumns = useMemo(() => {
+    const map = {};
+    columns.forEach(day => {
+      const blocks = (agendaByDate?.[day.dateKey] || [])
+        .filter(b => getSourcePref(sourcePrefs, b.source?.provider).visible)
+        .filter(b => !hideExcludedAgenda || includedAgendaIds.includes(b.id));
+      map[day.dateKey] = {
+        allDay: blocks.filter(b => b.allDay),
+        timed: blocks.filter(b => !b.allDay),
+      };
+    });
+    return map;
+  }, [columns, agendaByDate, sourcePrefs, hideExcludedAgenda, includedAgendaIds]);
+
+  // De all-day-rij reserveert zijn hoogte in álle kolommen zodra één kolom een
+  // all-day-afspraak heeft (en in de tijdbalk links). Anders zou alleen die ene
+  // kolom omlaag schuiven en niet meer met de uurlabels ernaast kloppen.
+  const allDayRowHeight = Object.values(agendaColumns).some(c => c.allDay.length > 0)
+    ? ALL_DAY_ROW_HEIGHT
+    : 0;
 
   const hours = [];
   for (let h = HOUR_START; h <= HOUR_END; h++) hours.push(h);
@@ -171,6 +224,14 @@ export default function WeekView({
 
   return (
     <div className={`${theme.card} ${theme.radiusCard} ${theme.padRow} space-y-3`}>
+      <WeekNav
+        weekStart={weekDays?.[0]?.date}
+        weekOffset={weekOffset}
+        onWeekOffsetChange={onWeekOffsetChange}
+        theme={theme}
+        t={t}
+      />
+
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className={`flex gap-1 p-1 ${theme.cardSecondary} ${theme.radiusControl}`}>
           {[
@@ -190,7 +251,18 @@ export default function WeekView({
             </button>
           ))}
         </div>
-        <Legend theme={theme} t={t} />
+        <div className="flex items-center gap-3 flex-wrap">
+          <label className={`flex items-center gap-1.5 text-xs cursor-pointer ${theme.textMuted}`}>
+            <input
+              type="checkbox"
+              checked={hideExcludedAgenda}
+              onChange={(e) => setHideExcludedAgenda(e.target.checked)}
+              className="w-3.5 h-3.5 cursor-pointer"
+            />
+            {t('planner.agenda.hideExcluded')}
+          </label>
+          <Legend theme={theme} t={t} />
+        </div>
       </div>
 
       {pendingPlan && pendingPlan.items.length > 0 && (
@@ -203,57 +275,53 @@ export default function WeekView({
         />
       )}
 
-      <DayStrip
-        weekDays={weekDays || []}
-        shortLabels={shortLabels}
-        selectedDateKey={selectedDateKey}
-        onSelectDate={onSelectDate}
-        theme={theme}
-      />
+      {viewMode === 'dag' && (
+        <DayStrip
+          weekDays={weekDays || []}
+          shortLabels={shortLabels}
+          selectedDateKey={selectedDateKey}
+          onSelectDate={onSelectDate}
+          theme={theme}
+          t={t}
+        />
+      )}
 
       <div className="overflow-x-auto">
-        <div className="flex" style={{ minWidth: columns.length > 1 ? '48rem' : undefined }}>
-          <div className="shrink-0 w-12">
-            <div style={{ height: HEADER_HEIGHT }} />
-            {hours.map(hour => (
-              <div
-                key={hour}
-                style={{ height: ROW_HEIGHT }}
-                className={`text-[11px] ${theme.textMuted} pr-1 text-right`}
-              >
-                {String(hour).padStart(2, '0')}:00
-              </div>
-            ))}
-          </div>
+        <div style={{ minWidth: columns.length > 1 ? '48rem' : undefined }}>
+          {viewMode === 'week' && (
+            <DayStrip
+              weekDays={weekDays || []}
+              shortLabels={shortLabels}
+              selectedDateKey={selectedDateKey}
+              onSelectDate={onSelectDate}
+              theme={theme}
+              t={t}
+              aligned
+            />
+          )}
 
-          {columns.map((day, idx) => {
-            const weekdayIndex = (weekDays || []).findIndex(d => d.dateKey === day.dateKey);
-            const label = shortLabels[weekdayIndex >= 0 ? weekdayIndex : idx];
+          <div className="flex">
+            <div className="shrink-0 w-12">
+              {allDayRowHeight > 0 && <div style={{ height: allDayRowHeight }} />}
+              {hours.map(hour => (
+                <div
+                  key={hour}
+                  style={{ height: ROW_HEIGHT }}
+                  className={`text-[11px] ${theme.textMuted} pr-1 text-right`}
+                >
+                  {String(hour).padStart(2, '0')}:00
+                </div>
+              ))}
+            </div>
+
+            {columns.map((day) => {
             const isSelected = day.dateKey === selectedDateKey;
-            const isTodayCol = isToday(day.date);
-            // Het oog uit in het Koppelingen-blok (SourcesPanel) betekent
-            // "deze bron telt niet mee": de blokken verdwijnen hier uit het
-            // rooster (planDay.js filtert diezelfde bron al vóór de aanroep
-            // in App.jsx, zodat "deel mijn dag in" er ook overheen plant).
-            const dayAgendaBlocks = (agendaByDate?.[day.dateKey] || [])
-              .filter(b => getSourcePref(sourcePrefs, b.source?.provider).visible);
-            const allDayAgendaBlocks = dayAgendaBlocks.filter(b => b.allDay);
-            const timedAgendaBlocks = dayAgendaBlocks.filter(b => !b.allDay);
+            const { allDay: allDayAgendaBlocks, timed: timedAgendaBlocks } = agendaColumns[day.dateKey];
 
             return (
               <div key={day.dateKey} className={`flex-1 min-w-[140px] border-l ${theme.border}`}>
-                <div
-                  style={{ height: HEADER_HEIGHT }}
-                  className={`flex flex-col items-center justify-center text-xs font-medium ${
-                    isSelected ? `${theme.accentWeak} ${theme.textSecondary}` : theme.textMuted
-                  }`}
-                >
-                  <span>{label} {day.date.getDate()}</span>
-                  {isTodayCol && <span className="text-[10px]">{t('common.today')}</span>}
-                </div>
-
-                {allDayAgendaBlocks.length > 0 && (
-                  <div className="flex flex-wrap gap-1 px-1 py-1">
+                {allDayRowHeight > 0 && (
+                  <div className="flex gap-1 px-1 py-0.5 overflow-hidden" style={{ height: allDayRowHeight }}>
                     {allDayAgendaBlocks.map(block => {
                       const { className, style, Icon, iconClassName } = agendaBlockAppearance(block, sourcePrefs, theme);
                       return (
@@ -416,9 +484,59 @@ export default function WeekView({
                 </div>
               </div>
             );
-          })}
+            })}
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Weeknavigatie boven het rooster: pijltjes voor vorige/volgende week plus een
+// weg-terug naar deze week. Onbegrensd in beide richtingen — een week buiten
+// het bewaarvenster van de agendacache blijft gevuld omdat mergeEventsByDate de
+// zojuist opgehaalde dagen niet meer wegsnoeit (utils/agendaCache.js).
+//
+// Titel en datumbereik komen van formatWeekTitle/formatWeekRange (utils/dates.js),
+// die "Deze week"/"Vorige week"/"Week van {datum}" al afhandelen; de aria-labels
+// hergebruiken de bestaande dates.*-keys. Verzet bewust alleen `weekOffset` en
+// nooit de actieve dag: die blijft vandaag, zie de toelichting in App.jsx.
+function WeekNav({ weekStart, weekOffset, onWeekOffsetChange, theme, t }) {
+  if (!weekStart || !onWeekOffsetChange) return null;
+  const navButton = `p-1.5 ${theme.radiusControl} ${theme.textMuted} ${theme.hover} transition`;
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => onWeekOffsetChange(weekOffset - 1)}
+        aria-label={t('dates.previousWeekAria')}
+        title={t('dates.previousWeekAria')}
+        className={navButton}
+      >
+        <ChevronLeft className="w-4 h-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => onWeekOffsetChange(weekOffset + 1)}
+        aria-label={t('dates.nextWeekAria')}
+        title={t('dates.nextWeekAria')}
+        className={navButton}
+      >
+        <ChevronRight className="w-4 h-4" />
+      </button>
+      <div className="flex items-baseline gap-2 min-w-0">
+        <span className={`text-sm font-medium truncate ${theme.text}`}>{formatWeekTitle(weekStart)}</span>
+        <span className={`text-xs truncate ${theme.textMuted}`}>{formatWeekRange(weekStart)}</span>
+      </div>
+      {weekOffset !== 0 && (
+        <button
+          type="button"
+          onClick={() => onWeekOffsetChange(0)}
+          className={`ml-auto px-3 py-1.5 ${theme.radiusControl} text-xs font-medium transition ${theme.cardSecondary} ${theme.textMuted} ${theme.hover}`}
+        >
+          {t('dates.thisWeek')}
+        </button>
+      )}
     </div>
   );
 }
@@ -458,11 +576,21 @@ function PendingPlanBar({ pendingPlan, onAcceptAllPending, onDiscardAllPending, 
 
 // Rij van 7 dagknoppen: de enige plek waar de geselecteerde dag verandert
 // (zowel in Dag- als Week-stand), zodat er altijd een expliciete, niet-sleep
-// manier is om van dag te wisselen (principe 2).
-function DayStrip({ weekDays, shortLabels, selectedDateKey, onSelectDate, theme }) {
-  const { t } = useTranslation();
+// manier is om van dag te wisselen (principe 2). Sinds de dagkoppen uit het
+// rooster zelf verdwenen zijn, is dit ook de enige plek waar de dagnaam en het
+// datumnummer staan — vandaar het "Vandaag"-label, dat eerst in die kop zat.
+//
+// `aligned` (Week-stand) geeft de rij exact dezelfde opbouw als de roosterrij
+// eronder: eerst een spacer ter breedte van de tijdbalk, daarna per dag een
+// knop met dezelfde flex-basis als de kolom. Zonder die spacer schoof elke knop
+// een fractie van de 48px tijdbalk naar links en stond een blok op Vr visueel
+// onder de Za-knop. In Dag-stand toont het rooster maar één kolom terwijl deze
+// rij alle zeven dagen houdt, dus daar valt er niets uit te lijnen en blijft de
+// rij een eigen grid over de volle breedte.
+function DayStrip({ weekDays, shortLabels, selectedDateKey, onSelectDate, theme, t, aligned = false }) {
   return (
-    <div className="grid grid-cols-7 gap-1">
+    <div className={aligned ? 'flex' : 'grid grid-cols-7 gap-1'}>
+      {aligned && <div className="shrink-0 w-12" />}
       {weekDays.map((day, idx) => {
         const selected = day.dateKey === selectedDateKey;
         const todayCol = isToday(day.date);
@@ -473,7 +601,9 @@ function DayStrip({ weekDays, shortLabels, selectedDateKey, onSelectDate, theme 
             onClick={() => onSelectDate(day.dateKey)}
             aria-pressed={selected}
             aria-label={t('planner.week.selectDayAria', { day: `${shortLabels[idx]} ${day.date.getDate()}` })}
-            className={`flex flex-col items-center py-1.5 ${theme.radiusControl} text-xs font-medium transition ${
+            className={`flex flex-col items-center justify-center py-1.5 ${theme.radiusControl} text-xs font-medium transition ${
+              aligned ? 'flex-1 min-w-[140px]' : ''
+            } ${
               selected
                 ? `${theme.accentBg} shadow`
                 : todayCol
@@ -481,8 +611,8 @@ function DayStrip({ weekDays, shortLabels, selectedDateKey, onSelectDate, theme 
                   : `${theme.cardSecondary} ${theme.textMuted} ${theme.hover}`
             }`}
           >
-            <span>{shortLabels[idx]}</span>
-            <span className="text-[11px]">{day.date.getDate()}</span>
+            <span>{shortLabels[idx]} {day.date.getDate()}</span>
+            {todayCol && <span className="text-[10px]">{t('common.today')}</span>}
           </button>
         );
       })}
