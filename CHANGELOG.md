@@ -1,3 +1,16 @@
+# [0.58.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.57.0...v0.58.0) (2026-07-16)
+
+
+### Bug Fixes
+
+* **planner:** titel en icoon van een agendakaartje staan bovenaan, tijd eronder ([e852cc1](https://github.com/Studio-Lek-River/Ritmo/commit/e852cc1770aee653e6880c75b8e4b248c7cac5be))
+* **planner:** vernieuwknop van de Outlook-koppeling past weer in de box ([a2efb70](https://github.com/Studio-Lek-River/Ritmo/commit/a2efb70e196ff505ad8ff73cc5e4440349d61b24))
+
+
+### Features
+
+* **planner:** per agendapunt kiezen of het meetelt bij het indelen ([a79444a](https://github.com/Studio-Lek-River/Ritmo/commit/a79444a00d30a58dffe18bb55673edc6d1133bdc))
+
 # [0.57.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.56.0...v0.57.0) (2026-07-16)
 
 
