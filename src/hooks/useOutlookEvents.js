@@ -5,11 +5,20 @@ import { addDays } from '../utils/dates';
 import { readAgendaCache, writeAgendaCache, mergeEventsByDate } from '../utils/agendaCache';
 
 // Cache-first Outlook-agendafetch voor de zichtbare planner-week (S07/S07a,
-// cache-first sinds S07d). Haalt alleen op wanneer `enabled` (een verbonden
-// Outlook-koppeling, de Planner-view open, EN de gebruiker de agenda al eens
-// heeft laten zien — bepaald door de aanroeper) waar is; zonder koppeling of
-// buiten de Planner blijft dit een no-op voor het fetchen (principe 2, geen
-// achtergrondverkeer zonder actieve koppeling/view/klik).
+// cache-first sinds S07d). Twee losse schakelaars van de aanroeper:
+//
+// - `active`: mag deze agenda überhaupt meedoen (een koppeling die verbonden
+//   is of nog laadt, EN de gebruiker heeft de agenda al eens laten zien). Dit
+//   is de enige bron van waarheid voor "zijn er agenda-items": zodra hij uit
+//   gaat is `eventsByDate` leeg, zodat een verbroken koppeling nergens meer
+//   wees-afspraken kan achterlaten — niet in het rooster en ook niet in de
+//   bezette tijd van "deel mijn dag in". Een nog-ladende koppelingsstatus telt
+//   bewust als actief, anders zou de cache-seed op elke herlaad op het netwerk
+//   moeten wachten.
+// - `enabled`: mag er nu ook echt gefetcht worden (`active` plus de
+//   Planner-view open). Buiten de Planner blijft dit een no-op voor het
+//   fetchen (principe 2, geen achtergrondverkeer zonder actieve
+//   koppeling/view/klik), maar blijft de al geladen agenda staan.
 //
 // Het resultaat leeft niet meer alleen in React-state: bij mount seedt deze
 // hook zijn state uit `agendaCache.js` (device-local, zie die module voor de
@@ -30,7 +39,7 @@ import { readAgendaCache, writeAgendaCache, mergeEventsByDate } from '../utils/a
 // refetch) al is gestart. In plaats daarvan telt een gedeelde
 // `requestToken`-ref elke fetch-start; alleen de fetch met de nieuwste token
 // mag nog state zetten wanneer hij resolvet.
-export default function useOutlookEvents({ enabled, weekDays, connectionId, todayKey }) {
+export default function useOutlookEvents({ active, enabled, weekDays, connectionId, todayKey }) {
   const [eventsByDate, setEventsByDate] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -47,7 +56,18 @@ export default function useOutlookEvents({ enabled, weekDays, connectionId, toda
   // Cache-first seed: draait op mount en telkens wanneer `connectionId`
   // verandert (bv. na opnieuw koppelen), zodat een cache van een andere
   // koppeling nooit blijft hangen (zie `readAgendaCache`).
+  //
+  // Gaat `active` uit (koppeling verbroken, of de agenda niet meer getoond),
+  // dan wordt de state hier direct leeggemaakt en start er geen nieuwe seed.
+  // De `cancelled`-cleanup hoort bij die garantie: een seed die nog onderweg
+  // was toen `active` uitging, mag zijn resultaat niet alsnog terugzetten.
   useEffect(() => {
+    if (!active) {
+      cacheEventsRef.current = {};
+      setEventsByDate({});
+      setLastSyncedAt(null);
+      return () => {};
+    }
     let cancelled = false;
     readAgendaCache(connectionId).then((cache) => {
       if (cancelled) return;
@@ -57,7 +77,7 @@ export default function useOutlookEvents({ enabled, weekDays, connectionId, toda
       setLastSyncedAt(cache?.fetchedAt || null);
     });
     return () => { cancelled = true; };
-  }, [connectionId]);
+  }, [active, connectionId]);
 
   const fetchRange = useCallback(() => {
     if (!enabled || !weekDays || weekDays.length === 0) {

@@ -1352,6 +1352,11 @@ export default function Ritmo() {
   const outlookConnection = outlookConnectionState.connections.find(
     c => c.provider === 'outlook' && c.status === 'connected'
   ) || null;
+  // Mag de agenda meedoen? Een nog-ladende koppelingsstatus telt als "ja", zodat
+  // de cache-seed bij een herlaad niet op het netwerk hoeft te wachten; een
+  // uitsluitsel "niet verbonden" zet hem uit en maakt daarmee `eventsByDate`
+  // leeg — de enige plek waar dat geregeld hoeft te worden.
+  const agendaActive = agendaShown && (outlookConnectionState.loading || !!outlookConnection);
   const {
     eventsByDate: outlookEventsByDate,
     loading: outlookAgendaLoading,
@@ -1359,7 +1364,8 @@ export default function Ritmo() {
     lastSyncedAt: outlookLastSyncedAt,
     refetch: refetchOutlookAgenda,
   } = useOutlookEvents({
-    enabled: !!outlookConnection && view === 'productivity' && agendaShown,
+    active: agendaActive,
+    enabled: agendaActive && !!outlookConnection && view === 'productivity',
     weekDays,
     connectionId: outlookConnection?.id,
     todayKey,
@@ -2054,7 +2060,7 @@ export default function Ritmo() {
             customTasks={customTasks}
             weekDays={weekDays}
             todayKey={todayKey}
-            agendaByDate={agendaShown ? outlookEventsByDate : {}}
+            agendaByDate={outlookEventsByDate}
             outlookConnected={!!outlookConnection}
             connections={outlookConnectionState.connections}
             sourcePrefs={sourcePrefs}
