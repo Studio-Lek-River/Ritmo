@@ -1,3 +1,18 @@
+# [0.59.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.58.0...v0.59.0) (2026-07-16)
+
+
+### Bug Fixes
+
+* **agenda:** een agendaweek buiten het bewaarvenster wordt niet meer weggegooid ([e4b4b9c](https://github.com/Studio-Lek-River/Ritmo/commit/e4b4b9c9448156751e23c39dc330cba4e74a9eb7))
+* **planner:** agendablokken blijven binnen de zichtbare uren van het rooster ([eaef59b](https://github.com/Studio-Lek-River/Ritmo/commit/eaef59b835d58a786c7a3cf8a76412d5a3c3acaf))
+* **planner:** dagen staan niet meer dubbel boven het weekrooster ([76639a3](https://github.com/Studio-Lek-River/Ritmo/commit/76639a323e5ba772e76cfd4ba6f24d6548ee4ba4))
+
+
+### Features
+
+* **planner:** afspraken die niet meetellen zijn te verbergen ([8babfb2](https://github.com/Studio-Lek-River/Ritmo/commit/8babfb25e66d80fbe9e69389629a26926b0b936b))
+* **planner:** vooruit en terug bladeren door de weken ([38a817f](https://github.com/Studio-Lek-River/Ritmo/commit/38a817fb8462f499cc4ea890c3dc4acb66a9182b))
+
 # [0.58.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.57.0...v0.58.0) (2026-07-16)
 
 
