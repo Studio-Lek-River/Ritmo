@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { fetchTrelloBoards } from '../sync/connections';
 import { getBoardPref } from '../utils/trelloBoardPrefs';
+import { ERROR_KEYS } from './ConnectionsSection';
 
 // Bord-kiezer voor de Trello-rij in SourcesPanel (S08, `sourceActions.trello.
 // panel`): per bord een checkbox ("meetelt in de planner") en, zodra
@@ -19,8 +20,13 @@ export default function TrelloBoardPicker({ boardPrefs, onChangeBoardPrefs, cach
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // `loading` hoort NIET in de deps of de guard: dit effect zet het zelf, dus
+  // een re-render zou de cleanup draaien en daarmee zijn eigen fetch annuleren
+  // (spinner blijft dan eeuwig staan). `expanded` + `availableBoards` volstaan:
+  // na een geslaagde fetch is `availableBoards` niet meer null en blokkeert de
+  // guard een herhaling. Dicht- en weer openklappen na een fout = een retry.
   useEffect(() => {
-    if (!expanded || availableBoards !== null || loading) return;
+    if (!expanded || availableBoards !== null) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -30,6 +36,7 @@ export default function TrelloBoardPicker({ boardPrefs, onChangeBoardPrefs, cach
         setAvailableBoards(data?.boards || []);
       })
       .catch((err) => {
+        console.warn('Ritmo trello boards fetch failed', err);
         if (cancelled) return;
         setError(err.code || 'unexpected');
       })
@@ -37,7 +44,7 @@ export default function TrelloBoardPicker({ boardPrefs, onChangeBoardPrefs, cach
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [expanded, availableBoards, loading]);
+  }, [expanded, availableBoards]);
 
   const updateBoardPref = (boardId, patch) => {
     const current = getBoardPref(boardPrefs, boardId);
@@ -69,7 +76,9 @@ export default function TrelloBoardPicker({ boardPrefs, onChangeBoardPrefs, cach
             {t('planner.trello.loadingBoards')}
           </p>
         ) : error ? (
-          <p className="text-xs text-red-500">{t('planner.trello.fetchError')}</p>
+          <p className="text-xs text-red-500">
+            {ERROR_KEYS[error] ? t(ERROR_KEYS[error]) : t('planner.trello.fetchError')}
+          </p>
         ) : (availableBoards || []).length === 0 ? (
           <p className={`text-xs ${theme.textMuted}`}>{t('planner.trello.empty')}</p>
         ) : (
