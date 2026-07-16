@@ -12,6 +12,14 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
+      workbox: {
+        // De serverless functions onder /api zijn geen onderdeel van de SPA. De
+        // OAuth-callback wordt bovendien als top-level navigatie aangeroepen
+        // (Microsoft redirect de browser erheen), en zonder deze denylist vangt
+        // de navigateFallback die af en beantwoordt hem uit de cache met
+        // index.html — het verzoek bereikt de server dan nooit.
+        navigateFallbackDenylist: [/^\/api\//],
+      },
       manifest: {
         name: 'Ritmo',
         short_name: 'Ritmo',
