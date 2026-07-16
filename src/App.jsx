@@ -37,6 +37,7 @@ import useConnections from './hooks/useConnections';
 import useOutlookEvents from './hooks/useOutlookEvents';
 import { externalBlocksForDay } from './utils/outlookEvents';
 import { clearAgendaCache } from './utils/agendaCache';
+import { readAgendaSelection, writeAgendaSelection, clearAgendaSelection, pruneSelection } from './utils/agendaSelection';
 import { DEFAULT_SOURCE_PREFS, getSourcePref } from './utils/sourcePrefs';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
@@ -1386,6 +1387,10 @@ export default function Ritmo() {
     if (outlookConnectionState.loading) return;
     if (wasOutlookConnectedRef.current && !outlookConnection) {
       clearAgendaCache();
+      // De meenemen-selectie hoort bij de agendadata en gaat dus mee weg: geen
+      // wees-ids van afspraken die niemand meer kan zien.
+      clearAgendaSelection();
+      setAgendaSelection([]);
       setAgendaShown(false);
     }
     wasOutlookConnectedRef.current = !!outlookConnection;
@@ -1398,6 +1403,34 @@ export default function Ritmo() {
       refetchOutlookAgenda();
     }
   }, [agendaShown, refetchOutlookAgenda]);
+
+  // Welke agendapunten als bezette tijd meetellen bij "deel mijn dag in".
+  // Opt-in (leeg = niets telt mee) en device-local, zie utils/agendaSelection.js
+  // — daarom eigen state en niet in `settings` zoals `agendaShown`/`sourcePrefs`.
+  const [agendaSelection, setAgendaSelection] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    readAgendaSelection().then(ids => {
+      if (!cancelled) setAgendaSelection(ids);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleToggleAgendaBlock = useCallback((blockId) => {
+    setAgendaSelection(prev => {
+      const next = prev.includes(blockId)
+        ? prev.filter(id => id !== blockId)
+        : [...prev, blockId];
+      // Snoeien tegen de nu bekende agenda, zodat ids van verlopen of
+      // geannuleerde afspraken bij elke klik vanzelf wegvallen.
+      const knownIds = new Set(
+        Object.values(outlookEventsByDate || {}).flat().map(b => b.id)
+      );
+      const pruned = pruneSelection(next, knownIds);
+      writeAgendaSelection(pruned);
+      return pruned;
+    });
+  }, [outlookEventsByDate]);
 
   const handleOpenConnections = useCallback(() => {
     setSettingsInitialTab('account');
@@ -1473,11 +1506,15 @@ export default function Ritmo() {
     const wake = sleepModule ? goalsForNight(sleepModule.goals, parseDateKey(dateKey)).wake : null;
     const dayStart = wake || PLAN_DAY_START_FALLBACK;
 
-    // Alleen bronnen waarvan het oog aan staat (SourcesPanel) tellen mee als
-    // bezette tijd, zodat "deel mijn dag in" consistent is met wat er in het
-    // rooster te zien is (WeekView filtert dezelfde blokken op dezelfde manier).
+    // Twee onafhankelijke filters bepalen wat bezette tijd is. Het oog per bron
+    // (SourcesPanel) zegt of de bron überhaupt meedoet — dat filter houdt "deel
+    // mijn dag in" gelijk aan wat er in het rooster staat (WeekView filtert
+    // dezelfde blokken op dezelfde manier). Het vinkje per agendapunt zegt
+    // daarbinnen of díé afspraak de dag dichtzet; niet aangevinkt betekent dat
+    // de planner er gewoon overheen mag plannen.
     const visibleAgendaBlocks = (outlookEventsByDate[dateKey] || []).filter(
       (b) => getSourcePref(sourcePrefs, b.source?.provider).visible
+        && agendaSelection.includes(b.id)
     );
 
     const { assignments } = planDay({
@@ -1530,7 +1567,7 @@ export default function Ritmo() {
         kind: meta[a.key]?.kind,
       })),
     });
-  }, [buildPlanInputs, modules, planMode, planPrefs, sourcePrefs, applyPendingAssignment, writeTasksForDay, t, outlookEventsByDate]);
+  }, [buildPlanInputs, modules, planMode, planPrefs, sourcePrefs, agendaSelection, applyPendingAssignment, writeTasksForDay, t, outlookEventsByDate]);
 
   // Eén voorstel-/concept-blok overnemen resp. vastzetten: schrijft via de
   // bestaande handler en haalt het item uit de ephemere pendingPlan-state.
@@ -2066,6 +2103,8 @@ export default function Ritmo() {
             weekDays={weekDays}
             todayKey={todayKey}
             agendaByDate={outlookEventsByDate}
+            includedAgendaIds={agendaSelection}
+            onToggleAgendaBlock={handleToggleAgendaBlock}
             outlookConnected={!!outlookConnection}
             connections={outlookConnectionState.connections}
             sourcePrefs={sourcePrefs}

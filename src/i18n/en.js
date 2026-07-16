@@ -1637,6 +1637,8 @@ export default {
     },
     agenda: {
       allDay: 'All day',
+      includeAria: 'Include {title} in planning',
+      excludeAria: 'Exclude {title} from planning',
     },
     outlook: {
       import: 'Import Outlook calendar',

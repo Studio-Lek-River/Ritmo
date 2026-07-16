@@ -25,6 +25,8 @@ export default function ProductivitySuiteView({
   weekDays,
   todayKey,
   agendaByDate,
+  includedAgendaIds,
+  onToggleAgendaBlock,
   outlookConnected,
   connections,
   sourcePrefs,
@@ -199,6 +201,8 @@ export default function ProductivitySuiteView({
               weekDays={weekDays || []}
               modules={modules}
               agendaByDate={agendaByDate}
+              includedAgendaIds={includedAgendaIds}
+              onToggleAgendaBlock={onToggleAgendaBlock}
               sourcePrefs={sourcePrefs}
               selectedDateKey={selectedDay?.dateKey || todayKey}
               onSelectDate={setSelectedDateKey}

@@ -110,6 +110,8 @@ export default function WeekView({
   onDiscardAllPending,
   onMovePendingItem,
   agendaByDate,
+  includedAgendaIds = [],
+  onToggleAgendaBlock,
   sourcePrefs,
   theme,
 }) {
@@ -287,15 +289,33 @@ export default function WeekView({
                     const duration = agendaDurationMinutes(block.start, block.end);
                     const { top, height } = blockStyle(block.start, duration);
                     const { className, style, Icon, iconClassName } = agendaBlockAppearance(block, sourcePrefs, theme);
+                    const included = includedAgendaIds.includes(block.id);
                     return (
                       <div
                         key={`agenda:${block.id}`}
                         style={{ top, height, ...style }}
                         title={block.title}
-                        className={`absolute left-1 right-1 px-1.5 py-1 text-[11px] overflow-hidden flex items-center gap-1 ${className}`}
+                        className={`absolute left-1 right-1 px-1.5 py-1 text-[11px] overflow-hidden ${
+                          included ? '' : 'opacity-60'
+                        } ${className}`}
                       >
-                        {Icon && <Icon className={`w-3 h-3 shrink-0 ${iconClassName}`} />}
-                        <span className="truncate block flex-1">{block.title}</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => onToggleAgendaBlock?.(block.id)}
+                            disabled={!onToggleAgendaBlock}
+                            aria-pressed={included}
+                            aria-label={t(included ? 'planner.agenda.excludeAria' : 'planner.agenda.includeAria', { title: block.title })}
+                            title={t(included ? 'planner.agenda.excludeAria' : 'planner.agenda.includeAria', { title: block.title })}
+                            className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
+                              included ? `${getColorClasses(getSourcePref(sourcePrefs, block.source?.provider).color).bar} border-transparent` : `${theme.border} bg-transparent`
+                            }`}
+                          >
+                            {included && <Check className="w-2.5 h-2.5 text-white" />}
+                          </button>
+                          {Icon && <Icon className={`w-3 h-3 shrink-0 ${iconClassName}`} />}
+                          <span className="truncate flex-1">{block.title}</span>
+                        </div>
                       </div>
                     );
                   })}

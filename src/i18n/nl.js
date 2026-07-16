@@ -1648,6 +1648,8 @@ export default {
     },
     agenda: {
       allDay: 'Hele dag',
+      includeAria: '{title} meenemen in de planning',
+      excludeAria: '{title} niet meenemen in de planning',
     },
     outlook: {
       import: 'Outlook-agenda importeren',
