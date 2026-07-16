@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, RefreshCw } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { CONNECTION_PROVIDERS } from '../sync/connections';
 import { DEFAULT_SOURCE_PREFS, SOURCE_ICONS, getSourcePref } from '../utils/sourcePrefs';
@@ -131,16 +131,36 @@ function SourceRow({ provider, connection, pref, actions, onChange, onOpenConnec
               ? t('planner.sources.lastSynced', { time: syncedTime })
               : t('planner.sources.neverSynced')}
           </span>
-          <button
-            type="button"
-            onClick={actions.onRefresh}
-            disabled={actions.loading}
-            aria-label={actions.loading ? t('planner.outlook.loading') : undefined}
-            className={`flex items-center gap-1.5 text-xs font-medium shrink-0 ${theme.textMuted} hover:underline disabled:opacity-60 disabled:cursor-not-allowed`}
-          >
-            {actions.loading && <Loader2 className="w-3 h-3 animate-spin" />}
-            {t(actions.shown ? 'planner.outlook.refresh' : 'planner.outlook.import')}
-          </button>
+          {actions.shown ? (
+            // Vernieuwen is een terugkerende actie naast de "bijgewerkt om"-regel:
+            // als tekstknop liep hij uit de rij, dus icoon + tooltip (`title` +
+            // `aria-label`, hetzelfde patroon als elders — geen tooltip-component).
+            <button
+              type="button"
+              onClick={actions.onRefresh}
+              disabled={actions.loading}
+              aria-label={t(actions.loading ? 'planner.outlook.loading' : 'planner.outlook.refresh')}
+              title={t(actions.loading ? 'planner.outlook.loading' : 'planner.outlook.refresh')}
+              className={`shrink-0 p-1.5 rounded transition ${theme.textMuted} ${theme.hover} disabled:opacity-60 disabled:cursor-not-allowed`}
+            >
+              {actions.loading
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <RefreshCw className="w-4 h-4" />}
+            </button>
+          ) : (
+            // Importeren blijft een tekstknop: een eenmalige eerste actie moet
+            // vindbaar zijn (principe 2), een naamloos icoon is dat niet.
+            <button
+              type="button"
+              onClick={actions.onRefresh}
+              disabled={actions.loading}
+              aria-label={actions.loading ? t('planner.outlook.loading') : undefined}
+              className={`flex items-center gap-1.5 text-xs font-medium shrink-0 ${theme.textMuted} hover:underline disabled:opacity-60 disabled:cursor-not-allowed`}
+            >
+              {actions.loading && <Loader2 className="w-3 h-3 animate-spin" />}
+              {t('planner.outlook.import')}
+            </button>
+          )}
         </div>
       )}
     </div>
