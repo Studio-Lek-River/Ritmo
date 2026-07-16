@@ -19,8 +19,8 @@ import { encodeDragPayload, decodeDragPayload } from '../utils/dragPayload';
 const HOUR_START = 7;
 const HOUR_END = 22;
 const ROW_HEIGHT = 64; // px per uur
-const HEADER_HEIGHT = 44; // px
 const MIN_BLOCK_HEIGHT = 16; // px — ondergrens zodat een blok altijd klikbaar blijft
+const ALL_DAY_ROW_HEIGHT = 26; // px — rij met all-day-chips boven de uurrijen
 
 // Eigen dataTransfer-type voor het slepen van een pending (propose/concept)
 // blok, los van de bestaande "text/plain"-payload (dragPayload.js) van echte
@@ -158,6 +158,30 @@ export default function WeekView({
     ? (weekDays || []).filter(d => d.dateKey === selectedDateKey)
     : (weekDays || []);
 
+  // Het oog uit in het Koppelingen-blok (SourcesPanel) betekent "deze bron telt
+  // niet mee": de blokken verdwijnen hier uit het rooster (planDay.js filtert
+  // diezelfde bron al vóór de aanroep in App.jsx, zodat "deel mijn dag in" er
+  // ook overheen plant).
+  const agendaColumns = useMemo(() => {
+    const map = {};
+    columns.forEach(day => {
+      const blocks = (agendaByDate?.[day.dateKey] || [])
+        .filter(b => getSourcePref(sourcePrefs, b.source?.provider).visible);
+      map[day.dateKey] = {
+        allDay: blocks.filter(b => b.allDay),
+        timed: blocks.filter(b => !b.allDay),
+      };
+    });
+    return map;
+  }, [columns, agendaByDate, sourcePrefs]);
+
+  // De all-day-rij reserveert zijn hoogte in álle kolommen zodra één kolom een
+  // all-day-afspraak heeft (en in de tijdbalk links). Anders zou alleen die ene
+  // kolom omlaag schuiven en niet meer met de uurlabels ernaast kloppen.
+  const allDayRowHeight = Object.values(agendaColumns).some(c => c.allDay.length > 0)
+    ? ALL_DAY_ROW_HEIGHT
+    : 0;
+
   const hours = [];
   for (let h = HOUR_START; h <= HOUR_END; h++) hours.push(h);
 
@@ -216,57 +240,53 @@ export default function WeekView({
         />
       )}
 
-      <DayStrip
-        weekDays={weekDays || []}
-        shortLabels={shortLabels}
-        selectedDateKey={selectedDateKey}
-        onSelectDate={onSelectDate}
-        theme={theme}
-      />
+      {viewMode === 'dag' && (
+        <DayStrip
+          weekDays={weekDays || []}
+          shortLabels={shortLabels}
+          selectedDateKey={selectedDateKey}
+          onSelectDate={onSelectDate}
+          theme={theme}
+          t={t}
+        />
+      )}
 
       <div className="overflow-x-auto">
-        <div className="flex" style={{ minWidth: columns.length > 1 ? '48rem' : undefined }}>
-          <div className="shrink-0 w-12">
-            <div style={{ height: HEADER_HEIGHT }} />
-            {hours.map(hour => (
-              <div
-                key={hour}
-                style={{ height: ROW_HEIGHT }}
-                className={`text-[11px] ${theme.textMuted} pr-1 text-right`}
-              >
-                {String(hour).padStart(2, '0')}:00
-              </div>
-            ))}
-          </div>
+        <div style={{ minWidth: columns.length > 1 ? '48rem' : undefined }}>
+          {viewMode === 'week' && (
+            <DayStrip
+              weekDays={weekDays || []}
+              shortLabels={shortLabels}
+              selectedDateKey={selectedDateKey}
+              onSelectDate={onSelectDate}
+              theme={theme}
+              t={t}
+              aligned
+            />
+          )}
 
-          {columns.map((day, idx) => {
-            const weekdayIndex = (weekDays || []).findIndex(d => d.dateKey === day.dateKey);
-            const label = shortLabels[weekdayIndex >= 0 ? weekdayIndex : idx];
+          <div className="flex">
+            <div className="shrink-0 w-12">
+              {allDayRowHeight > 0 && <div style={{ height: allDayRowHeight }} />}
+              {hours.map(hour => (
+                <div
+                  key={hour}
+                  style={{ height: ROW_HEIGHT }}
+                  className={`text-[11px] ${theme.textMuted} pr-1 text-right`}
+                >
+                  {String(hour).padStart(2, '0')}:00
+                </div>
+              ))}
+            </div>
+
+            {columns.map((day) => {
             const isSelected = day.dateKey === selectedDateKey;
-            const isTodayCol = isToday(day.date);
-            // Het oog uit in het Koppelingen-blok (SourcesPanel) betekent
-            // "deze bron telt niet mee": de blokken verdwijnen hier uit het
-            // rooster (planDay.js filtert diezelfde bron al vóór de aanroep
-            // in App.jsx, zodat "deel mijn dag in" er ook overheen plant).
-            const dayAgendaBlocks = (agendaByDate?.[day.dateKey] || [])
-              .filter(b => getSourcePref(sourcePrefs, b.source?.provider).visible);
-            const allDayAgendaBlocks = dayAgendaBlocks.filter(b => b.allDay);
-            const timedAgendaBlocks = dayAgendaBlocks.filter(b => !b.allDay);
+            const { allDay: allDayAgendaBlocks, timed: timedAgendaBlocks } = agendaColumns[day.dateKey];
 
             return (
               <div key={day.dateKey} className={`flex-1 min-w-[140px] border-l ${theme.border}`}>
-                <div
-                  style={{ height: HEADER_HEIGHT }}
-                  className={`flex flex-col items-center justify-center text-xs font-medium ${
-                    isSelected ? `${theme.accentWeak} ${theme.textSecondary}` : theme.textMuted
-                  }`}
-                >
-                  <span>{label} {day.date.getDate()}</span>
-                  {isTodayCol && <span className="text-[10px]">{t('common.today')}</span>}
-                </div>
-
-                {allDayAgendaBlocks.length > 0 && (
-                  <div className="flex flex-wrap gap-1 px-1 py-1">
+                {allDayRowHeight > 0 && (
+                  <div className="flex gap-1 px-1 py-0.5 overflow-hidden" style={{ height: allDayRowHeight }}>
                     {allDayAgendaBlocks.map(block => {
                       const { className, style, Icon, iconClassName } = agendaBlockAppearance(block, sourcePrefs, theme);
                       return (
@@ -429,7 +449,8 @@ export default function WeekView({
                 </div>
               </div>
             );
-          })}
+            })}
+          </div>
         </div>
       </div>
     </div>
@@ -471,11 +492,21 @@ function PendingPlanBar({ pendingPlan, onAcceptAllPending, onDiscardAllPending, 
 
 // Rij van 7 dagknoppen: de enige plek waar de geselecteerde dag verandert
 // (zowel in Dag- als Week-stand), zodat er altijd een expliciete, niet-sleep
-// manier is om van dag te wisselen (principe 2).
-function DayStrip({ weekDays, shortLabels, selectedDateKey, onSelectDate, theme }) {
-  const { t } = useTranslation();
+// manier is om van dag te wisselen (principe 2). Sinds de dagkoppen uit het
+// rooster zelf verdwenen zijn, is dit ook de enige plek waar de dagnaam en het
+// datumnummer staan — vandaar het "Vandaag"-label, dat eerst in die kop zat.
+//
+// `aligned` (Week-stand) geeft de rij exact dezelfde opbouw als de roosterrij
+// eronder: eerst een spacer ter breedte van de tijdbalk, daarna per dag een
+// knop met dezelfde flex-basis als de kolom. Zonder die spacer schoof elke knop
+// een fractie van de 48px tijdbalk naar links en stond een blok op Vr visueel
+// onder de Za-knop. In Dag-stand toont het rooster maar één kolom terwijl deze
+// rij alle zeven dagen houdt, dus daar valt er niets uit te lijnen en blijft de
+// rij een eigen grid over de volle breedte.
+function DayStrip({ weekDays, shortLabels, selectedDateKey, onSelectDate, theme, t, aligned = false }) {
   return (
-    <div className="grid grid-cols-7 gap-1">
+    <div className={aligned ? 'flex' : 'grid grid-cols-7 gap-1'}>
+      {aligned && <div className="shrink-0 w-12" />}
       {weekDays.map((day, idx) => {
         const selected = day.dateKey === selectedDateKey;
         const todayCol = isToday(day.date);
@@ -486,7 +517,9 @@ function DayStrip({ weekDays, shortLabels, selectedDateKey, onSelectDate, theme 
             onClick={() => onSelectDate(day.dateKey)}
             aria-pressed={selected}
             aria-label={t('planner.week.selectDayAria', { day: `${shortLabels[idx]} ${day.date.getDate()}` })}
-            className={`flex flex-col items-center py-1.5 ${theme.radiusControl} text-xs font-medium transition ${
+            className={`flex flex-col items-center justify-center py-1.5 ${theme.radiusControl} text-xs font-medium transition ${
+              aligned ? 'flex-1 min-w-[140px]' : ''
+            } ${
               selected
                 ? `${theme.accentBg} shadow`
                 : todayCol
@@ -494,8 +527,8 @@ function DayStrip({ weekDays, shortLabels, selectedDateKey, onSelectDate, theme 
                   : `${theme.cardSecondary} ${theme.textMuted} ${theme.hover}`
             }`}
           >
-            <span>{shortLabels[idx]}</span>
-            <span className="text-[11px]">{day.date.getDate()}</span>
+            <span>{shortLabels[idx]} {day.date.getDate()}</span>
+            {todayCol && <span className="text-[10px]">{t('common.today')}</span>}
           </button>
         );
       })}
