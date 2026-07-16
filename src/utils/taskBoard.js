@@ -5,6 +5,8 @@
 // dayTimeline.js. Schrijft zelf nooit naar opslag; roept alleen de meegegeven
 // handlers aan.
 
+import { subgoalKey, taskKey } from './itemKeys';
+
 export const KANBAN_COLUMNS = ['todo', 'bezig', 'klaar'];
 
 // Leidt de Kanban-kolom af uit de bestaande boolean-velden (`done`/`completed`)
@@ -29,7 +31,7 @@ export function buildTaskBoard({ modules = [], customTasks = [], handlers = {} }
   customTasks.forEach(task => {
     const column = deriveTaskStatus({ done: task.done, status: task.status });
     const card = {
-      key: `task:${task.id}`,
+      key: taskKey(task.id),
       kind: 'losseTaak',
       label: task.text,
       column,
@@ -46,7 +48,7 @@ export function buildTaskBoard({ modules = [], customTasks = [], handlers = {} }
       (subject.subgoals || []).forEach(goal => {
         const column = deriveTaskStatus({ completed: goal.completed, status: goal.status });
         const card = {
-          key: `subgoal:${mod.id}:${subject.id}:${goal.id}`,
+          key: subgoalKey(mod.id, subject.id, goal.id),
           kind: 'projecttaak',
           label: goal.label,
           column,

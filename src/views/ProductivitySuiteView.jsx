@@ -10,6 +10,7 @@ import SourcesPanel from '../components/SourcesPanel';
 import TrelloBoardPicker from '../components/TrelloBoardPicker';
 import PlanPreferencesPanel from '../components/PlanPreferencesPanel';
 import { buildDayTimeline } from '../utils/dayTimeline';
+import { isVirtualTaskKey } from '../utils/itemKeys';
 import { shortWeekdayLabelsMondayFirst } from '../utils/dates';
 
 const TABS = ['dag', 'kanban', 'voorkeuren'];
@@ -142,7 +143,7 @@ export default function ProductivitySuiteView({
     });
     return items
       .filter(item => !item.time)
-      .map(item => (item.key.startsWith('task:virtual:') ? { ...item, toggle: undefined } : item));
+      .map(item => (isVirtualTaskKey(item.key) ? { ...item, toggle: undefined } : item));
   }, [selectedDay, modules, onToggleTaskInDay, onToggleProjectSubgoal]);
 
   // Generieke provider -> actie-map voor SourcesPanel (S07d, uitgebreid in

@@ -4,6 +4,7 @@ import { useTranslation } from '../i18n/useTranslation';
 import { COLOR_OPTIONS, getColorClasses, getColorHex } from '../utils/colors';
 import { SOURCE_ICONS, getSourcePref } from '../utils/sourcePrefs';
 import { buildDayTimeline, DEFAULT_BLOCK_MINUTES } from '../utils/dayTimeline';
+import { isVirtualTaskKey } from '../utils/itemKeys';
 import { formatWeekRange, formatWeekTitle, isToday, shortWeekdayLabelsMondayFirst } from '../utils/dates';
 import { encodeDragPayload, decodeDragPayload } from '../utils/dragPayload';
 
@@ -156,7 +157,7 @@ export default function WeekView({
       // Een nog niet gematerialiseerde recurring-instantie mag je nog niet
       // afvinken (die "taak" bestaat pas echt zodra hij geplaatst is).
       map[day.dateKey] = raw.map(item => (
-        item.key.startsWith('task:virtual:') ? { ...item, toggle: undefined } : item
+        isVirtualTaskKey(item.key) ? { ...item, toggle: undefined } : item
       ));
     });
     return map;
