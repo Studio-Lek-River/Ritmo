@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { COLOR_OPTIONS, getColorClasses, getColorHex } from '../utils/colors';
 import { SOURCE_ICONS, getSourcePref } from '../utils/sourcePrefs';
 import { buildDayTimeline, DEFAULT_BLOCK_MINUTES } from '../utils/dayTimeline';
-import { isToday, shortWeekdayLabelsMondayFirst } from '../utils/dates';
+import { formatWeekRange, formatWeekTitle, isToday, shortWeekdayLabelsMondayFirst } from '../utils/dates';
 import { encodeDragPayload, decodeDragPayload } from '../utils/dragPayload';
 
 // Weekrooster in Outlook-vorm voor de Planner: 7 dagkolommen (ma-zo van de
@@ -110,6 +110,8 @@ function agendaBlockAppearance(block, sourcePrefs, theme) {
 
 export default function WeekView({
   weekDays,
+  weekOffset = 0,
+  onWeekOffsetChange,
   modules,
   selectedDateKey,
   onSelectDate,
@@ -217,6 +219,14 @@ export default function WeekView({
 
   return (
     <div className={`${theme.card} ${theme.radiusCard} ${theme.padRow} space-y-3`}>
+      <WeekNav
+        weekStart={weekDays?.[0]?.date}
+        weekOffset={weekOffset}
+        onWeekOffsetChange={onWeekOffsetChange}
+        theme={theme}
+        t={t}
+      />
+
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className={`flex gap-1 p-1 ${theme.cardSecondary} ${theme.radiusControl}`}>
           {[
@@ -473,6 +483,55 @@ export default function WeekView({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Weeknavigatie boven het rooster: pijltjes voor vorige/volgende week plus een
+// weg-terug naar deze week. Onbegrensd in beide richtingen — een week buiten
+// het bewaarvenster van de agendacache blijft gevuld omdat mergeEventsByDate de
+// zojuist opgehaalde dagen niet meer wegsnoeit (utils/agendaCache.js).
+//
+// Titel en datumbereik komen van formatWeekTitle/formatWeekRange (utils/dates.js),
+// die "Deze week"/"Vorige week"/"Week van {datum}" al afhandelen; de aria-labels
+// hergebruiken de bestaande dates.*-keys. Verzet bewust alleen `weekOffset` en
+// nooit de actieve dag: die blijft vandaag, zie de toelichting in App.jsx.
+function WeekNav({ weekStart, weekOffset, onWeekOffsetChange, theme, t }) {
+  if (!weekStart || !onWeekOffsetChange) return null;
+  const navButton = `p-1.5 ${theme.radiusControl} ${theme.textMuted} ${theme.hover} transition`;
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => onWeekOffsetChange(weekOffset - 1)}
+        aria-label={t('dates.previousWeekAria')}
+        title={t('dates.previousWeekAria')}
+        className={navButton}
+      >
+        <ChevronLeft className="w-4 h-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => onWeekOffsetChange(weekOffset + 1)}
+        aria-label={t('dates.nextWeekAria')}
+        title={t('dates.nextWeekAria')}
+        className={navButton}
+      >
+        <ChevronRight className="w-4 h-4" />
+      </button>
+      <div className="flex items-baseline gap-2 min-w-0">
+        <span className={`text-sm font-medium truncate ${theme.text}`}>{formatWeekTitle(weekStart)}</span>
+        <span className={`text-xs truncate ${theme.textMuted}`}>{formatWeekRange(weekStart)}</span>
+      </div>
+      {weekOffset !== 0 && (
+        <button
+          type="button"
+          onClick={() => onWeekOffsetChange(0)}
+          className={`ml-auto px-3 py-1.5 ${theme.radiusControl} text-xs font-medium transition ${theme.cardSecondary} ${theme.textMuted} ${theme.hover}`}
+        >
+          {t('dates.thisWeek')}
+        </button>
+      )}
     </div>
   );
 }

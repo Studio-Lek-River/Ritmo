@@ -1137,11 +1137,16 @@ export default function Ritmo() {
   // Kern-functie: voegt een losse taak toe. Hergebruikt door zowel het
   // Tasks-module-invoerveld (addTask) als het toevoeg-veld in de Planner
   // (TaskListPanel / Kanban Te doen-kolom).
-  const addCustomTask = (text, time, extra = {}) => {
+  // `dateKey` staat standaard op de actieve dag, zodat elke bestaande aanroeper
+  // ongewijzigd op vandaag blijft schrijven. De Planner geeft de geselecteerde
+  // dag mee: die kan sinds de weeknavigatie in een andere week liggen dan
+  // vandaag. Schrijven gaat via `writeTasksForDay` en niet meer rechtstreeks via
+  // `setCustomTasks`, want dat laatste raakt per definitie alleen de actieve dag.
+  const addCustomTask = (text, time, extra = {}, dateKey = activeDateKey) => {
     const trimmed = (text || '').trim();
     if (!trimmed) return;
     const { duration, window, autoPlan, deepWork } = extra;
-    setCustomTasks(prev => [...prev, {
+    const task = {
       id: Date.now(),
       text: trimmed,
       done: false,
@@ -1150,7 +1155,8 @@ export default function Ritmo() {
       ...(window ? { window } : {}),
       ...(autoPlan ? { autoPlan } : {}),
       ...(deepWork ? { deepWork } : {}),
-    }]);
+    };
+    writeTasksForDay(dateKey, prev => [...prev, task]);
   };
 
   const addTask = () => {
@@ -1304,9 +1310,18 @@ export default function Ritmo() {
     }
   }, [readTasksForDay, writeTasksForDay, recurringTasks]);
 
-  // Zichtbare week voor de WeekView: de 7 dagen (ma-zo) van de huidige
-  // kalenderweek. De actieve dag (altijd "vandaag" binnen de Planner, zie de
-  // view==='productivity'-guard hierboven) leest de live customTasks-state;
+  // Welke week het rooster toont, in hele weken t.o.v. deze week (0 = deze
+  // week, 1 = volgende, -1 = vorige). Bewust alleen hier: `activeDate` blijft
+  // binnen de Planner op vandaag staan (zie de guard hierboven), want de
+  // opslag-effect schrijft alleen weg voor vandaag/gisteren (`isEditable`). Een
+  // andere week bekijken mag dus nooit de actieve dag verzetten — alle
+  // schrijfacties op zo'n dag lopen via `writeTasksForDay`, die het dagrecord
+  // rechtstreeks wegschrijft zonder datumgrens.
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  // Zichtbare week voor de WeekView: de 7 dagen (ma-zo) van de week die
+  // `weekOffset` aanwijst. De actieve dag (altijd "vandaag" binnen de Planner,
+  // zie de view==='productivity'-guard hierboven) leest de live customTasks-state;
   // elke andere dag leest de al-in-geheugen history-map. Voor dagen ná vandaag
   // worden terugkerende taken die daar nog niet gematerialiseerd zijn er
   // alleen virtueel (in-memory, `virtual: true`) bijgevoegd zodat de week zich
@@ -1314,7 +1329,7 @@ export default function Ritmo() {
   // moveItemToDay) schrijft zo'n instantie echt naar het dagrecord. Zo blijft
   // het tonen van een toekomstige dag veilig voor bestaande opslag (principe 2).
   const weekDays = useMemo(() => {
-    const monday = startOfWeek(new Date());
+    const monday = addDays(startOfWeek(new Date()), weekOffset * 7);
     return Array.from({ length: 7 }, (_, i) => {
       const date = addDays(monday, i);
       const dateKey = fmtDateKey(date);
@@ -1342,7 +1357,7 @@ export default function Ritmo() {
 
       return { date, dateKey, customTasks: dayTasks };
     });
-  }, [activeDateKey, customTasks, history, recurringTasks, todayKey]);
+  }, [activeDateKey, customTasks, history, recurringTasks, todayKey, weekOffset]);
 
   // ---- Outlook-agenda (S07 / S07a, persistent sinds S07d) ------------------
   // Eigen useConnections-instantie (naast die van ConnectionsSection) puur om
@@ -2099,6 +2114,8 @@ export default function Ritmo() {
             modules={modules}
             customTasks={customTasks}
             weekDays={weekDays}
+            weekOffset={weekOffset}
+            onWeekOffsetChange={setWeekOffset}
             todayKey={todayKey}
             agendaByDate={outlookEventsByDate}
             includedAgendaIds={agendaSelection}
