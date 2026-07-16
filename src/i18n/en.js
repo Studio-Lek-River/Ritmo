@@ -753,6 +753,9 @@ export default {
     deleteProjectAction: 'Delete project',
     deleteProjectTitle: 'Delete "{name}"?',
     deleteProjectDesc: 'This deletes the project and all progress. This action cannot be undone.',
+    sourceBadge: '{provider}',
+    openBoardAria: 'Open board on {provider}',
+    openCardAria: 'Open card',
   },
 
   toast: {

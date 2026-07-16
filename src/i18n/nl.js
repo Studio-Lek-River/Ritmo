@@ -754,6 +754,9 @@ export default {
     deleteProjectAction: 'Project verwijderen',
     deleteProjectTitle: '"{name}" verwijderen?',
     deleteProjectDesc: 'Dit verwijdert het project en alle voortgang. Deze actie kan niet ongedaan worden gemaakt.',
+    sourceBadge: '{provider}',
+    openBoardAria: 'Open bord op {provider}',
+    openCardAria: 'Open kaart',
   },
 
   toast: {

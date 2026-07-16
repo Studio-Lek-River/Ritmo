@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Clock, Sparkles, GraduationCap, MoreHorizontal } from 'lucide-react';
+import { Plus, Clock, Sparkles, GraduationCap, MoreHorizontal, ExternalLink } from 'lucide-react';
 import ProgressBar from '../components/ProgressBar';
 import EmptyState from '../components/EmptyState';
 import SwipeRow from '../components/SwipeRow';
@@ -8,6 +8,7 @@ import TimeInput from '../components/TimeInput';
 import DurationInput from '../components/DurationInput';
 import DagdeelSelect from '../components/DagdeelSelect';
 import { getColorClasses } from '../utils/colors';
+import { SOURCE_ICONS } from '../utils/sourcePrefs';
 import {
   projectProgress,
   subjectProgress,
@@ -102,7 +103,15 @@ export default function ProjectsView({
   const subjects = activeProject.subjects || [];
   const activeSubject = subjects.find(s => s.id === selectedSubjectId) || null;
 
+  // Een module met `source` is afgeleid van een externe koppeling (S08:
+  // Trello) en leeft niet in `settings.modules` — `updateProject` hieronder
+  // zou dus toch al een no-op zijn (geen match op `m.id`), maar de UI blijft
+  // hier expliciet read-only in plaats van controls te tonen die stilletjes
+  // niets doen. Zie AC8 in docs/slices/S08-trello-lezen.md.
+  const isReadOnly = !!activeProject.source;
+
   const updateProject = (mutator) => {
+    if (isReadOnly) return;
     setModules(prev => prev.map(m => {
       if (m.id !== activeProject.id) return m;
       return mutator({ ...m, subjects: (m.subjects || []).map(s => ({
@@ -157,6 +166,7 @@ export default function ProjectsView({
   };
 
   const toggleSubgoal = (subjectId, goalId) => {
+    if (isReadOnly) return;
     updateProject(p => ({
       ...p,
       subjects: p.subjects.map(s => s.id !== subjectId ? s : {
@@ -289,7 +299,7 @@ export default function ProjectsView({
   };
 
   const handleConfirmDeleteProject = () => {
-    if (!confirmDeleteProject) return;
+    if (!confirmDeleteProject || confirmDeleteProject.source) return;
     const snapshot = confirmDeleteProject;
     onDeleteProjectModule?.(snapshot.id);
     setConfirmDeleteProject(null);
@@ -341,27 +351,55 @@ export default function ProjectsView({
               {total === 0 ? t('projects.subgoalsCount', { done: 0, total: 0 }) : t('projects.subgoalsCount', { done, total })}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setProjectMenuOpen(v => !v)}
-            className={`p-1.5 ${theme.hover} rounded-lg ${theme.textMuted} transition`}
-            aria-label={t('common.options')}
-          >
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
-          {projectMenuOpen && (
-            <div className={`absolute right-0 top-full mt-1 z-20 ${theme.card} rounded-xl shadow-lg border ${theme.border} overflow-hidden min-w-[10rem]`}>
+          {isReadOnly ? (
+            // Read-only (S08): geen "..."-menu (er is toch niets te
+            // verwijderen/bewerken, ontkoppelen doe je bij de bron), in
+            // plaats daarvan een bron-badge plus een link naar het bord.
+            <div className="flex items-center gap-1 shrink-0">
+              <span className={`text-[11px] font-medium r-chip ${c.pillBg} ${c.pillText} flex items-center gap-1`}>
+                {(() => {
+                  const SourceIcon = SOURCE_ICONS[activeProject.source.provider];
+                  return SourceIcon ? <SourceIcon className="w-3 h-3" /> : null;
+                })()}
+                {t('projectsView.sourceBadge', { provider: t(`connections.providers.${activeProject.source.provider}`) })}
+              </span>
+              {activeProject.source.url && (
+                <a
+                  href={activeProject.source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={t('projectsView.openBoardAria', { provider: t(`connections.providers.${activeProject.source.provider}`) })}
+                  className={`p-1.5 ${theme.hover} rounded-lg ${theme.textMuted} transition`}
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              )}
+            </div>
+          ) : (
+            <>
               <button
                 type="button"
-                onClick={() => {
-                  setProjectMenuOpen(false);
-                  setConfirmDeleteProject(activeProject);
-                }}
-                className={`w-full text-left px-3 py-2 text-sm text-red-500 ${theme.hover} transition`}
+                onClick={() => setProjectMenuOpen(v => !v)}
+                className={`p-1.5 ${theme.hover} rounded-lg ${theme.textMuted} transition`}
+                aria-label={t('common.options')}
               >
-                {t('projectsView.deleteProjectAction')}
+                <MoreHorizontal className="w-4 h-4" />
               </button>
-            </div>
+              {projectMenuOpen && (
+                <div className={`absolute right-0 top-full mt-1 z-20 ${theme.card} rounded-xl shadow-lg border ${theme.border} overflow-hidden min-w-[10rem]`}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProjectMenuOpen(false);
+                      setConfirmDeleteProject(activeProject);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm text-red-500 ${theme.hover} transition`}
+                  >
+                    {t('projectsView.deleteProjectAction')}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
         <ProgressBar value={pct} colorKey={activeProject.color} label={`${pct}%`} />
@@ -387,6 +425,7 @@ export default function ProjectsView({
                 return (
                   <SwipeRow
                     key={s.id}
+                    disabled={isReadOnly}
                     onDelete={() => setConfirmDeleteSubject(s)}
                     onFirstSwipe={onFirstSwipe}
                     ariaLabel={t('projectsView.deleteSubjectAria')}
@@ -423,24 +462,26 @@ export default function ProjectsView({
               })}
             </div>
           )}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newSubjectName}
-              onChange={(e) => setNewSubjectName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addSubject()}
-              placeholder={t('projects.newBoxPlaceholder')}
-              className={`flex-1 px-3 py-2 ${theme.input} rounded-lg text-sm`}
-            />
-            <button
-              type="button"
-              onClick={addSubject}
-              className={`px-3 py-2 ${c.bar} text-white rounded-lg`}
-              aria-label={t('projects.addBoxAria')}
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-          </div>
+          {!isReadOnly && (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newSubjectName}
+                onChange={(e) => setNewSubjectName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addSubject()}
+                placeholder={t('projects.newBoxPlaceholder')}
+                className={`flex-1 px-3 py-2 ${theme.input} rounded-lg text-sm`}
+              />
+              <button
+                type="button"
+                onClick={addSubject}
+                className={`px-3 py-2 ${c.bar} text-white rounded-lg`}
+                aria-label={t('projects.addBoxAria')}
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
 
         <div className={`${theme.card} rounded-2xl p-4 shadow-sm`}>
@@ -450,17 +491,20 @@ export default function ProjectsView({
                 <h3 className={`font-semibold ${theme.textSecondary} truncate`}>
                   {activeSubject.name}
                 </h3>
-                <span className={`text-xs ${theme.textMuted} shrink-0`}>
-                  {t('projects.avgGrade')} <strong className={theme.textSecondary}>
-                    {subjectAverage(activeSubject) ?? '-'}
-                  </strong>
-                </span>
+                {!isReadOnly && (
+                  <span className={`text-xs ${theme.textMuted} shrink-0`}>
+                    {t('projects.avgGrade')} <strong className={theme.textSecondary}>
+                      {subjectAverage(activeSubject) ?? '-'}
+                    </strong>
+                  </span>
+                )}
               </div>
 
               <SubgoalList
                 subject={activeSubject}
                 color={activeProject.color}
                 theme={theme}
+                readOnly={isReadOnly}
                 onToggle={(goalId) => toggleSubgoal(activeSubject.id, goalId)}
                 onGrade={(goalId, raw) => setGrade(activeSubject.id, goalId, raw)}
                 onSetTime={(goalId, time) => setSubgoalTime(activeSubject.id, goalId, time)}
@@ -473,6 +517,7 @@ export default function ProjectsView({
                 onFirstSwipe={onFirstSwipe}
               />
 
+              {!isReadOnly && (
               <div className="mt-3 space-y-2">
                 <input
                   type="text"
@@ -536,6 +581,7 @@ export default function ProjectsView({
                   </label>
                 </div>
               </div>
+              )}
             </>
           ) : (
             <p className={`${theme.textMuted} text-sm`}>
@@ -585,6 +631,7 @@ function SubgoalList({
   subject,
   color,
   theme,
+  readOnly = false,
   onToggle,
   onGrade,
   onSetTime,
@@ -619,6 +666,7 @@ function SubgoalList({
         return (
           <li key={g.id}>
             <SwipeRow
+              disabled={readOnly}
               onDelete={() => onRequestDelete(g)}
               onFirstSwipe={onFirstSwipe}
               ariaLabel={t('projectsView.deleteSubgoalAria')}
@@ -634,7 +682,8 @@ function SubgoalList({
                     type="checkbox"
                     checked={!!g.completed}
                     onChange={() => onToggle(g.id)}
-                    className={`w-4 h-4 accent-${color}-500 cursor-pointer`}
+                    disabled={readOnly}
+                    className={`w-4 h-4 accent-${color}-500 ${readOnly ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
                   />
                   <span className={`flex-1 text-sm ${theme.textSecondary} ${
                     g.completed ? 'line-through' : ''
@@ -654,18 +703,33 @@ function SubgoalList({
                       {formatDeadline(g.deadline)}
                     </span>
                   )}
-                  <input
-                    type="number"
-                    min="1"
-                    max="10"
-                    step="0.1"
-                    value={g.grade ?? ''}
-                    onChange={(e) => onGrade(g.id, e.target.value)}
-                    placeholder="-"
-                    className={`w-14 px-2 py-1 text-xs text-right ${theme.input} rounded-md`}
-                    aria-label={t('projects.grade')}
-                  />
+                  {readOnly ? (
+                    g.url && (
+                      <a
+                        href={g.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={t('projectsView.openCardAria')}
+                        className={`p-1 shrink-0 ${theme.textMuted} ${theme.hover} rounded`}
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )
+                  ) : (
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      step="0.1"
+                      value={g.grade ?? ''}
+                      onChange={(e) => onGrade(g.id, e.target.value)}
+                      placeholder="-"
+                      className={`w-14 px-2 py-1 text-xs text-right ${theme.input} rounded-md`}
+                      aria-label={t('projects.grade')}
+                    />
+                  )}
                 </div>
+                {!readOnly && (
                 <div className="flex items-center gap-2 flex-wrap">
                   <TimeInput
                     value={g.time}
@@ -713,6 +777,7 @@ function SubgoalList({
                     {t('planner.deepWork.short')}
                   </label>
                 </div>
+                )}
               </div>
             </SwipeRow>
           </li>
