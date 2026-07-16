@@ -1656,6 +1656,14 @@ export default {
       notConnectedHint: 'Koppel Outlook via Account → Koppelingen',
       fetchFailed: 'Outlook-agenda ophalen is mislukt.',
     },
+    sources: {
+      title: 'Koppelingen',
+      hint: 'Kies per bron een kleur en of hij meetelt in de planner.',
+      colorAria: 'Kleur {color} voor {provider}',
+      eyeShowAria: 'Toon {provider} in de planner',
+      eyeHideAria: 'Verberg {provider} in de planner',
+      connectButton: 'Koppelen',
+    },
     duration: {
       label: 'Duur (minuten)',
       placeholder: 'min',

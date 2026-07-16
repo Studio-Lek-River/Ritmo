@@ -1645,6 +1645,14 @@ export default {
       notConnectedHint: 'Connect Outlook via Account → Connections',
       fetchFailed: 'Failed to fetch the Outlook calendar.',
     },
+    sources: {
+      title: 'Connections',
+      hint: 'Choose a color per source and whether it counts toward the planner.',
+      colorAria: '{color} color for {provider}',
+      eyeShowAria: 'Show {provider} in the planner',
+      eyeHideAria: 'Hide {provider} in the planner',
+      connectButton: 'Connect',
+    },
     duration: {
       label: 'Duration (minutes)',
       placeholder: 'min',
