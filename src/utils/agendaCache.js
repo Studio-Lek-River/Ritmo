@@ -13,7 +13,10 @@ const CACHE_KEY = 'agenda:outlook';
 const CACHE_VERSION = 1;
 
 // Snoeivenster: alles buiten [vandaag - 30d, vandaag + 90d] vervalt bij een
-// merge, zodat de cache niet eeuwig blijft groeien met oude of verre dagen.
+// merge, zodat de cache niet eeuwig blijft groeien met oude of verre dagen. De
+// zojuist opgehaalde dagen zijn hiervan uitgezonderd (zie mergeEventsByDate):
+// wie ver vooruit of terug bladert, kijkt naar een week buiten dit venster en
+// moet daar wél zijn afspraken zien.
 const RETENTION_PAST_DAYS = 30;
 const RETENTION_FUTURE_DAYS = 90;
 
@@ -64,11 +67,18 @@ export async function clearAgendaCache() {
 // dagen (`fetchedDateKeys`) VERVANGEN hun cache-versie, ook wanneer ze leeg
 // terugkomen (een lege dag betekent een geannuleerde afspraak, geen "nog
 // niets opgehaald"). Dagen buiten de opgehaalde week blijven ongemoeid staan.
-// Snoeit daarna alles buiten [todayKey - 30d, todayKey + 90d].
+// Snoeit daarna alles buiten [todayKey - 30d, todayKey + 90d], BEHALVE de
+// zojuist opgehaalde dagen: die zijn per definitie de week die de gebruiker nu
+// bekijkt. Zonder die uitzondering werd een week voorbij het venster wél
+// opgehaald en meteen weer weggegooid — een lege agendakolom zonder foutmelding,
+// waar "deel mijn dag in" vervolgens dwars doorheen plande. De cache blijft
+// begrensd: zodra je terug naar een week binnen het venster bladert, valt zo'n
+// verre week bij de volgende merge alsnog weg.
 export function mergeEventsByDate(cached, fresh, fetchedDateKeys, todayKey) {
   const merged = { ...(cached || {}) };
+  const fetched = new Set(fetchedDateKeys || []);
 
-  (fetchedDateKeys || []).forEach((dateKey) => {
+  fetched.forEach((dateKey) => {
     const freshBlocks = fresh?.[dateKey];
     if (freshBlocks && freshBlocks.length > 0) {
       merged[dateKey] = freshBlocks;
@@ -81,6 +91,7 @@ export function mergeEventsByDate(cached, fresh, fetchedDateKeys, todayKey) {
     const minKey = fmtDateKey(addDays(parseDateKey(todayKey), -RETENTION_PAST_DAYS));
     const maxKey = fmtDateKey(addDays(parseDateKey(todayKey), RETENTION_FUTURE_DAYS));
     Object.keys(merged).forEach((dateKey) => {
+      if (fetched.has(dateKey)) return;
       if (dateKey < minKey || dateKey > maxKey) delete merged[dateKey];
     });
   }
