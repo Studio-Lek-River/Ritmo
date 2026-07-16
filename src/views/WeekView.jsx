@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
-import { getColorClasses, getColorHex } from '../utils/colors';
+import { COLOR_OPTIONS, getColorClasses, getColorHex } from '../utils/colors';
+import { SOURCE_ICONS, getSourcePref } from '../utils/sourcePrefs';
 import { buildDayTimeline, DEFAULT_BLOCK_MINUTES } from '../utils/dayTimeline';
 import { isToday, shortWeekdayLabelsMondayFirst } from '../utils/dates';
 import { encodeDragPayload, decodeDragPayload } from '../utils/dragPayload';
@@ -72,6 +73,26 @@ function timeFromOffset(offsetY) {
   return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
 
+// Agendablok-uiterlijk (S07c): tint + volledige rand + provider-icoontje in
+// de bronkleur, zodat een extern blok herkenbaar anders blijft dan een
+// gevulde eigen taak (die alleen een linkerrand in de modulekleur heeft).
+// Een onbekende bron (geen kleur uit COLOR_OPTIONS, bv. een provider zonder
+// default) valt terug op de neutrale `.r-block-agenda`-stijl van vóór deze
+// slice.
+function agendaBlockAppearance(block, sourcePrefs, theme) {
+  const provider = block.source?.provider;
+  const pref = getSourcePref(sourcePrefs, provider);
+  if (!COLOR_OPTIONS.includes(pref.color)) {
+    return { className: `r-block-agenda ${theme.textSecondary}`, style: {}, Icon: null };
+  }
+  const c = getColorClasses(pref.color);
+  return {
+    className: `border ${c.iconBg} ${c.iconText}`,
+    style: { borderColor: getColorHex(pref.color) },
+    Icon: SOURCE_ICONS[provider] || null,
+  };
+}
+
 export default function WeekView({
   weekDays,
   modules,
@@ -87,6 +108,7 @@ export default function WeekView({
   onDiscardAllPending,
   onMovePendingItem,
   agendaByDate,
+  sourcePrefs,
   theme,
 }) {
   const { t } = useTranslation();
@@ -205,7 +227,12 @@ export default function WeekView({
             const label = shortLabels[weekdayIndex >= 0 ? weekdayIndex : idx];
             const isSelected = day.dateKey === selectedDateKey;
             const isTodayCol = isToday(day.date);
-            const dayAgendaBlocks = (agendaByDate?.[day.dateKey] || []);
+            // Het oog uit in het Koppelingen-blok (SourcesPanel) betekent
+            // "deze bron telt niet mee": de blokken verdwijnen hier uit het
+            // rooster (planDay.js filtert diezelfde bron al vóór de aanroep
+            // in App.jsx, zodat "deel mijn dag in" er ook overheen plant).
+            const dayAgendaBlocks = (agendaByDate?.[day.dateKey] || [])
+              .filter(b => getSourcePref(sourcePrefs, b.source?.provider).visible);
             const allDayAgendaBlocks = dayAgendaBlocks.filter(b => b.allDay);
             const timedAgendaBlocks = dayAgendaBlocks.filter(b => !b.allDay);
 
@@ -223,15 +250,20 @@ export default function WeekView({
 
                 {allDayAgendaBlocks.length > 0 && (
                   <div className="flex flex-wrap gap-1 px-1 py-1">
-                    {allDayAgendaBlocks.map(block => (
-                      <span
-                        key={`agenda-allday:${block.id}`}
-                        title={block.title}
-                        className={`r-block-agenda text-[10px] px-1.5 py-0.5 rounded truncate max-w-full ${theme.textSecondary}`}
-                      >
-                        {t('planner.agenda.allDay')}: {block.title}
-                      </span>
-                    ))}
+                    {allDayAgendaBlocks.map(block => {
+                      const { className, style, Icon } = agendaBlockAppearance(block, sourcePrefs, theme);
+                      return (
+                        <span
+                          key={`agenda-allday:${block.id}`}
+                          title={block.title}
+                          style={style}
+                          className={`text-[10px] px-1.5 py-0.5 rounded truncate max-w-full flex items-center gap-1 ${className}`}
+                        >
+                          {Icon && <Icon className="w-2.5 h-2.5 shrink-0" />}
+                          <span className="truncate">{t('planner.agenda.allDay')}: {block.title}</span>
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -252,14 +284,16 @@ export default function WeekView({
                   {timedAgendaBlocks.map(block => {
                     const duration = agendaDurationMinutes(block.start, block.end);
                     const { top, height } = blockStyle(block.start, duration);
+                    const { className, style, Icon } = agendaBlockAppearance(block, sourcePrefs, theme);
                     return (
                       <div
                         key={`agenda:${block.id}`}
-                        style={{ top, height }}
+                        style={{ top, height, ...style }}
                         title={block.title}
-                        className={`r-block-agenda absolute left-1 right-1 rounded-md px-1.5 py-1 text-[11px] overflow-hidden ${theme.textSecondary}`}
+                        className={`absolute left-1 right-1 rounded-md px-1.5 py-1 text-[11px] overflow-hidden flex items-center gap-1 ${className}`}
                       >
-                        <span className="truncate block">{block.title}</span>
+                        {Icon && <Icon className="w-3 h-3 shrink-0" />}
+                        <span className="truncate block flex-1">{block.title}</span>
                       </div>
                     );
                   })}
@@ -431,16 +465,23 @@ function DayStrip({ weekDays, shortLabels, selectedDateKey, onSelectDate, theme 
 // de latere indeler). De agenda- en voorstel-stijlklassen bestaan al zodat
 // een volgende slice ze meteen kan hergebruiken op echte blokken.
 function Legend({ theme, t }) {
+  // Het "Agenda"-swatje krijgt hetzelfde icoontje-in-tint-in-rand-patroon als
+  // de echte agendablokken hierboven (agendaBlockAppearance); zonder actieve
+  // koppeling is er geen bronkleur om te tonen, dus de swatch blijft neutraal
+  // en toont alleen het generieke agenda-icoontje.
+  const AgendaIcon = SOURCE_ICONS.outlook;
   const items = [
     { key: 'ingepland', className: theme.accentBg },
-    { key: 'agenda', className: 'r-block-agenda' },
+    { key: 'agenda', className: 'r-block-agenda', Icon: AgendaIcon },
     { key: 'voorstel', className: 'r-block-proposal' },
   ];
   return (
     <div className="flex items-center gap-3">
-      {items.map(({ key, className }) => (
+      {items.map(({ key, className, Icon }) => (
         <span key={key} className="flex items-center gap-1.5">
-          <span className={`inline-block w-3 h-3 rounded ${className}`} />
+          <span className={`inline-flex items-center justify-center w-3 h-3 rounded ${className}`}>
+            {Icon && <Icon className="w-2 h-2" />}
+          </span>
           <span className={`text-xs ${theme.textMuted}`}>{t(`planner.legend.${key}`)}</span>
         </span>
       ))}

@@ -36,6 +36,7 @@ import OutlookOAuthReturn from './components/OutlookOAuthReturn';
 import useConnections from './hooks/useConnections';
 import useOutlookEvents from './hooks/useOutlookEvents';
 import { externalBlocksForDay } from './utils/outlookEvents';
+import { DEFAULT_SOURCE_PREFS, getSourcePref } from './utils/sourcePrefs';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
 import TimeInput from './components/TimeInput';
@@ -155,6 +156,7 @@ export default function Ritmo() {
   const [appMode, setAppMode] = useState('standard');
   const [planMode, setPlanMode] = useState('propose');
   const [planPrefs, setPlanPrefs] = useState(DEFAULT_PLAN_PREFS);
+  const [sourcePrefs, setSourcePrefs] = useState(DEFAULT_SOURCE_PREFS);
   // Ephemere uitkomst van "Deel mijn dag in" (propose/concept-standen). Nooit
   // gepersisteerd — alleen bij expliciete acceptatie schrijft een handler via
   // de bestaande moveItemToDay/setTaskTime. Shape: { dateKey, mode, items }.
@@ -222,6 +224,7 @@ export default function Ritmo() {
         if (settings.appMode !== undefined) setAppMode(settings.appMode);
         if (settings.planMode !== undefined) setPlanMode(settings.planMode);
         if (settings.planPrefs !== undefined) setPlanPrefs(settings.planPrefs);
+        if (settings.sourcePrefs !== undefined) setSourcePrefs(settings.sourcePrefs);
         if (settings.onboardingProfile !== undefined) setOnboardingProfile(settings.onboardingProfile);
         if (settings.hasUsedSwipe !== undefined) setHasUsedSwipe(settings.hasUsedSwipe);
         if (settings.hasDismissedInstallBanner !== undefined) setHasDismissedInstallBanner(settings.hasDismissedInstallBanner);
@@ -358,6 +361,7 @@ export default function Ritmo() {
           appMode,
           planMode,
           planPrefs,
+          sourcePrefs,
           onboardingProfile,
           hasUsedSwipe,
           hasDismissedInstallBanner,
@@ -369,7 +373,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, planPrefs, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, planPrefs, sourcePrefs, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
 
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
@@ -1436,10 +1440,17 @@ export default function Ritmo() {
     const wake = sleepModule ? goalsForNight(sleepModule.goals, parseDateKey(dateKey)).wake : null;
     const dayStart = wake || PLAN_DAY_START_FALLBACK;
 
+    // Alleen bronnen waarvan het oog aan staat (SourcesPanel) tellen mee als
+    // bezette tijd, zodat "deel mijn dag in" consistent is met wat er in het
+    // rooster te zien is (WeekView filtert dezelfde blokken op dezelfde manier).
+    const visibleAgendaBlocks = (outlookEventsByDate[dateKey] || []).filter(
+      (b) => getSourcePref(sourcePrefs, b.source?.provider).visible
+    );
+
     const { assignments } = planDay({
       candidates,
       fixed,
-      external: externalBlocksForDay(outlookEventsByDate[dateKey], dateKey),
+      external: externalBlocksForDay(visibleAgendaBlocks, dateKey),
       dayStart,
       dayEnd: PLAN_DAY_END,
       slotStep: DEFAULT_BLOCK_MINUTES,
@@ -1486,7 +1497,7 @@ export default function Ritmo() {
         kind: meta[a.key]?.kind,
       })),
     });
-  }, [buildPlanInputs, modules, planMode, planPrefs, applyPendingAssignment, writeTasksForDay, t, outlookEventsByDate]);
+  }, [buildPlanInputs, modules, planMode, planPrefs, sourcePrefs, applyPendingAssignment, writeTasksForDay, t, outlookEventsByDate]);
 
   // Eén voorstel-/concept-blok overnemen resp. vastzetten: schrijft via de
   // bestaande handler en haalt het item uit de ephemere pendingPlan-state.
@@ -2023,6 +2034,9 @@ export default function Ritmo() {
             todayKey={todayKey}
             agendaByDate={outlookEventsByDate}
             outlookConnected={!!outlookConnection}
+            connections={outlookConnectionState.connections}
+            sourcePrefs={sourcePrefs}
+            setSourcePrefs={setSourcePrefs}
             agendaShown={agendaShown}
             agendaLoading={outlookAgendaLoading}
             agendaError={outlookAgendaError}

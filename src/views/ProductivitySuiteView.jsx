@@ -6,6 +6,7 @@ import WeekView from './WeekView';
 import KanbanView from './KanbanView';
 import TaskListPanel from '../components/TaskListPanel';
 import TaskPoolPanel from '../components/TaskPoolPanel';
+import SourcesPanel from '../components/SourcesPanel';
 import PlanPreferencesPanel from '../components/PlanPreferencesPanel';
 import { buildDayTimeline } from '../utils/dayTimeline';
 import { shortWeekdayLabelsMondayFirst } from '../utils/dates';
@@ -25,6 +26,9 @@ export default function ProductivitySuiteView({
   todayKey,
   agendaByDate,
   outlookConnected,
+  connections,
+  sourcePrefs,
+  setSourcePrefs,
   agendaShown,
   agendaLoading,
   agendaError,
@@ -162,15 +166,24 @@ export default function ProductivitySuiteView({
       ) : (
         <div className="grid gap-4 md:grid-cols-[minmax(240px,300px)_1fr] items-start">
           {tab === 'dag' ? (
-            <TaskPoolPanel
-              items={poolItems}
-              dayOptions={dayOptions}
-              selectedDateKey={selectedDay?.dateKey || todayKey}
-              canAddTask={(selectedDay?.dateKey || todayKey) === todayKey}
-              onAddTask={onAddTask}
-              onMoveItem={onMoveItem}
-              theme={theme}
-            />
+            <div className="space-y-4">
+              <TaskPoolPanel
+                items={poolItems}
+                dayOptions={dayOptions}
+                selectedDateKey={selectedDay?.dateKey || todayKey}
+                canAddTask={(selectedDay?.dateKey || todayKey) === todayKey}
+                onAddTask={onAddTask}
+                onMoveItem={onMoveItem}
+                theme={theme}
+              />
+              <SourcesPanel
+                connections={connections}
+                sourcePrefs={sourcePrefs}
+                setSourcePrefs={setSourcePrefs}
+                onOpenConnections={onOpenConnections}
+                theme={theme}
+              />
+            </div>
           ) : (
             <TaskListPanel
               tasks={customTasks}
@@ -192,6 +205,7 @@ export default function ProductivitySuiteView({
               weekDays={weekDays || []}
               modules={modules}
               agendaByDate={agendaByDate}
+              sourcePrefs={sourcePrefs}
               selectedDateKey={selectedDay?.dateKey || todayKey}
               onSelectDate={setSelectedDateKey}
               onToggleTask={onToggleTaskInDay}
