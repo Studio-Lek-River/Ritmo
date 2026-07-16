@@ -89,6 +89,17 @@
     font-weight: 500;
   }
 
+  /* Dekkend "kaartje" voor rooster-blokken (S07d): eigen taken en
+     agenda-items met een bekende bronkleur delen deze basisvorm, met de
+     kleur alleen als strip links (inline `borderLeft`) i.p.v. een
+     doorzichtige tint over het hele blok. */
+  .r-block {
+    background-color: var(--r-card);
+    border: 1px solid var(--r-border);
+    border-radius: var(--r-radius-control);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  }
+
   /* Planner-legenda (S03): stijl-haken voor extern gesynchroniseerde
      agenda-items en voor toekomstige AI-voorstellen (de indeler, latere
      slice). In S03 alleen gebruikt door de legenda-swatches zelf; er zijn nog
