@@ -1,16 +1,20 @@
 // "Koppelingen"-sectie in het Account-scherm (S02). Toont Outlook, Trello en
 // GitHub met een status-chip (stijl SyncStatusRow.jsx) en verbind/verbreek.
 // Verbreken toont zich alleen bij een verbonden koppeling (status
-// 'connected'), niet bij het enkel bestaan van een rij (S07b, issue #110);
-// verbinden roept de stub aan tot de echte OAuth-handshake per provider landt
-// (S03-S05).
+// 'connected'), niet bij het enkel bestaan van een rij (S07b, issue #110).
+// `handleConnect` is een switch per provider: Outlook start zijn eigen
+// OAuth-redirect (S07), Trello opent een twee-staps dialoog (S08,
+// TrelloConnectDialog, key+token-flow), GitHub valt nog terug op de generieke
+// connect-stub (S09).
 // Alleen gerenderd door de aanroeper wanneer er een account is en sync aan
 // staat (opt-in, principe 2).
 import { useState } from 'react';
 import { Check, CloudOff, AlertTriangle } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
+import { useToast } from '../hooks/useToast';
 import useConnections from '../hooks/useConnections';
 import { CONNECTION_PROVIDERS, startOutlookConnect } from '../sync/connections';
+import TrelloConnectDialog from './TrelloConnectDialog';
 
 const STATUS_ICON = {
   connected: { Icon: Check, color: 'text-teal-500' },
@@ -38,35 +42,55 @@ export const ERROR_KEYS = {
   ms_error: 'connections.errors.msError',
   token_refresh_failed: 'connections.errors.tokenRefreshFailed',
   not_connected: 'connections.errors.notConnected',
+  // S08: Trello key+token-flow-codes van api/connections/trello/*.js.
+  trello_auth: 'connections.errors.trelloAuth',
+  trello_rate_limit: 'connections.errors.trelloRateLimit',
+  trello_error: 'connections.errors.trelloError',
+  invalid_token_format: 'connections.errors.invalidTokenFormat',
+  rate_limited: 'connections.errors.rateLimited',
 };
 
 export default function ConnectionsSection({ theme, accountId }) {
   const { t } = useTranslation();
-  const { connections, busyId, error, disconnect, connect } = useConnections(accountId);
-  // Outlook start zijn eigen OAuth-redirect (i.p.v. de generieke connect-stub)
-  // en heeft dus losse busy/error-state: de hook's `connect`/`busyId` blijven
-  // voor Trello/GitHub, die nog steeds de stub gebruiken (S08/S09).
-  const [outlookBusy, setOutlookBusy] = useState(false);
-  const [outlookError, setOutlookError] = useState(null);
+  const { showToast } = useToast();
+  const { connections, busyId, error, disconnect, connect, refresh } = useConnections(accountId);
+  // Outlook start zijn eigen OAuth-redirect, Trello een eigen dialoog
+  // (i.p.v. de generieke connect-stub) en hebben dus provider-agnostische
+  // busy/error-state; de hook's `connect`/`busyId` blijven voor GitHub, dat
+  // nog steeds de stub gebruikt (S09).
+  const [connectBusy, setConnectBusy] = useState(false);
+  const [connectError, setConnectError] = useState(null);
+  const [showTrelloDialog, setShowTrelloDialog] = useState(false);
 
   const handleConnect = async (provider) => {
-    if (provider !== 'outlook') {
-      connect(provider);
-      return;
-    }
-    setOutlookBusy(true);
-    setOutlookError(null);
-    try {
-      await startOutlookConnect();
-      // Bij succes navigeert de browser weg (window.location.assign); er
-      // volgt dan geen render meer die outlookBusy hoeft te resetten.
-    } catch (err) {
-      setOutlookError(err.code || 'unexpected');
-      setOutlookBusy(false);
+    switch (provider) {
+      case 'outlook':
+        setConnectBusy(true);
+        setConnectError(null);
+        try {
+          await startOutlookConnect();
+          // Bij succes navigeert de browser weg (window.location.assign); er
+          // volgt dan geen render meer die connectBusy hoeft te resetten.
+        } catch (err) {
+          setConnectError(err.code || 'unexpected');
+          setConnectBusy(false);
+        }
+        return;
+      case 'trello':
+        setConnectError(null);
+        setShowTrelloDialog(true);
+        return;
+      default:
+        connect(provider);
     }
   };
 
-  const displayError = outlookError || error;
+  const handleTrelloConnected = (account) => {
+    refresh();
+    showToast({ message: t('connections.toast.trelloConnected', { username: account?.username || '' }) });
+  };
+
+  const displayError = connectError || error;
 
   return (
     <div className="space-y-3">
@@ -80,7 +104,7 @@ export default function ConnectionsSection({ theme, accountId }) {
           const isConnected = status === 'connected';
           const { Icon, color } = STATUS_ICON[status] || STATUS_ICON.disconnected;
           const busy = provider === 'outlook'
-            ? outlookBusy
+            ? connectBusy
             : (busyId === provider || (connection && busyId === connection.id));
 
           return (
@@ -127,6 +151,13 @@ export default function ConnectionsSection({ theme, accountId }) {
       {displayError && (
         <p className="text-xs text-red-500">{t(ERROR_KEYS[displayError] || 'connections.errors.unexpected')}</p>
       )}
+
+      <TrelloConnectDialog
+        open={showTrelloDialog}
+        onClose={() => setShowTrelloDialog(false)}
+        onConnected={handleTrelloConnected}
+        theme={theme}
+      />
     </div>
   );
 }

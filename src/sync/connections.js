@@ -84,3 +84,26 @@ export async function startOutlookConnect() {
 export async function fetchOutlookEvents(range) {
   return callConnectionsApi('outlook/events', range || {});
 }
+
+// Trello (S08, key+token-flow, geen OAuth — zie api/connections/trello/*.js).
+// Haalt de server-gebouwde authorize-URL op (TRELLO_API_KEY is server-only,
+// de frontend kan de link dus niet zelf samenstellen).
+export async function fetchTrelloAuthorizeUrl() {
+  return callConnectionsApi('trello/start', {});
+}
+
+// Slaat een geplakt Trello-token op; de server valideert het eerst tegen
+// Trello (api/connections/trello/token.js) voordat hij het in de Vault zet.
+export async function saveTrelloToken(token) {
+  return callConnectionsApi('trello/token', { token });
+}
+
+// Haalt de open Trello-borden op (voor de bord-kiezer, pas bij uitklappen).
+export async function fetchTrelloBoards() {
+  return callConnectionsApi('trello/boards', {});
+}
+
+// Haalt lijsten + kaarten op voor de aangevinkte Trello-borden.
+export async function fetchTrelloCards(boardIds) {
+  return callConnectionsApi('trello/cards', { boardIds: boardIds || [] });
+}
