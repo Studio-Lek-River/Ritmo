@@ -3,25 +3,20 @@
 // op status = 'disconnected'. Draait server-side met de service-role-key
 // (zie CLAUDE.md / docs/slices/S02-connections-items-model.md); de sleutel komt
 // nooit in de browser-bundel terecht.
-import { createClient } from '@supabase/supabase-js';
+import { getBearerToken, getServiceClient } from './_shared.js';
 
-// Geëxporteerd zodat api/connections/outlook/*.js 'm kan hergebruiken
-// (S07-spec: "Hergebruik de getBearerToken-helper uit disconnect.js").
-export function getBearerToken(req) {
-  const header = req.headers['authorization'] || req.headers['Authorization'];
-  if (typeof header !== 'string') return null;
-  const match = /^Bearer\s+(.+)$/i.exec(header.trim());
-  return match ? match[1] : null;
-}
+// Re-geëxporteerd voor bestaande imports elders in de codebase
+// (`getBearerToken` uit `disconnect.js`); de implementatie zelf leeft sinds
+// S08 in `_shared.js`.
+export { getBearerToken };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed', code: 'method_not_allowed' });
   }
 
-  const supabaseUrl = process.env.VITE_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceRoleKey) {
+  const supabase = getServiceClient();
+  if (!supabase) {
     return res.status(500).json({ error: 'Server niet correct geconfigureerd', code: 'server_config' });
   }
 
@@ -35,10 +30,6 @@ export default async function handler(req, res) {
   if (typeof connectionId !== 'string' || connectionId.length === 0) {
     return res.status(400).json({ error: 'Ongeldige aanvraag', code: 'invalid_request' });
   }
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
 
   const { data: userData, error: userError } = await supabase.auth.getUser(jwt);
   if (userError || !userData?.user) {

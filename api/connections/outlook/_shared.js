@@ -4,10 +4,13 @@
 // slice-spec) — dit bestand is dus alleen importeerbaar, geen eigen route.
 // Bevat: service-role-client, env-presence-check, en de HMAC-ondertekende
 // OAuth-`state` (CSRF-bescherming voor de authorization-code-flow).
-import { createClient } from '@supabase/supabase-js';
 import { randomBytes, createHmac, timingSafeEqual } from 'node:crypto';
 
-export { getBearerToken } from '../disconnect.js';
+// `getBearerToken`/`getServiceClient` leven sinds S08 in het provider-
+// overkoepelende `api/connections/_shared.js` (zie de refactor-commit in die
+// slice); hier alleen doorgeexporteerd zodat start.js/events.js/callback.js
+// ongewijzigd kunnen blijven importeren uit dit bestand.
+export { getBearerToken, getServiceClient } from '../_shared.js';
 
 // Alle drie de endpoints hebben dezelfde server-config nodig (zie
 // Prerequisites in de slice-spec); één centrale lijst zodat de drie
@@ -26,15 +29,6 @@ export const REQUIRED_OUTLOOK_ENV = [
 // client alleen de generieke code `server_config` — geen interne details lekken.
 export function missingOutlookEnv() {
   return REQUIRED_OUTLOOK_ENV.filter((name) => !process.env[name]);
-}
-
-export function getServiceClient() {
-  const supabaseUrl = process.env.VITE_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceRoleKey) return null;
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
 }
 
 export const MS_AUTHORIZE_URL = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize';
