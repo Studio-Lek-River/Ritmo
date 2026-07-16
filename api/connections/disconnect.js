@@ -4,11 +4,50 @@
 // (zie CLAUDE.md / docs/slices/S02-connections-items-model.md); de sleutel komt
 // nooit in de browser-bundel terecht.
 import { getBearerToken, getServiceClient } from './_shared.js';
+import { TRELLO_API_BASE } from './trello/_shared.js';
 
 // Re-geëxporteerd voor bestaande imports elders in de codebase
 // (`getBearerToken` uit `disconnect.js`); de implementatie zelf leeft sinds
 // S08 in `_shared.js`.
 export { getBearerToken };
+
+// Trekt het Trello-token in bij Trello zelf (S08b). Zonder deze stap vergeet
+// Ritmo het token alleen lokaal, terwijl het bij Trello geldig blijft: tokens
+// worden aangemaakt met `expiration: 'never'` (trello/start.js), dus de
+// autorisatie zou anders eeuwig in het Trello-account blijven staan.
+//
+// Best-effort: een mislukte revoke (401 = al ingetrokken, netwerkfout,
+// ontbrekende TRELLO_API_KEY) mag het verbreken nooit blokkeren. Anders zou een
+// dood token de gebruiker opnieuw laten vastlopen op een rij die `connected`
+// blijft — precies de bug die S08b oplost.
+async function revokeTrelloToken(supabase, connectionId) {
+  const key = process.env.TRELLO_API_KEY;
+  if (!key) {
+    console.warn('connections/disconnect: TRELLO_API_KEY ontbreekt, token niet ingetrokken');
+    return;
+  }
+
+  try {
+    const { data: secretRaw, error } = await supabase.rpc('connections_get_secret', {
+      p_connection_id: connectionId,
+    });
+    if (error || !secretRaw) return;
+
+    const token = JSON.parse(secretRaw)?.token;
+    if (typeof token !== 'string' || !token) return;
+
+    const params = new URLSearchParams({ key, token });
+    const response = await fetch(`${TRELLO_API_BASE}/tokens/${token}?${params.toString()}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      console.warn('connections/disconnect: Trello revoke gaf status', response.status);
+    }
+  } catch (err) {
+    console.warn('connections/disconnect: Trello revoke mislukt', err);
+  }
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -39,7 +78,7 @@ export default async function handler(req, res) {
   try {
     const { data: connection, error: fetchError } = await supabase
       .from('connections')
-      .select('id, account_id')
+      .select('id, account_id, provider')
       .eq('id', connectionId)
       .maybeSingle();
 
@@ -50,6 +89,12 @@ export default async function handler(req, res) {
 
     if (!connection || connection.account_id !== userData.user.id) {
       return res.status(404).json({ error: 'Koppeling niet gevonden', code: 'not_found' });
+    }
+
+    // Vóór het wissen: daarna is het token onleesbaar en dus niet meer in te
+    // trekken bij Trello.
+    if (connection.provider === 'trello') {
+      await revokeTrelloToken(supabase, connectionId);
     }
 
     const { error: rpcError } = await supabase.rpc('connections_clear_secret', {
