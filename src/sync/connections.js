@@ -103,3 +103,28 @@ export async function fetchTrelloBoards() {
 export async function fetchTrelloCards(boardIds) {
   return callConnectionsApi('trello/cards', { boardIds: boardIds || [] });
 }
+
+// GitHub (S09, OAuth App — zie api/connections/github/*.js). Start de echte
+// GitHub-OAuth-redirect, zelfde vorm als startOutlookConnect: haalt de
+// authorize-URL op (server-side state) en navigeert de hele pagina naar
+// GitHub (Poort-0-keuze: volledige redirect, geen popup, geen nieuw
+// tabblad zoals bij Trello).
+export async function startGithubConnect() {
+  const data = await callConnectionsApi('github/start', {});
+  if (data?.authorizeUrl) {
+    window.location.assign(data.authorizeUrl);
+  }
+  return data;
+}
+
+// Haalt de repo's op waar de gebruiker toegang toe heeft (voor de
+// repo-kiezer, pas bij uitklappen).
+export async function fetchGithubRepos() {
+  return callConnectionsApi('github/repos', {});
+}
+
+// Haalt de aan de gebruiker toegewezen issues op voor de aangevinkte repo's.
+// `repoIds` is een array van `{ id, fullName }` (zie utils/githubRepoPrefs.js).
+export async function fetchGithubIssues(repoIds) {
+  return callConnectionsApi('github/issues', { repoIds: repoIds || [] });
+}

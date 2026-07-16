@@ -5,6 +5,7 @@
 // nooit in de browser-bundel terecht.
 import { getBearerToken, getServiceClient } from './_shared.js';
 import { TRELLO_API_BASE } from './trello/_shared.js';
+import { GITHUB_API_BASE } from './github/_shared.js';
 
 // Re-geëxporteerd voor bestaande imports elders in de codebase
 // (`getBearerToken` uit `disconnect.js`); de implementatie zelf leeft sinds
@@ -46,6 +47,53 @@ async function revokeTrelloToken(supabase, connectionId) {
     }
   } catch (err) {
     console.warn('connections/disconnect: Trello revoke mislukt', err);
+  }
+}
+
+// Trekt het OAuth-App-token in bij GitHub zelf (S09): `DELETE
+// /applications/{client_id}/grant` met Basic-auth (client_id:client_secret)
+// intrekt de hele grant (dus ook de autorisatie in het GitHub-account van de
+// gebruiker), niet alleen dit ene token. Zonder deze stap vergeet Ritmo het
+// token alleen lokaal terwijl de autorisatie bij GitHub blijft staan.
+//
+// Best-effort, zelfde motivatie als revokeTrelloToken: een mislukte revoke
+// (ontbrekende env, netwerkfout, al ingetrokken) mag het verbreken nooit
+// blokkeren.
+async function revokeGithubToken(supabase, connectionId) {
+  const clientId = process.env.GITHUB_CLIENT_ID;
+  const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    console.warn('connections/disconnect: GITHUB_CLIENT_ID/SECRET ontbreekt, token niet ingetrokken');
+    return;
+  }
+
+  try {
+    const { data: secretRaw, error } = await supabase.rpc('connections_get_secret', {
+      p_connection_id: connectionId,
+    });
+    if (error || !secretRaw) return;
+
+    const accessToken = JSON.parse(secretRaw)?.access_token;
+    if (typeof accessToken !== 'string' || !accessToken) return;
+
+    const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    const response = await fetch(`${GITHUB_API_BASE}/applications/${clientId}/grant`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Basic ${basicAuth}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type': 'application/json',
+        'User-Agent': 'Ritmo-connections',
+      },
+      body: JSON.stringify({ access_token: accessToken }),
+    });
+
+    if (!response.ok && response.status !== 404) {
+      console.warn('connections/disconnect: GitHub revoke gaf status', response.status);
+    }
+  } catch (err) {
+    console.warn('connections/disconnect: GitHub revoke mislukt', err);
   }
 }
 
@@ -92,9 +140,11 @@ export default async function handler(req, res) {
     }
 
     // Vóór het wissen: daarna is het token onleesbaar en dus niet meer in te
-    // trekken bij Trello.
+    // trekken bij Trello of GitHub.
     if (connection.provider === 'trello') {
       await revokeTrelloToken(supabase, connectionId);
+    } else if (connection.provider === 'github') {
+      await revokeGithubToken(supabase, connectionId);
     }
 
     const { error: rpcError } = await supabase.rpc('connections_clear_secret', {

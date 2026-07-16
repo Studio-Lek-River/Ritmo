@@ -1667,6 +1667,12 @@ export default {
       alwaysListNone: 'No always-list',
       cardsLoading: 'Loading cards…',
     },
+    github: {
+      reposTitle: 'GitHub repositories',
+      loadingRepos: 'Loading repositories…',
+      fetchError: 'Could not fetch GitHub repositories.',
+      empty: 'No repositories found.',
+    },
     duration: {
       label: 'Duration (minutes)',
       placeholder: 'min',
@@ -1746,10 +1752,15 @@ export default {
       trelloError: 'Trello returned an unexpected error. Please try again later.',
       invalidTokenFormat: 'This does not look like a valid Trello token.',
       rateLimited: 'Too many attempts. Please try again shortly.',
+      githubAuth: 'GitHub declined or revoked the connection. Please reconnect.',
+      githubRateLimit: 'GitHub is currently rate-limiting requests. Please try again shortly.',
+      githubNotFound: 'GitHub could not find the requested repository.',
+      githubError: 'GitHub returned an unexpected error. Please try again later.',
     },
     toast: {
       outlookConnected: 'Outlook is connected.',
       trelloConnected: 'Trello is connected as {username}.',
+      githubConnected: 'GitHub is connected as {login}.',
     },
     trello: {
       title: 'Connect Trello',

@@ -50,6 +50,7 @@ import {
   Cross,
   CalendarClock,
   Trello,
+  Github,
 } from 'lucide-react';
 
 export const ICON_OPTIONS = {
@@ -107,4 +108,6 @@ export const ICON_OPTIONS = {
   // trelloModules.js). Zonder deze entry valt ProjectsModule terug op
   // Sparkles (sourcePrefs.js importeert `Trello` uit lucide-react al).
   Trello,
+  // S09: idem voor GitHub-repo's (zie githubModules.js).
+  Github,
 };

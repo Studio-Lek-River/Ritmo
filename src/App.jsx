@@ -32,16 +32,20 @@ import BackupSection from './components/BackupSection';
 import AuthSection from './components/auth/AuthSection';
 import SyncStatusRow from './components/SyncStatusRow';
 import ConnectionsSection from './components/ConnectionsSection';
-import OutlookOAuthReturn from './components/OutlookOAuthReturn';
+import OAuthReturn from './components/OAuthReturn';
 import useConnections from './hooks/useConnections';
 import useOutlookEvents from './hooks/useOutlookEvents';
 import useTrelloCards from './hooks/useTrelloCards';
+import useGithubIssues from './hooks/useGithubIssues';
 import { externalBlocksForDay } from './utils/outlookEvents';
 import { clearAgendaCache } from './utils/agendaCache';
 import { readAgendaSelection, writeAgendaSelection, clearAgendaSelection, pruneSelection } from './utils/agendaSelection';
 import { readTrelloBoardPrefs, writeTrelloBoardPrefs, clearTrelloBoardPrefs, includedBoardIds } from './utils/trelloBoardPrefs';
 import { clearTrelloCache } from './utils/trelloCache';
 import { buildTrelloModules } from './utils/trelloModules';
+import { readGithubRepoPrefs, writeGithubRepoPrefs, clearGithubRepoPrefs, includedRepoIds } from './utils/githubRepoPrefs';
+import { clearGithubCache } from './utils/githubCache';
+import { buildGithubModules } from './utils/githubModules';
 import { DEFAULT_SOURCE_PREFS, getSourcePref } from './utils/sourcePrefs';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
@@ -1509,7 +1513,88 @@ export default function Ritmo() {
     );
   }, [trelloVisible, trelloCacheBoards, trelloBoardPrefs, trelloConnection, sourcePrefs]);
 
-  const allModules = useMemo(() => [...modules, ...trelloModules], [modules, trelloModules]);
+  // ---- GitHub-repo's (S09) --------------------------------------------------
+  // Hergebruikt dezelfde useConnections-instantie (connectionState) om ook de
+  // GitHub-connectie af te leiden — spiegelt de Trello-blok hierboven.
+  const githubConnection = connectionState.connections.find(
+    c => c.provider === 'github' && c.status === 'connected'
+  ) || null;
+  const githubVisible = getSourcePref(sourcePrefs, 'github').visible;
+
+  // Repo-keuze (welke repo telt mee) is device-local (zie
+  // utils/githubRepoPrefs.js) en overleeft dus geen sync, net als
+  // trelloBoardPrefs hierboven. Geseed uit opslag bij mount en telkens
+  // wanneer de connectie verandert (na opnieuw koppelen nooit andermans
+  // repo-selectie hergebruiken, zie readGithubRepoPrefs).
+  const [githubRepoPrefs, setGithubRepoPrefsState] = useState({ repos: {} });
+  useEffect(() => {
+    let cancelled = false;
+    readGithubRepoPrefs(githubConnection?.id).then(prefs => {
+      if (!cancelled) setGithubRepoPrefsState(prefs);
+    });
+    return () => { cancelled = true; };
+  }, [githubConnection?.id]);
+
+  const setGithubRepoPrefs = useCallback((updater) => {
+    setGithubRepoPrefsState(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      writeGithubRepoPrefs({ connectionId: githubConnection?.id, repos: next.repos });
+      return next;
+    });
+  }, [githubConnection?.id]);
+
+  const githubIncludedRepoIds = useMemo(
+    () => includedRepoIds(githubRepoPrefs),
+    [githubRepoPrefs]
+  );
+
+  // Mag GitHub meedoen? Een nog-ladende koppelingsstatus telt als "ja"
+  // (zelfde reden als trelloActive hierboven). De oog-toggle op de
+  // GitHub-rij is de aan/uit-schakelaar voor heel GitHub (AC8).
+  const githubActive = githubVisible && (connectionState.loading || !!githubConnection);
+  const {
+    repos: githubCacheRepos,
+    loading: githubIssuesLoading,
+    error: githubIssuesError,
+    lastSyncedAt: githubLastSyncedAt,
+    refetch: refetchGithubIssues,
+  } = useGithubIssues({
+    active: githubActive,
+    enabled: githubActive && !!githubConnection && githubIncludedRepoIds.length > 0,
+    repoIds: githubIncludedRepoIds,
+    connectionId: githubConnection?.id,
+  });
+
+  // Geen wees-projecten van een verbroken koppeling (AC11): zowel de
+  // issues-cache als de repo-keuze gaan mee weg zodra deze instantie leert
+  // dat GitHub niet meer verbonden is terwijl dat eerder wel zo was.
+  const wasGithubConnectedRef = useRef(false);
+  useEffect(() => {
+    if (connectionState.loading) return;
+    if (wasGithubConnectedRef.current && !githubConnection) {
+      clearGithubCache();
+      clearGithubRepoPrefs();
+      setGithubRepoPrefsState({ repos: {} });
+    }
+    wasGithubConnectedRef.current = !!githubConnection;
+  }, [githubConnection, connectionState.loading]);
+
+  // Afgeleide GitHub-projects-modules (zelfde kernbeslissing als Trello):
+  // leven alleen in het geheugen, nooit in `modules`/settings, dus
+  // `setModules` raakt ze nooit (AC12, read-only is daarmee afdwingbaar).
+  const githubModules = useMemo(() => {
+    if (!githubVisible) return [];
+    return buildGithubModules(
+      { repos: githubCacheRepos },
+      githubRepoPrefs,
+      { connectionId: githubConnection?.id, color: getSourcePref(sourcePrefs, 'github').color },
+    );
+  }, [githubVisible, githubCacheRepos, githubRepoPrefs, githubConnection, sourcePrefs]);
+
+  const allModules = useMemo(
+    () => [...modules, ...trelloModules, ...githubModules],
+    [modules, trelloModules, githubModules]
+  );
 
   // Welke agendapunten als bezette tijd meetellen bij "deel mijn dag in".
   // Opt-in (leeg = niets telt mee) en device-local, zie utils/agendaSelection.js
@@ -1558,8 +1643,9 @@ export default function Ritmo() {
     let order = 0;
 
     // allModules (niet modules): een Trello-subgoal met een due-datum vandaag
-    // of uit de altijd-lijst heeft `autoPlan: true` (trelloModules.js) en mag
-    // dus meedoen aan "deel mijn dag in" (AC9), ook al is de module zelf niet
+    // of uit de altijd-lijst heeft `autoPlan: true` (trelloModules.js), en een
+    // open GitHub-issue heeft dat sowieso (githubModules.js, S09 AC5) — beide
+    // mogen dus meedoen aan "deel mijn dag in", ook al is de module zelf niet
     // in settings te vinden — "direct"-toepassen op zo'n key is een no-op
     // (moveItemToDay vindt de module-id niet in `modules`), maar in de
     // standaard propose/concept-standen rendert het voorstel toch (pendingPlan
@@ -2020,7 +2106,7 @@ export default function Ritmo() {
     <ToastProvider>
     <div className={`min-h-screen ${theme.bg} p-4 transition-colors duration-300 relative overflow-hidden`}>
       <Toast theme={theme} />
-      <OutlookOAuthReturn onConnected={connectionState.refresh} />
+      <OAuthReturn onConnected={connectionState.refresh} />
       <SyncConflictDialog
         open={Boolean(pendingConflicts && pendingConflicts.length > 0)}
         conflicts={pendingConflicts || []}
@@ -2240,6 +2326,13 @@ export default function Ritmo() {
             trelloCardsError={trelloCardsError}
             trelloLastSyncedAt={trelloLastSyncedAt}
             onRefreshTrelloCards={refetchTrelloCards}
+            githubConnected={!!githubConnection}
+            githubRepoPrefs={githubRepoPrefs}
+            onChangeGithubRepoPrefs={setGithubRepoPrefs}
+            githubIssuesLoading={githubIssuesLoading}
+            githubIssuesError={githubIssuesError}
+            githubLastSyncedAt={githubLastSyncedAt}
+            onRefreshGithubIssues={refetchGithubIssues}
             onOpenConnections={handleOpenConnections}
             onAddTask={addCustomTask}
             onAddSubgoal={addProjectSubgoal}

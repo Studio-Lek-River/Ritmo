@@ -1678,6 +1678,12 @@ export default {
       alwaysListNone: 'Geen altijd-lijst',
       cardsLoading: 'Kaarten laden…',
     },
+    github: {
+      reposTitle: 'GitHub-repo\'s',
+      loadingRepos: 'Repo\'s laden…',
+      fetchError: 'Kon GitHub-repo\'s niet ophalen.',
+      empty: 'Geen repo\'s gevonden.',
+    },
     duration: {
       label: 'Duur (minuten)',
       placeholder: 'min',
@@ -1757,10 +1763,15 @@ export default {
       trelloError: 'Trello gaf een onverwachte fout terug. Probeer het later opnieuw.',
       invalidTokenFormat: 'Dit ziet er niet uit als een geldig Trello-token.',
       rateLimited: 'Te veel pogingen. Probeer het straks opnieuw.',
+      githubAuth: 'GitHub heeft de koppeling geweigerd of ingetrokken. Verbind opnieuw.',
+      githubRateLimit: 'GitHub limiteert dit moment de aanvragen. Probeer het straks opnieuw.',
+      githubNotFound: 'GitHub kon de gevraagde repository niet vinden.',
+      githubError: 'GitHub gaf een onverwachte fout terug. Probeer het later opnieuw.',
     },
     toast: {
       outlookConnected: 'Outlook is verbonden.',
       trelloConnected: 'Trello is verbonden als {username}.',
+      githubConnected: 'GitHub is verbonden als {login}.',
     },
     trello: {
       title: 'Trello koppelen',

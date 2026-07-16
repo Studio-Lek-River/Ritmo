@@ -8,6 +8,7 @@ import TaskListPanel from '../components/TaskListPanel';
 import TaskPoolPanel from '../components/TaskPoolPanel';
 import SourcesPanel from '../components/SourcesPanel';
 import TrelloBoardPicker from '../components/TrelloBoardPicker';
+import GithubRepoPicker from '../components/GithubRepoPicker';
 import PlanPreferencesPanel from '../components/PlanPreferencesPanel';
 import { buildDayTimeline } from '../utils/dayTimeline';
 import { shortWeekdayLabelsMondayFirst } from '../utils/dates';
@@ -47,6 +48,13 @@ export default function ProductivitySuiteView({
   trelloCardsError,
   trelloLastSyncedAt,
   onRefreshTrelloCards,
+  githubConnected,
+  githubRepoPrefs,
+  onChangeGithubRepoPrefs,
+  githubIssuesLoading,
+  githubIssuesError,
+  githubLastSyncedAt,
+  onRefreshGithubIssues,
   onOpenConnections,
   onAddTask,
   onAddSubgoal,
@@ -100,6 +108,16 @@ export default function ProductivitySuiteView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trelloCardsError]);
 
+  // Zelfde patroon voor een mislukte GitHub-issuesfetch (S09, AC10): de
+  // bestaande repo's blijven staan (useGithubIssues veegt de state nooit leeg
+  // bij een fout), alleen deze toast meldt het.
+  useEffect(() => {
+    if (githubIssuesError) {
+      showToast({ message: t('planner.sources.fetchFailed', { provider: t('connections.providers.github') }) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [githubIssuesError]);
+
   // De selectie volgt de getoonde week: bij het bladeren valt de oude keuze
   // buiten `weekDays`. Vandaag als die in de week zit, anders de maandag van die
   // week — zonder dit bleef `selectedDateKey` op een dag uit een andere week
@@ -113,12 +131,14 @@ export default function ProductivitySuiteView({
 
   const tasksColor = modules.find(m => m.enabled && m.type === 'tasks')?.color;
 
-  // `modules` is hier `allModules` (App.jsx, S08): bevat ook de afgeleide
-  // Trello-projecten. Die horen wél in de takenpool (poolItems hieronder,
-  // AC9/AC10) maar niet in het weekrooster of het Kanban-bord — beide staan
-  // expliciet buiten scope voor S08 (Trello-kaarten blokkeren geen tijd, en
-  // KANBAN_COLUMNS mapt niet op Trello-lijsten zonder informatieverlies).
-  // `localModules` is dus de settings-only deelverzameling voor die twee.
+  // `modules` is hier `allModules` (App.jsx, S08/S09): bevat ook de afgeleide
+  // Trello- en GitHub-projecten. Die horen wél in de takenpool (poolItems
+  // hieronder, AC5) maar niet in het weekrooster of het Kanban-bord — beide
+  // staan expliciet buiten scope (Trello-kaarten en GitHub-issues blokkeren
+  // geen tijd, en KANBAN_COLUMNS mapt niet op externe statussen zonder
+  // informatieverlies). `localModules` is dus de settings-only
+  // deelverzameling voor die twee (elke module met een `source`-binding
+  // eruit gefilterd, ongeacht provider).
   const localModules = useMemo(() => modules.filter(m => !m.source), [modules]);
 
   const selectedDay = (weekDays || []).find(d => d.dateKey === selectedDateKey) || weekDays?.[0];
@@ -146,13 +166,15 @@ export default function ProductivitySuiteView({
   }, [selectedDay, modules, onToggleTaskInDay, onToggleProjectSubgoal]);
 
   // Generieke provider -> actie-map voor SourcesPanel (S07d, uitgebreid in
-  // S08): alleen een provider met een echte actie krijgt een entry, dus
-  // GitHub blijft ongemoeid zonder hardcoded providerlijst hier. `onRefresh`
-  // hergebruikt dezelfde handler als de oude knoppenbalk (import de eerste
-  // keer, daarna vernieuwen). Trello heeft geen aparte "importeren"-stap
-  // (het aanvinken van een bord in `panel` IS de opt-in), dus `shown` is
-  // simpelweg "is er al een bord aangevinkt".
+  // S08/S09): alleen een provider met een echte actie krijgt een entry, dus
+  // een provider zonder koppeling blijft ongemoeid zonder hardcoded
+  // providerlijst hier. `onRefresh` hergebruikt dezelfde handler als de oude
+  // knoppenbalk (import de eerste keer, daarna vernieuwen). Trello en GitHub
+  // hebben geen aparte "importeren"-stap (het aanvinken van een bord/repo in
+  // `panel` IS de opt-in), dus `shown` is simpelweg "is er al iets
+  // aangevinkt".
   const trelloBoardsIncluded = Object.values(trelloBoardPrefs?.boards || {}).some(b => b?.include);
+  const githubReposIncluded = Object.values(githubRepoPrefs?.repos || {}).some(r => r?.include);
   const sourceActions = useMemo(() => ({
     ...(outlookConnected ? {
       outlook: {
@@ -178,10 +200,27 @@ export default function ProductivitySuiteView({
         ),
       },
     } : {}),
+    ...(githubConnected ? {
+      github: {
+        onRefresh: onRefreshGithubIssues,
+        loading: githubIssuesLoading,
+        shown: githubReposIncluded,
+        lastSyncedAt: githubLastSyncedAt,
+        panel: (
+          <GithubRepoPicker
+            repoPrefs={githubRepoPrefs}
+            onChangeRepoPrefs={onChangeGithubRepoPrefs}
+            theme={theme}
+          />
+        ),
+      },
+    } : {}),
   }), [
     outlookConnected, onImportOrRefreshAgenda, agendaLoading, agendaShown, agendaLastSyncedAt,
     trelloConnected, onRefreshTrelloCards, trelloCardsLoading, trelloBoardsIncluded, trelloLastSyncedAt,
     trelloBoardPrefs, onChangeTrelloBoardPrefs, trelloCacheBoards, theme,
+    githubConnected, onRefreshGithubIssues, githubIssuesLoading, githubReposIncluded, githubLastSyncedAt,
+    githubRepoPrefs, onChangeGithubRepoPrefs,
   ]);
 
   return (

@@ -2,11 +2,9 @@
 // GitHub met een status-chip (stijl SyncStatusRow.jsx) en verbind/verbreek.
 // Verbreken toont zich alleen bij een verbonden koppeling (status
 // 'connected'), niet bij het enkel bestaan van een rij (S07b, issue #110).
-// `handleConnect` is een switch per provider: Outlook start zijn eigen
-// OAuth-redirect (S07), Trello opent een twee-staps dialoog (S08,
-// TrelloConnectDialog, key+token-flow). GitHub heeft in deze opruiming nog
-// geen eigen tak (die landt in de S09-feat-commit); de dode connect-stub die
-// hij tot dan toe gebruikte is hier al weg.
+// `handleConnect` is een switch per provider: Outlook en GitHub starten elk
+// hun eigen OAuth-redirect (S07 resp. S09, zelfde vorm), Trello opent een
+// twee-staps dialoog (S08, TrelloConnectDialog, key+token-flow).
 // Alleen gerenderd door de aanroeper wanneer er een account is en sync aan
 // staat (opt-in, principe 2).
 import { useState } from 'react';
@@ -14,7 +12,7 @@ import { Check, CloudOff, AlertTriangle } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { useToast } from '../hooks/useToast';
 import useConnections from '../hooks/useConnections';
-import { CONNECTION_PROVIDERS, startOutlookConnect } from '../sync/connections';
+import { CONNECTION_PROVIDERS, startOutlookConnect, startGithubConnect } from '../sync/connections';
 import TrelloConnectDialog from './TrelloConnectDialog';
 
 const STATUS_ICON = {
@@ -25,9 +23,9 @@ const STATUS_ICON = {
 
 // Expliciete allow-list: backend-`code` -> i18n-key (zelfde patroon als
 // FeedbackForm.jsx). Bewust geen blinde `t('connections.errors.' + code)`.
-// Named export zodat OutlookOAuthReturn.jsx (de terugkeer van de
-// OAuth-redirect, S07) dezelfde mapping hergebruikt in plaats van een tweede
-// kopie te onderhouden.
+// Named export zodat OAuthReturn.jsx (de terugkeer van een OAuth-redirect,
+// S07/S09) dezelfde mapping hergebruikt in plaats van een tweede kopie te
+// onderhouden.
 export const ERROR_KEYS = {
   unauthenticated: 'connections.errors.unauthenticated',
   not_found: 'connections.errors.notFound',
@@ -48,16 +46,21 @@ export const ERROR_KEYS = {
   trello_error: 'connections.errors.trelloError',
   invalid_token_format: 'connections.errors.invalidTokenFormat',
   rate_limited: 'connections.errors.rateLimited',
+  // S09: GitHub-OAuth-codes van api/connections/github/*.js.
+  github_auth: 'connections.errors.githubAuth',
+  github_rate_limit: 'connections.errors.githubRateLimit',
+  github_not_found: 'connections.errors.githubNotFound',
+  github_error: 'connections.errors.githubError',
 };
 
 export default function ConnectionsSection({ theme, accountId }) {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const { connections, busyId, error, disconnect, refresh } = useConnections(accountId);
-  // Outlook start zijn eigen OAuth-redirect, Trello een eigen dialoog: beide
-  // hebben dus provider-agnostische busy/error-state buiten de hook om. Een
-  // provider zonder eigen `case` in `handleConnect` doet simpelweg niets bij
-  // een klik (`busyId` blijft voorbehouden aan `disconnect` hierboven).
+  // Outlook en GitHub delen hun OAuth-redirect-busy/error-state (beide
+  // navigeren de hele pagina weg bij succes), Trello heeft een eigen dialoog:
+  // alle drie dus buiten de hook om (`busyId` blijft voorbehouden aan
+  // `disconnect` hierboven).
   const [connectBusy, setConnectBusy] = useState(false);
   const [connectError, setConnectError] = useState(null);
   const [showTrelloDialog, setShowTrelloDialog] = useState(false);
@@ -65,10 +68,11 @@ export default function ConnectionsSection({ theme, accountId }) {
   const handleConnect = async (provider) => {
     switch (provider) {
       case 'outlook':
+      case 'github':
         setConnectBusy(true);
         setConnectError(null);
         try {
-          await startOutlookConnect();
+          await (provider === 'outlook' ? startOutlookConnect() : startGithubConnect());
           // Bij succes navigeert de browser weg (window.location.assign); er
           // volgt dan geen render meer die connectBusy hoeft te resetten.
         } catch (err) {
@@ -103,7 +107,7 @@ export default function ConnectionsSection({ theme, accountId }) {
           const status = connection?.status || 'disconnected';
           const isConnected = status === 'connected';
           const { Icon, color } = STATUS_ICON[status] || STATUS_ICON.disconnected;
-          const busy = provider === 'outlook'
+          const busy = (provider === 'outlook' || provider === 'github')
             ? connectBusy
             : !!(connection && busyId === connection.id);
 
