@@ -95,7 +95,13 @@ export function buildDayTimeline({
             window: goal.window || '',
             status: !!goal.completed,
             color: mod.color,
-            toggle: handlers.onToggleProjectSubgoal
+            // `source` geeft TaskPoolPanel iets om een bron-icoon op te tonen
+            // (S08: Trello-kenmerk in de rij); `toggle: undefined` bij een
+            // module met `source` maakt afvinken read-only voor die rij
+            // (TaskPoolPanel honoreert `!item.toggle` al, zelfde patroon als
+            // virtuele recurring-taken hieronder).
+            source: mod.source || null,
+            toggle: (handlers.onToggleProjectSubgoal && !mod.source)
               ? () => handlers.onToggleProjectSubgoal(mod.id, subject.id, goal.id)
               : undefined,
           });

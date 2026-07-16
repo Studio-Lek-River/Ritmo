@@ -113,6 +113,14 @@ export default function ProductivitySuiteView({
 
   const tasksColor = modules.find(m => m.enabled && m.type === 'tasks')?.color;
 
+  // `modules` is hier `allModules` (App.jsx, S08): bevat ook de afgeleide
+  // Trello-projecten. Die horen wél in de takenpool (poolItems hieronder,
+  // AC9/AC10) maar niet in het weekrooster of het Kanban-bord — beide staan
+  // expliciet buiten scope voor S08 (Trello-kaarten blokkeren geen tijd, en
+  // KANBAN_COLUMNS mapt niet op Trello-lijsten zonder informatieverlies).
+  // `localModules` is dus de settings-only deelverzameling voor die twee.
+  const localModules = useMemo(() => modules.filter(m => !m.source), [modules]);
+
   const selectedDay = (weekDays || []).find(d => d.dateKey === selectedDateKey) || weekDays?.[0];
 
   const shortLabels = useMemo(() => shortWeekdayLabelsMondayFirst(), []);
@@ -260,7 +268,7 @@ export default function ProductivitySuiteView({
               weekDays={weekDays || []}
               weekOffset={weekOffset}
               onWeekOffsetChange={onWeekOffsetChange}
-              modules={modules}
+              modules={localModules}
               agendaByDate={agendaByDate}
               includedAgendaIds={includedAgendaIds}
               onToggleAgendaBlock={onToggleAgendaBlock}
@@ -280,7 +288,7 @@ export default function ProductivitySuiteView({
             />
           ) : (
             <KanbanView
-              modules={modules}
+              modules={localModules}
               customTasks={customTasks}
               onAddTask={onAddTask}
               onAddSubgoal={onAddSubgoal}

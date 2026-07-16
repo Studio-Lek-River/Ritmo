@@ -49,6 +49,7 @@ import {
   Ruler,
   Cross,
   CalendarClock,
+  Trello,
 } from 'lucide-react';
 
 export const ICON_OPTIONS = {
@@ -102,4 +103,8 @@ export const ICON_OPTIONS = {
   Ruler,
   Cross,
   CalendarClock,
+  // S08: Trello-borden krijgen dit icoon als afgeleide projects-module (zie
+  // trelloModules.js). Zonder deze entry valt ProjectsModule terug op
+  // Sparkles (sourcePrefs.js importeert `Trello` uit lucide-react al).
+  Trello,
 };

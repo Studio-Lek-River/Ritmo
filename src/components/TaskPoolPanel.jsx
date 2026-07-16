@@ -4,6 +4,7 @@ import { useTranslation } from '../i18n/useTranslation';
 import { getColorClasses } from '../utils/colors';
 import { encodeDragPayload, decodeDragPayload } from '../utils/dragPayload';
 import { DEFAULT_BLOCK_MINUTES } from '../utils/dayTimeline';
+import { SOURCE_ICONS } from '../utils/sourcePrefs';
 import TimeInput from './TimeInput';
 
 // Takenpool voor de WeekView: alle items zonder `time` van de geselecteerde
@@ -109,6 +110,10 @@ export default function TaskPoolPanel({
 
 function PoolItemRow({ item, dayOptions, selectedDateKey, onMoveItem, theme, t }) {
   const c = getColorClasses(item.color);
+  // Bron-kenmerk (S08): een pool-item van een gekoppelde module (bv. Trello)
+  // draagt `source.provider`, waarmee TaskPoolPanel hetzelfde icoon toont als
+  // SourcesPanel/WeekView (SOURCE_ICONS, één mapping, geen tweede kopie).
+  const SourceIcon = item.source ? SOURCE_ICONS[item.source.provider] : null;
 
   return (
     <div
@@ -129,8 +134,15 @@ function PoolItemRow({ item, dayOptions, selectedDateKey, onMoveItem, theme, t }
       </button>
 
       <div className="flex-1 min-w-0">
-        <div className={`text-sm truncate ${item.status ? `line-through ${theme.textMuted}` : theme.textSecondary}`}>
-          {item.label}
+        <div className={`text-sm truncate flex items-center gap-1.5 ${item.status ? `line-through ${theme.textMuted}` : theme.textSecondary}`}>
+          {SourceIcon && (
+            <SourceIcon
+              className={`w-3.5 h-3.5 shrink-0 ${theme.textMuted}`}
+              role="img"
+              aria-label={t(`connections.providers.${item.source.provider}`)}
+            />
+          )}
+          <span className="truncate">{item.label}</span>
         </div>
         <div className={`text-[11px] ${theme.textMuted}`}>
           {t('planner.pool.durationMinutes', { min: item.duration ?? DEFAULT_BLOCK_MINUTES })}

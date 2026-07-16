@@ -41,6 +41,7 @@ import { clearAgendaCache } from './utils/agendaCache';
 import { readAgendaSelection, writeAgendaSelection, clearAgendaSelection, pruneSelection } from './utils/agendaSelection';
 import { readTrelloBoardPrefs, writeTrelloBoardPrefs, clearTrelloBoardPrefs, includedBoardIds } from './utils/trelloBoardPrefs';
 import { clearTrelloCache } from './utils/trelloCache';
+import { buildTrelloModules } from './utils/trelloModules';
 import { DEFAULT_SOURCE_PREFS, getSourcePref } from './utils/sourcePrefs';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
@@ -1491,6 +1492,25 @@ export default function Ritmo() {
     wasTrelloConnectedRef.current = !!trelloConnection;
   }, [trelloConnection, outlookConnectionState.loading]);
 
+  // Afgeleide Trello-projects-modules (de kernbeslissing in de slice-spec):
+  // leven alleen in het geheugen, nooit in `modules`/settings, dus
+  // `setModules` raakt ze nooit (read-only is daarmee afdwingbaar). Gated op
+  // de oog-toggle: uit betekent geen Trello-projecten, nergens. `allModules`
+  // is de lijst die de Vandaag-feed, de auto-planner, ProjectsView en de
+  // Planner gebruiken; `modules` (settings-only) blijft voor SettingsModal,
+  // ModuleEditor, CollectionsView en InsightView (zie de prop-routing-tabel
+  // in de slice-spec).
+  const trelloModules = useMemo(() => {
+    if (!trelloVisible) return [];
+    return buildTrelloModules(
+      { boards: trelloCacheBoards },
+      trelloBoardPrefs,
+      { connectionId: trelloConnection?.id, color: getSourcePref(sourcePrefs, 'trello').color },
+    );
+  }, [trelloVisible, trelloCacheBoards, trelloBoardPrefs, trelloConnection, sourcePrefs]);
+
+  const allModules = useMemo(() => [...modules, ...trelloModules], [modules, trelloModules]);
+
   // Welke agendapunten als bezette tijd meetellen bij "deel mijn dag in".
   // Opt-in (leeg = niets telt mee) en device-local, zie utils/agendaSelection.js
   // — daarom eigen state en niet in `settings` zoals `agendaShown`/`sourcePrefs`.
@@ -1537,7 +1557,14 @@ export default function Ritmo() {
     const meta = {};
     let order = 0;
 
-    modules.forEach(mod => {
+    // allModules (niet modules): een Trello-subgoal met een due-datum vandaag
+    // of uit de altijd-lijst heeft `autoPlan: true` (trelloModules.js) en mag
+    // dus meedoen aan "deel mijn dag in" (AC9), ook al is de module zelf niet
+    // in settings te vinden — "direct"-toepassen op zo'n key is een no-op
+    // (moveItemToDay vindt de module-id niet in `modules`), maar in de
+    // standaard propose/concept-standen rendert het voorstel toch (pendingPlan
+    // is ephemeer en heeft `modules` niet nodig).
+    allModules.forEach(mod => {
       if (!mod.enabled || mod.type !== 'projects') return;
       (mod.subjects || []).forEach(subject => {
         (subject.subgoals || []).forEach(goal => {
@@ -1567,7 +1594,7 @@ export default function Ritmo() {
     });
 
     return { candidates, fixed, meta };
-  }, [weekDays, modules]);
+  }, [weekDays, allModules, modules]);
 
   // Past één plan-toewijzing toe via de bestaande cross-day-handler
   // (moveItemToDay dekt zowel losse taken, gematerialiseerde recurring als
@@ -1841,7 +1868,7 @@ export default function Ritmo() {
     }} theme={theme} darkMode={darkMode} />;
   }
 
-  const baseEnabledModules = modules.filter(m => m.enabled && m.type !== 'collection' && m.type !== 'measurements' && m.type !== 'medication' && m.type !== 'bodymap' && m.type !== 'injectionSchedule');
+  const baseEnabledModules = allModules.filter(m => m.enabled && m.type !== 'collection' && m.type !== 'measurements' && m.type !== 'medication' && m.type !== 'bodymap' && m.type !== 'injectionSchedule');
   const enabledModules = appMode === 'health' ? baseEnabledModules.filter(isHealthModule) : baseEnabledModules;
 
   const todayVisibleModules = editable
@@ -1856,7 +1883,11 @@ export default function Ritmo() {
           module={mod}
           Icon={ICON_OPTIONS[mod.icon] || Sparkles}
           onOpen={(id) => { setSelectedProjectId(id); setView('projects'); }}
-          onEdit={() => setEditingModule(mod)}
+          // Een Trello-project (`mod.source`) is afgeleid en leeft niet in
+          // `modules`/settings: `ModuleEditor`'s onSave zou hem anders bij het
+          // opslaan alsnog aan `settings.modules` toevoegen (AC13). Geen
+          // instellingen-knop dus, net als de rest van het read-only-pad.
+          onEdit={mod.source ? undefined : () => setEditingModule(mod)}
           theme={theme}
         />
       );
@@ -2121,7 +2152,7 @@ export default function Ritmo() {
 
         {view === 'projects' && (
           <ProjectsView
-            modules={modules}
+            modules={allModules}
             setModules={setModules}
             iconOptions={ICON_OPTIONS}
             selectedProjectId={selectedProjectId}
@@ -2183,7 +2214,7 @@ export default function Ritmo() {
 
         {view === 'productivity' && (
           <ProductivitySuiteView
-            modules={modules}
+            modules={allModules}
             customTasks={customTasks}
             weekDays={weekDays}
             weekOffset={weekOffset}
