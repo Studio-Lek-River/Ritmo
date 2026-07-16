@@ -1,3 +1,17 @@
+# [0.57.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.56.0...v0.57.0) (2026-07-16)
+
+
+### Bug Fixes
+
+* **planner:** verbroken Outlook-koppeling laat geen afspraken meer meetellen ([0d163af](https://github.com/Studio-Lek-River/Ritmo/commit/0d163afa57ce14c0a8b5f18034e2f46c1f0e47af))
+
+
+### Features
+
+* **planner:** agenda blijft staan na herladen via een lokale cache ([d9f0768](https://github.com/Studio-Lek-River/Ritmo/commit/d9f07685baec2058f2bd98d78ced1caddecc1248))
+* **planner:** dekkende kaartjes met kleurstrip in het rooster ([4ce1d7b](https://github.com/Studio-Lek-River/Ritmo/commit/4ce1d7ba56b96ffc8d5c7a6e7e9a38df4e41445a))
+* **planner:** Outlook vernieuwen in het Koppelingen-blok ([908257a](https://github.com/Studio-Lek-River/Ritmo/commit/908257a2032fdf8cce5ace40348e4406974ec578))
+
 # [0.56.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.55.1...v0.56.0) (2026-07-16)
 
 
