@@ -1,18 +1,24 @@
 import React from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { CONNECTION_PROVIDERS } from '../sync/connections';
 import { DEFAULT_SOURCE_PREFS, SOURCE_ICONS, getSourcePref } from '../utils/sourcePrefs';
 import { COLOR_OPTIONS, getColorClasses } from '../utils/colors';
+import { getLocale } from '../utils/dates';
 
-// Koppelingen-blok onder de takenpool (S07c): per provider uit
-// CONNECTION_PROVIDERS beheer je kleur + "meedoen in de planner", geen
-// actielijst. Rendert de providerlijst dynamisch, dus een nieuwe provider
-// (bv. na een migratie) verschijnt vanzelf zonder aanpassing hier.
+// Koppelingen-blok onder de takenpool (S07c/S07d): per provider uit
+// CONNECTION_PROVIDERS beheer je kleur + "meedoen in de planner". Een
+// provider kan daarnaast een actieregel krijgen (vernieuw-knop + "bijgewerkt
+// om") via de generieke `sourceActions`-map (provider -> { onRefresh,
+// loading, shown, lastSyncedAt }); een provider zonder entry (Trello/GitHub,
+// nog niet echt gekoppeld) toont geen actieregel. Rendert de providerlijst
+// dynamisch, dus een nieuwe provider verschijnt vanzelf zonder aanpassing
+// hier — geen hardcoded providerlijst.
 export default function SourcesPanel({
   connections = [],
   sourcePrefs = DEFAULT_SOURCE_PREFS,
   setSourcePrefs,
+  sourceActions = {},
   onOpenConnections,
   theme,
 }) {
@@ -41,6 +47,7 @@ export default function SourcesPanel({
             provider={provider}
             connection={connections.find(c => c.provider === provider)}
             pref={getSourcePref(sourcePrefs, provider)}
+            actions={sourceActions[provider]}
             onChange={(patch) => updatePref(provider, patch)}
             onOpenConnections={onOpenConnections}
             theme={theme}
@@ -52,7 +59,14 @@ export default function SourcesPanel({
   );
 }
 
-function SourceRow({ provider, connection, pref, onChange, onOpenConnections, theme, t }) {
+// "HH:MM" in de huidige locale, voor de "bijgewerkt om"-regel.
+function formatSyncTime(isoString) {
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' });
+}
+
+function SourceRow({ provider, connection, pref, actions, onChange, onOpenConnections, theme, t }) {
   const status = connection?.status || 'disconnected';
   const isConnected = status === 'connected';
   const Icon = SOURCE_ICONS[provider];
@@ -106,6 +120,26 @@ function SourceRow({ provider, connection, pref, onChange, onOpenConnections, th
               />
             );
           })}
+        </div>
+      )}
+
+      {isConnected && actions && (
+        <div className={`flex items-center justify-between gap-2 pt-2 border-t ${theme.border}`}>
+          <span className={`text-xs ${theme.textMuted}`}>
+            {actions.lastSyncedAt && formatSyncTime(actions.lastSyncedAt)
+              ? t('planner.sources.lastSynced', { time: formatSyncTime(actions.lastSyncedAt) })
+              : t('planner.sources.neverSynced')}
+          </span>
+          <button
+            type="button"
+            onClick={actions.onRefresh}
+            disabled={actions.loading}
+            aria-label={actions.loading ? t('planner.outlook.loading') : undefined}
+            className={`flex items-center gap-1.5 text-xs font-medium shrink-0 ${theme.textMuted} hover:underline disabled:opacity-60 disabled:cursor-not-allowed`}
+          >
+            {actions.loading && <Loader2 className="w-3 h-3 animate-spin" />}
+            {t(actions.shown ? 'planner.outlook.refresh' : 'planner.outlook.import')}
+          </button>
         </div>
       )}
     </div>

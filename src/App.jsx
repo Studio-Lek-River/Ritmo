@@ -1356,6 +1356,7 @@ export default function Ritmo() {
     eventsByDate: outlookEventsByDate,
     loading: outlookAgendaLoading,
     error: outlookAgendaError,
+    lastSyncedAt: outlookLastSyncedAt,
     refetch: refetchOutlookAgenda,
   } = useOutlookEvents({
     enabled: !!outlookConnection && view === 'productivity' && agendaShown,
@@ -2061,6 +2062,7 @@ export default function Ritmo() {
             agendaShown={agendaShown}
             agendaLoading={outlookAgendaLoading}
             agendaError={outlookAgendaError}
+            agendaLastSyncedAt={outlookLastSyncedAt}
             onImportOrRefreshAgenda={handleImportOrRefreshAgenda}
             onOpenConnections={handleOpenConnections}
             onAddTask={addCustomTask}

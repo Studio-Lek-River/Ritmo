@@ -1653,7 +1653,6 @@ export default {
       import: 'Outlook-agenda importeren',
       refresh: 'Outlook-agenda vernieuwen',
       loading: 'Outlook-agenda laden…',
-      notConnectedHint: 'Koppel Outlook via Account → Koppelingen',
       fetchFailed: 'Outlook-agenda ophalen is mislukt.',
     },
     sources: {
@@ -1663,6 +1662,8 @@ export default {
       eyeShowAria: 'Toon {provider} in de planner',
       eyeHideAria: 'Verberg {provider} in de planner',
       connectButton: 'Koppelen',
+      lastSynced: 'Bijgewerkt om {time}',
+      neverSynced: 'Nog niet bijgewerkt',
     },
     duration: {
       label: 'Duur (minuten)',

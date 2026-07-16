@@ -1642,7 +1642,6 @@ export default {
       import: 'Import Outlook calendar',
       refresh: 'Refresh Outlook calendar',
       loading: 'Loading Outlook calendar…',
-      notConnectedHint: 'Connect Outlook via Account → Connections',
       fetchFailed: 'Failed to fetch the Outlook calendar.',
     },
     sources: {
@@ -1652,6 +1651,8 @@ export default {
       eyeShowAria: 'Show {provider} in the planner',
       eyeHideAria: 'Hide {provider} in the planner',
       connectButton: 'Connect',
+      lastSynced: 'Updated at {time}',
+      neverSynced: 'Not updated yet',
     },
     duration: {
       label: 'Duration (minutes)',
