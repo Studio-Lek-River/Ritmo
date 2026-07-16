@@ -36,6 +36,7 @@ import OutlookOAuthReturn from './components/OutlookOAuthReturn';
 import useConnections from './hooks/useConnections';
 import useOutlookEvents from './hooks/useOutlookEvents';
 import { externalBlocksForDay } from './utils/outlookEvents';
+import { clearAgendaCache } from './utils/agendaCache';
 import { DEFAULT_SOURCE_PREFS, getSourcePref } from './utils/sourcePrefs';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
@@ -225,6 +226,7 @@ export default function Ritmo() {
         if (settings.planMode !== undefined) setPlanMode(settings.planMode);
         if (settings.planPrefs !== undefined) setPlanPrefs(settings.planPrefs);
         if (settings.sourcePrefs !== undefined) setSourcePrefs(settings.sourcePrefs);
+        if (settings.agendaShown !== undefined) setAgendaShown(settings.agendaShown);
         if (settings.onboardingProfile !== undefined) setOnboardingProfile(settings.onboardingProfile);
         if (settings.hasUsedSwipe !== undefined) setHasUsedSwipe(settings.hasUsedSwipe);
         if (settings.hasDismissedInstallBanner !== undefined) setHasDismissedInstallBanner(settings.hasDismissedInstallBanner);
@@ -362,6 +364,7 @@ export default function Ritmo() {
           planMode,
           planPrefs,
           sourcePrefs,
+          agendaShown,
           onboardingProfile,
           hasUsedSwipe,
           hasDismissedInstallBanner,
@@ -373,7 +376,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, planPrefs, sourcePrefs, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, planPrefs, sourcePrefs, agendaShown, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
 
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
@@ -1334,29 +1337,54 @@ export default function Ritmo() {
     });
   }, [activeDateKey, customTasks, history, recurringTasks, todayKey]);
 
-  // ---- Outlook-agenda (S07 / S07a) ------------------------------------------
+  // ---- Outlook-agenda (S07 / S07a, persistent sinds S07d) ------------------
   // Eigen useConnections-instantie (naast die van ConnectionsSection) puur om
   // hier te kunnen afleiden of Outlook verbonden is; App.jsx zelf schrijft er
   // niets mee weg. Agenda-ophalen is een no-op zonder verbonden Outlook,
-  // buiten de Planner-view, of zolang de gebruiker niet expliciet op
-  // "importeren" heeft geklikt (principe 2, S07a: geen fetch bij Planner-open
-  // zonder klik). `agendaShown` is bewust niet-persistent: elke sessie start
-  // de Planner leeg tot de knop wordt gebruikt.
+  // buiten de Planner-view, of zolang de gebruiker de agenda niet eerder
+  // heeft laten zien (principe 2, S07a: geen fetch bij Planner-open zonder
+  // klik). `agendaShown` leeft sinds S07d in `settings` (zelfde patroon als
+  // `planPrefs`/`sourcePrefs` hierboven), zodat een eenmaal geïmporteerde
+  // agenda niet elke sessie opnieuw een klik vraagt; een ontbrekende key valt
+  // terug op `false`, dus geen migratie nodig.
   const [agendaShown, setAgendaShown] = useState(false);
   const outlookConnectionState = useConnections(currentUser?.id);
   const outlookConnection = outlookConnectionState.connections.find(
     c => c.provider === 'outlook' && c.status === 'connected'
   ) || null;
+  // Mag de agenda meedoen? Een nog-ladende koppelingsstatus telt als "ja", zodat
+  // de cache-seed bij een herlaad niet op het netwerk hoeft te wachten; een
+  // uitsluitsel "niet verbonden" zet hem uit en maakt daarmee `eventsByDate`
+  // leeg — de enige plek waar dat geregeld hoeft te worden.
+  const agendaActive = agendaShown && (outlookConnectionState.loading || !!outlookConnection);
   const {
     eventsByDate: outlookEventsByDate,
     loading: outlookAgendaLoading,
     error: outlookAgendaError,
+    lastSyncedAt: outlookLastSyncedAt,
     refetch: refetchOutlookAgenda,
   } = useOutlookEvents({
-    enabled: !!outlookConnection && view === 'productivity' && agendaShown,
+    active: agendaActive,
+    enabled: agendaActive && !!outlookConnection && view === 'productivity',
     weekDays,
     connectionId: outlookConnection?.id,
+    todayKey,
   });
+
+  // Geen wees-afspraken van een verbroken koppeling (S07d): zodra deze
+  // instantie leert dat Outlook niet meer verbonden is terwijl dat eerder wel
+  // zo was, wist dit zowel de device-local cache als de "getoond"-vlag. Een
+  // nog-onbekende status (netwerk nog bezig, offline) telt bewust niet als
+  // "verbroken" — anders zou een tijdelijke laad-hik al de cache wissen.
+  const wasOutlookConnectedRef = useRef(false);
+  useEffect(() => {
+    if (outlookConnectionState.loading) return;
+    if (wasOutlookConnectedRef.current && !outlookConnection) {
+      clearAgendaCache();
+      setAgendaShown(false);
+    }
+    wasOutlookConnectedRef.current = !!outlookConnection;
+  }, [outlookConnection, outlookConnectionState.loading]);
 
   const handleImportOrRefreshAgenda = useCallback(() => {
     if (!agendaShown) {
@@ -2040,6 +2068,7 @@ export default function Ritmo() {
             agendaShown={agendaShown}
             agendaLoading={outlookAgendaLoading}
             agendaError={outlookAgendaError}
+            agendaLastSyncedAt={outlookLastSyncedAt}
             onImportOrRefreshAgenda={handleImportOrRefreshAgenda}
             onOpenConnections={handleOpenConnections}
             onAddTask={addCustomTask}
@@ -2107,7 +2136,16 @@ export default function Ritmo() {
 
       {showSettings && (
         <SettingsModal
-          onClose={() => { setShowSettings(false); setSettingsInitialTab(null); setOpenSettingsToHelp(false); }}
+          onClose={() => {
+            setShowSettings(false);
+            setSettingsInitialTab(null);
+            setOpenSettingsToHelp(false);
+            // Ververst de Outlook-koppelingsstatus na een bezoek aan
+            // Instellingen → Account: een verbreken daar gebeurt via een
+            // eigen useConnections-instantie (ConnectionsSection) en bereikt
+            // deze instantie anders pas na een volledige herlaad (S07d).
+            outlookConnectionState.refresh();
+          }}
           initialTab={settingsInitialTab}
           initialHelp={openSettingsToHelp}
           currentUser={currentUser}

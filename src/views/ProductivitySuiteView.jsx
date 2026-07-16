@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Calendar, Loader2, WandSparkles } from 'lucide-react';
+import { WandSparkles } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { useToast } from '../hooks/useToast';
 import WeekView from './WeekView';
@@ -32,6 +32,7 @@ export default function ProductivitySuiteView({
   agendaShown,
   agendaLoading,
   agendaError,
+  agendaLastSyncedAt,
   onImportOrRefreshAgenda,
   onOpenConnections,
   onAddTask,
@@ -100,6 +101,24 @@ export default function ProductivitySuiteView({
       .map(item => (item.key.startsWith('task:virtual:') ? { ...item, toggle: undefined } : item));
   }, [selectedDay, modules, onToggleTaskInDay, onToggleProjectSubgoal]);
 
+  // Generieke provider -> actie-map voor SourcesPanel (S07d): alleen een
+  // provider met een echte actie (op dit moment enkel Outlook) krijgt een
+  // entry, dus Trello/GitHub blijven ongemoeid zonder hardcoded providerlijst
+  // hier. `onRefresh` hergebruikt dezelfde handler als de oude knoppenbalk
+  // (import de eerste keer, daarna vernieuwen).
+  const sourceActions = useMemo(() => (
+    outlookConnected
+      ? {
+          outlook: {
+            onRefresh: onImportOrRefreshAgenda,
+            loading: agendaLoading,
+            shown: agendaShown,
+            lastSyncedAt: agendaLastSyncedAt,
+          },
+        }
+      : {}
+  ), [outlookConnected, onImportOrRefreshAgenda, agendaLoading, agendaShown, agendaLastSyncedAt]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -113,32 +132,6 @@ export default function ProductivitySuiteView({
             <WandSparkles className="w-4 h-4" />
             {t('planner.actions.shareDay')}
           </button>
-          {tab === 'dag' && (
-            outlookConnected ? (
-              <button
-                type="button"
-                onClick={onImportOrRefreshAgenda}
-                disabled={agendaLoading}
-                aria-label={agendaLoading ? t('planner.outlook.loading') : undefined}
-                className={`flex items-center gap-1.5 px-3 py-2 ${theme.radiusControl} text-sm font-medium transition ${theme.cardSecondary} ${theme.hover} disabled:opacity-60 disabled:cursor-not-allowed`}
-              >
-                {agendaLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Calendar className="w-4 h-4" />
-                )}
-                {agendaShown ? t('planner.outlook.refresh') : t('planner.outlook.import')}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onOpenConnections}
-                className={`flex items-center gap-1.5 px-3 py-2 ${theme.radiusControl} text-sm ${theme.textMuted} ${theme.hover} transition`}
-              >
-                {t('planner.outlook.notConnectedHint')}
-              </button>
-            )
-          )}
           <div className={`flex gap-1 p-1 ${theme.cardSecondary} ${theme.radiusControl}`}>
             {TABS.map(id => (
               <button
@@ -180,6 +173,7 @@ export default function ProductivitySuiteView({
                 connections={connections}
                 sourcePrefs={sourcePrefs}
                 setSourcePrefs={setSourcePrefs}
+                sourceActions={sourceActions}
                 onOpenConnections={onOpenConnections}
                 theme={theme}
               />

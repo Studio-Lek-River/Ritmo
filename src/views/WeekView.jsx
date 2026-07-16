@@ -73,23 +73,25 @@ function timeFromOffset(offsetY) {
   return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
 
-// Agendablok-uiterlijk (S07c): tint + volledige rand + provider-icoontje in
-// de bronkleur, zodat een extern blok herkenbaar anders blijft dan een
-// gevulde eigen taak (die alleen een linkerrand in de modulekleur heeft).
-// Een onbekende bron (geen kleur uit COLOR_OPTIONS, bv. een provider zonder
-// default) valt terug op de neutrale `.r-block-agenda`-stijl van vóór deze
-// slice.
+// Agendablok-uiterlijk (S07d): dekkend `.r-block`-kaartje met de bronkleur
+// alleen als strip links, plus het provider-icoontje in diezelfde kleur als
+// merkje. Dat merkje is bewust het enige onderscheid met een eigen taak
+// (S07c gebruikte nog een tint + volledige rand over het hele blok); een
+// onbekende bron (geen kleur uit COLOR_OPTIONS, bv. een provider zonder
+// default) valt terug op de neutrale `.r-block-agenda`-stijl van vóór S07d.
 function agendaBlockAppearance(block, sourcePrefs, theme) {
   const provider = block.source?.provider;
   const pref = getSourcePref(sourcePrefs, provider);
+  const Icon = SOURCE_ICONS[provider] || null;
   if (!COLOR_OPTIONS.includes(pref.color)) {
-    return { className: `r-block-agenda ${theme.textSecondary}`, style: {}, Icon: null };
+    return { className: `r-block-agenda ${theme.textSecondary}`, style: {}, Icon, iconClassName: theme.textMuted };
   }
   const c = getColorClasses(pref.color);
   return {
-    className: `border ${c.iconBg} ${c.iconText}`,
-    style: { borderColor: getColorHex(pref.color) },
-    Icon: SOURCE_ICONS[provider] || null,
+    className: `r-block ${theme.text}`,
+    style: { borderLeft: `4px solid ${getColorHex(pref.color)}` },
+    Icon,
+    iconClassName: c.iconText,
   };
 }
 
@@ -251,7 +253,7 @@ export default function WeekView({
                 {allDayAgendaBlocks.length > 0 && (
                   <div className="flex flex-wrap gap-1 px-1 py-1">
                     {allDayAgendaBlocks.map(block => {
-                      const { className, style, Icon } = agendaBlockAppearance(block, sourcePrefs, theme);
+                      const { className, style, Icon, iconClassName } = agendaBlockAppearance(block, sourcePrefs, theme);
                       return (
                         <span
                           key={`agenda-allday:${block.id}`}
@@ -259,7 +261,7 @@ export default function WeekView({
                           style={style}
                           className={`text-[10px] px-1.5 py-0.5 rounded truncate max-w-full flex items-center gap-1 ${className}`}
                         >
-                          {Icon && <Icon className="w-2.5 h-2.5 shrink-0" />}
+                          {Icon && <Icon className={`w-2.5 h-2.5 shrink-0 ${iconClassName}`} />}
                           <span className="truncate">{t('planner.agenda.allDay')}: {block.title}</span>
                         </span>
                       );
@@ -284,15 +286,15 @@ export default function WeekView({
                   {timedAgendaBlocks.map(block => {
                     const duration = agendaDurationMinutes(block.start, block.end);
                     const { top, height } = blockStyle(block.start, duration);
-                    const { className, style, Icon } = agendaBlockAppearance(block, sourcePrefs, theme);
+                    const { className, style, Icon, iconClassName } = agendaBlockAppearance(block, sourcePrefs, theme);
                     return (
                       <div
                         key={`agenda:${block.id}`}
                         style={{ top, height, ...style }}
                         title={block.title}
-                        className={`absolute left-1 right-1 rounded-md px-1.5 py-1 text-[11px] overflow-hidden flex items-center gap-1 ${className}`}
+                        className={`absolute left-1 right-1 px-1.5 py-1 text-[11px] overflow-hidden flex items-center gap-1 ${className}`}
                       >
-                        {Icon && <Icon className="w-3 h-3 shrink-0" />}
+                        {Icon && <Icon className={`w-3 h-3 shrink-0 ${iconClassName}`} />}
                         <span className="truncate block flex-1">{block.title}</span>
                       </div>
                     );
@@ -308,8 +310,8 @@ export default function WeekView({
                         onDragStart={(e) => {
                           e.dataTransfer.setData('text/plain', encodeDragPayload(day.dateKey, item.key));
                         }}
-                        style={{ top, height, borderLeft: `3px solid ${getColorHex(item.color)}` }}
-                        className={`absolute left-1 right-1 rounded-md px-1.5 py-1 text-[11px] overflow-hidden cursor-grab active:cursor-grabbing ${c.iconBg} ${c.iconText}`}
+                        style={{ top, height, borderLeft: `4px solid ${getColorHex(item.color)}` }}
+                        className={`absolute left-1 right-1 r-block px-1.5 py-1 text-[11px] overflow-hidden cursor-grab active:cursor-grabbing ${theme.text}`}
                         title={item.label}
                       >
                         <div className="flex items-center gap-1">
@@ -351,8 +353,8 @@ export default function WeekView({
                         onDragStart={isConcept ? (e) => {
                           e.dataTransfer.setData(PENDING_DRAG_MIME, item.key);
                         } : undefined}
-                        style={{ top, height, borderColor: getColorHex(item.color) }}
-                        className={`absolute left-1 right-1 rounded-md px-1.5 py-1 text-[11px] overflow-hidden ${
+                        style={{ top, height, borderLeft: `4px solid ${getColorHex(item.color)}` }}
+                        className={`absolute left-1 right-1 px-1.5 py-1 text-[11px] overflow-hidden ${
                           isConcept ? 'r-block-draft cursor-grab active:cursor-grabbing' : 'r-block-proposal'
                         }`}
                         title={item.label}
@@ -465,21 +467,24 @@ function DayStrip({ weekDays, shortLabels, selectedDateKey, onSelectDate, theme 
 // de latere indeler). De agenda- en voorstel-stijlklassen bestaan al zodat
 // een volgende slice ze meteen kan hergebruiken op echte blokken.
 function Legend({ theme, t }) {
-  // Het "Agenda"-swatje krijgt hetzelfde icoontje-in-tint-in-rand-patroon als
+  // Het "Agenda"-swatje krijgt hetzelfde icoontje-in-de-bronkleur-patroon als
   // de echte agendablokken hierboven (agendaBlockAppearance); zonder actieve
   // koppeling is er geen bronkleur om te tonen, dus de swatch blijft neutraal
-  // en toont alleen het generieke agenda-icoontje.
+  // en toont alleen het generieke agenda-icoontje. Alle drie de swatjes delen
+  // sinds S07d dezelfde kaart-plus-strip-vorm als de echte blokken: een
+  // dekkend vlakje met de kleur alleen als strip links.
   const AgendaIcon = SOURCE_ICONS.outlook;
   const items = [
-    { key: 'ingepland', className: theme.accentBg },
+    { key: 'ingepland', className: 'r-block', barClassName: theme.accentBg },
     { key: 'agenda', className: 'r-block-agenda', Icon: AgendaIcon },
     { key: 'voorstel', className: 'r-block-proposal' },
   ];
   return (
     <div className="flex items-center gap-3">
-      {items.map(({ key, className, Icon }) => (
+      {items.map(({ key, className, barClassName, Icon }) => (
         <span key={key} className="flex items-center gap-1.5">
-          <span className={`inline-flex items-center justify-center w-3 h-3 rounded ${className}`}>
+          <span className={`relative inline-flex items-center justify-center w-3 h-3 r-radius-control overflow-hidden ${className}`}>
+            {barClassName && <span className={`absolute inset-y-0 left-0 w-1 ${barClassName}`} />}
             {Icon && <Icon className="w-2 h-2" />}
           </span>
           <span className={`text-xs ${theme.textMuted}`}>{t(`planner.legend.${key}`)}</span>
