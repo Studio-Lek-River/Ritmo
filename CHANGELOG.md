@@ -1,3 +1,10 @@
+## [0.55.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.55.0...v0.55.1) (2026-07-16)
+
+
+### Bug Fixes
+
+* **pwa:** laat de service worker /api-routes niet onderscheppen ([0715ca0](https://github.com/Studio-Lek-River/Ritmo/commit/0715ca0a26ef89ef7c04e35a29a04a685729e073))
+
 # [0.55.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.54.0...v0.55.0) (2026-07-15)
 
 
