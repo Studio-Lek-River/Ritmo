@@ -1,3 +1,11 @@
+# [0.56.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.55.1...v0.56.0) (2026-07-16)
+
+
+### Features
+
+* **planner:** Koppelingen-blok onder de takenpool met bronkleur in het rooster ([c6a182d](https://github.com/Studio-Lek-River/Ritmo/commit/c6a182d52f49c0143505664acd14d39a7fd7310f))
+* **planner:** sourcePrefs-model voor bronvoorkeuren in de planner ([3b6aaa5](https://github.com/Studio-Lek-River/Ritmo/commit/3b6aaa588e723e62eed53680e060081486f9e4d2))
+
 ## [0.55.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.55.0...v0.55.1) (2026-07-16)
 
 
