@@ -1417,20 +1417,18 @@ export default function Ritmo() {
   }, []);
 
   const handleToggleAgendaBlock = useCallback((blockId) => {
-    setAgendaSelection(prev => {
-      const next = prev.includes(blockId)
-        ? prev.filter(id => id !== blockId)
-        : [...prev, blockId];
-      // Snoeien tegen de nu bekende agenda, zodat ids van verlopen of
-      // geannuleerde afspraken bij elke klik vanzelf wegvallen.
-      const knownIds = new Set(
-        Object.values(outlookEventsByDate || {}).flat().map(b => b.id)
-      );
-      const pruned = pruneSelection(next, knownIds);
-      writeAgendaSelection(pruned);
-      return pruned;
-    });
-  }, [outlookEventsByDate]);
+    const next = agendaSelection.includes(blockId)
+      ? agendaSelection.filter(id => id !== blockId)
+      : [...agendaSelection, blockId];
+    // Snoeien tegen de nu bekende agenda, zodat ids van verlopen of
+    // geannuleerde afspraken bij elke klik vanzelf wegvallen.
+    const knownIds = new Set(
+      Object.values(outlookEventsByDate || {}).flat().map(b => b.id)
+    );
+    const pruned = pruneSelection(next, knownIds);
+    setAgendaSelection(pruned);
+    writeAgendaSelection(pruned);
+  }, [agendaSelection, outlookEventsByDate]);
 
   const handleOpenConnections = useCallback(() => {
     setSettingsInitialTab('account');
