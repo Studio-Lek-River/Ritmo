@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Ritmo draaien en een wijziging echt zien werken in de browser. Gebruik bij het verifiëren van een change aan de UI (Planner, modules, views) voordat je een PR opent.
+description: Ritmo draaien en een wijziging echt zien werken in de browser. Gebruik bij het verifiëren van een change aan de UI (Planner, modules, views) voordat je naar main pusht.
 ---
 
 # Ritmo verifiëren in de draaiende app

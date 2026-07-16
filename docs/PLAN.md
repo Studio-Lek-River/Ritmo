@@ -8,13 +8,13 @@ Dit document beschrijft de **werkwijze**. Het **wat**, de **volgorde** en de **a
 
 1. **Toetsen (PO, in Claude.ai).** Slice-spec met acceptatiecriteria in `docs/slices/SXX-*.md`.
    **Poort 1:** Bas keurt de spec goed.
-2. **Uitvoering (implementer-subagent).** Op de huidige branch, volgens de spec en `CLAUDE.md`.
+2. **Uitvoering (implementer-subagent).** Op `main`, volgens de spec en `CLAUDE.md`. Er zijn geen feature-branches.
 3. **Controle uitvoering (reviewer-subagent, read-only).** Code, uitgangspunten, i18n-regel.
 4. **Controle vereisten (verifier-subagent, read-only).** Resultaat tegen de acceptatiecriteria.
-5. **Terug naar Bas.** PR plus Vercel-preview plus samenvatting per criterium.
-   **Poort 2:** Bas test en keurt goed, dan merge.
+5. **Terug naar Bas.** Samenvatting per criterium plus een lokaal draaiende app via de `/verify`-skill.
+   **Poort 2:** Bas test lokaal en keurt goed, daarna gaat de slice naar `main`.
 
-De hoofdsessie orkestreert: roep implementer, dan reviewer, dan verifier, sequentieel. Subagents kunnen zelf geen subagents starten.
+De hoofdsessie orkestreert: roep implementer, dan reviewer, dan verifier, sequentieel. Subagents kunnen zelf geen subagents starten. Omdat er geen branch-diff meer is, legt de hoofdsessie vóór de implementer het startpunt vast (`git rev-parse HEAD`) en geeft die basis-SHA mee aan reviewer en verifier als scope.
 
 ## Waartegen wordt getoetst
 

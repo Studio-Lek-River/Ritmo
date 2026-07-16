@@ -22,7 +22,7 @@ Argument: `$ARGUMENTS` (het issue-nummer, bv. `43`).
 ## Harde regels
 
 1. **Repo is `Studio-Lek-River/Ritmo`.** Gebruik altijd `gh ... --repo Studio-Lek-River/Ritmo`.
-2. **Nooit rechtstreeks op `main` werken.** Maak eerst een branch `slice/SXX-<kebab>` (zie Stap 3). De slice bevat straks code-wijzigingen die via een PR en Poort 2 moeten.
+2. **Werk op `main`.** Geen feature-branches, geen PR's in deze repo. De slice landt via gewone commits op `main`; Poort 2 is dat Bas lokaal test vóór de push.
 3. **Deze skill implementeert geen code.** De skill levert het plan (de slice-spec). Uitvoering loopt via het team, en pas na expliciete goedkeuring (Poort 1).
 4. **Bij ambiguïteit → `AskUserQuestion`, niet gokken.** Onduidelijke scope, meerdere geldige interpretaties, of onduidelijke S-nummer-mapping zijn keuzes voor Bas. Veilig te defaulten → default kiezen en doorgaan.
 5. **Geen `Co-Authored-By: Claude`-trailer** in commits (conform `CLAUDE.md`).
@@ -51,15 +51,9 @@ Onderzoek gericht — geen tussentijdse permissie-pauzes:
   - Componenten/utils → bestaande in `src/components/` en `src/utils/`
   Toets tegen de Ritmo-uitgangspunten (`.claude/docs/PROJECT_INSTRUCTIONS.md`); de volledige checklist staat in `.claude/skills/kwaliteitscheck/SKILL.md` (Dimensie 4).
 
-### Stap 3 — Branch
+### Stap 3 — Slice-spec schrijven
 
-- Bepaal `SXX` (uit de titel, of het volgende vrije nummer) en een kebab-titel.
-- Maak/checkout de branch, nooit op `main`:
-  ```
-  git switch -c slice/SXX-<kebab>   # of: git switch slice/SXX-<kebab> als hij al bestaat
-  ```
-
-### Stap 4 — Slice-spec schrijven
+Bepaal eerst `SXX` (uit de titel, of het volgende vrije nummer) en een kebab-titel; die vormen samen de bestandsnaam.
 
 Schrijf `docs/slices/SXX-<kebab>.md` op basis van `docs/slices/SXX-template.md`. Vul:
 
@@ -72,24 +66,24 @@ Schrijf `docs/slices/SXX-<kebab>.md` op basis van `docs/slices/SXX-template.md`.
   - [ ] Geen wijzigingen buiten de scope van deze slice.
   - [ ] Nieuw gedrag is configureerbaar of uitschakelbaar (uitgangspunt "werkt voor de gebruiker"); bestaande data blijft veilig.
 
-Commit op de branch:
+Commit de spec (een `docs:`-commit triggert geen release, dus deze mag direct mee naar `main`):
 ```
 git add docs/slices/SXX-<kebab>.md && git commit -m "docs(slices): SXX-<naam> concept-spec uit issue #<n>"
 ```
 
-### Stap 5 — Poort 1
+### Stap 4 — Poort 1
 
 Toon een compacte samenvatting: Doel, de acceptatiecriteria, en de geraakte bestanden. **Stop en wacht.**
 
 ```
 AskUserQuestion:
   "Bovenstaand de concept slice-spec voor issue #<n>. Hoe verder?"
-  - Goedkeuren      → door naar Stap 6
+  - Goedkeuren      → door naar Stap 5
   - Aanpassen       → verwerk feedback in het bestand, commit, leg opnieuw voor
-  - Stoppen         → einde; spec blijft als concept op de branch staan
+  - Stoppen         → einde; de spec blijft als concept staan
 ```
 
-### Stap 6 — Uitvoering aanbieden
+### Stap 5 — Uitvoering aanbieden
 
 Na goedkeuring:
 
@@ -100,32 +94,31 @@ AskUserQuestion:
   - Nee, later      → einde; jij start zelf wanneer je wilt
 ```
 
-Bij "Ja": orkestreer sequentieel vanuit deze hoofdsessie (subagents starten zelf geen subagents):
+Bij "Ja": orkestreer sequentieel vanuit deze hoofdsessie (subagents starten zelf geen subagents).
 
-1. `Agent` **implementer** — geef de slice-spec-path mee; voert de wijzigingen uit op de branch.
-2. `Agent` **reviewer** (read-only) — code, uitgangspunten, i18n-regel, scope-discipline.
-3. `Agent` **verifier** (read-only) — resultaat punt voor punt tegen de acceptatiecriteria.
+Leg éérst het startpunt vast — reviewer en verifier hebben het nodig als scope, en op `main` is er geen branch-diff om het uit af te leiden:
+```
+git rev-parse HEAD   # basis-SHA; geef deze mee aan reviewer en verifier
+```
+
+1. `Agent` **implementer** — geef de slice-spec-path mee; voert de wijzigingen uit op `main`.
+2. `Agent` **reviewer** (read-only) — geef de basis-SHA mee; code, uitgangspunten, i18n-regel, scope-discipline.
+3. `Agent` **verifier** (read-only) — geef de basis-SHA mee; resultaat punt voor punt tegen de acceptatiecriteria.
 
 Vat elk resultaat kort samen. Bij bevindingen van reviewer/verifier: terug naar de implementer voor een fix, of terug naar Bas als het een scope-/ontwerpvraag is.
 
-### Stap 7 — PR + samenvatting
+### Stap 6 — Poort 2 + samenvatting
 
-Open **altijd** een PR (branch → `main`) als die er nog niet is. Check eerst of er al een open PR voor de branch bestaat; zo ja, maak geen tweede aan maar werk de body bij zodat die de `Closes #<n>`-regel bevat.
+De laatste commit van de slice krijgt `Closes #<n>` als footer op een eigen regel. GitHub sluit het issue automatisch zodra die commit op `main` staat — daar is geen PR voor nodig.
 
 ```
-# bestaat er al een PR voor deze branch?
-gh pr view --repo Studio-Lek-River/Ritmo --head slice/SXX-<kebab> --json number,body
-
-# nog geen PR → aanmaken
-gh pr create --repo Studio-Lek-River/Ritmo --base main --head slice/SXX-<kebab> \
-  --title "<type>(<scope>): <beschrijving>" \
-  --body "<samenvatting per acceptatiecriterium — benoemt wat er is veranderd>
+git commit -m "<type>(<scope>): <beschrijving>
 
 Closes #<n>"
 ```
 
-De PR-body benoemt de wijzigingen (samenvatting per acceptatiecriterium) en bevat `Closes #<n>` op een eigen regel, zodat GitHub de issue automatisch sluit wanneer de PR naar `main` gemerged wordt. Sluit af met de samenvatting per acceptatiecriterium en de Vercel-preview-verwijzing. **Poort 2** (Bas test en merge) blijft bij Bas.
+Sluit af met de samenvatting per acceptatiecriterium en draai de app via de `/verify`-skill, zodat Bas de slice lokaal kan testen. **Poort 2** blijft bij Bas: pas na zijn goedkeuring push je de slice naar `main`.
 
 ## AskUserQuestion-richtlijn
 
-Gebruik `AskUserQuestion` alleen bij echte ambiguïteit die tot verschillend correcte uitkomsten leidt (scope, S-nummer-mapping, `feat:` vs `fix:` voor de PR-titel). Veilig te defaulten → default kiezen en doorgaan, geen ruis.
+Gebruik `AskUserQuestion` alleen bij echte ambiguïteit die tot verschillend correcte uitkomsten leidt (scope, S-nummer-mapping, `feat:` vs `fix:` voor de commit-titel). Veilig te defaulten → default kiezen en doorgaan, geen ruis.

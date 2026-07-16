@@ -8,7 +8,7 @@ Dit bestand bevat instructies voor Claude Code in deze repo. De projectinhoud (w
 
 **Bij twijfel: vragen.** Als er ambiguïteit is die tot verschillend correcte uitkomsten kan leiden (scope, locatie van een wijziging, naamgeving die elders gebruikt wordt, keuze tussen twee architectuur-opties), gebruik ik de `AskUserQuestion`-tool in plaats van te gokken. Bij keuzes die veilig te defaulten zijn → default kiezen en doorgaan, conform de bestaande "geen permissie-pauzes"-feedback.
 
-## Auto-commit: bij elke wijziging; pushen op verzoek
+## Auto-commit en push: direct op main
 
 **Harde regel.** Elke wijziging die ik in deze repo maak commit ik zelf. Als ik een bestand bewerk, hoort de commit erbij — niet wachten tot de gebruiker het doet, niet bundelen tot een volgende sessie.
 
@@ -25,10 +25,11 @@ Dit bestand bevat instructies voor Claude Code in deze repo. De projectinhoud (w
 - Als de gebruiker expliciet zegt "alleen wijzigen, niet committen" voor deze actie.
 - Bij een failing build/lint-hook: niet committen tot het werkt; fix eerst, dan commit (geen `--no-verify`).
 
-**Pushen — op verzoek.**
-- Committen blijft automatisch; pushen doe ik niet uit mezelf, maar wél zodra de gebruiker erom vraagt (`git push`, PR openen).
-- Als de gebruiker vraagt te pushen of een PR te openen, mag dat direct, zonder extra permissie-pauze.
-- Geen force-push (`git push --force`) tenzij de gebruiker daar expliciet om vraagt. Nooit rechtstreeks naar `main` pushen; werk via een branch en PR.
+**Pushen — direct naar `main`.**
+- Er zijn geen feature-branches en geen PR's in deze repo. Al het werk gebeurt op `main`, en na de commit push ik direct, zonder te vragen.
+- Elke `feat:`- of `fix:`-commit die ik push gaat daarmee meteen live: semantic-release maakt een release en de deploy volgt. Dat is de bedoeling; het is geen reden om te wachten.
+- Uitzondering: bij slice-werk (zie "Werkwijze: team en poorten") wacht ik met pushen tot Bas het lokaal heeft getest en goedgekeurd — dat is Poort 2.
+- Geen force-push (`git push --force`) tenzij de gebruiker daar expliciet om vraagt. De GitHub-ruleset op `main` blokkeert force-push en het verwijderen van de branch; die regel blijft staan.
 
 **Format:** Conventional Commits per type, zoals hieronder beschreven. Geen `Co-Authored-By: Claude`-trailer.
 
@@ -44,11 +45,9 @@ Ritmo gebruikt [semantic-release](.releaserc.json). Het format van elke commit o
 4. **Bij twijfel tussen `feat:` en `fix:`** noem ik dat expliciet in mijn antwoord en laat ik de gebruiker kiezen.
 5. **Geen `Co-Authored-By: Claude ...`-trailer** in commit messages.
 
-**Merge-strategie:** squash merging is uitgeschakeld in de repo. PRs gebruiken merge commit of rebase, dus alle losse commits blijven intact op `main`. Elke individuele commit verschijnt als aparte regel in de gegenereerde changelog onder de juiste sectie ("Features", "Bug Fixes"). Het zwaarste type binnen een PR bepaalt de version bump.
-
 ## Changelog- en versie-toets
 
-Elke commit bepaalt automatisch de version bump en een regel in CHANGELOG.md. Vóór elke commit doorloop ik deze toets:
+Elke commit landt rechtstreeks op `main` en verschijnt als aparte regel in de gegenereerde changelog, onder de juiste sectie ("Features", "Bug Fixes"). Elke commit bepaalt dus zijn eigen version bump; bij meerdere commits achter elkaar bepaalt het zwaarste type de bump van de release. Vóór elke commit doorloop ik deze toets:
 
 ### Wat ik check
 
@@ -69,15 +68,15 @@ Grote changes lopen via de werkwijze in docs/PLAN.md, opgeknipt in kleine slices
 Per slice gelden vijf rollen en twee poorten:
 
 1. Toetsen (PO, in Claude.ai): slice-spec met acceptatiecriteria in docs/slices/SXX-*.md. Poort 1: Bas keurt de spec goed.
-2. Uitvoering (implementer-subagent): op de huidige branch, volgens de spec en deze CLAUDE.md.
+2. Uitvoering (implementer-subagent): op `main`, volgens de spec en deze CLAUDE.md.
 3. Controle uitvoering (reviewer-subagent, read-only): code, uitgangspunten, i18n-regel.
 4. Controle vereisten (verifier-subagent, read-only): resultaat tegen de acceptatiecriteria.
-5. Terug naar Bas: PR plus Vercel-preview plus samenvatting per criterium. Poort 2: Bas test en keurt goed, dan merge.
+5. Terug naar Bas: samenvatting per criterium plus een draaiende app via de `/verify`-skill. Poort 2: Bas test lokaal en keurt goed, daarna push ik naar `main`.
 
 De hoofdsessie orkestreert: roep implementer, dan reviewer, dan verifier, sequentieel.
 Subagents kunnen zelf geen subagents starten.
 
-Reviewer en verifier bepalen hun eigen scope via `git diff` tegen `main` (plus werkboom-status) en beoordelen alleen de gewijzigde bestanden; de hoofdsessie hoeft geen change-set in de prompt te plakken. "Read-only" = geen code-edits: beide mogen wél niet-muterende commando's draaien (`git diff`/`git status`, en de reviewer `npm run check:i18n`).
+Omdat al het werk op `main` gebeurt, kunnen reviewer en verifier hun scope niet meer afleiden uit een branch-diff. De hoofdsessie legt daarom vóór de implementer het startpunt vast (`git rev-parse HEAD`) en geeft die basis-SHA mee in de prompt aan reviewer en verifier. Zij beoordelen dan alleen de bestanden uit `git diff --name-only <basis>..HEAD` plus `git status --short`. "Read-only" = geen code-edits: beide mogen wél niet-muterende commando's draaien (`git diff`/`git status`, en de reviewer `npm run check:i18n`).
 
 Harde regel (afgedwongen via hook): nl.js en en.js hebben dezelfde keys.
 De reviewer let daarnaast op: geen hardcoded UI-tekst, geen wijzigingen buiten de slice-scope,
