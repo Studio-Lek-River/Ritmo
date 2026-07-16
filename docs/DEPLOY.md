@@ -36,6 +36,7 @@ voor de Outlook-koppeling staat in `api/connections/outlook/_shared.js`
 | `OAUTH_STATE_SECRET` | Vercel-dashboard, server-only | een lange willekeurige string (bv. `openssl rand -hex 32`) | `api/connections/outlook/_shared.js` (HMAC-ondertekening van de OAuth-`state`) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Vercel-dashboard, server-only | `eyJhbGciOi...` (service-role JWT uit Supabase) | `api/connections/disconnect.js`, `api/connections/outlook/*.js` (service-role-toegang tot Vault-RPC's) |
 | `GITHUB_TOKEN` | Vercel-dashboard, server-only | `ghp_xxx...` (fine-grained PAT met Issues: write) | `api/feedback.js` (feedback → GitHub-issue) |
+| `TRELLO_API_KEY` | Vercel-dashboard, server-only | een Power-Up-API-key van https://trello.com/power-ups/admin | `api/connections/trello/*.js` (authorize-URL, tokenvalidatie, borden/kaarten ophalen) |
 | `VITE_SUPABASE_URL` | Vercel-dashboard, Production + Preview (client, mag zichtbaar zijn) | `https://xxxx.supabase.co` | client (`src/`) én server (`api/connections/outlook/_shared.js` gebruikt hem ook voor de service-role-client) |
 | `VITE_SUPABASE_ANON_KEY` | Vercel-dashboard, Production + Preview (client, mag zichtbaar zijn) | `eyJhbGciOi...` (anon-key uit Supabase) | client (`src/`) |
 
