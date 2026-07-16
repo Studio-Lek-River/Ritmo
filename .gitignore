@@ -16,6 +16,9 @@ dist-ssr
 .env.development.local
 .env.production.local
 
+# Vercel CLI-koppeling (project- en org-id; hoort niet in de repo)
+.vercel
+
 # Supabase (CLI temp state en secrets nooit committen)
 supabase/.temp/
 supabase/.branches/
