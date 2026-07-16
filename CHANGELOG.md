@@ -1,3 +1,15 @@
+# [0.60.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.59.0...v0.60.0) (2026-07-16)
+
+
+### Features
+
+* **connections:** Trello koppelen met een geplakt token ([ac41a6f](https://github.com/Studio-Lek-River/Ritmo/commit/ac41a6f5c0dce0c41e29fdba1139fda61fae6793))
+* **connections:** Trello-endpoints voor koppelen en kaarten lezen ([18fba73](https://github.com/Studio-Lek-River/Ritmo/commit/18fba739c883fbcfd76910d836fc784e461ebeec))
+* **planner:** kies per Trello-bord of het meetelt in de planner ([213dd37](https://github.com/Studio-Lek-River/Ritmo/commit/213dd3776ce936c370b01a203876d63e9637b99b))
+* **planner:** Trello-borden lokaal cachen als afgeleide projecten ([2deeab8](https://github.com/Studio-Lek-River/Ritmo/commit/2deeab83cb8866cb0a92dc86a477b73475a7113e))
+* **planner:** Trello-borden verschijnen als projecten met hun kaarten in de takenpool ([b0598cb](https://github.com/Studio-Lek-River/Ritmo/commit/b0598cbc96b35d97f3ef76b3567a6e094ba50fed))
+* **projects:** Trello-projecten zijn read-only en linken naar het bord ([72c3358](https://github.com/Studio-Lek-River/Ritmo/commit/72c335876bbd56bf808e05fb5958464617130b3a))
+
 # [0.59.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.58.0...v0.59.0) (2026-07-16)
 
 
