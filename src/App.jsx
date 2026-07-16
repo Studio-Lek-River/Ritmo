@@ -158,6 +158,12 @@ export default function Ritmo() {
   const [planMode, setPlanMode] = useState('propose');
   const [planPrefs, setPlanPrefs] = useState(DEFAULT_PLAN_PREFS);
   const [sourcePrefs, setSourcePrefs] = useState(DEFAULT_SOURCE_PREFS);
+  // Heeft de gebruiker de Outlook-agenda al eens laten zien? Sinds S07d een
+  // gepersisteerde setting (zie de Outlook-agenda-sectie verderop voor het
+  // gedrag). Staat hier bij de andere settings-state omdat de save-effect
+  // hieronder hem in zijn dependency-array leest: die array wordt tijdens de
+  // render geëvalueerd, dus de declaratie moet eraan voorafgaan.
+  const [agendaShown, setAgendaShown] = useState(false);
   // Ephemere uitkomst van "Deel mijn dag in" (propose/concept-standen). Nooit
   // gepersisteerd — alleen bij expliciete acceptatie schrijft een handler via
   // de bestaande moveItemToDay/setTaskTime. Shape: { dateKey, mode, items }.
@@ -1344,10 +1350,9 @@ export default function Ritmo() {
   // buiten de Planner-view, of zolang de gebruiker de agenda niet eerder
   // heeft laten zien (principe 2, S07a: geen fetch bij Planner-open zonder
   // klik). `agendaShown` leeft sinds S07d in `settings` (zelfde patroon als
-  // `planPrefs`/`sourcePrefs` hierboven), zodat een eenmaal geïmporteerde
-  // agenda niet elke sessie opnieuw een klik vraagt; een ontbrekende key valt
-  // terug op `false`, dus geen migratie nodig.
-  const [agendaShown, setAgendaShown] = useState(false);
+  // `planPrefs`/`sourcePrefs`, en gedeclareerd naast die twee), zodat een
+  // eenmaal geïmporteerde agenda niet elke sessie opnieuw een klik vraagt; een
+  // ontbrekende key valt terug op `false`, dus geen migratie nodig.
   const outlookConnectionState = useConnections(currentUser?.id);
   const outlookConnection = outlookConnectionState.connections.find(
     c => c.provider === 'outlook' && c.status === 'connected'
