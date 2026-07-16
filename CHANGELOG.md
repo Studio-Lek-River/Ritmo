@@ -1,3 +1,15 @@
+# [0.61.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.60.0...v0.61.0) (2026-07-16)
+
+
+### Bug Fixes
+
+* **connections:** koppeling verbreken werkt weer ([37021ba](https://github.com/Studio-Lek-River/Ritmo/commit/37021babe50ea9127106b8bd08790cad885d78bc))
+
+
+### Features
+
+* **connections:** Trello-token wordt bij verbreken ook bij Trello ingetrokken ([d539c04](https://github.com/Studio-Lek-River/Ritmo/commit/d539c045463582e658e2f9185e0d14fe8f0e89fd))
+
 # [0.60.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.59.0...v0.60.0) (2026-07-16)
 
 
