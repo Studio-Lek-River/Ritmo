@@ -1639,6 +1639,7 @@ export default {
       allDay: 'All day',
       includeAria: 'Include {title} in planning',
       excludeAria: 'Exclude {title} from planning',
+      hideExcluded: 'Hide appointments that do not count',
     },
     outlook: {
       import: 'Import Outlook calendar',

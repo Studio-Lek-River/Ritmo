@@ -130,6 +130,12 @@ export default function WeekView({
 }) {
   const { t } = useTranslation();
   const [viewMode, setViewMode] = useState('week');
+  // Lichte UI-voorkeur, net als `viewMode` hierboven: bewust niet persistent,
+  // zodat het rooster na een herlaad altijd alles laat zien. Standaard uit —
+  // de meenemen-selectie is opt-in (leeg = niets telt mee, zie
+  // utils/agendaSelection.js), dus aan-als-default zou bij een verse agenda een
+  // leeg rooster geven.
+  const [hideExcludedAgenda, setHideExcludedAgenda] = useState(false);
 
   const shortLabels = useMemo(() => shortWeekdayLabelsMondayFirst(), []);
 
@@ -158,22 +164,25 @@ export default function WeekView({
     ? (weekDays || []).filter(d => d.dateKey === selectedDateKey)
     : (weekDays || []);
 
-  // Het oog uit in het Koppelingen-blok (SourcesPanel) betekent "deze bron telt
-  // niet mee": de blokken verdwijnen hier uit het rooster (planDay.js filtert
-  // diezelfde bron al vóór de aanroep in App.jsx, zodat "deel mijn dag in" er
-  // ook overheen plant).
+  // Twee filters bepalen welke agendablokken in het rooster staan. Het oog uit
+  // in het Koppelingen-blok (SourcesPanel) betekent "deze bron telt niet mee":
+  // die blokken verdwijnen hier (planDay.js filtert diezelfde bron al vóór de
+  // aanroep in App.jsx, zodat "deel mijn dag in" er ook overheen plant). De
+  // verbergknop hierboven werkt daarbinnen per afspraak: een afspraak zonder
+  // vinkje telt niet mee bij het indelen en mag dus ook uit beeld.
   const agendaColumns = useMemo(() => {
     const map = {};
     columns.forEach(day => {
       const blocks = (agendaByDate?.[day.dateKey] || [])
-        .filter(b => getSourcePref(sourcePrefs, b.source?.provider).visible);
+        .filter(b => getSourcePref(sourcePrefs, b.source?.provider).visible)
+        .filter(b => !hideExcludedAgenda || includedAgendaIds.includes(b.id));
       map[day.dateKey] = {
         allDay: blocks.filter(b => b.allDay),
         timed: blocks.filter(b => !b.allDay),
       };
     });
     return map;
-  }, [columns, agendaByDate, sourcePrefs]);
+  }, [columns, agendaByDate, sourcePrefs, hideExcludedAgenda, includedAgendaIds]);
 
   // De all-day-rij reserveert zijn hoogte in álle kolommen zodra één kolom een
   // all-day-afspraak heeft (en in de tijdbalk links). Anders zou alleen die ene
@@ -227,7 +236,18 @@ export default function WeekView({
             </button>
           ))}
         </div>
-        <Legend theme={theme} t={t} />
+        <div className="flex items-center gap-3 flex-wrap">
+          <label className={`flex items-center gap-1.5 text-xs cursor-pointer ${theme.textMuted}`}>
+            <input
+              type="checkbox"
+              checked={hideExcludedAgenda}
+              onChange={(e) => setHideExcludedAgenda(e.target.checked)}
+              className="w-3.5 h-3.5 cursor-pointer"
+            />
+            {t('planner.agenda.hideExcluded')}
+          </label>
+          <Legend theme={theme} t={t} />
+        </div>
       </div>
 
       {pendingPlan && pendingPlan.items.length > 0 && (
