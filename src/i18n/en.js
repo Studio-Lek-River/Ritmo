@@ -1641,12 +1641,6 @@ export default {
       excludeAria: 'Exclude {title} from planning',
       hideExcluded: 'Hide appointments that do not count',
     },
-    outlook: {
-      import: 'Import Outlook calendar',
-      refresh: 'Refresh Outlook calendar',
-      loading: 'Loading Outlook calendar…',
-      fetchFailed: 'Failed to fetch the Outlook calendar.',
-    },
     sources: {
       title: 'Connections',
       hint: 'Choose a color per source and whether it counts toward the planner.',
@@ -1656,6 +1650,19 @@ export default {
       connectButton: 'Connect',
       lastSynced: 'Updated at {time}',
       neverSynced: 'Not updated yet',
+      import: 'Import {provider}',
+      refresh: 'Refresh {provider}',
+      loading: 'Loading {provider}…',
+      fetchFailed: 'Failed to fetch {provider}.',
+    },
+    trello: {
+      boardsTitle: 'Trello boards',
+      loadingBoards: 'Loading boards…',
+      fetchError: 'Could not fetch Trello boards.',
+      empty: 'No open Trello boards found.',
+      alwaysListAria: 'Always-list for {name}',
+      alwaysListNone: 'No always-list',
+      cardsLoading: 'Loading cards…',
     },
     duration: {
       label: 'Duration (minutes)',

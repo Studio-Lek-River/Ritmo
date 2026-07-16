@@ -7,6 +7,7 @@ import KanbanView from './KanbanView';
 import TaskListPanel from '../components/TaskListPanel';
 import TaskPoolPanel from '../components/TaskPoolPanel';
 import SourcesPanel from '../components/SourcesPanel';
+import TrelloBoardPicker from '../components/TrelloBoardPicker';
 import PlanPreferencesPanel from '../components/PlanPreferencesPanel';
 import { buildDayTimeline } from '../utils/dayTimeline';
 import { shortWeekdayLabelsMondayFirst } from '../utils/dates';
@@ -38,6 +39,14 @@ export default function ProductivitySuiteView({
   agendaError,
   agendaLastSyncedAt,
   onImportOrRefreshAgenda,
+  trelloConnected,
+  trelloBoardPrefs,
+  onChangeTrelloBoardPrefs,
+  trelloCacheBoards,
+  trelloCardsLoading,
+  trelloCardsError,
+  trelloLastSyncedAt,
+  onRefreshTrelloCards,
   onOpenConnections,
   onAddTask,
   onAddSubgoal,
@@ -71,13 +80,25 @@ export default function ProductivitySuiteView({
 
   // App.jsx zelf zit niet onder ToastProvider (zie App.jsx), dus een mislukte
   // Outlook-fetch wordt hier gemeld zodra `agendaError` verandert — één toast
-  // per nieuwe fout, geen stil console.warn-slikken (AC6).
+  // per nieuwe fout, geen stil console.warn-slikken (AC6). De melding is
+  // provider-agnostisch (`planner.sources.fetchFailed`, S08): Trello's eigen
+  // fetch-fout hieronder hergebruikt dezelfde key.
   useEffect(() => {
     if (agendaError) {
-      showToast({ message: t('planner.outlook.fetchFailed') });
+      showToast({ message: t('planner.sources.fetchFailed', { provider: t('connections.providers.outlook') }) });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agendaError]);
+
+  // Zelfde patroon voor een mislukte Trello-kaartenfetch (S08, AC14): de
+  // bestaande borden blijven staan (useTrelloCards veegt de state nooit leeg
+  // bij een fout), alleen deze toast meldt het.
+  useEffect(() => {
+    if (trelloCardsError) {
+      showToast({ message: t('planner.sources.fetchFailed', { provider: t('connections.providers.trello') }) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trelloCardsError]);
 
   // De selectie volgt de getoonde week: bij het bladeren valt de oude keuze
   // buiten `weekDays`. Vandaag als die in de week zit, anders de maandag van die
@@ -116,23 +137,44 @@ export default function ProductivitySuiteView({
       .map(item => (item.key.startsWith('task:virtual:') ? { ...item, toggle: undefined } : item));
   }, [selectedDay, modules, onToggleTaskInDay, onToggleProjectSubgoal]);
 
-  // Generieke provider -> actie-map voor SourcesPanel (S07d): alleen een
-  // provider met een echte actie (op dit moment enkel Outlook) krijgt een
-  // entry, dus Trello/GitHub blijven ongemoeid zonder hardcoded providerlijst
-  // hier. `onRefresh` hergebruikt dezelfde handler als de oude knoppenbalk
-  // (import de eerste keer, daarna vernieuwen).
-  const sourceActions = useMemo(() => (
-    outlookConnected
-      ? {
-          outlook: {
-            onRefresh: onImportOrRefreshAgenda,
-            loading: agendaLoading,
-            shown: agendaShown,
-            lastSyncedAt: agendaLastSyncedAt,
-          },
-        }
-      : {}
-  ), [outlookConnected, onImportOrRefreshAgenda, agendaLoading, agendaShown, agendaLastSyncedAt]);
+  // Generieke provider -> actie-map voor SourcesPanel (S07d, uitgebreid in
+  // S08): alleen een provider met een echte actie krijgt een entry, dus
+  // GitHub blijft ongemoeid zonder hardcoded providerlijst hier. `onRefresh`
+  // hergebruikt dezelfde handler als de oude knoppenbalk (import de eerste
+  // keer, daarna vernieuwen). Trello heeft geen aparte "importeren"-stap
+  // (het aanvinken van een bord in `panel` IS de opt-in), dus `shown` is
+  // simpelweg "is er al een bord aangevinkt".
+  const trelloBoardsIncluded = Object.values(trelloBoardPrefs?.boards || {}).some(b => b?.include);
+  const sourceActions = useMemo(() => ({
+    ...(outlookConnected ? {
+      outlook: {
+        onRefresh: onImportOrRefreshAgenda,
+        loading: agendaLoading,
+        shown: agendaShown,
+        lastSyncedAt: agendaLastSyncedAt,
+      },
+    } : {}),
+    ...(trelloConnected ? {
+      trello: {
+        onRefresh: onRefreshTrelloCards,
+        loading: trelloCardsLoading,
+        shown: trelloBoardsIncluded,
+        lastSyncedAt: trelloLastSyncedAt,
+        panel: (
+          <TrelloBoardPicker
+            boardPrefs={trelloBoardPrefs}
+            onChangeBoardPrefs={onChangeTrelloBoardPrefs}
+            cacheBoards={trelloCacheBoards}
+            theme={theme}
+          />
+        ),
+      },
+    } : {}),
+  }), [
+    outlookConnected, onImportOrRefreshAgenda, agendaLoading, agendaShown, agendaLastSyncedAt,
+    trelloConnected, onRefreshTrelloCards, trelloCardsLoading, trelloBoardsIncluded, trelloLastSyncedAt,
+    trelloBoardPrefs, onChangeTrelloBoardPrefs, trelloCacheBoards, theme,
+  ]);
 
   return (
     <div className="space-y-4">

@@ -10,10 +10,14 @@ import { getLocale } from '../utils/dates';
 // CONNECTION_PROVIDERS beheer je kleur + "meedoen in de planner". Een
 // provider kan daarnaast een actieregel krijgen (vernieuw-knop + "bijgewerkt
 // om") via de generieke `sourceActions`-map (provider -> { onRefresh,
-// loading, shown, lastSyncedAt }); een provider zonder entry (Trello/GitHub,
-// nog niet echt gekoppeld) toont geen actieregel. Rendert de providerlijst
-// dynamisch, dus een nieuwe provider verschijnt vanzelf zonder aanpassing
-// hier — geen hardcoded providerlijst.
+// loading, shown, lastSyncedAt, panel }); een provider zonder entry (GitHub,
+// nog niet echt gekoppeld) toont geen actieregel. `panel` (S08, optioneel,
+// ReactNode) rendert onder die actieregel — de Trello-rij gebruikt dit voor
+// de bord-kiezer (TrelloBoardPicker). Labels zijn provider-agnostisch
+// (`planner.sources.*` met `{provider}`-interpolatie): geen provider-naam
+// hardcoded in de UI-strings. Rendert de providerlijst dynamisch, dus een
+// nieuwe provider verschijnt vanzelf zonder aanpassing hier — geen
+// hardcoded providerlijst.
 export default function SourcesPanel({
   connections = [],
   sourcePrefs = DEFAULT_SOURCE_PREFS,
@@ -139,8 +143,8 @@ function SourceRow({ provider, connection, pref, actions, onChange, onOpenConnec
               type="button"
               onClick={actions.onRefresh}
               disabled={actions.loading}
-              aria-label={t(actions.loading ? 'planner.outlook.loading' : 'planner.outlook.refresh')}
-              title={t(actions.loading ? 'planner.outlook.loading' : 'planner.outlook.refresh')}
+              aria-label={t(actions.loading ? 'planner.sources.loading' : 'planner.sources.refresh', { provider: providerLabel })}
+              title={t(actions.loading ? 'planner.sources.loading' : 'planner.sources.refresh', { provider: providerLabel })}
               className={`shrink-0 p-1.5 rounded transition ${theme.textMuted} ${theme.hover} disabled:opacity-60 disabled:cursor-not-allowed`}
             >
               {actions.loading
@@ -154,15 +158,17 @@ function SourceRow({ provider, connection, pref, actions, onChange, onOpenConnec
               type="button"
               onClick={actions.onRefresh}
               disabled={actions.loading}
-              aria-label={actions.loading ? t('planner.outlook.loading') : undefined}
+              aria-label={actions.loading ? t('planner.sources.loading', { provider: providerLabel }) : undefined}
               className={`flex items-center gap-1.5 text-xs font-medium shrink-0 ${theme.textMuted} hover:underline disabled:opacity-60 disabled:cursor-not-allowed`}
             >
               {actions.loading && <Loader2 className="w-3 h-3 animate-spin" />}
-              {t('planner.outlook.import')}
+              {t('planner.sources.import', { provider: providerLabel })}
             </button>
           )}
         </div>
       )}
+
+      {isConnected && actions?.panel}
     </div>
   );
 }

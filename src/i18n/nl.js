@@ -1652,12 +1652,6 @@ export default {
       excludeAria: '{title} niet meenemen in de planning',
       hideExcluded: 'Verberg afspraken die niet meetellen',
     },
-    outlook: {
-      import: 'Outlook-agenda importeren',
-      refresh: 'Outlook-agenda vernieuwen',
-      loading: 'Outlook-agenda laden…',
-      fetchFailed: 'Outlook-agenda ophalen is mislukt.',
-    },
     sources: {
       title: 'Koppelingen',
       hint: 'Kies per bron een kleur en of hij meetelt in de planner.',
@@ -1667,6 +1661,19 @@ export default {
       connectButton: 'Koppelen',
       lastSynced: 'Bijgewerkt om {time}',
       neverSynced: 'Nog niet bijgewerkt',
+      import: '{provider} importeren',
+      refresh: '{provider} vernieuwen',
+      loading: '{provider} laden…',
+      fetchFailed: '{provider} ophalen is mislukt.',
+    },
+    trello: {
+      boardsTitle: 'Trello-borden',
+      loadingBoards: 'Borden laden…',
+      fetchError: 'Kon Trello-borden niet ophalen.',
+      empty: 'Geen open Trello-borden gevonden.',
+      alwaysListAria: 'Altijd-lijst voor {name}',
+      alwaysListNone: 'Geen altijd-lijst',
+      cardsLoading: 'Kaarten laden…',
     },
     duration: {
       label: 'Duur (minuten)',

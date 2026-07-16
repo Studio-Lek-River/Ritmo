@@ -35,9 +35,12 @@ import ConnectionsSection from './components/ConnectionsSection';
 import OutlookOAuthReturn from './components/OutlookOAuthReturn';
 import useConnections from './hooks/useConnections';
 import useOutlookEvents from './hooks/useOutlookEvents';
+import useTrelloCards from './hooks/useTrelloCards';
 import { externalBlocksForDay } from './utils/outlookEvents';
 import { clearAgendaCache } from './utils/agendaCache';
 import { readAgendaSelection, writeAgendaSelection, clearAgendaSelection, pruneSelection } from './utils/agendaSelection';
+import { readTrelloBoardPrefs, writeTrelloBoardPrefs, clearTrelloBoardPrefs, includedBoardIds } from './utils/trelloBoardPrefs';
+import { clearTrelloCache } from './utils/trelloCache';
 import { DEFAULT_SOURCE_PREFS, getSourcePref } from './utils/sourcePrefs';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
@@ -1419,6 +1422,75 @@ export default function Ritmo() {
     }
   }, [agendaShown, refetchOutlookAgenda]);
 
+  // ---- Trello-borden (S08) --------------------------------------------------
+  // Hergebruikt de bestaande useConnections-instantie hierboven (geen tweede,
+  // zie de slice-spec) om ook de Trello-connectie af te leiden.
+  const trelloConnection = outlookConnectionState.connections.find(
+    c => c.provider === 'trello' && c.status === 'connected'
+  ) || null;
+  const trelloVisible = getSourcePref(sourcePrefs, 'trello').visible;
+
+  // Bordkeuze (welk bord telt mee, en welke lijst daarbinnen "altijd" is) is
+  // device-local (zie utils/trelloBoardPrefs.js) en overleeft dus geen sync,
+  // net als agendaSelection hierboven. Geseed uit opslag bij mount en telkens
+  // wanneer de connectie verandert (na opnieuw koppelen nooit andermans
+  // bordselectie hergebruiken, zie readTrelloBoardPrefs).
+  const [trelloBoardPrefs, setTrelloBoardPrefsState] = useState({ boards: {} });
+  useEffect(() => {
+    let cancelled = false;
+    readTrelloBoardPrefs(trelloConnection?.id).then(prefs => {
+      if (!cancelled) setTrelloBoardPrefsState(prefs);
+    });
+    return () => { cancelled = true; };
+  }, [trelloConnection?.id]);
+
+  // Setter die zowel de state als de opslag bijwerkt (zelfde vorm als
+  // `setSourcePrefs`: accepteert een updater-functie of een waarde).
+  const setTrelloBoardPrefs = useCallback((updater) => {
+    setTrelloBoardPrefsState(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      writeTrelloBoardPrefs({ connectionId: trelloConnection?.id, boards: next.boards });
+      return next;
+    });
+  }, [trelloConnection?.id]);
+
+  const trelloIncludedBoardIds = useMemo(
+    () => includedBoardIds(trelloBoardPrefs),
+    [trelloBoardPrefs]
+  );
+
+  // Mag Trello meedoen? Een nog-ladende koppelingsstatus telt als "ja"
+  // (zelfde reden als agendaActive hierboven: de cache-seed hoeft niet op het
+  // netwerk te wachten). De oog-toggle op de Trello-rij is de aan/uit-
+  // schakelaar voor heel Trello (zie de kernbeslissing in de slice-spec).
+  const trelloActive = trelloVisible && (outlookConnectionState.loading || !!trelloConnection);
+  const {
+    boards: trelloCacheBoards,
+    loading: trelloCardsLoading,
+    error: trelloCardsError,
+    lastSyncedAt: trelloLastSyncedAt,
+    refetch: refetchTrelloCards,
+  } = useTrelloCards({
+    active: trelloActive,
+    enabled: trelloActive && !!trelloConnection && trelloIncludedBoardIds.length > 0,
+    boardIds: trelloIncludedBoardIds,
+    connectionId: trelloConnection?.id,
+  });
+
+  // Geen wees-projecten van een verbroken koppeling (AC15): zowel de
+  // kaarten-cache als de bordkeuze gaan mee weg zodra deze instantie leert
+  // dat Trello niet meer verbonden is terwijl dat eerder wel zo was.
+  const wasTrelloConnectedRef = useRef(false);
+  useEffect(() => {
+    if (outlookConnectionState.loading) return;
+    if (wasTrelloConnectedRef.current && !trelloConnection) {
+      clearTrelloCache();
+      clearTrelloBoardPrefs();
+      setTrelloBoardPrefsState({ boards: {} });
+    }
+    wasTrelloConnectedRef.current = !!trelloConnection;
+  }, [trelloConnection, outlookConnectionState.loading]);
+
   // Welke agendapunten als bezette tijd meetellen bij "deel mijn dag in".
   // Opt-in (leeg = niets telt mee) en device-local, zie utils/agendaSelection.js
   // — daarom eigen state en niet in `settings` zoals `agendaShown`/`sourcePrefs`.
@@ -2129,6 +2201,14 @@ export default function Ritmo() {
             agendaError={outlookAgendaError}
             agendaLastSyncedAt={outlookLastSyncedAt}
             onImportOrRefreshAgenda={handleImportOrRefreshAgenda}
+            trelloConnected={!!trelloConnection}
+            trelloBoardPrefs={trelloBoardPrefs}
+            onChangeTrelloBoardPrefs={setTrelloBoardPrefs}
+            trelloCacheBoards={trelloCacheBoards}
+            trelloCardsLoading={trelloCardsLoading}
+            trelloCardsError={trelloCardsError}
+            trelloLastSyncedAt={trelloLastSyncedAt}
+            onRefreshTrelloCards={refetchTrelloCards}
             onOpenConnections={handleOpenConnections}
             onAddTask={addCustomTask}
             onAddSubgoal={addProjectSubgoal}
