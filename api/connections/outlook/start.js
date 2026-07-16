@@ -9,6 +9,7 @@ import {
   getServiceClient,
   missingOutlookEnv,
   signOAuthState,
+  ensureConnectionRow,
   MS_AUTHORIZE_URL,
   OUTLOOK_SCOPES,
 } from './_shared.js';
@@ -44,27 +45,10 @@ export default async function handler(req, res) {
   const accountId = userData.user.id;
 
   try {
-    const { data: existing, error: fetchError } = await supabase
-      .from('connections')
-      .select('id')
-      .eq('account_id', accountId)
-      .eq('provider', 'outlook')
-      .is('external_account', null)
-      .maybeSingle();
-
-    if (fetchError) {
-      console.error('connections/outlook/start fetch failed', fetchError);
+    const { error: ensureError } = await ensureConnectionRow(supabase, accountId, 'outlook');
+    if (ensureError) {
+      console.error('connections/outlook/start ensure row failed', ensureError);
       return res.status(500).json({ error: 'Kon koppeling niet voorbereiden', code: 'unexpected' });
-    }
-
-    if (!existing) {
-      const { error: insertError } = await supabase
-        .from('connections')
-        .insert({ account_id: accountId, provider: 'outlook', external_account: null });
-      if (insertError) {
-        console.error('connections/outlook/start insert failed', insertError);
-        return res.status(500).json({ error: 'Kon koppeling niet voorbereiden', code: 'unexpected' });
-      }
     }
 
     const state = signOAuthState({ accountId });

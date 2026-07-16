@@ -4,7 +4,9 @@
 // gebruiker plakt een key+token-paar (Poort-0-keuze, zie de slice-spec), dus
 // dit bestand bevat geen state-signing zoals de Outlook-variant, wel dezelfde
 // env-presence-check en een find-or-create voor de connections-rij.
-export { getBearerToken, getServiceClient } from '../_shared.js';
+import { getBearerToken, getServiceClient, ensureConnectionRow } from '../_shared.js';
+
+export { getBearerToken, getServiceClient };
 
 // TRELLO_API_KEY is server-only (nooit een VITE_-prefix, zie CLAUDE.md): de
 // key mag nooit in de client-bundel terechtkomen, dus start.js bouwt de
@@ -66,27 +68,12 @@ export function isTrelloRateLimited(bucket, key, { windowMs, max }) {
 // Poort-0: één Trello-account per gebruiker) of maakt de rij aan als hij nog
 // niet bestaat. Gebruikt door zowel start.js als token.js: token.js kan in
 // theorie los van start.js aangeroepen worden, dus moet zelf ook robuust
-// zijn tegen een ontbrekende rij.
+// zijn tegen een ontbrekende rij. Sinds S09 een dunne wrapper om de
+// provider-agnostische `ensureConnectionRow` (zie de refactor-commit in
+// docs/slices/S09-github-lezen.md) — bestaande imports (`ensureTrello
+// ConnectionRow` uit `./_shared.js`) blijven ongewijzigd werken.
 export async function ensureTrelloConnectionRow(supabase, accountId) {
-  const { data: existing, error: fetchError } = await supabase
-    .from('connections')
-    .select('id, status')
-    .eq('account_id', accountId)
-    .eq('provider', 'trello')
-    .is('external_account', null)
-    .maybeSingle();
-
-  if (fetchError) return { error: fetchError };
-  if (existing) return { connection: existing };
-
-  const { data: inserted, error: insertError } = await supabase
-    .from('connections')
-    .insert({ account_id: accountId, provider: 'trello', external_account: null })
-    .select('id, status')
-    .single();
-
-  if (insertError) return { error: insertError };
-  return { connection: inserted };
+  return ensureConnectionRow(supabase, accountId, 'trello');
 }
 
 // Haalt de verbonden Trello-connectie plus het token uit de Vault op.
