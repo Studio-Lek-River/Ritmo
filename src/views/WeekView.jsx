@@ -162,9 +162,14 @@ export default function WeekView({
     return map;
   }, [weekDays, modules, onToggleTask, onToggleProjectSubgoal]);
 
-  const columns = viewMode === 'dag'
-    ? (weekDays || []).filter(d => d.dateKey === selectedDateKey)
-    : (weekDays || []);
+  // Gememoiseerd omdat `agendaColumns` hieronder erop indexeert: de
+  // Dag-stand filtert en levert dus elke render een nieuwe array-identiteit,
+  // waardoor die memo anders nooit zou aanslaan.
+  const columns = useMemo(() => (
+    viewMode === 'dag'
+      ? (weekDays || []).filter(d => d.dateKey === selectedDateKey)
+      : (weekDays || [])
+  ), [viewMode, weekDays, selectedDateKey]);
 
   // Twee filters bepalen welke agendablokken in het rooster staan. Het oog uit
   // in het Koppelingen-blok (SourcesPanel) betekent "deze bron telt niet mee":
