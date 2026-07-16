@@ -55,23 +55,32 @@ voor de Outlook-koppeling staat in `api/connections/outlook/_shared.js`
 5. Trigger een nieuwe deploy zodat de env-vars actief zijn.
 6. Open de live site en doorloop de testchecklist in §4.
 
-## 4. Pad B — Lokaal met `vercel dev` (fallback)
+## 4. Pad B — Preview-deploy testen vóór de push
 
-Gebruik dit pad als er nog geen productie-deploy is, of om lokaal te debuggen.
+**Harde regel: server-secrets staan uitsluitend in het Vercel-dashboard, nooit op een lokale schijf.**
+Dat geldt voor alle server-only vars uit de tabel in §2 — `SUPABASE_SERVICE_ROLE_KEY`, `MS_CLIENT_SECRET`,
+`TRELLO_API_KEY`, `GITHUB_TOKEN`, `OAUTH_STATE_SECRET`. Daarom gebruiken we **`vercel env pull` en
+`vercel dev` niet**: die schrijven precies die secrets naar `.env.local`. Het lokale `.env.local` bevat
+alleen de twee publieke `VITE_`-vars, die sowieso in de client-bundel belanden.
 
-1. `npx vercel link` — koppelt de lokale map aan het Vercel-project.
-2. `npx vercel env pull` — haalt de env-vars uit het Vercel-dashboard naar een lokaal
-   `.env.local`-bestand (of zet ze handmatig lokaal, zie `.env.local.example`).
-3. `npx vercel dev` — serveert zowel de frontend als `api/**.js` op `http://localhost:3000`
-   (in tegenstelling tot kale Vite).
-4. Voeg in Azure een extra redirect-URI toe: `http://localhost:3000/api/connections/outlook/callback`.
-   Zet `MS_OAUTH_REDIRECT_URI` lokaal op exact die URL.
-5. Doorloop dezelfde testchecklist (§4 hieronder wordt hier bedoeld als "Testchecklist", zie
-   sectie eronder) op `http://localhost:3000`.
+Wil je een `api/`-wijziging testen vóórdat hij naar `main` gaat (Poort 2), gebruik dan een
+preview-deploy vanaf de CLI:
 
-**Waarschuwing:** een kale `npm run dev` (Vite-dev-server op poort 5173) serveert `api/` niet.
-Outlook "Verbinden" geeft dan een 404 op `/api/connections/outlook/start`. Voor de volledige
-OAuth-flow is `vercel dev` (of een echte productie-deploy) verplicht.
+1. `npx vercel link` — eenmalig; koppelt de map aan het Vercel-project. Schrijft alleen een project- en
+   org-id naar `.vercel/` (geen secrets, en `.vercel` staat in `.gitignore`).
+2. `npx vercel` — uploadt de lokale werkmap, bouwt hem op Vercel met de **Preview**-env-vars, en geeft
+   een preview-URL terug. Geen git-push nodig, geen secrets lokaal.
+3. Doorloop de testchecklist hieronder op die preview-URL.
+4. Na goedkeuring: pushen naar `main` (semantic-release + productie-deploy volgen automatisch), of
+   `npx vercel --prod` voor een directe productie-deploy.
+
+Voor Outlook heeft een preview-URL een eigen host, dus de OAuth-redirect werkt daar alleen als je die
+host óók als redirect-URI in Azure registreert en `MS_OAUTH_REDIRECT_URI` erop zet. Trello heeft dat
+probleem niet: de key+token-flow kent geen redirect-URI, dus die werkt op elke preview-URL meteen.
+
+**Waarschuwing:** een kale `npm run dev` (Vite-dev-server op poort 5173) serveert `api/` niet. Een
+"Verbinden"-knop geeft dan een 404 op `/api/connections/...`. Voor alles wat de `api/`-laag raakt is een
+preview- of productie-deploy verplicht; `npm run dev` blijft prima voor puur front-end werk.
 
 ## Testchecklist (end-to-end)
 
