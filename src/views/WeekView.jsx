@@ -20,6 +20,7 @@ const HOUR_START = 7;
 const HOUR_END = 22;
 const ROW_HEIGHT = 64; // px per uur
 const HEADER_HEIGHT = 44; // px
+const MIN_BLOCK_HEIGHT = 16; // px — ondergrens zodat een blok altijd klikbaar blijft
 
 // Eigen dataTransfer-type voor het slepen van een pending (propose/concept)
 // blok, los van de bestaande "text/plain"-payload (dragPayload.js) van echte
@@ -49,15 +50,27 @@ function agendaDurationMinutes(start, end) {
 // `duration` (minuten) bepaalt de bloks-hoogte; ontbrekende/ongeldige duur
 // valt terug op `DEFAULT_BLOCK_MINUTES` (ook de drag-snap-granulariteit,
 // hieronder ongewijzigd).
+//
+// Begin én eind worden op het zichtbare venster (HOUR_START-HOUR_END) geklemd,
+// niet alleen het begin: een agendablok kan langer duren dan het venster toont
+// (een meerdaagse Outlook-afspraak wordt per dag op 00:00-23:59 geknipt, zie
+// utils/outlookEvents.js). Zonder de eind-klem leverde dat een negatieve `top`
+// en een hoogte die de hele kolom overdekte — het blok liep dan zichtbaar door
+// het rooster heen. MIN_BLOCK_HEIGHT houdt een blok dat maar net binnen het
+// venster valt aanklikbaar in plaats van tot 0px samengevallen.
 function blockStyle(time, duration) {
   const rangeStart = HOUR_START * 60;
   const rangeEnd = (HOUR_END + 1) * 60;
   const minutes = timeToMinutesLocal(time) ?? rangeStart;
   const durationMinutes = Number.isFinite(duration) && duration > 0 ? duration : DEFAULT_BLOCK_MINUTES;
-  const clamped = Math.min(Math.max(minutes, rangeStart), rangeEnd - durationMinutes);
+  const start = Math.min(Math.max(minutes, rangeStart), rangeEnd);
+  const end = Math.min(Math.max(minutes + durationMinutes, start), rangeEnd);
+  const gridHeight = ((rangeEnd - rangeStart) / 60) * ROW_HEIGHT;
+  const height = Math.max(((end - start) / 60) * ROW_HEIGHT, MIN_BLOCK_HEIGHT);
+  const top = ((start - rangeStart) / 60) * ROW_HEIGHT;
   return {
-    top: ((clamped - rangeStart) / 60) * ROW_HEIGHT,
-    height: (durationMinutes / 60) * ROW_HEIGHT,
+    top: Math.min(top, gridHeight - height),
+    height,
   };
 }
 
