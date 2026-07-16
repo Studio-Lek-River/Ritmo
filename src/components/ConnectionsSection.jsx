@@ -4,8 +4,9 @@
 // 'connected'), niet bij het enkel bestaan van een rij (S07b, issue #110).
 // `handleConnect` is een switch per provider: Outlook start zijn eigen
 // OAuth-redirect (S07), Trello opent een twee-staps dialoog (S08,
-// TrelloConnectDialog, key+token-flow), GitHub valt nog terug op de generieke
-// connect-stub (S09).
+// TrelloConnectDialog, key+token-flow). GitHub heeft in deze opruiming nog
+// geen eigen tak (die landt in de S09-feat-commit); de dode connect-stub die
+// hij tot dan toe gebruikte is hier al weg.
 // Alleen gerenderd door de aanroeper wanneer er een account is en sync aan
 // staat (opt-in, principe 2).
 import { useState } from 'react';
@@ -31,7 +32,6 @@ export const ERROR_KEYS = {
   unauthenticated: 'connections.errors.unauthenticated',
   not_found: 'connections.errors.notFound',
   disconnect_failed: 'connections.errors.disconnectFailed',
-  not_implemented: 'connections.errors.notImplemented',
   server_config: 'connections.errors.serverConfig',
   invalid_request: 'connections.errors.unexpected',
   unexpected: 'connections.errors.unexpected',
@@ -53,11 +53,11 @@ export const ERROR_KEYS = {
 export default function ConnectionsSection({ theme, accountId }) {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const { connections, busyId, error, disconnect, connect, refresh } = useConnections(accountId);
-  // Outlook start zijn eigen OAuth-redirect, Trello een eigen dialoog
-  // (i.p.v. de generieke connect-stub) en hebben dus provider-agnostische
-  // busy/error-state; de hook's `connect`/`busyId` blijven voor GitHub, dat
-  // nog steeds de stub gebruikt (S09).
+  const { connections, busyId, error, disconnect, refresh } = useConnections(accountId);
+  // Outlook start zijn eigen OAuth-redirect, Trello een eigen dialoog: beide
+  // hebben dus provider-agnostische busy/error-state buiten de hook om. Een
+  // provider zonder eigen `case` in `handleConnect` doet simpelweg niets bij
+  // een klik (`busyId` blijft voorbehouden aan `disconnect` hierboven).
   const [connectBusy, setConnectBusy] = useState(false);
   const [connectError, setConnectError] = useState(null);
   const [showTrelloDialog, setShowTrelloDialog] = useState(false);
@@ -81,7 +81,7 @@ export default function ConnectionsSection({ theme, accountId }) {
         setShowTrelloDialog(true);
         return;
       default:
-        connect(provider);
+        return;
     }
   };
 
@@ -105,7 +105,7 @@ export default function ConnectionsSection({ theme, accountId }) {
           const { Icon, color } = STATUS_ICON[status] || STATUS_ICON.disconnected;
           const busy = provider === 'outlook'
             ? connectBusy
-            : (busyId === provider || (connection && busyId === connection.id));
+            : !!(connection && busyId === connection.id);
 
           return (
             <div

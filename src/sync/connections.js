@@ -63,10 +63,6 @@ export async function disconnectConnection(connectionId) {
   return callConnectionsApi('disconnect', { connectionId });
 }
 
-export async function connectProvider(provider) {
-  return callConnectionsApi('connect', { provider });
-}
-
 // Start de echte Outlook-OAuth-redirect (S07): haalt de authorize-URL op
 // (server-side state, zie api/connections/outlook/start.js) en navigeert de
 // hele pagina naar Microsoft (Poort-0-keuze: volledige redirect, geen popup).
