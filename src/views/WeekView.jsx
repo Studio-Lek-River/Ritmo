@@ -295,11 +295,11 @@ export default function WeekView({
                         key={`agenda:${block.id}`}
                         style={{ top, height, ...style }}
                         title={block.title}
-                        className={`absolute left-1 right-1 px-1.5 py-1 text-[11px] overflow-hidden ${
+                        className={`absolute left-1 right-1 px-1.5 py-1 text-[11px] overflow-hidden flex flex-col gap-0.5 ${
                           included ? '' : 'opacity-60'
                         } ${className}`}
                       >
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-start gap-1">
                           <button
                             type="button"
                             onClick={() => onToggleAgendaBlock?.(block.id)}
@@ -307,15 +307,23 @@ export default function WeekView({
                             aria-pressed={included}
                             aria-label={t(included ? 'planner.agenda.excludeAria' : 'planner.agenda.includeAria', { title: block.title })}
                             title={t(included ? 'planner.agenda.excludeAria' : 'planner.agenda.includeAria', { title: block.title })}
-                            className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
+                            className={`w-3.5 h-3.5 mt-px rounded-full border flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
                               included ? `${getColorClasses(getSourcePref(sourcePrefs, block.source?.provider).color).bar} border-transparent` : `${theme.border} bg-transparent`
                             }`}
                           >
                             {included && <Check className="w-2.5 h-2.5 text-white" />}
                           </button>
-                          {Icon && <Icon className={`w-3 h-3 shrink-0 ${iconClassName}`} />}
+                          {Icon && <Icon className={`w-3 h-3 mt-px shrink-0 ${iconClassName}`} />}
                           <span className="truncate flex-1">{block.title}</span>
                         </div>
+                        {/* Titel bovenaan, tijd eronder. De tijdregel valt weg zodra
+                            het blok te laag is (< 30 min), anders drukt hij de titel
+                            weg. Puur cijfers, dus geen i18n-key nodig. */}
+                        {height >= 34 && (
+                          <span className={`text-[10px] truncate ${theme.textMuted}`}>
+                            {block.start} - {block.end}
+                          </span>
+                        )}
                       </div>
                     );
                   })}
