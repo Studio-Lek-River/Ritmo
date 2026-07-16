@@ -292,7 +292,7 @@ export default function WeekView({
                         key={`agenda:${block.id}`}
                         style={{ top, height, ...style }}
                         title={block.title}
-                        className={`absolute left-1 right-1 r-radius-control px-1.5 py-1 text-[11px] overflow-hidden flex items-center gap-1 ${className}`}
+                        className={`absolute left-1 right-1 px-1.5 py-1 text-[11px] overflow-hidden flex items-center gap-1 ${className}`}
                       >
                         {Icon && <Icon className={`w-3 h-3 shrink-0 ${iconClassName}`} />}
                         <span className="truncate block flex-1">{block.title}</span>
@@ -311,7 +311,7 @@ export default function WeekView({
                           e.dataTransfer.setData('text/plain', encodeDragPayload(day.dateKey, item.key));
                         }}
                         style={{ top, height, borderLeft: `4px solid ${getColorHex(item.color)}` }}
-                        className={`absolute left-1 right-1 r-block r-radius-control px-1.5 py-1 text-[11px] overflow-hidden cursor-grab active:cursor-grabbing ${theme.text}`}
+                        className={`absolute left-1 right-1 r-block px-1.5 py-1 text-[11px] overflow-hidden cursor-grab active:cursor-grabbing ${theme.text}`}
                         title={item.label}
                       >
                         <div className="flex items-center gap-1">
@@ -354,7 +354,7 @@ export default function WeekView({
                           e.dataTransfer.setData(PENDING_DRAG_MIME, item.key);
                         } : undefined}
                         style={{ top, height, borderLeft: `4px solid ${getColorHex(item.color)}` }}
-                        className={`absolute left-1 right-1 r-radius-control px-1.5 py-1 text-[11px] overflow-hidden ${
+                        className={`absolute left-1 right-1 px-1.5 py-1 text-[11px] overflow-hidden ${
                           isConcept ? 'r-block-draft cursor-grab active:cursor-grabbing' : 'r-block-proposal'
                         }`}
                         title={item.label}

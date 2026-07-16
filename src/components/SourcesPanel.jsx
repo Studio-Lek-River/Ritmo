@@ -72,6 +72,7 @@ function SourceRow({ provider, connection, pref, actions, onChange, onOpenConnec
   const Icon = SOURCE_ICONS[provider];
   const c = getColorClasses(isConnected ? pref.color : undefined);
   const providerLabel = t(`connections.providers.${provider}`);
+  const syncedTime = actions?.lastSyncedAt ? formatSyncTime(actions.lastSyncedAt) : null;
 
   return (
     <div className={`${theme.cardSecondary} ${theme.radiusControl} ${theme.padRow} space-y-2 ${isConnected ? '' : 'opacity-60'}`}>
@@ -126,8 +127,8 @@ function SourceRow({ provider, connection, pref, actions, onChange, onOpenConnec
       {isConnected && actions && (
         <div className={`flex items-center justify-between gap-2 pt-2 border-t ${theme.border}`}>
           <span className={`text-xs ${theme.textMuted}`}>
-            {actions.lastSyncedAt && formatSyncTime(actions.lastSyncedAt)
-              ? t('planner.sources.lastSynced', { time: formatSyncTime(actions.lastSyncedAt) })
+            {syncedTime
+              ? t('planner.sources.lastSynced', { time: syncedTime })
               : t('planner.sources.neverSynced')}
           </span>
           <button
