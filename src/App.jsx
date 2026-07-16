@@ -1373,15 +1373,15 @@ export default function Ritmo() {
   // `planPrefs`/`sourcePrefs`, en gedeclareerd naast die twee), zodat een
   // eenmaal geïmporteerde agenda niet elke sessie opnieuw een klik vraagt; een
   // ontbrekende key valt terug op `false`, dus geen migratie nodig.
-  const outlookConnectionState = useConnections(currentUser?.id);
-  const outlookConnection = outlookConnectionState.connections.find(
+  const connectionState = useConnections(currentUser?.id);
+  const outlookConnection = connectionState.connections.find(
     c => c.provider === 'outlook' && c.status === 'connected'
   ) || null;
   // Mag de agenda meedoen? Een nog-ladende koppelingsstatus telt als "ja", zodat
   // de cache-seed bij een herlaad niet op het netwerk hoeft te wachten; een
   // uitsluitsel "niet verbonden" zet hem uit en maakt daarmee `eventsByDate`
   // leeg — de enige plek waar dat geregeld hoeft te worden.
-  const agendaActive = agendaShown && (outlookConnectionState.loading || !!outlookConnection);
+  const agendaActive = agendaShown && (connectionState.loading || !!outlookConnection);
   const {
     eventsByDate: outlookEventsByDate,
     loading: outlookAgendaLoading,
@@ -1403,7 +1403,7 @@ export default function Ritmo() {
   // "verbroken" — anders zou een tijdelijke laad-hik al de cache wissen.
   const wasOutlookConnectedRef = useRef(false);
   useEffect(() => {
-    if (outlookConnectionState.loading) return;
+    if (connectionState.loading) return;
     if (wasOutlookConnectedRef.current && !outlookConnection) {
       clearAgendaCache();
       // De meenemen-selectie hoort bij de agendadata en gaat dus mee weg: geen
@@ -1413,7 +1413,7 @@ export default function Ritmo() {
       setAgendaShown(false);
     }
     wasOutlookConnectedRef.current = !!outlookConnection;
-  }, [outlookConnection, outlookConnectionState.loading]);
+  }, [outlookConnection, connectionState.loading]);
 
   const handleImportOrRefreshAgenda = useCallback(() => {
     if (!agendaShown) {
@@ -1426,7 +1426,7 @@ export default function Ritmo() {
   // ---- Trello-borden (S08) --------------------------------------------------
   // Hergebruikt de bestaande useConnections-instantie hierboven (geen tweede,
   // zie de slice-spec) om ook de Trello-connectie af te leiden.
-  const trelloConnection = outlookConnectionState.connections.find(
+  const trelloConnection = connectionState.connections.find(
     c => c.provider === 'trello' && c.status === 'connected'
   ) || null;
   const trelloVisible = getSourcePref(sourcePrefs, 'trello').visible;
@@ -1464,7 +1464,7 @@ export default function Ritmo() {
   // (zelfde reden als agendaActive hierboven: de cache-seed hoeft niet op het
   // netwerk te wachten). De oog-toggle op de Trello-rij is de aan/uit-
   // schakelaar voor heel Trello (zie de kernbeslissing in de slice-spec).
-  const trelloActive = trelloVisible && (outlookConnectionState.loading || !!trelloConnection);
+  const trelloActive = trelloVisible && (connectionState.loading || !!trelloConnection);
   const {
     boards: trelloCacheBoards,
     loading: trelloCardsLoading,
@@ -1483,14 +1483,14 @@ export default function Ritmo() {
   // dat Trello niet meer verbonden is terwijl dat eerder wel zo was.
   const wasTrelloConnectedRef = useRef(false);
   useEffect(() => {
-    if (outlookConnectionState.loading) return;
+    if (connectionState.loading) return;
     if (wasTrelloConnectedRef.current && !trelloConnection) {
       clearTrelloCache();
       clearTrelloBoardPrefs();
       setTrelloBoardPrefsState({ boards: {} });
     }
     wasTrelloConnectedRef.current = !!trelloConnection;
-  }, [trelloConnection, outlookConnectionState.loading]);
+  }, [trelloConnection, connectionState.loading]);
 
   // Afgeleide Trello-projects-modules (de kernbeslissing in de slice-spec):
   // leven alleen in het geheugen, nooit in `modules`/settings, dus
@@ -2020,7 +2020,7 @@ export default function Ritmo() {
     <ToastProvider>
     <div className={`min-h-screen ${theme.bg} p-4 transition-colors duration-300 relative overflow-hidden`}>
       <Toast theme={theme} />
-      <OutlookOAuthReturn onConnected={outlookConnectionState.refresh} />
+      <OutlookOAuthReturn onConnected={connectionState.refresh} />
       <SyncConflictDialog
         open={Boolean(pendingConflicts && pendingConflicts.length > 0)}
         conflicts={pendingConflicts || []}
@@ -2224,7 +2224,7 @@ export default function Ritmo() {
             includedAgendaIds={agendaSelection}
             onToggleAgendaBlock={handleToggleAgendaBlock}
             outlookConnected={!!outlookConnection}
-            connections={outlookConnectionState.connections}
+            connections={connectionState.connections}
             sourcePrefs={sourcePrefs}
             setSourcePrefs={setSourcePrefs}
             agendaShown={agendaShown}
@@ -2314,7 +2314,7 @@ export default function Ritmo() {
             // Instellingen → Account: een verbreken daar gebeurt via een
             // eigen useConnections-instantie (ConnectionsSection) en bereikt
             // deze instantie anders pas na een volledige herlaad (S07d).
-            outlookConnectionState.refresh();
+            connectionState.refresh();
           }}
           initialTab={settingsInitialTab}
           initialHelp={openSettingsToHelp}
