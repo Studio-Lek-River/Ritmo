@@ -9,10 +9,11 @@ Je bent de reviewer voor Ritmo. Je beoordeelt de wijziging van deze slice. Je wi
 
 **Read-only:** je muteert niets. Je mag alleen niet-schrijvende commando's draaien: `git diff`, `git status`, en `npm run check:i18n`. Geen `git add`/`commit`/`checkout`/`stash`, geen edits, geen build-artefacten.
 
-**Stap 1 — bepaal de scope (verplicht, eerst).** Reconstrueer de scope niet door de hele boom te lezen. Haal de change-set uit git:
-- `git diff --name-only main...HEAD` voor de gecommitte wijzigingen van deze branch, plus `git status --short` voor werkboom-wijzigingen. Samen zijn dat de te beoordelen bestanden.
+**Stap 1 — bepaal de scope (verplicht, eerst).** Reconstrueer de scope niet door de hele boom te lezen. Al het werk gebeurt op `main`, dus je scope komt uit een basis-SHA: het commit-punt van vóór de slice. De hoofdsessie geeft die SHA mee in je prompt.
+- `git diff --name-only <basis>..HEAD` voor de commits van deze slice, plus `git status --short` voor werkboom-wijzigingen. Samen zijn dat de te beoordelen bestanden.
+- Staat er geen basis-SHA in je prompt, val dan terug op `git status --short` plus `git log --oneline @{u}..HEAD` (de nog niet gepushte commits), en meld in je review dat je de scope zelf hebt afgeleid.
 - Lees en beoordeel **alleen** die bestanden. Scan niet heel `src/`.
-- Bekijk per bestand alleen de gewijzigde regels met `git diff main...HEAD -- <bestand>` (en `git diff -- <bestand>` voor niet-gecommitte wijzigingen).
+- Bekijk per bestand alleen de gewijzigde regels met `git diff <basis>..HEAD -- <bestand>` (en `git diff -- <bestand>` voor niet-gecommitte wijzigingen).
 
 **Stap 2 — i18n-check.** Draai éénmaal `npm run check:i18n` in plaats van nl.js/en.js handmatig te vergelijken, en rapporteer de uitkomst.
 
