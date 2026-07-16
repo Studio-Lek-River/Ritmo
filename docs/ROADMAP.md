@@ -53,7 +53,7 @@ De open slices lopen als één doorlopende reeks in bouwvolgorde. De volgende te
 | S05 | #98 | Todo | Lokale dag-indeler + drie standen |
 | S06 | #99 | Todo | Afstem-voorkeuren |
 | S07 | #36 | Todo | Outlook lezen |
-| S08 | #37 | Todo | Trello lezen |
+| S08 | #37 | KLAAR | Trello lezen |
 | S09 | #38 | Todo | GitHub lezen |
 | S10 | #39 | Todo | Vandaag-feed |
 | S11 | #40 | Todo | Deel mijn dag in |
