@@ -5,7 +5,7 @@
 // nooit in de browser-bundel terecht.
 import { getBearerToken, getServiceClient } from './_shared.js';
 import { TRELLO_API_BASE } from './trello/_shared.js';
-import { GITHUB_API_BASE } from './github/_shared.js';
+import { GITHUB_API_BASE, GITHUB_STATIC_HEADERS } from './github/_shared.js';
 
 // Re-geëxporteerd voor bestaande imports elders in de codebase
 // (`getBearerToken` uit `disconnect.js`); de implementatie zelf leeft sinds
@@ -81,10 +81,8 @@ async function revokeGithubToken(supabase, connectionId) {
       method: 'DELETE',
       headers: {
         Authorization: `Basic ${basicAuth}`,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
         'Content-Type': 'application/json',
-        'User-Agent': 'Ritmo-connections',
+        ...GITHUB_STATIC_HEADERS,
       },
       body: JSON.stringify({ access_token: accessToken }),
     });

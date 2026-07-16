@@ -28,15 +28,20 @@ function dueToDeadline(dueOn) {
 }
 
 function buildSubgoal(issue) {
+  const isOpen = issue.state === 'open';
   return {
     id: `github:issue:${issue.id}`,
     label: `#${issue.number} ${issue.title}`,
-    completed: issue.state === 'closed',
-    // Ontwerppunt 2 in de slice-spec: alleen open issues zijn planbaar.
-    // `freeBlock: true` op alles zou gesloten issues ook laten inplannen (de
-    // planner-gate kijkt niet naar `completed`).
-    ...(issue.state === 'open' ? { freeBlock: true } : {}),
-    deadline: dueToDeadline(issue.dueOn),
+    completed: !isOpen,
+    // Ontwerppunt 2 in de slice-spec: alleen open issues zijn planbaar
+    // (AC5: gesloten issues worden NOOIT ingepland). De planner-gate
+    // (App.jsx) en de Vandaag-feed (dayTimeline.js) laten iets door zodra
+    // `freeBlock` óf `deadline === vandaag` waar is en kijken zelf niet naar
+    // `completed` — dus `deadline` mag hier net zo min als `freeBlock` op een
+    // gesloten issue staan, anders komt een gesloten issue met een
+    // milestone die vandaag vervalt tóch als kandidaat binnen. Beide velden
+    // blijven daarom samen weg bij een gesloten issue.
+    ...(isOpen ? { freeBlock: true, deadline: dueToDeadline(issue.dueOn) } : {}),
     autoPlan: true,
     grade: null,
     url: issue.url || null,

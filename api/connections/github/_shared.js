@@ -42,15 +42,22 @@ export const GITHUB_API_BASE = 'https://api.github.com';
 // wijziging is.
 export const GITHUB_SCOPES = 'repo read:user';
 
-// Headers-set voor elke GitHub-call (hergebruikt uit api/feedback.js, zie
-// "Eén correctie op de issue-tekst" in de slice-spec — de auth zelf is NIET
-// hergebruikt, die gaat hier per gebruiker via de Vault).
+// De drie statische headers die élke GitHub-call meestuurt, ongeacht het
+// auth-schema (Bearer voor de gewone endpoints, Basic voor de grant-revoke in
+// disconnect.js) — één plek zodat ze niet per aanroeper opnieuw worden
+// getypt (hergebruikt uit api/feedback.js, zie "Eén correctie op de
+// issue-tekst" in de slice-spec — de auth zelf is NIET hergebruikt, die gaat
+// hier per gebruiker via de Vault).
+export const GITHUB_STATIC_HEADERS = {
+  Accept: 'application/vnd.github+json',
+  'X-GitHub-Api-Version': '2022-11-28',
+  'User-Agent': 'Ritmo-connections',
+};
+
 export function githubHeaders(token) {
   return {
     Authorization: `Bearer ${token}`,
-    Accept: 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28',
-    'User-Agent': 'Ritmo-connections',
+    ...GITHUB_STATIC_HEADERS,
   };
 }
 
