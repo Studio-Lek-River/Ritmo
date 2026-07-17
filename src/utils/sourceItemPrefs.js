@@ -89,8 +89,12 @@ export function withItemOverride(prefs, subgoalId, patch) {
   const cleaned = {};
   if (merged.duration) cleaned.duration = merged.duration;
   if (merged.dateKey) cleaned.dateKey = merged.dateKey;
-  // Een tijd zonder dag-binding kan het rooster niet plaatsen (het zou op elke
-  // dag verschijnen), dus die bewaren we niet los.
+  // Een tijd hoort altijd bij een dag: zonder binding kan het rooster hem niet
+  // plaatsen (het item zou op elke dag verschijnen), dus een losse tijd wordt
+  // niet bewaard. Elke huidige schrijver geeft `dateKey` en `time` samen mee
+  // (moveItemToDay is de enige weg naar binnen). Wie hier ooit een "alleen de
+  // tijd wijzigen"-actie aan hangt moet de dag dus meegeven, anders verdwijnt
+  // de tijd stil.
   if (merged.dateKey && merged.time) cleaned.time = merged.time;
 
   const next = { ...(prefs || {}) };
@@ -115,9 +119,11 @@ export function clearOverridesWithPrefix(prefs, prefix) {
 // kaart -> subgoal). Alleen bedoeld voor bron-modules; lokale modules dragen
 // hun duur/tijd op het item zelf.
 //
-// De identity-fast-path is functioneel, niet cosmetisch: zonder hem levert
-// elke render een nieuwe array op, wat de memo-identiteit van `allModules`
-// breekt en daarmee die van `buildPlanInputs`.
+// De vroege return houdt het verreweg meest voorkomende geval (niemand heeft
+// ooit iets aangepast) gratis: zonder hem zou elke render een nieuwe array met
+// nieuwe objecten opleveren, wat de memo-identiteit van `allModules` breekt en
+// daarmee die van `buildPlanInputs`. Zodra er wél een override is bouwt de map
+// hoe dan ook nieuwe objecten; de useMemo in App.jsx vangt dat af.
 //
 // Conditionele spread (niet `duration: o.duration`) zodat een ontbrekende
 // waarde het veld weglaat in plaats van het op `undefined` te zetten —

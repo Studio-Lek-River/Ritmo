@@ -185,10 +185,6 @@ function PoolItemCard({
   // SourcesPanel/WeekView (SOURCE_ICONS, één mapping, geen tweede kopie).
   const SourceIcon = item.source ? SOURCE_ICONS[item.source.provider] : null;
   const providerLabel = item.source ? t(`connections.providers.${item.source.provider}`) : '';
-  // Een bronkaart zonder url heeft geen enkele menu-actie (geen tijd/dag-
-  // acties voor een gekoppelde bron, en niets om te openen): de trigger dan
-  // helemaal verbergen in plaats van een lege popover te tonen. De kaart
-  // blijft gewoon sleepbaar en afvinkbaar; alleen de menu-knop vervalt.
   // De duur is alleen bewerkbaar waar er een record is om op te schrijven. Een
   // bronkaart heeft dat sinds sourceItemPrefs.js wél (een override-map naast
   // de afgeleide data), maar een nog niet gematerialiseerde recurring-instantie
