@@ -1,11 +1,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { genId } from '../utils/genId';
 
 const ToastContext = createContext(null);
 
 // Maximum aantal gelijktijdige toasts. Bij een vierde verdwijnt de oudste.
 const MAX_TOASTS = 3;
-
-let nextToastId = 0;
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
@@ -25,7 +24,7 @@ export function ToastProvider({ children }) {
   }, [clearTimer]);
 
   const showToast = useCallback(({ message, actionLabel, onAction, duration = 5000 }) => {
-    const id = ++nextToastId;
+    const id = genId('toast');
     const timer = setTimeout(() => {
       timersRef.current.delete(id);
       setToasts((prev) => prev.filter((t) => t.id !== id));
