@@ -2811,6 +2811,11 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
   const showUndoToast = useUndoToast();
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [taskDraft, setTaskDraft] = useState('');
+  // Zie de gelijknamige refs in TaskListPanel voor de reden: ze voorkomen dat
+  // een blur die na Escape of na Enter alsnog vuurt (Escape-dan-blur-race)
+  // de bewerkte tekst alsnog opslaat.
+  const justCancelledRef = useRef(false);
+  const editSessionRef = useRef(null);
   const modName = resolveModuleName(mod, t);
   const editButton = onEdit ? (
     <button
@@ -2829,18 +2834,43 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
   // Alleen relevant voor het tasks-blok hieronder, maar hier gedeclareerd
   // omdat hooks niet na een conditionele return mogen komen.
   const startEditTask = (task) => {
+    justCancelledRef.current = false;
+    editSessionRef.current = task.id;
     setEditingTaskId(task.id);
     setTaskDraft(task.text);
   };
   const commitEditTask = (id) => {
+    if (justCancelledRef.current) {
+      justCancelledRef.current = false;
+      return;
+    }
+    if (editSessionRef.current !== id) return;
+    editSessionRef.current = null;
     setTaskText?.(id, taskDraft);
     setEditingTaskId(null);
   };
-  const cancelEditTask = () => setEditingTaskId(null);
+  const cancelEditTask = () => {
+    justCancelledRef.current = true;
+    editSessionRef.current = null;
+    setEditingTaskId(null);
+    setTaskDraft('');
+  };
   const handleDeleteTask = (task) => {
     deleteTask?.(task.id);
     showUndoToast(t('toast.taskDeleted'), () => restoreTask?.(task));
   };
+
+  // Nice-to-have (V04-review): editingTaskId/taskDraft overleven een
+  // dag-navigatie omdat ModuleRenderer op mod.id gekeyed is, niet op de dag.
+  // Zodra de dag niet meer bewerkbaar is (bv. terugbladeren), sluit een
+  // eventueel openstaande inline-edit zichzelf af zonder op te slaan.
+  useEffect(() => {
+    if (editable) return;
+    justCancelledRef.current = false;
+    editSessionRef.current = null;
+    setEditingTaskId(null);
+    setTaskDraft('');
+  }, [editable]);
 
   if (mod.type === 'checklist') {
     return (

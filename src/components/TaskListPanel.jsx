@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Check, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { useUndoToast } from '../hooks/useUndoToast';
@@ -40,6 +40,15 @@ export default function TaskListPanel({
   const [priority, setPriority] = useState(DEFAULT_PRIORITY);
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [taskDraft, setTaskDraft] = useState('');
+  // Escape verwijdert de input terwijl hij focus heeft; sommige browsers
+  // vuren daarna alsnog een blur-event op de node die al aan het
+  // wegrenderen is, en die blur zou zonder deze vlag alsnog opslaan (de
+  // Escape-dan-blur-race). `editSessionRef` volgt welke taak-id nog actief
+  // bewerkt wordt buiten React-state om (state is stale in de closure van
+  // een blur-handler die al vastligt): commitEditTask negeert een tweede
+  // aanroep voor een sessie die al gesloten is (via Enter of Escape).
+  const justCancelledRef = useRef(false);
+  const editSessionRef = useRef(null);
   const c = getColorClasses(color);
 
   const submit = () => {
@@ -55,14 +64,27 @@ export default function TaskListPanel({
   };
 
   const startEditTask = (task) => {
+    justCancelledRef.current = false;
+    editSessionRef.current = task.id;
     setEditingTaskId(task.id);
     setTaskDraft(task.text);
   };
   const commitEditTask = (id) => {
+    if (justCancelledRef.current) {
+      justCancelledRef.current = false;
+      return;
+    }
+    if (editSessionRef.current !== id) return;
+    editSessionRef.current = null;
     onSetTaskText?.(id, taskDraft);
     setEditingTaskId(null);
   };
-  const cancelEditTask = () => setEditingTaskId(null);
+  const cancelEditTask = () => {
+    justCancelledRef.current = true;
+    editSessionRef.current = null;
+    setEditingTaskId(null);
+    setTaskDraft('');
+  };
 
   // Undo-flow voor V04 (#127): snapshot het task-object dat we al renderen
   // vóórdat het verdwijnt, roep de raw delete aan (regelt de skip al sinds
