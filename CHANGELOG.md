@@ -1,3 +1,10 @@
+# [0.69.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.68.0...v0.69.0) (2026-07-17)
+
+
+### Features
+
+* **settings:** terugkerende taak - tekst en dagen bewerkbaar, verwijderen met undo ([4522720](https://github.com/Studio-Lek-River/Ritmo/commit/4522720922e51bce66458e0bc787e0f91a9253d1))
+
 # [0.68.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.67.2...v0.68.0) (2026-07-17)
 
 
