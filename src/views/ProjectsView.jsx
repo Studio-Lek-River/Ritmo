@@ -7,7 +7,9 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import TimeInput from '../components/TimeInput';
 import DurationInput from '../components/DurationInput';
 import DagdeelSelect from '../components/DagdeelSelect';
+import PrioritySelect from '../components/PrioritySelect';
 import { getColorClasses } from '../utils/colors';
+import { DEFAULT_PRIORITY } from '../utils/dayTimeline';
 import { SOURCE_ICONS } from '../utils/sourcePrefs';
 import {
   projectProgress,
@@ -59,6 +61,7 @@ export default function ProjectsView({
   const [newSubgoalFreeBlock, setNewSubgoalFreeBlock] = useState(false);
   const [newSubgoalAutoPlan, setNewSubgoalAutoPlan] = useState(false);
   const [newSubgoalDeepWork, setNewSubgoalDeepWork] = useState(false);
+  const [newSubgoalPriority, setNewSubgoalPriority] = useState(DEFAULT_PRIORITY);
   const [confirmDeleteSubject, setConfirmDeleteSubject] = useState(null);
   const [confirmDeleteSubgoal, setConfirmDeleteSubgoal] = useState(null);
   const [confirmDeleteProject, setConfirmDeleteProject] = useState(null);
@@ -151,6 +154,7 @@ export default function ProjectsView({
             ...(newSubgoalFreeBlock ? { freeBlock: true } : {}),
             ...(newSubgoalAutoPlan ? { autoPlan: true } : {}),
             ...(newSubgoalDeepWork ? { deepWork: true } : {}),
+            ...(newSubgoalPriority !== DEFAULT_PRIORITY ? { priority: newSubgoalPriority } : {}),
           }] }
         : s
       ),
@@ -163,6 +167,7 @@ export default function ProjectsView({
     setNewSubgoalFreeBlock(false);
     setNewSubgoalAutoPlan(false);
     setNewSubgoalDeepWork(false);
+    setNewSubgoalPriority(DEFAULT_PRIORITY);
   };
 
   const toggleSubgoal = (subjectId, goalId) => {
@@ -233,6 +238,18 @@ export default function ProjectsView({
       subjects: p.subjects.map(s => s.id !== subjectId ? s : {
         ...s,
         subgoals: s.subgoals.map(g => g.id !== goalId ? g : { ...g, deepWork: deepWork || undefined }),
+      }),
+    }));
+  };
+
+  // `normaal` wordt niet opgeslagen (zelfde conventie als `window`/`duration`,
+  // zie utils/dayTimeline.js); lezen valt terug op `DEFAULT_PRIORITY`.
+  const setSubgoalPriority = (subjectId, goalId, priority) => {
+    updateProject(p => ({
+      ...p,
+      subjects: p.subjects.map(s => s.id !== subjectId ? s : {
+        ...s,
+        subgoals: s.subgoals.map(g => g.id !== goalId ? g : { ...g, priority: priority === DEFAULT_PRIORITY ? undefined : priority }),
       }),
     }));
   };
@@ -513,6 +530,7 @@ export default function ProjectsView({
                 onSetFreeBlock={(goalId, freeBlock) => setSubgoalFreeBlock(activeSubject.id, goalId, freeBlock)}
                 onSetAutoPlan={(goalId, autoPlan) => setSubgoalAutoPlan(activeSubject.id, goalId, autoPlan)}
                 onSetDeepWork={(goalId, deepWork) => setSubgoalDeepWork(activeSubject.id, goalId, deepWork)}
+                onSetPriority={(goalId, priority) => setSubgoalPriority(activeSubject.id, goalId, priority)}
                 onRequestDelete={(goal) => setConfirmDeleteSubgoal({ subjectId: activeSubject.id, goal })}
                 onFirstSwipe={onFirstSwipe}
               />
@@ -538,6 +556,7 @@ export default function ProjectsView({
                   <TimeInput value={newSubgoalTime} onChange={setNewSubgoalTime} theme={theme} />
                   <DurationInput value={newSubgoalDuration} onChange={setNewSubgoalDuration} theme={theme} className="w-20" />
                   <DagdeelSelect value={newSubgoalWindow} onChange={setNewSubgoalWindow} theme={theme} />
+                  <PrioritySelect value={newSubgoalPriority} onChange={setNewSubgoalPriority} theme={theme} />
                   <button
                     type="button"
                     onClick={addSubgoal}
@@ -640,6 +659,7 @@ function SubgoalList({
   onSetFreeBlock,
   onSetAutoPlan,
   onSetDeepWork,
+  onSetPriority,
   onRequestDelete,
   onFirstSwipe,
 }) {
@@ -746,6 +766,12 @@ function SubgoalList({
                   <DagdeelSelect
                     value={g.window}
                     onChange={(v) => onSetWindow(g.id, v)}
+                    theme={theme}
+                    className="shrink-0"
+                  />
+                  <PrioritySelect
+                    value={g.priority}
+                    onChange={(v) => onSetPriority(g.id, v)}
                     theme={theme}
                     className="shrink-0"
                   />

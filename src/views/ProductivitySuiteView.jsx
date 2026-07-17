@@ -36,6 +36,8 @@ export default function ProductivitySuiteView({
   connections,
   sourcePrefs,
   setSourcePrefs,
+  priorityPrefs,
+  setPriorityPrefs,
   agendaShown,
   agendaLoading,
   agendaError,
@@ -66,6 +68,7 @@ export default function ProductivitySuiteView({
   onSetTaskWindow,
   onSetTaskAutoPlan,
   onSetTaskDeepWork,
+  onSetTaskPriority,
   onToggleProjectSubgoal,
   onSetTaskStatus,
   onSetSubgoalStatus,
@@ -259,6 +262,8 @@ export default function ProductivitySuiteView({
         <PlanPreferencesPanel
           planPrefs={planPrefs}
           setPlanPrefs={setPlanPrefs}
+          priorityPrefs={priorityPrefs}
+          setPriorityPrefs={setPriorityPrefs}
           theme={theme}
         />
       ) : (
@@ -276,6 +281,7 @@ export default function ProductivitySuiteView({
                 canAddTask
                 onAddTask={(text) => onAddTask(text, undefined, {}, selectedDay?.dateKey || todayKey)}
                 onMoveItem={onMoveItem}
+                priorityPrefs={priorityPrefs}
                 theme={theme}
               />
               <SourcesPanel
@@ -299,6 +305,7 @@ export default function ProductivitySuiteView({
               onSetTaskWindow={onSetTaskWindow}
               onSetTaskAutoPlan={onSetTaskAutoPlan}
               onSetTaskDeepWork={onSetTaskDeepWork}
+              onSetTaskPriority={onSetTaskPriority}
               theme={theme}
             />
           )}

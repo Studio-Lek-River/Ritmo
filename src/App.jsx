@@ -47,6 +47,7 @@ import { readGithubRepoPrefs, writeGithubRepoPrefs, clearGithubRepoPrefs, includ
 import { clearGithubCache } from './utils/githubCache';
 import { buildGithubModules } from './utils/githubModules';
 import { DEFAULT_SOURCE_PREFS, getSourcePref } from './utils/sourcePrefs';
+import { DEFAULT_PRIORITY } from './utils/dayTimeline';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
 import TimeInput from './components/TimeInput';
@@ -168,6 +169,11 @@ export default function Ritmo() {
   const [planMode, setPlanMode] = useState('propose');
   const [planPrefs, setPlanPrefs] = useState(DEFAULT_PLAN_PREFS);
   const [sourcePrefs, setSourcePrefs] = useState(DEFAULT_SOURCE_PREFS);
+  // Prioriteit-chipkleuren (S03b): eigen settings-key naast `sourcePrefs`,
+  // zelfde read-time-merge-patroon (zie utils/priorityPrefs.js) — een lege
+  // `{}` is een geldige startwaarde, `getPriorityColor` vult ontbrekende
+  // niveaus zelf aan met de default, dus geen migratie nodig.
+  const [priorityPrefs, setPriorityPrefs] = useState({});
   // Heeft de gebruiker de Outlook-agenda al eens laten zien? Sinds S07d een
   // gepersisteerde setting (zie de Outlook-agenda-sectie verderop voor het
   // gedrag). Staat hier bij de andere settings-state omdat de save-effect
@@ -242,6 +248,7 @@ export default function Ritmo() {
         if (settings.planMode !== undefined) setPlanMode(settings.planMode);
         if (settings.planPrefs !== undefined) setPlanPrefs(settings.planPrefs);
         if (settings.sourcePrefs !== undefined) setSourcePrefs(settings.sourcePrefs);
+        if (settings.priorityPrefs !== undefined) setPriorityPrefs(settings.priorityPrefs);
         if (settings.agendaShown !== undefined) setAgendaShown(settings.agendaShown);
         if (settings.onboardingProfile !== undefined) setOnboardingProfile(settings.onboardingProfile);
         if (settings.hasUsedSwipe !== undefined) setHasUsedSwipe(settings.hasUsedSwipe);
@@ -380,6 +387,7 @@ export default function Ritmo() {
           planMode,
           planPrefs,
           sourcePrefs,
+          priorityPrefs,
           agendaShown,
           onboardingProfile,
           hasUsedSwipe,
@@ -392,7 +400,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, planPrefs, sourcePrefs, agendaShown, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, planPrefs, sourcePrefs, priorityPrefs, agendaShown, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
 
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
@@ -1154,7 +1162,7 @@ export default function Ritmo() {
   const addCustomTask = (text, time, extra = {}, dateKey = activeDateKey) => {
     const trimmed = (text || '').trim();
     if (!trimmed) return;
-    const { duration, window, autoPlan, deepWork } = extra;
+    const { duration, window, autoPlan, deepWork, priority } = extra;
     const task = {
       id: Date.now(),
       text: trimmed,
@@ -1164,6 +1172,7 @@ export default function Ritmo() {
       ...(window ? { window } : {}),
       ...(autoPlan ? { autoPlan } : {}),
       ...(deepWork ? { deepWork } : {}),
+      ...(priority && priority !== DEFAULT_PRIORITY ? { priority } : {}),
     };
     writeTasksForDay(dateKey, prev => [...prev, task]);
   };
@@ -1205,6 +1214,13 @@ export default function Ritmo() {
 
   const setTaskDeepWork = (id, deepWork) => {
     setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, deepWork: deepWork || undefined } : t));
+  };
+
+  // `normaal` wordt niet opgeslagen (zelfde '' = geen-waarde-conventie als
+  // `window`/`duration`, zie utils/dayTimeline.js): schrijven laat de default
+  // weg, lezen valt terug op `DEFAULT_PRIORITY`. Geen migratie nodig.
+  const setTaskPriority = (id, priority) => {
+    setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, priority: priority === DEFAULT_PRIORITY ? undefined : priority } : t));
   };
 
   // Zet de Kanban-status van een losse taak. Houdt `done` consistent met de
@@ -2316,6 +2332,8 @@ export default function Ritmo() {
             connections={connectionState.connections}
             sourcePrefs={sourcePrefs}
             setSourcePrefs={setSourcePrefs}
+            priorityPrefs={priorityPrefs}
+            setPriorityPrefs={setPriorityPrefs}
             agendaShown={agendaShown}
             agendaLoading={outlookAgendaLoading}
             agendaError={outlookAgendaError}
@@ -2346,6 +2364,7 @@ export default function Ritmo() {
             onSetTaskWindow={setTaskWindow}
             onSetTaskAutoPlan={setTaskAutoPlan}
             onSetTaskDeepWork={setTaskDeepWork}
+            onSetTaskPriority={setTaskPriority}
             onToggleProjectSubgoal={toggleProjectSubgoal}
             onSetTaskStatus={setTaskStatus}
             onSetSubgoalStatus={setSubgoalStatus}
