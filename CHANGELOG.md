@@ -1,3 +1,10 @@
+## [0.62.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.62.0...v0.62.1) (2026-07-17)
+
+
+### Bug Fixes
+
+* **api:** connections-endpoints via een router zodat de deploy binnen de Vercel-limiet blijft ([ff2e6f1](https://github.com/Studio-Lek-River/Ritmo/commit/ff2e6f191373cdf2842c042b23c28fde41de9fa9))
+
 # [0.62.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.61.1...v0.62.0) (2026-07-17)
 
 
