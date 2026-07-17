@@ -1,6 +1,6 @@
 // Genormaliseerde items-laag (S02, zie docs/ROADMAP.md §S02). Pure functie die
 // bestaande `tasks`- en `projects`-modules mapt naar het ROADMAP-item-shape:
-// { source, account, project, title, status, due, priority, progress, url }.
+// { source, account, project, projectKey, title, status, due, priority, progress, url }.
 // Voegt geen nieuw module-type toe: een module krijgt optioneel een
 // `source: { provider, connectionId, account }`-veld wanneer hij aan een
 // externe koppeling hangt (S03+ vult dit daadwerkelijk). Zonder `source` is het
@@ -9,14 +9,25 @@
 // afgedwongen). `deriveTaskStatus` (taskBoard.js) wordt hergebruikt zodat de
 // statuslogica op precies één plek staat.
 //
-// `progress` is een aggregatie van done/total over alle items met dezelfde
-// (source, project)-combinatie — niet per subject/module afzonderlijk — zodat
-// items die later uit hetzelfde externe bord/project samenkomen (S04+) correct
-// meetellen. Schrijft zelf nooit naar opslag.
+// `project` blijft het weergave-label (de subjectnaam, bv. een Trello-lijst of
+// GitHub-repo) — puur voor tonen in de UI. `progress` groepeert daarentegen op
+// `projectKey`: een stabiele sleutel van module-id + subject-id, losstaand van
+// dat label. Zonder die scheiding belanden twee Trello-borden met allebei een
+// lijst "Doing" in dezelfde voortgangsbucket, puur omdat het label toevallig
+// gelijk is (de landmijn uit docs/slices/S08-trello-lezen.md, opgeruimd in
+// S10). Module- en subject-ids zijn al deterministisch en uniek per bron
+// (trelloModules.js: `trello:board:<id>` / `trello:list:<id>`,
+// githubModules.js: `github:repo:<id>`; lokale project-modules dragen hun
+// eigen module-/subject-id), dus `projectKey` hoeft de provider niet nog eens
+// apart te herhalen.
+//
+// Sinds S02 dode code (nul imports buiten docs); vanaf S10 hergebruikt door
+// FeedView. Schrijft zelf nooit naar opslag.
 import { fmtDateKey } from './dates';
 import { deriveTaskStatus } from './taskBoard';
 
 const DONE_STATUS = 'klaar';
+const LOOSE_TASKS_SUBJECT_KEY = 'tasks';
 
 function moduleSource(mod) {
   const s = mod?.source;
@@ -28,26 +39,25 @@ function moduleAccount(mod) {
   return mod?.source?.account ?? null;
 }
 
-function sourceProjectKey(source, project) {
-  const sourceKey = source ? `${source.provider}:${source.connectionId ?? ''}` : 'local';
-  return `${sourceKey}::${project ?? ''}`;
+// Stabiele voortgangssleutel: module-id + subject-id, los van het
+// weergave-label (`project`). `subjectId` is `null` voor losse taken (er is
+// geen subject) en krijgt dan een vaste placeholder, zodat de sleutel nooit
+// op een lege string na de `::` eindigt.
+function computeProjectKey(moduleId, subjectId) {
+  return `${moduleId ?? ''}::${subjectId ?? LOOSE_TASKS_SUBJECT_KEY}`;
 }
 
 function applyProgress(items) {
   const totals = new Map();
   items.forEach(item => {
-    if (item.project == null) return;
-    const key = sourceProjectKey(item.source, item.project);
-    const entry = totals.get(key) || { done: 0, total: 0 };
+    const entry = totals.get(item.projectKey) || { done: 0, total: 0 };
     entry.total += 1;
     if (item.status === DONE_STATUS) entry.done += 1;
-    totals.set(key, entry);
+    totals.set(item.projectKey, entry);
   });
 
   return items.map(item => {
-    if (item.project == null) return item;
-    const key = sourceProjectKey(item.source, item.project);
-    const { done, total } = totals.get(key);
+    const { done, total } = totals.get(item.projectKey);
     const progress = total === 0 ? 0 : Math.round((done / total) * 100);
     return { ...item, progress };
   });
@@ -61,14 +71,24 @@ export function buildNormalizedItems({ modules = [], customTasks = [], reference
   const raw = [];
   const todayKey = fmtDateKey(referenceDate);
 
-  const tasksModule = modules.find(m => m.enabled && m.type === 'tasks');
-  const taskSource = moduleSource(tasksModule);
-  const taskAccount = moduleAccount(tasksModule);
+  // Losse taken (customTasks) dragen zelf geen module-id, dus ze horen niet
+  // bij één specifieke module-instantie. De metadata (bron, account,
+  // projectKey) moet wel van een enabled `tasks`-module komen als die er is,
+  // en niet zomaar van de eerst gevonden ongeacht of die een echte externe
+  // bron heeft: bij meerdere enabled `tasks`-modules wint de module mét een
+  // `source`-binding. Zonder zo'n module valt het terug op de eerste
+  // (sowieso lokaal, dus `source: null`).
+  const taskModules = modules.filter(m => m.enabled && m.type === 'tasks');
+  const taskModule = taskModules.find(m => moduleSource(m)) || taskModules[0];
+  const taskSource = moduleSource(taskModule);
+  const taskAccount = moduleAccount(taskModule);
+  const taskProjectKey = computeProjectKey(taskModule?.id, null);
   customTasks.forEach(task => {
     raw.push({
       source: taskSource,
       account: taskAccount,
       project: null,
+      projectKey: taskProjectKey,
       title: task.text,
       status: deriveTaskStatus({ done: task.done, status: task.status }),
       due: task.time ? todayKey : null,
@@ -83,11 +103,13 @@ export function buildNormalizedItems({ modules = [], customTasks = [], reference
     const source = moduleSource(mod);
     const account = moduleAccount(mod);
     (mod.subjects || []).forEach(subject => {
+      const projectKey = computeProjectKey(mod.id, subject.id);
       (subject.subgoals || []).forEach(goal => {
         raw.push({
           source,
           account,
           project: subject.name,
+          projectKey,
           title: goal.label,
           status: deriveTaskStatus({ completed: goal.completed, status: goal.status }),
           due: goal.deadline || null,

@@ -1588,6 +1588,7 @@ export default {
   productivity: {
     title: 'Planner',
     dag: 'Dag',
+    feed: 'Feed',
     kanban: 'Kanban',
     voorkeuren: 'Voorkeuren',
     taskListTitle: 'Taken',
@@ -1720,6 +1721,16 @@ export default {
       hoog: 'Hoog',
       normaal: 'Normaal',
       laag: 'Laag',
+    },
+    feed: {
+      sources: {
+        local: 'Lokaal',
+      },
+      showDone: 'Toon afgeronde items',
+      groupCount: '{done}/{total} afgerond',
+      groupAllDone: 'Alle items in deze groep zijn afgerond.',
+      emptyTitle: 'Nog geen items in de feed',
+      emptyDescription: 'Koppel een bron of voeg taken toe, dan verschijnen ze hier gegroepeerd per project.',
     },
   },
 

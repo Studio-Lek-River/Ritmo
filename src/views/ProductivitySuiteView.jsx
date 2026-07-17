@@ -4,6 +4,7 @@ import { useTranslation } from '../i18n/useTranslation';
 import { useToast } from '../hooks/useToast';
 import WeekView from './WeekView';
 import KanbanView from './KanbanView';
+import FeedView from './FeedView';
 import TaskListPanel from '../components/TaskListPanel';
 import TaskPoolPanel from '../components/TaskPoolPanel';
 import SourcesPanel from '../components/SourcesPanel';
@@ -14,14 +15,16 @@ import { buildDayTimeline } from '../utils/dayTimeline';
 import { isVirtualTaskKey } from '../utils/itemKeys';
 import { shortWeekdayLabelsMondayFirst } from '../utils/dates';
 
-const TABS = ['dag', 'kanban', 'voorkeuren'];
+const TABS = ['dag', 'feed', 'kanban', 'voorkeuren'];
 
-// Werkruimte voor de Planner: kop + Dag/Kanban-toggle. Dag rendert het
-// weekrooster (WeekView, met zijn eigen interne Dag/Week-toggle) met de
-// takenpool van de geselecteerde dag ernaast; Kanban rendert het ongewijzigde
-// statusbord met de gedeelde takenlijst. Lokale useState zodat de tabkeuze en
-// de geselecteerde dag lichte, niet-persistente UI-voorkeuren blijven
-// (principe 2: geen gedrag opgelegd).
+// Werkruimte voor de Planner: kop + Dag/Feed/Kanban/Voorkeuren-toggle. Dag
+// rendert het weekrooster (WeekView, met zijn eigen interne Dag/Week-toggle)
+// met de takenpool van de geselecteerde dag ernaast; Feed (S10) rendert
+// FeedView over de volle breedte, zoals Voorkeuren dat al deed — geen
+// linkerpaneel nodig, de feed is zelf al gegroepeerd; Kanban rendert het
+// ongewijzigde statusbord met de gedeelde takenlijst. Lokale useState zodat de
+// tabkeuze en de geselecteerde dag lichte, niet-persistente UI-voorkeuren
+// blijven (principe 2: geen gedrag opgelegd).
 export default function ProductivitySuiteView({
   modules,
   customTasks,
@@ -299,6 +302,13 @@ export default function ProductivitySuiteView({
           setPlanPrefs={setPlanPrefs}
           priorityPrefs={priorityPrefs}
           setPriorityPrefs={setPriorityPrefs}
+          theme={theme}
+        />
+      ) : tab === 'feed' ? (
+        <FeedView
+          modules={modules}
+          customTasks={customTasks}
+          sourcePrefs={sourcePrefs}
           theme={theme}
         />
       ) : (

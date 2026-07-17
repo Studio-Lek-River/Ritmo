@@ -1577,6 +1577,7 @@ export default {
   productivity: {
     title: 'Planner',
     dag: 'Day',
+    feed: 'Feed',
     kanban: 'Kanban',
     voorkeuren: 'Preferences',
     taskListTitle: 'Tasks',
@@ -1709,6 +1710,16 @@ export default {
       hoog: 'High',
       normaal: 'Normal',
       laag: 'Low',
+    },
+    feed: {
+      sources: {
+        local: 'Local',
+      },
+      showDone: 'Show completed items',
+      groupCount: '{done}/{total} done',
+      groupAllDone: 'All items in this group are done.',
+      emptyTitle: 'No items in the feed yet',
+      emptyDescription: 'Connect a source or add tasks, and they will show up here grouped by project.',
     },
   },
 
