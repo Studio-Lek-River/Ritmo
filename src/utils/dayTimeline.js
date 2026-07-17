@@ -33,6 +33,14 @@ export const WINDOW_OPTIONS = [
   { id: 'avond', labelKey: 'productivity.dagdelen.avond' },
 ];
 
+// Prioriteitsniveaus (S03b) voor customTasks en project-subgoals. `normaal`
+// is de default en wordt bewust NIET opgeslagen (zelfde '' = geen waarde-
+// conventie als `window`/`duration`, zie docs/slices/S04-planning-metadata-
+// vrije-blokken.md:37): schrijven doet `value === DEFAULT_PRIORITY ?
+// undefined : value`, lezen doet `x.priority || DEFAULT_PRIORITY`.
+export const PRIORITY_LEVELS = ['hoog', 'normaal', 'laag'];
+export const DEFAULT_PRIORITY = 'normaal';
+
 function timeToMinutes(time) {
   if (!time || typeof time !== 'string') return null;
   const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
@@ -96,6 +104,17 @@ export function buildDayTimeline({
             window: goal.window || '',
             status: !!goal.completed,
             color: mod.color,
+            // Kaart-chips (S03b): projectnaam + onderwerpnaam voor de pool-
+            // kaart, diepwerk-vlag en prioriteit (default bij ontbreken, geen
+            // migratie — zie PRIORITY_LEVELS hierboven) en de kaart-url (voor
+            // de "Openen in {bron}"-menuactie). Leeg/null op losse taken
+            // hieronder, zodat de item-shape uniform blijft (zelfde discipline
+            // als `window: goal.window || ''`).
+            projectName: mod.name || '',
+            subjectName: subject.name || '',
+            deepWork: !!goal.deepWork,
+            priority: goal.priority || DEFAULT_PRIORITY,
+            url: goal.url || null,
             // `source` geeft TaskPoolPanel iets om een bron-icoon op te tonen
             // (S08: Trello-kenmerk in de rij); `toggle: undefined` bij een
             // module met `source` maakt afvinken read-only voor die rij
@@ -124,6 +143,11 @@ export function buildDayTimeline({
       window: task.window || '',
       status: !!task.done,
       color: tasksModuleColor,
+      projectName: '',
+      subjectName: '',
+      deepWork: !!task.deepWork,
+      priority: task.priority || DEFAULT_PRIORITY,
+      url: task.url || null,
       toggle: handlers.onToggleTask ? () => handlers.onToggleTask(task.id) : undefined,
     });
   });
