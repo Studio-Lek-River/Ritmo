@@ -15,6 +15,7 @@ import {
 import { parseDateKey, formatRelativeDate } from '../utils/dates';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useToast } from '../hooks/useToast';
+import { useUndoToast } from '../hooks/useUndoToast';
 import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 
 // Neutrale, theme-agnostische tinten voor het silhouet: 8-cijferig hex met alpha
@@ -263,7 +264,7 @@ export function BodymapModuleCard({
   theme,
 }) {
   const { t } = useTranslation();
-  const { showToast } = useToast();
+  const showUndoToast = useUndoToast();
 
   const [selectedMedId, setSelectedMedId] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
@@ -293,12 +294,8 @@ export function BodymapModuleCard({
     setConfirmRemove(null);
     onRemoveInjection?.(mod.id, id);
     if (selectedId === id) setSelectedId(null);
-    showToast({
-      message: t('bodymap.injectionRemoved'),
-      actionLabel: t('common.undo'),
-      onAction: () => {
-        onLogInjection?.(mod.id, event);
-      },
+    showUndoToast(t('bodymap.injectionRemoved'), () => {
+      onLogInjection?.(mod.id, event);
     });
   };
 
@@ -308,12 +305,8 @@ export function BodymapModuleCard({
     if (!event) return;
     onRemoveInjection?.(mod.id, event.id);
     if (selectedId === event.id) setSelectedId(null);
-    showToast({
-      message: t('bodymap.injectionRemoved'),
-      actionLabel: t('common.undo'),
-      onAction: () => {
-        onLogInjection?.(mod.id, event);
-      },
+    showUndoToast(t('bodymap.injectionRemoved'), () => {
+      onLogInjection?.(mod.id, event);
     });
   };
 

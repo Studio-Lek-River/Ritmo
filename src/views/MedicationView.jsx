@@ -8,7 +8,7 @@ import {
 import { fmtDateKey } from '../utils/dates';
 import TimeInput from '../components/TimeInput';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { useToast } from '../hooks/useToast';
+import { useUndoToast } from '../hooks/useUndoToast';
 import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 
 function closestFrequencyId(perWeek) {
@@ -375,7 +375,7 @@ export function MedicationModuleCard({
   theme,
 }) {
   const { t } = useTranslation();
-  const { showToast } = useToast();
+  const showUndoToast = useUndoToast();
 
   const [adding, setAdding] = useState(false);
   const [editingMed, setEditingMed] = useState(null); // med
@@ -386,12 +386,8 @@ export function MedicationModuleCard({
     const med = editingMed;
     onDeleteMed?.(mod.id, med.id);
     setEditingMed(null);
-    showToast({
-      message: t('medication.toastDeleted'),
-      actionLabel: t('common.undo'),
-      onAction: () => {
-        onAddMed?.(mod.id, med);
-      },
+    showUndoToast(t('medication.toastDeleted'), () => {
+      onAddMed?.(mod.id, med);
     });
   };
 
@@ -558,7 +554,7 @@ function nowAsTime() {
 // geen enkel rooster-medicijn is (opt-in per medicijn, principe 2).
 export function MedicationScheduleCard({ modules, onLogIntake, theme }) {
   const { t } = useTranslation();
-  const { showToast } = useToast();
+  const showUndoToast = useUndoToast();
   const todayKey = fmtDateKey(new Date());
 
   const scheduledMeds = [];
@@ -573,11 +569,7 @@ export function MedicationScheduleCard({ modules, onLogIntake, theme }) {
 
   const handleTake = (moduleId, med) => {
     const result = onLogIntake?.(moduleId, med.id, nowAsTime());
-    showToast({
-      message: t('medication.doseLogged'),
-      actionLabel: t('common.undo'),
-      onAction: () => result?.undo?.(),
-    });
+    showUndoToast(t('medication.doseLogged'), () => result?.undo?.());
   };
 
   return (

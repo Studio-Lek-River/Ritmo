@@ -14,7 +14,7 @@ import StarRating from '../components/StarRating';
 import TagPill from '../components/TagPill';
 import CollectionItemFormModal from '../components/CollectionItemFormModal';
 import EmptyState from '../components/EmptyState';
-import { useToast } from '../hooks/useToast';
+import { useUndoToast } from '../hooks/useUndoToast';
 import { useTranslation } from '../i18n/useTranslation';
 
 const ACCENT_COLORS = {
@@ -49,7 +49,7 @@ export default function CollectionsView({
   theme,
 }) {
   const { t } = useTranslation();
-  const { showToast } = useToast();
+  const showUndoToast = useUndoToast();
 
   const collections = useMemo(
     () => modules.filter((m) => m.type === 'collection'),
@@ -101,12 +101,8 @@ export default function CollectionsView({
     const collectionId = editingCollection.id;
     onDeleteItem?.(collectionId, snapshot.id);
     setEditingItemId(null);
-    showToast({
-      message: t('toast.itemDeleted'),
-      actionLabel: t('common.undo'),
-      onAction: () => {
-        onUpdateItem?.(collectionId, snapshot);
-      },
+    showUndoToast(t('toast.itemDeleted'), () => {
+      onUpdateItem?.(collectionId, snapshot);
     });
   };
 

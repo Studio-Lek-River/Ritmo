@@ -19,7 +19,7 @@ import {
   clampGrade,
   formatDeadline,
 } from '../utils/projects';
-import { useToast } from '../hooks/useToast';
+import { useUndoToast } from '../hooks/useUndoToast';
 import { useTranslation } from '../i18n/useTranslation';
 import { createSubject } from '../utils/createSubject';
 
@@ -37,7 +37,7 @@ export default function ProjectsView({
   theme,
 }) {
   const { t } = useTranslation();
-  const { showToast } = useToast();
+  const showUndoToast = useUndoToast();
   const projects = useMemo(
     () => modules.filter(m => m.enabled && m.type === 'projects'),
     [modules]
@@ -274,15 +274,11 @@ export default function ProjectsView({
     }));
     setConfirmDeleteSubject(null);
     if (selectedSubjectId === snapshot.id) setSelectedSubjectId(null);
-    showToast({
-      message: t('toast.subjectDeleted'),
-      actionLabel: t('common.undo'),
-      onAction: () => {
-        setModules(prev => prev.map(m => {
-          if (m.id !== activeProject.id) return m;
-          return { ...m, subjects: [...(m.subjects || []), snapshot] };
-        }));
-      },
+    showUndoToast(t('toast.subjectDeleted'), () => {
+      setModules(prev => prev.map(m => {
+        if (m.id !== activeProject.id) return m;
+        return { ...m, subjects: [...(m.subjects || []), snapshot] };
+      }));
     });
   };
 
@@ -297,21 +293,17 @@ export default function ProjectsView({
       }),
     }));
     setConfirmDeleteSubgoal(null);
-    showToast({
-      message: t('toast.subgoalDeleted'),
-      actionLabel: t('common.undo'),
-      onAction: () => {
-        setModules(prev => prev.map(m => {
-          if (m.id !== activeProject.id) return m;
-          return {
-            ...m,
-            subjects: (m.subjects || []).map(s => s.id !== subjectId ? s : {
-              ...s,
-              subgoals: [...(s.subgoals || []), goal],
-            }),
-          };
-        }));
-      },
+    showUndoToast(t('toast.subgoalDeleted'), () => {
+      setModules(prev => prev.map(m => {
+        if (m.id !== activeProject.id) return m;
+        return {
+          ...m,
+          subjects: (m.subjects || []).map(s => s.id !== subjectId ? s : {
+            ...s,
+            subgoals: [...(s.subgoals || []), goal],
+          }),
+        };
+      }));
     });
   };
 
@@ -320,14 +312,10 @@ export default function ProjectsView({
     const snapshot = confirmDeleteProject;
     onDeleteProjectModule?.(snapshot.id);
     setConfirmDeleteProject(null);
-    showToast({
-      message: t('toast.projectDeleted'),
-      actionLabel: t('common.undo'),
-      onAction: () => {
-        setModules(prev => prev.find(m => m.id === snapshot.id)
-          ? prev
-          : [...prev, snapshot]);
-      },
+    showUndoToast(t('toast.projectDeleted'), () => {
+      setModules(prev => prev.find(m => m.id === snapshot.id)
+        ? prev
+        : [...prev, snapshot]);
     });
   };
 
