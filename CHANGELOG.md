@@ -1,3 +1,10 @@
+# [0.64.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.63.0...v0.64.0) (2026-07-17)
+
+
+### Features
+
+* **desktop:** bredere app-layout met meegroeiende takenpool ([37c5ab9](https://github.com/Studio-Lek-River/Ritmo/commit/37c5ab92dc46e374356d91ae2ef93c99350c3605))
+
 # [0.63.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.62.2...v0.63.0) (2026-07-17)
 
 
