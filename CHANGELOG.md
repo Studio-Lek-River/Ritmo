@@ -1,3 +1,15 @@
+# [0.68.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.67.2...v0.68.0) (2026-07-17)
+
+
+### Bug Fixes
+
+* **planner:** Escape in taak-inline-edit slaat niet meer alsnog op via blur ([26d67bf](https://github.com/Studio-Lek-River/Ritmo/commit/26d67bf139e6aa8c2476afb7a4398e63a693f8ca))
+
+
+### Features
+
+* **planner:** losse taak inline bewerken en verwijderen met ongedaan maken ([a99a5ff](https://github.com/Studio-Lek-River/Ritmo/commit/a99a5ffd8c9f63a563da0f812cf7505431a9ebd3))
+
 ## [0.67.2](https://github.com/Studio-Lek-River/Ritmo/compare/v0.67.1...v0.67.2) (2026-07-17)
 
 
