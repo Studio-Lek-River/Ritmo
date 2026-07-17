@@ -6,6 +6,7 @@
 // een toggle-functie die de bestaande handlers hergebruikt. Voegt geen nieuw
 // "kind"-veld toe aan opgeslagen data — het type wordt hier afgeleid uit de bron.
 import { fmtDateKey } from './dates';
+import { subgoalKey, taskKey } from './itemKeys';
 
 // Vaste drempels (kloktijd, "HH:MM") voor de dagdeel-indeling. Geen UI-instelling
 // in deze slice; hier als constante zodat er geen verspreide magic numbers zijn.
@@ -86,7 +87,7 @@ export function buildDayTimeline({
           if (!isFreeBlock && !isDueToday) return;
           const time = goal.time || '';
           pushItem(items, {
-            key: `subgoal:${mod.id}:${subject.id}:${goal.id}`,
+            key: subgoalKey(mod.id, subject.id, goal.id),
             kind: 'projecttaak',
             label: goal.label,
             time,
@@ -114,7 +115,7 @@ export function buildDayTimeline({
   customTasks.forEach(task => {
     const time = task.time || '';
     pushItem(items, {
-      key: `task:${task.id}`,
+      key: taskKey(task.id),
       kind: 'losseTaak',
       label: task.text,
       time,

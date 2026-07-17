@@ -1,3 +1,10 @@
+## [0.61.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.61.0...v0.61.1) (2026-07-16)
+
+
+### Bug Fixes
+
+* **planner:** Trello-bordenlijst blijft niet meer hangen op laden ([6c6e13e](https://github.com/Studio-Lek-River/Ritmo/commit/6c6e13e5fd9ee364c5deba22f7a6bd039ef6d33f))
+
 # [0.61.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.60.0...v0.61.0) (2026-07-16)
 
 

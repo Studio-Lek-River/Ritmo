@@ -95,6 +95,7 @@ import {
 import { goalsForNight, isOnTarget } from './utils/sleep';
 import { DEFAULT_BLOCK_MINUTES } from './utils/dayTimeline';
 import { planDay } from './utils/planDay';
+import { subgoalKey, taskKey, virtualTaskId, parseVirtualTaskId, parseItemKey } from './utils/itemKeys';
 import {
   buildDayCellBackground, moduleStatusForDay, isDayFullyComplete,
   normalizeChecklistItemData, isChecklistItemComplete,
@@ -1256,8 +1257,10 @@ export default function Ritmo() {
   // niet gematerialiseerde recurring-instantie (virtual, zie weekDays) wordt
   // pas nu voor het eerst als echte taak opgeslagen — nooit eager (principe 2).
   const moveItemToDay = useCallback((itemKey, sourceDateKey, targetDateKey, time) => {
-    if (itemKey.startsWith('subgoal:')) {
-      const [, projectId, subjectId, goalIdRaw] = itemKey.split(':');
+    const parsed = parseItemKey(itemKey);
+
+    if (parsed.kind === 'subgoal') {
+      const { moduleId: projectId, subjectId, goalId: goalIdRaw } = parsed;
       setModules(prev => prev.map(m => {
         if (m.id !== projectId) return m;
         return {
@@ -1275,15 +1278,15 @@ export default function Ritmo() {
       return;
     }
 
-    if (!itemKey.startsWith('task:')) return;
-    const taskId = itemKey.slice('task:'.length);
+    if (parsed.kind !== 'task') return;
+    const taskId = parsed.taskId;
 
     let moved = null;
     let isVirtual = false;
-    if (taskId.startsWith('virtual:')) {
-      const [, rtId, virtualDateKey] = taskId.split(':');
-      if (virtualDateKey === sourceDateKey) {
-        const rt = recurringTasks.find(r => String(r.id) === rtId);
+    const virtual = parseVirtualTaskId(taskId);
+    if (virtual) {
+      if (virtual.dateKey === sourceDateKey) {
+        const rt = recurringTasks.find(r => String(r.id) === virtual.recurringId);
         if (rt) {
           moved = {
             recurringId: rt.id,
@@ -1349,7 +1352,7 @@ export default function Ritmo() {
           .filter(rt => rt.days.includes(i))
           .filter(rt => !stored.some(t => t.recurringId === rt.id))
           .map(rt => ({
-            id: `virtual:${rt.id}:${dateKey}`,
+            id: virtualTaskId(rt.id, dateKey),
             recurringId: rt.id,
             text: rt.text,
             done: false,
@@ -1657,7 +1660,7 @@ export default function Ritmo() {
           const isFreeBlock = !!goal.freeBlock;
           const isDueToday = goal.deadline === dateKey;
           if (!isFreeBlock && !isDueToday) return;
-          const key = `subgoal:${mod.id}:${subject.id}:${goal.id}`;
+          const key = subgoalKey(mod.id, subject.id, goal.id);
           meta[key] = { label: goal.label, color: mod.color, kind: 'projecttaak' };
           if (goal.time) {
             fixed.push({ time: goal.time, duration: goal.duration });
@@ -1670,7 +1673,7 @@ export default function Ritmo() {
 
     const tasksModuleColor = modules.find(m => m.enabled && m.type === 'tasks')?.color;
     dayTasks.forEach(task => {
-      const key = `task:${task.id}`;
+      const key = taskKey(task.id);
       meta[key] = { label: task.text, color: tasksModuleColor, kind: 'losseTaak' };
       if (task.time) {
         fixed.push({ time: task.time, duration: task.duration });
@@ -1741,10 +1744,10 @@ export default function Ritmo() {
             // verwijdert daarom de gematerialiseerde taak weer (terug naar
             // virtueel) via recurringId, in plaats van de tijd te wissen.
             assignments.forEach(a => {
-              const virtualMatch = /^task:virtual:([^:]+):/.exec(a.key);
-              if (virtualMatch) {
-                const rtId = virtualMatch[1];
-                writeTasksForDay(dateKey, tasks => tasks.filter(t => String(t.recurringId) !== rtId));
+              const parsedAssignment = parseItemKey(a.key);
+              const virtual = parsedAssignment.kind === 'task' ? parseVirtualTaskId(parsedAssignment.taskId) : null;
+              if (virtual) {
+                writeTasksForDay(dateKey, tasks => tasks.filter(t => String(t.recurringId) !== virtual.recurringId));
               } else {
                 applyPendingAssignment(dateKey, a.key, '');
               }
