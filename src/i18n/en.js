@@ -1632,6 +1632,12 @@ export default {
       empty: 'No unscheduled tasks for this day.',
       durationMinutes: '{min} min',
       moveToDayAria: 'Move to day',
+      countAria: '{count} tasks in the task pool',
+      groups: {
+        losseTaak: 'Loose tasks',
+        projecttaak: 'Project tasks',
+      },
+      openInSource: 'Open in {provider}',
     },
     legend: {
       agenda: 'Agenda',
@@ -1694,6 +1700,12 @@ export default {
       short: 'Free block',
       chip: 'Free block',
     },
+    priority: {
+      label: 'Priority',
+      hoog: 'High',
+      normaal: 'Normal',
+      laag: 'Low',
+    },
   },
 
   planPrefs: {
@@ -1716,6 +1728,11 @@ export default {
       none: 'None',
       light: 'Light (15 min)',
       ample: 'Ample (30 min)',
+    },
+    priority: {
+      title: 'Priority',
+      hint: 'Pick a colour per priority. The task pool uses these colours for the priority chips.',
+      colorAria: 'Colour {color} for {priority}',
     },
   },
 

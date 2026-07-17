@@ -1643,6 +1643,12 @@ export default {
       empty: 'Geen ongeplande taken voor deze dag.',
       durationMinutes: '{min} min',
       moveToDayAria: 'Verplaats naar dag',
+      countAria: '{count} taken in de takenpool',
+      groups: {
+        losseTaak: 'Losse taken',
+        projecttaak: 'Projecttaken',
+      },
+      openInSource: 'Openen in {provider}',
     },
     legend: {
       agenda: 'Agenda',
@@ -1705,6 +1711,12 @@ export default {
       short: 'Vrij blok',
       chip: 'Vrij blok',
     },
+    priority: {
+      label: 'Prioriteit',
+      hoog: 'Hoog',
+      normaal: 'Normaal',
+      laag: 'Laag',
+    },
   },
 
   planPrefs: {
@@ -1727,6 +1739,11 @@ export default {
       none: 'Geen',
       light: 'Licht (15 min)',
       ample: 'Ruim (30 min)',
+    },
+    priority: {
+      title: 'Prioriteit',
+      hint: 'Kies een kleur per prioriteit. Deze kleuren gebruikt de takenpool voor de prioriteit-chips.',
+      colorAria: 'Kleur {color} voor {priority}',
     },
   },
 
