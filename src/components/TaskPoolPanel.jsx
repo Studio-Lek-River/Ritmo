@@ -155,6 +155,11 @@ function PoolItemCard({ item, dayOptions, selectedDateKey, onMoveItem, priorityP
   // SourcesPanel/WeekView (SOURCE_ICONS, één mapping, geen tweede kopie).
   const SourceIcon = item.source ? SOURCE_ICONS[item.source.provider] : null;
   const providerLabel = item.source ? t(`connections.providers.${item.source.provider}`) : '';
+  // Een bronkaart zonder url heeft geen enkele menu-actie (geen tijd/dag-
+  // acties voor een gekoppelde bron, en niets om te openen): de trigger dan
+  // helemaal verbergen in plaats van een lege popover te tonen. De kaart
+  // blijft gewoon sleepbaar en afvinkbaar; alleen de menu-knop vervalt.
+  const hasMenu = !item.source || !!item.url;
 
   return (
     <div
@@ -208,29 +213,29 @@ function PoolItemCard({ item, dayOptions, selectedDateKey, onMoveItem, priorityP
           )}
           {item.source && SourceIcon && (
             <span className={`text-[11px] r-chip ${c.pillBg} ${c.pillText} flex items-center gap-1`}>
-              <SourceIcon className="w-3 h-3" />
+              <SourceIcon className="w-3 h-3" aria-hidden="true" />
               {providerLabel}
             </span>
           )}
         </div>
       </div>
 
-      <div className="relative shrink-0" data-pool-menu>
-        <button
-          type="button"
-          onClick={onToggleMenu}
-          aria-haspopup="true"
-          aria-expanded={menuOpen}
-          aria-label={t('common.options')}
-          className={`p-1.5 ${theme.hover} ${theme.radiusControl} ${theme.textMuted} transition`}
-        >
-          <MoreHorizontal className="w-4 h-4" />
-        </button>
+      {hasMenu && (
+        <div className="relative shrink-0" data-pool-menu>
+          <button
+            type="button"
+            onClick={onToggleMenu}
+            aria-haspopup="true"
+            aria-expanded={menuOpen}
+            aria-label={t('common.options')}
+            className={`p-1.5 ${theme.hover} ${theme.radiusControl} ${theme.textMuted} transition`}
+          >
+            <MoreHorizontal className="w-4 h-4" />
+          </button>
 
-        {menuOpen && (
-          <div className={`absolute right-0 top-full mt-1 z-20 ${theme.card} rounded-xl shadow-lg border ${theme.border} overflow-hidden min-w-[11rem] p-2`}>
-            {item.source ? (
-              item.url && (
+          {menuOpen && (
+            <div className={`absolute right-0 top-full mt-1 z-20 ${theme.card} rounded-xl shadow-lg border ${theme.border} overflow-hidden min-w-[11rem] p-2`}>
+              {item.source ? (
                 <a
                   href={item.url}
                   target="_blank"
@@ -241,30 +246,30 @@ function PoolItemCard({ item, dayOptions, selectedDateKey, onMoveItem, priorityP
                   <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                   {t('planner.pool.openInSource', { provider: providerLabel })}
                 </a>
-              )
-            ) : (
-              <div className="flex flex-col gap-2">
-                <TimeInput
-                  value=""
-                  onChange={(v) => v && onMoveItem(item.key, selectedDateKey, selectedDateKey, v)}
-                  theme={theme}
-                  className="w-full"
-                />
-                <select
-                  value={selectedDateKey}
-                  onChange={(e) => onMoveItem(item.key, selectedDateKey, e.target.value, item.time || undefined)}
-                  aria-label={t('planner.pool.moveToDayAria')}
-                  className={`w-full text-xs px-1.5 py-1.5 ${theme.input} ${theme.radiusControl}`}
-                >
-                  {dayOptions.map(opt => (
-                    <option key={opt.dateKey} value={opt.dateKey}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <TimeInput
+                    value=""
+                    onChange={(v) => v && onMoveItem(item.key, selectedDateKey, selectedDateKey, v)}
+                    theme={theme}
+                    className="w-full"
+                  />
+                  <select
+                    value={selectedDateKey}
+                    onChange={(e) => onMoveItem(item.key, selectedDateKey, e.target.value, item.time || undefined)}
+                    aria-label={t('planner.pool.moveToDayAria')}
+                    className={`w-full text-xs px-1.5 py-1.5 ${theme.input} ${theme.radiusControl}`}
+                  >
+                    {dayOptions.map(opt => (
+                      <option key={opt.dateKey} value={opt.dateKey}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
