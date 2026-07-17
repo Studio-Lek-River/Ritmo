@@ -1,3 +1,10 @@
+## [0.67.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.67.0...v0.67.1) (2026-07-17)
+
+
+### Bug Fixes
+
+* **toast:** FIFO-wachtrij zodat een tweede toast de eerste (en zijn undo) niet meer opeet ([1c64e85](https://github.com/Studio-Lek-River/Ritmo/commit/1c64e852b758c1fcace468e9ddaac3dfe1c3c3ca))
+
 # [0.67.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.66.0...v0.67.0) (2026-07-17)
 
 
