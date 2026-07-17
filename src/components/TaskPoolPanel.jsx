@@ -239,7 +239,7 @@ function PoolItemCard({
               </button>
 
               {durationOpen && (
-                <div className={`absolute left-0 top-full mt-1 z-20 ${theme.card} rounded-xl shadow-lg border ${theme.border} min-w-[11rem] p-2 space-y-2`}>
+                <div className={`absolute left-0 top-full mt-1 z-20 ${theme.card} rounded-xl shadow-lg border ${theme.border} min-w-[13rem] p-2 space-y-2`}>
                   <div className="flex flex-wrap gap-1">
                     {DURATION_PRESETS.map(min => (
                       <button
