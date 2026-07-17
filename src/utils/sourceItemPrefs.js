@@ -15,18 +15,23 @@
 // hier, en bewust NIET voor `trello:cards`/`github:issues` (S08 Valkuil 1),
 // om precies één reden: de inhoud is ondoorzichtig. De sleutels zijn opake
 // ids (een Trello-ObjectId, een GitHub-database-id) en de waarden zijn een
-// aantal minuten of een klokwaarde. Bordnamen, kaarttitels, issue-titels en
-// urls horen hier NOOIT — die zouden de bron-inhoud alsnog naar de cloud
-// tillen, wat de hele reden is dat de caches device-local staan.
+// aantal minuten, een klokwaarde, of (sinds V07) een boolean `hidden`.
+// Bordnamen, kaarttitels, issue-titels en urls horen hier NOOIT — die zouden
+// de bron-inhoud alsnog naar de cloud tillen, wat de hele reden is dat de
+// caches device-local staan. `hidden` blijft daarbinnen: een boolean op een
+// opake id is en blijft ondoorzichtig, dus "kaart X verbergen" lekt niets
+// over wat kaart X ís. `collectHiddenItems` hieronder haalt de titel voor de
+// terughaal-lijst dan ook uit de (ongefilterde) afgeleide modules, oftewel
+// uit de device-local cache, en nooit uit deze map.
 // `withItemOverride` spreadt daarom nooit de input van de aanroeper maar
-// plukt expliciet de twee toegestane velden; een per ongeluk meegegeven
-// `label` valt vanzelf af.
+// plukt expliciet de toegestane velden; een per ongeluk meegegeven `label`
+// valt vanzelf af.
 
 import { TRELLO_CARD_ID_PREFIX } from './trelloModules';
 import { GITHUB_ISSUE_ID_PREFIX } from './githubModules';
 
 // Sleutel = de afgeleide subgoal-id (`trello:card:<id>`, `github:issue:<id>`).
-// Shape: { [subgoalId]: { duration?, dateKey?, time? } }
+// Shape: { [subgoalId]: { duration?, dateKey?, time?, hidden? } }
 //
 // `dateKey` is de dag-binding: staat hij er, dan heeft de gebruiker dit item
 // zelf op die dag gepland en gedraagt het zich verder als een gewoon subgoal
@@ -38,7 +43,7 @@ import { GITHUB_ISSUE_ID_PREFIX } from './githubModules';
 // De binding maskeert de due-datum van de bron dus wél, maar alleen zolang de
 // gebruiker hem zelf heeft gezet, en één klik ("terug naar de bron") haalt hem
 // weg. Dat is bewust iets anders dan een stille, permanente overschrijving.
-const EMPTY_PREF = { duration: undefined, dateKey: undefined, time: undefined };
+const EMPTY_PREF = { duration: undefined, dateKey: undefined, time: undefined, hidden: undefined };
 
 // De prefixen komen uit de mappers zelf, die de enige makers van deze ids
 // zijn; een id met zo'n prefix ís dus per constructie een bron-item.
@@ -75,6 +80,7 @@ function pickAllowed(patch) {
   if ('duration' in patch) out.duration = patch.duration;
   if ('dateKey' in patch) out.dateKey = patch.dateKey;
   if ('time' in patch) out.time = patch.time;
+  if ('hidden' in patch) out.hidden = patch.hidden;
   return out;
 }
 
@@ -96,6 +102,11 @@ export function withItemOverride(prefs, subgoalId, patch) {
   // tijd wijzigen"-actie aan hangt moet de dag dus meegeven, anders verdwijnt
   // de tijd stil.
   if (merged.dateKey && merged.time) cleaned.time = merged.time;
+  // `hidden: false` (de terughaal-actie) laat dit veld gewoon weg -- delete-
+  // on-empty regelt dan vanzelf dat een kaart zonder overige waarden weer
+  // volledig verdwijnt uit de map, en met andere waarden (duration/dateKey)
+  // blijven die gewoon staan. Zelfde conventie als duration/dateKey/time.
+  if (merged.hidden) cleaned.hidden = true;
 
   const next = { ...(prefs || {}) };
   if (Object.keys(cleaned).length === 0) delete next[subgoalId];
@@ -133,22 +144,58 @@ export function clearOverridesWithPrefix(prefs, prefix) {
 // dag verschijnen, maar zodra de gebruiker het item op één dag heeft gezet
 // hoort het daar alleen te staan. Zonder dat zou het rooster hetzelfde item in
 // alle zeven dagkolommen tonen.
+//
+// `hidden` filtert het subgoal er vóór de `.map()` uit (V07): zo verdwijnt een
+// verborgen kaart in exact dezelfde stap uit ALLE consumers (WeekView,
+// TaskPoolPanel, buildPlanInputs, ProjectsView) zonder dat elders een tweede
+// filter nodig is. Een subject die daardoor leeg raakt blijft bewust als lege
+// huls staan -- subjects/modules zelf wegfilteren op basis van een verborgen
+// kind is nadrukkelijk niet in scope (zie de slice-spec).
 export function applyItemOverrides(modules, prefs) {
   if (!prefs || Object.keys(prefs).length === 0) return modules;
   return modules.map(mod => ({
     ...mod,
     subjects: (mod.subjects || []).map(subject => ({
       ...subject,
-      subgoals: (subject.subgoals || []).map(goal => {
-        const override = prefs[goal.id];
-        if (!override) return goal;
-        return {
-          ...goal,
-          ...(override.duration ? { duration: override.duration } : {}),
-          ...(override.dateKey ? { deadline: override.dateKey, freeBlock: false } : {}),
-          ...(override.time ? { time: override.time } : {}),
-        };
-      }),
+      subgoals: (subject.subgoals || [])
+        .filter(goal => !prefs[goal.id]?.hidden)
+        .map(goal => {
+          const override = prefs[goal.id];
+          if (!override) return goal;
+          return {
+            ...goal,
+            ...(override.duration ? { duration: override.duration } : {}),
+            ...(override.dateKey ? { deadline: override.dateKey, freeBlock: false } : {}),
+            ...(override.time ? { time: override.time } : {}),
+          };
+        }),
     })),
   }));
+}
+
+// Voor de terughaal-lijst in Instellingen -> Koppelingen (V07): neemt de
+// ONGEFILTERDE afgeleide modules (dus zonder `applyItemOverrides` erover heen
+// -- die zou een verborgen subgoal er net weglaten) en geeft er per verborgen
+// subgoal `{ id, label, provider }` van terug.
+//
+// De `label` komt uit het afgeleide subgoal (dus uit de device-local cache),
+// nooit uit `prefs` zelf -- die bevat immers geen titel (zie de privacy-kop
+// hierboven). `provider` leidt zich af uit de id-prefix, dezelfde vorm als
+// `isSourceItemId` hierboven gebruikt.
+export function collectHiddenItems(modules, prefs) {
+  if (!prefs) return [];
+  const items = [];
+  (modules || []).forEach(mod => {
+    (mod.subjects || []).forEach(subject => {
+      (subject.subgoals || []).forEach(goal => {
+        if (!prefs[goal.id]?.hidden) return;
+        items.push({
+          id: goal.id,
+          label: goal.label,
+          provider: goal.id.startsWith(TRELLO_CARD_ID_PREFIX) ? 'trello' : 'github',
+        });
+      });
+    });
+  });
+  return items;
 }

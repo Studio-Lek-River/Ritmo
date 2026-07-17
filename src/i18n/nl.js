@@ -1817,5 +1817,9 @@ export default {
       tokenDescription: 'Plak het token dat Trello zojuist toonde.',
       tokenPlaceholder: 'Trello-token',
     },
+    hiddenItems: {
+      title: 'Verborgen items ({count})',
+      restore: 'Terughalen',
+    },
   },
 };

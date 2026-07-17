@@ -1806,5 +1806,9 @@ export default {
       tokenDescription: 'Paste the token that Trello just showed you.',
       tokenPlaceholder: 'Trello token',
     },
+    hiddenItems: {
+      title: 'Hidden items ({count})',
+      restore: 'Restore',
+    },
   },
 };

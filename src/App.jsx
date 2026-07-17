@@ -47,7 +47,7 @@ import { readGithubRepoPrefs, writeGithubRepoPrefs, clearGithubRepoPrefs, includ
 import { clearGithubCache } from './utils/githubCache';
 import { buildGithubModules, GITHUB_ISSUE_ID_PREFIX } from './utils/githubModules';
 import { DEFAULT_SOURCE_PREFS, getSourcePref } from './utils/sourcePrefs';
-import { applyItemOverrides, clearOverridesWithPrefix, getSourceItemPref, isSourceItemId, withItemOverride } from './utils/sourceItemPrefs';
+import { applyItemOverrides, clearOverridesWithPrefix, collectHiddenItems, getSourceItemPref, isSourceItemId, withItemOverride } from './utils/sourceItemPrefs';
 import { DEFAULT_PRIORITY } from './utils/dayTimeline';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
@@ -1504,7 +1504,27 @@ export default function Ritmo() {
       duration: undefined,
       dateKey: undefined,
       time: undefined,
+      // "Terug naar de bron" heft ook een verberg-status op (V07, AC4): een
+      // item dat je verborg en waarvan je vervolgens alle eigen aanpassingen
+      // weggooit hoort niet stil verborgen te blijven.
+      hidden: undefined,
     }));
+  }, []);
+
+  // Verbergt een bronitem lokaal (V07): de kaart zelf blijft in Trello/GitHub
+  // bestaan, `applyItemOverrides` filtert hem voortaan overal weg. Alleen
+  // bronitems -- lokale modules/taken hebben hun eigen bewerk-UI en horen hier
+  // niet.
+  const hideSourceItem = useCallback((subgoalId) => {
+    if (!isSourceItemId(subgoalId)) return;
+    setSourceItemPrefs(prev => withItemOverride(prev, subgoalId, { hidden: true }));
+  }, []);
+
+  // Haalt een verborgen bronitem terug: de "Terughalen"-knop in
+  // Instellingen -> Koppelingen, en de undo op de verberg-toast.
+  const unhideSourceItem = useCallback((subgoalId) => {
+    if (!isSourceItemId(subgoalId)) return;
+    setSourceItemPrefs(prev => withItemOverride(prev, subgoalId, { hidden: false }));
   }, []);
 
   // Welke week het rooster toont, in hele weken t.o.v. deze week (0 = deze
@@ -1792,6 +1812,32 @@ export default function Ritmo() {
       { connectionId: githubConnection?.id, color: getSourcePref(sourcePrefs, 'github').color },
     ), sourceItemPrefs);
   }, [githubVisible, githubCacheRepos, githubRepoPrefs, githubConnection, sourcePrefs, sourceItemPrefs]);
+
+  // Terughaal-lijst voor Instellingen -> Koppelingen (V07). Lazy: zolang niets
+  // verborgen is kost dit niets extra (AC7) -- de vroege return hieronder
+  // slaat het opnieuw opbouwen van de modules over. Zodra er wél iets
+  // verborgen is bouwt hij de ONGEFILTERDE afgeleide modules (dus zonder
+  // `applyItemOverrides`, en zonder de `trelloVisible`/`githubVisible`-gate
+  // van de memo's hierboven): een verborgen kaart moet hier immers wél
+  // meekomen, terwijl `trelloModules`/`githubModules` hem juist wegfilteren.
+  // Titels komen zo uit de device-local cache (trelloCacheBoards/
+  // githubCacheRepos), nooit uit de gesyncte `sourceItemPrefs` zelf (zie de
+  // privacy-kop in sourceItemPrefs.js).
+  const hiddenSourceItems = useMemo(() => {
+    const hasHidden = Object.keys(sourceItemPrefs).some(k => sourceItemPrefs[k]?.hidden);
+    if (!hasHidden) return [];
+    const rawTrelloModules = buildTrelloModules(
+      { boards: trelloCacheBoards },
+      trelloBoardPrefs,
+      { connectionId: trelloConnection?.id, color: getSourcePref(sourcePrefs, 'trello').color },
+    );
+    const rawGithubModules = buildGithubModules(
+      { repos: githubCacheRepos },
+      githubRepoPrefs,
+      { connectionId: githubConnection?.id, color: getSourcePref(sourcePrefs, 'github').color },
+    );
+    return collectHiddenItems([...rawTrelloModules, ...rawGithubModules], sourceItemPrefs);
+  }, [sourceItemPrefs, trelloCacheBoards, trelloBoardPrefs, trelloConnection, githubCacheRepos, githubRepoPrefs, githubConnection, sourcePrefs]);
 
   const allModules = useMemo(
     () => [...modules, ...trelloModules, ...githubModules],
@@ -2580,6 +2626,8 @@ export default function Ritmo() {
             }}
             hasUsedSwipe={hasUsedSwipe}
             onFirstSwipe={() => setHasUsedSwipe(true)}
+            onHideItem={hideSourceItem}
+            onUnhideItem={unhideSourceItem}
             theme={theme}
           />
         )}
@@ -2684,6 +2732,8 @@ export default function Ritmo() {
             onMoveItem={moveItemToDay}
             onSetItemDuration={setItemDuration}
             onResetItem={resetSourceItem}
+            onHideItem={hideSourceItem}
+            onUnhideItem={unhideSourceItem}
             pendingPlan={pendingPlan}
             onShareDay={handleShareDay}
             planUndoDateKey={planUndo?.dateKey || null}
@@ -2775,6 +2825,8 @@ export default function Ritmo() {
           dayNames={dayNames}
           setEditingModule={setEditingModule}
           onStartTour={() => { setShowSettings(false); setSettingsInitialTab(null); startHealthTour(); }}
+          hiddenSourceItems={hiddenSourceItems}
+          onUnhideSourceItem={unhideSourceItem}
         />
       )}
 
@@ -3057,10 +3109,45 @@ function StreakBadge({ label, days, color, theme }) {
   );
 }
 
+// "Verborgen items"-lijst in Instellingen -> Koppelingen (V07): een verborgen
+// Trello-/GitHub-kaart is nergens anders terug te halen (applyItemOverrides
+// filtert hem overal weg, zie sourceItemPrefs.js), dus dit is de enige weg
+// terug. Rendert niets bij een lege lijst (AC3: "bij N=0 niets tonen").
+// `items` komt uit `hiddenSourceItems` in App.jsx, een lazy memo die de titel
+// altijd uit de device-local cache haalt, nooit uit de gesyncte prefs.
+function HiddenSourceItemsSection({ theme, items, onUnhide }) {
+  const { t } = useTranslation();
+  if (!items || items.length === 0) return null;
+  return (
+    <div className="space-y-3">
+      <h3 className={`font-semibold ${theme.textSecondary}`}>
+        {t('connections.hiddenItems.title', { count: items.length })}
+      </h3>
+      <div className="space-y-2">
+        {items.map(item => (
+          <div
+            key={item.id}
+            className={`${theme.cardSecondary} rounded-2xl p-3 flex items-center justify-between gap-3`}
+          >
+            <p className={`text-sm ${theme.text} truncate min-w-0`}>{item.label}</p>
+            <button
+              type="button"
+              onClick={() => onUnhide(item.id)}
+              className="text-xs font-medium shrink-0 text-blue-500 hover:underline"
+            >
+              {t('connections.hiddenItems.restore')}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, planMode, setPlanMode, switchToStandard, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour }) {
+function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, planMode, setPlanMode, switchToStandard, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour, hiddenSourceItems, onUnhideSourceItem }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
   const [helpView, setHelpView] = useState(initialHelp ? 'list' : null); // null | 'list' | 'install' | 'feedback'
@@ -3688,6 +3775,11 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
             {isSyncEnabled() && currentUser && (
               <ConnectionsSection theme={theme} accountId={currentUser.id} />
             )}
+            <HiddenSourceItemsSection
+              theme={theme}
+              items={hiddenSourceItems}
+              onUnhide={onUnhideSourceItem}
+            />
           </div>
         )}
 
