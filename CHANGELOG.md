@@ -1,3 +1,10 @@
+## [0.67.2](https://github.com/Studio-Lek-River/Ritmo/compare/v0.67.1...v0.67.2) (2026-07-17)
+
+
+### Bug Fixes
+
+* **planner:** weggeklikte terugkerende taak blijft weg na herstart ([b4c9cfd](https://github.com/Studio-Lek-River/Ritmo/commit/b4c9cfd0b21e67403aae53b6108c1a8e6a5cf62e))
+
 ## [0.67.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.67.0...v0.67.1) (2026-07-17)
 
 
