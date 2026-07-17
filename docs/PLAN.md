@@ -1,12 +1,14 @@
 # PLAN — team-werkwijze voor Ritmo
 
-Grote changes lopen niet in één keer, maar opgeknipt in kleine, afgeronde **slices**. Elke slice heeft een eigen spec in `docs/slices/SXX-*.md` (op basis van `docs/slices/SXX-template.md`) en doorloopt vijf rollen met twee menselijke poorten.
+Grote changes lopen niet in één keer, maar opgeknipt in kleine, afgeronde **slices**. **Elke slice is een GitHub-issue in `Studio-Lek-River/Ritmo`**: de spec staat in de body van dat issue, en dat issue is de bron van waarheid. Elke slice doorloopt vijf rollen met twee menselijke poorten.
+
+`docs/slices/` bevat de specs van vóór deze afspraak en blijft staan als historie; er komen geen bestanden bij.
 
 Dit document beschrijft de **werkwijze**. Het **wat**, de **volgorde** en de **actuele status** staan in `docs/ROADMAP.md` (leidend).
 
 ## Vijf rollen, twee poorten
 
-1. **Toetsen (PO, in Claude.ai).** Slice-spec met acceptatiecriteria in `docs/slices/SXX-*.md`.
+1. **Toetsen (PO).** Slice-spec met acceptatiecriteria in de body van het GitHub-issue, meestal geschreven via de `/issue`-skill.
    **Poort 1:** Bas keurt de spec goed.
 2. **Uitvoering (implementer-subagent).** Op `main`, volgens de spec en `CLAUDE.md`. Er zijn geen feature-branches.
 3. **Controle uitvoering (reviewer-subagent, read-only).** Code, uitgangspunten, i18n-regel.

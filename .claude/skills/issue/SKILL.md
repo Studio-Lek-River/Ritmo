@@ -1,6 +1,6 @@
 ---
 name: issue
-description: Neemt een GitHub-issue-nummer, haalt het issue op via de gh CLI, onderzoekt de inhoud tegen de codebase/ROADMAP/gelinkte issues, en schrijft een concept slice-spec in docs/slices/ (het Poort 1-artefact). Na goedkeuring biedt de skill aan de implementer->reviewer->verifier-pijplijn te draaien. Gebruik met /issue <nummer>.
+description: Neemt een GitHub-issue-nummer, haalt het issue op via de gh CLI, onderzoekt de inhoud tegen de codebase/ROADMAP/gelinkte issues, en schrijft een concept slice-spec als body van dat issue (het Poort 1-artefact). Na goedkeuring biedt de skill aan de implementer->reviewer->verifier-pijplijn te draaien. Gebruik met /issue <nummer>.
 user-invocable: true
 allowed-tools:
   - Read
@@ -15,7 +15,7 @@ allowed-tools:
 
 # /issue — GitHub-issue naar slice-plan
 
-Neemt een GitHub-issue-nummer, onderzoekt de inhoud, en schrijft een concept slice-spec in `docs/slices/` — het Poort 1-artefact dat het team van subagents daarna uitvoert. Na jouw goedkeuring biedt de skill aan de implementer→reviewer→verifier-pijplijn te draaien.
+Neemt een GitHub-issue-nummer, onderzoekt de inhoud, en schrijft een concept slice-spec **als body van dat issue** — het Poort 1-artefact dat het team van subagents daarna uitvoert. Na jouw goedkeuring biedt de skill aan de implementer→reviewer→verifier-pijplijn te draaien.
 
 Argument: `$ARGUMENTS` (het issue-nummer, bv. `43`).
 
@@ -24,6 +24,7 @@ Argument: `$ARGUMENTS` (het issue-nummer, bv. `43`).
 1. **Repo is `Studio-Lek-River/Ritmo`.** Gebruik altijd `gh ... --repo Studio-Lek-River/Ritmo`.
 2. **Werk op `main`.** Geen feature-branches, geen PR's in deze repo. De slice landt via gewone commits op `main`; Poort 2 is dat Bas lokaal test vóór de push.
 3. **Deze skill implementeert geen code.** De skill levert het plan (de slice-spec). Uitvoering loopt via het team, en pas na expliciete goedkeuring (Poort 1).
+3a. **De slice-spec is het issue, nooit een nieuw bestand in `docs/slices/`.** Zie `CLAUDE.md`.
 4. **Bij ambiguïteit → `AskUserQuestion`, niet gokken.** Onduidelijke scope, meerdere geldige interpretaties, of onduidelijke S-nummer-mapping zijn keuzes voor Bas. Veilig te defaulten → default kiezen en doorgaan.
 5. **Geen `Co-Authored-By: Claude`-trailer** in commits (conform `CLAUDE.md`).
 
@@ -42,7 +43,7 @@ Argument: `$ARGUMENTS` (het issue-nummer, bv. `43`).
 
 Onderzoek gericht — geen tussentijdse permissie-pauzes:
 
-- **S-nummer.** Detecteer een S-nummer in de titel (bv. "S12, ..."). Zo ja → lees de bijbehorende sectie in `docs/ROADMAP.md` en check of er al een `docs/slices/S12-*.md` bestaat. Bestaat die → **bijwerken, niet dupliceren**.
+- **S-nummer.** Detecteer een S-nummer in de titel (bv. "S12, ..."). Zo ja → lees de bijbehorende sectie in `docs/ROADMAP.md`. Bestaat er nog een oude `docs/slices/S12-*.md` van vóór de issue-afspraak → lees hem als context, maar werk hem niet bij; de spec landt in het issue.
 - **Gelinkte issues.** Volg referenties in de body (bv. parent `#33`) via `gh issue view <ref> --repo Studio-Lek-River/Ritmo --json title,body`.
 - **Codebase.** Zoek naar herbruikbare patronen die het issue raakt, bv.:
   - GitHub-interactie → het `GITHUB_TOKEN`-patroon in `api/feedback.js`
@@ -51,25 +52,25 @@ Onderzoek gericht — geen tussentijdse permissie-pauzes:
   - Componenten/utils → bestaande in `src/components/` en `src/utils/`
   Toets tegen de Ritmo-uitgangspunten (`.claude/docs/PROJECT_INSTRUCTIONS.md`); de volledige checklist staat in `.claude/skills/kwaliteitscheck/SKILL.md` (Dimensie 4).
 
-### Stap 3 — Slice-spec schrijven
+### Stap 3 — Slice-spec schrijven, in het issue
 
-Bepaal eerst `SXX` (uit de titel, of het volgende vrije nummer) en een kebab-titel; die vormen samen de bestandsnaam.
+**De spec is het issue.** Er komt géén bestand in `docs/slices/` bij; die map is historie van vóór deze afspraak (zie `CLAUDE.md`). Schrijf de spec en zet hem via `gh issue edit <n> --body-file` als **body** van het issue, met de oorspronkelijke body als citaatblok bovenaan bewaard.
 
-Schrijf `docs/slices/SXX-<kebab>.md` op basis van `docs/slices/SXX-template.md`. Vul:
+Vul:
 
-- **Header:** issue-URL + `**Status:** concept`.
-- **Doel:** één of twee zinnen, met verwijzing naar de relevante `docs/ROADMAP.md`-sectie.
-- **Scope:** "Wel in scope" en "Niet in scope (bewust)".
+- **Header:** `**Status:** concept — Poort 1` + verwijzing naar het parent-issue en de `docs/ROADMAP.md`-sectie.
+- **Citaat:** de oorspronkelijke issue-body, zodat de aanleiding niet verdwijnt.
+- **Doel:** één of twee zinnen.
+- **Correcties:** klopt de ROADMAP-belofte niet, of is er een Poort-0-beslissing van Bas? Leg die expliciet vast, met de reden.
+- **Scope:** "Wel in scope" en "Niet in scope (bewust)", met een issue-verwijzing bij alles wat je afsplitst.
 - **Aanpak:** geraakte bestanden + herbruikte helpers uit Stap 2 (geen volledige implementatie).
-- **Acceptatiecriteria:** toetsbaar geformuleerd, inclusief de vaste criteria:
+- **Acceptatiecriteria:** toetsbaar geformuleerd (`AC1`, `AC2`, …), inclusief de vaste criteria:
   - [ ] i18n key-pariteit (`npm run check:i18n` slaagt) voor elke nieuwe UI-string.
   - [ ] Geen wijzigingen buiten de scope van deze slice.
   - [ ] Nieuw gedrag is configureerbaar of uitschakelbaar (uitgangspunt "werkt voor de gebruiker"); bestaande data blijft veilig.
+- **Testchecklist:** wat Bas bij Poort 2 zelf naloopt.
 
-Commit de spec (een `docs:`-commit triggert geen release, dus deze mag direct mee naar `main`):
-```
-git add docs/slices/SXX-<kebab>.md && git commit -m "docs(slices): SXX-<naam> concept-spec uit issue #<n>"
-```
+Blijkt tijdens de research dat het issue meer is dan één slice, of dat een deel een eigen beslissing van Bas vraagt: **maak er een apart issue voor** (`gh issue create`) en verwijs er vanuit de scope naar. Werk `docs/ROADMAP.md` bij als de tekst daar niet meer klopt; dat is een gewone `docs:`-commit.
 
 ### Stap 4 — Poort 1
 
@@ -78,9 +79,9 @@ Toon een compacte samenvatting: Doel, de acceptatiecriteria, en de geraakte best
 ```
 AskUserQuestion:
   "Bovenstaand de concept slice-spec voor issue #<n>. Hoe verder?"
-  - Goedkeuren      → door naar Stap 5
-  - Aanpassen       → verwerk feedback in het bestand, commit, leg opnieuw voor
-  - Stoppen         → einde; de spec blijft als concept staan
+  - Goedkeuren      → zet **Status:** goedgekeurd in de issue-body, door naar Stap 5
+  - Aanpassen       → verwerk feedback, `gh issue edit` opnieuw, leg opnieuw voor
+  - Stoppen         → einde; de spec blijft als concept in het issue staan
 ```
 
 ### Stap 5 — Uitvoering aanbieden
@@ -101,7 +102,7 @@ Leg éérst het startpunt vast — reviewer en verifier hebben het nodig als sco
 git rev-parse HEAD   # basis-SHA; geef deze mee aan reviewer en verifier
 ```
 
-1. `Agent` **implementer** — geef de slice-spec-path mee; voert de wijzigingen uit op `main`.
+1. `Agent` **implementer** — geef het issue-nummer mee plus de spec zelf (de subagent haalt hem op met `gh issue view <n> --repo Studio-Lek-River/Ritmo --json body`); voert de wijzigingen uit op `main`.
 2. `Agent` **reviewer** (read-only) — geef de basis-SHA mee; code, uitgangspunten, i18n-regel, scope-discipline.
 3. `Agent` **verifier** (read-only) — geef de basis-SHA mee; resultaat punt voor punt tegen de acceptatiecriteria.
 

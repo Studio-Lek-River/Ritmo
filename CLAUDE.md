@@ -65,9 +65,12 @@ Elke commit landt rechtstreeks op `main` en verschijnt als aparte regel in de ge
 ## Werkwijze: team en poorten
 
 Grote changes lopen via de werkwijze in docs/PLAN.md, opgeknipt in kleine slices. Het wat, de volgorde en de status staan in docs/ROADMAP.md (leidend).
+
+**Elke slice is een GitHub-issue.** Het issue is de spec en de bron van waarheid, niet een bestand in de repo. Een nieuwe slice krijgt dus een issue in `Studio-Lek-River/Ritmo` (of, als het issue er al is, wordt de spec de body ervan) — er komen geen nieuwe bestanden in `docs/slices/`. Die map blijft staan als historie van de slices die vóór deze afspraak zijn geschreven; ernaar verwijzen mag, eraan toevoegen niet.
+
 Per slice gelden vijf rollen en twee poorten:
 
-1. Toetsen (PO, in Claude.ai): slice-spec met acceptatiecriteria in docs/slices/SXX-*.md. Poort 1: Bas keurt de spec goed.
+1. Toetsen (PO): slice-spec met acceptatiecriteria in het GitHub-issue. Poort 1: Bas keurt de spec goed.
 2. Uitvoering (implementer-subagent): op `main`, volgens de spec en deze CLAUDE.md.
 3. Controle uitvoering (reviewer-subagent, read-only): code, uitgangspunten, i18n-regel.
 4. Controle vereisten (verifier-subagent, read-only): resultaat tegen de acceptatiecriteria.
