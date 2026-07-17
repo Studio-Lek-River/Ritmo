@@ -1,3 +1,13 @@
+# [0.66.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.65.0...v0.66.0) (2026-07-17)
+
+
+### Features
+
+* **connections:** eigen dag, tijd en duur per kaart wissen bij het verbreken van een koppeling ([790591f](https://github.com/Studio-Lek-River/Ritmo/commit/790591fcb64267dd4aebfd7ce46ea061b66f2cea))
+* **planner:** duur en tijd schrijven op een Trello-kaart of GitHub-issue ([edc50ae](https://github.com/Studio-Lek-River/Ritmo/commit/edc50ae9c38182f5f37a39b46dfd33ca75ea9e6a))
+* **planner:** opslag voor duur en tijd op items van een gekoppelde bron ([bf4ad77](https://github.com/Studio-Lek-River/Ritmo/commit/bf4ad77424cfd1c1ce793e71c53254785a91f40d))
+* **planner:** Trello-kaarten en GitHub-issues plannen in het weekrooster ([0772123](https://github.com/Studio-Lek-River/Ritmo/commit/077212364fdfd2e187fe28336a6ef4f673119878))
+
 # [0.65.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.64.0...v0.65.0) (2026-07-17)
 
 
