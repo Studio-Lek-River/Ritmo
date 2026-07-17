@@ -1,3 +1,16 @@
+# [0.65.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.64.0...v0.65.0) (2026-07-17)
+
+
+### Bug Fixes
+
+* **planner:** deel mijn dag in correct terugdraaien en ook na alles overnemen ([eedf56b](https://github.com/Studio-Lek-River/Ritmo/commit/eedf56bd4516a5f7078fb11394f5df935355b1d1))
+
+
+### Features
+
+* **planner:** duur van een taak aanpassen via een chip op de takenpool-kaart ([d3f1829](https://github.com/Studio-Lek-River/Ritmo/commit/d3f182982de4ecfa295029ff40c559d781299202))
+* **planner:** knop om de laatste dagindeling terug te draaien ([a747838](https://github.com/Studio-Lek-River/Ritmo/commit/a7478383a05d2b1a13111f1e9312fd00a2364750))
+
 # [0.64.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.63.0...v0.64.0) (2026-07-17)
 
 
