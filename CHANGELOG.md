@@ -1,3 +1,10 @@
+## [0.62.2](https://github.com/Studio-Lek-River/Ritmo/compare/v0.62.1...v0.62.2) (2026-07-17)
+
+
+### Bug Fixes
+
+* **api:** connections-endpoints weer als eigen Vercel-routes ([9e6d354](https://github.com/Studio-Lek-River/Ritmo/commit/9e6d354809fcc29d2e7f40e2dbd60d922eae3049))
+
 ## [0.62.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.62.0...v0.62.1) (2026-07-17)
 
 
