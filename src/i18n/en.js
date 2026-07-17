@@ -178,6 +178,9 @@ export default {
       empty: 'No chores yet',
       markDoneAria: 'Mark as done',
       removeAria: 'Remove',
+      renameAria: 'Edit chore name',
+      recurrenceAria: 'Change frequency',
+      customDaysAria: 'Number of days',
       freq: {
         once: 'One-time',
         weekly: 'Weekly',
@@ -204,6 +207,7 @@ export default {
       checkAria: 'Tick off',
       stapleAria: 'Mark as staple',
       removeAria: 'Remove',
+      renameAria: 'Edit item name',
       cleanup: 'Clean up',
     },
     utilities: {
@@ -301,8 +305,6 @@ export default {
             confirm: 'Replace',
           },
         },
-        deleteTitle: 'Delete?',
-        deleteDescription: '"{name}" will be removed. Previously entered meter readings in Sustainability are kept.',
       },
       oneTime: {
         groupTitle: 'One-time expenses',
@@ -316,8 +318,6 @@ export default {
         save: 'Save',
         editTitle: 'Edit one-time',
         addTitle: 'Add one-time',
-        deleteTitle: 'Delete?',
-        deleteDescription: '"{name}" will be removed.',
         monthGroupHeader: '{month} {year}',
         editAria: 'Edit',
         removeAria: 'Remove',
@@ -770,6 +770,10 @@ export default {
     taskDeleted: 'Task deleted',
     recurringDeleted: 'Recurring task deleted',
     itemHidden: 'Item hidden',
+    choreDeleted: 'Chore deleted',
+    groceryDeleted: 'Item deleted',
+    groceriesCleanedUp: 'List cleaned up',
+    fixedCostDeleted: 'Entry deleted',
   },
 
   modules: {

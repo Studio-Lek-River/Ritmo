@@ -8,6 +8,7 @@ import {
 import MealPlanSection from './household/MealPlanSection';
 import InvestmentsSection from './household/InvestmentsSection';
 import useStoredState from '../hooks/useStoredState';
+import { useUndoToast } from '../hooks/useUndoToast';
 import { STORAGE_KEYS } from '../storage';
 import {
   isOverdue, daysUntilDue, formatRelativeDate, formatEuro, parseEuroInput,
@@ -437,9 +438,21 @@ function Stat({ theme, label, value, accent }) {
 
 function ChoresSection({ chores, setChores, theme }) {
   const { t } = useTranslation();
+  const showUndoToast = useUndoToast();
   const [name, setName] = useState('');
   const [recurrence, setRecurrence] = useState('weekly');
   const [customDays, setCustomDays] = useState(14);
+  const [editingChoreId, setEditingChoreId] = useState(null);
+  const [choreDraft, setChoreDraft] = useState('');
+  // Zelfde Escape-dan-blur-guard als src/components/TaskListPanel.jsx (V04,
+  // #127): Escape sluit de input terwijl hij focus heeft, maar sommige
+  // browsers vuren daarna alsnog een blur-event op de node die al aan het
+  // wegrenderen is. Zonder deze vlag zou die blur alsnog opslaan.
+  // `editSessionRef` volgt buiten React-state om welke chore-id nog actief
+  // bewerkt wordt, zodat een commit voor een sessie die al gesloten is
+  // (via Enter of Escape) genegeerd wordt.
+  const justCancelledRef = useRef(false);
+  const editSessionRef = useRef(null);
 
   const add = () => {
     const trimmed = name.trim();
@@ -461,8 +474,56 @@ function ChoresSection({ chores, setChores, theme }) {
     ));
   };
 
+  const startEditChoreName = (chore) => {
+    justCancelledRef.current = false;
+    editSessionRef.current = chore.id;
+    setEditingChoreId(chore.id);
+    setChoreDraft(chore.name);
+  };
+  const commitEditChoreName = (id) => {
+    if (justCancelledRef.current) {
+      justCancelledRef.current = false;
+      return;
+    }
+    if (editSessionRef.current !== id) return;
+    editSessionRef.current = null;
+    const trimmed = choreDraft.trim();
+    if (trimmed) {
+      setChores(prev => prev.map(c => c.id === id ? { ...c, name: trimmed } : c));
+    }
+    setEditingChoreId(null);
+  };
+  const cancelEditChoreName = () => {
+    justCancelledRef.current = true;
+    editSessionRef.current = null;
+    setEditingChoreId(null);
+    setChoreDraft('');
+  };
+
+  const setChoreRecurrence = (id, value) => {
+    setChores(prev => prev.map(c => {
+      if (c.id !== id) return c;
+      if (value === 'custom') {
+        return { ...c, recurrence: value, customDays: c.customDays || 14 };
+      }
+      const { customDays: _drop, ...rest } = c;
+      return { ...rest, recurrence: value };
+    }));
+  };
+
+  const setChoreCustomDays = (id, days) => {
+    setChores(prev => prev.map(c => c.id === id ? { ...c, customDays: Math.max(1, Number(days) || 1) } : c));
+  };
+
+  // Undo-flow zoals V04 (#127): snapshot de chore vóórdat hij verdwijnt,
+  // toon de undo-toast met dat snapshot als herstel-payload. De guard in de
+  // restore voorkomt een dubbele toevoeging als de gebruiker "ongedaan
+  // maken" twee keer aanklikt.
   const remove = (id) => {
+    const snap = chores.find(c => c.id === id);
+    if (!snap) return;
     setChores(prev => prev.filter(c => c.id !== id));
+    showUndoToast(t('toast.choreDeleted'), () => setChores(prev => prev.some(c => c.id === snap.id) ? prev : [...prev, snap]));
   };
 
   const sorted = [...chores].sort((a, b) => {
@@ -543,9 +604,53 @@ function ChoresSection({ chores, setChores, theme }) {
                 <Check className="w-4 h-4" />
               </button>
               <div className="flex-1 min-w-0">
-                <div className={`text-sm font-medium ${theme.text} truncate`}>{chore.name}</div>
-                <div className={`text-xs ${overdue ? 'text-red-500 font-medium' : theme.textMuted}`}>
-                  {choreStatus(chore, overdue, due, t)}
+                {editingChoreId === chore.id ? (
+                  <input
+                    type="text"
+                    autoFocus
+                    value={choreDraft}
+                    onChange={e => setChoreDraft(e.target.value)}
+                    onBlur={() => commitEditChoreName(chore.id)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') commitEditChoreName(chore.id);
+                      if (e.key === 'Escape') cancelEditChoreName();
+                    }}
+                    aria-label={t('household.chores.renameAria')}
+                    className={`w-full text-sm font-medium px-1 py-0.5 ${theme.input} rounded focus:outline-none focus:ring-2 focus:ring-blue-300`}
+                  />
+                ) : (
+                  <div
+                    onClick={() => startEditChoreName(chore)}
+                    className={`text-sm font-medium ${theme.text} truncate cursor-text`}
+                  >
+                    {chore.name}
+                  </div>
+                )}
+                <div className="flex items-center gap-2 flex-wrap mt-1">
+                  <select
+                    value={chore.recurrence}
+                    onChange={e => setChoreRecurrence(chore.id, e.target.value)}
+                    aria-label={t('household.chores.recurrenceAria')}
+                    className={`px-1.5 py-0.5 rounded-lg ${theme.input} text-xs outline-none`}
+                  >
+                    <option value="once">{t('household.chores.freq.once')}</option>
+                    <option value="weekly">{t('household.chores.freq.weekly')}</option>
+                    <option value="monthly">{t('household.chores.freq.monthly')}</option>
+                    <option value="custom">{t('household.chores.freq.custom')}</option>
+                  </select>
+                  {chore.recurrence === 'custom' && (
+                    <input
+                      type="number"
+                      min="1"
+                      value={chore.customDays ?? 14}
+                      onChange={e => setChoreCustomDays(chore.id, e.target.value)}
+                      aria-label={t('household.chores.customDaysAria')}
+                      className={`w-14 px-1.5 py-0.5 rounded-lg ${theme.input} text-xs outline-none`}
+                    />
+                  )}
+                  <span className={`text-xs ${overdue ? 'text-red-500 font-medium' : theme.textMuted}`}>
+                    {choreStatus(chore, overdue, due, t)}
+                  </span>
                 </div>
               </div>
               <button
@@ -587,7 +692,15 @@ function choreStatus(chore, overdue, due, t) {
 
 function GroceriesSection({ groceries, setGroceries, theme, dayLabels }) {
   const { t } = useTranslation();
+  const showUndoToast = useUndoToast();
   const [name, setName] = useState('');
+  const [editingItemId, setEditingItemId] = useState(null);
+  const [itemDraft, setItemDraft] = useState('');
+  // Zelfde Escape-dan-blur-guard als src/components/TaskListPanel.jsx (V04,
+  // #127): zie ChoresSection hierboven voor de uitleg van de race die dit
+  // afvangt. Eigen refs, want deze sectie houdt haar eigen edit-sessie bij.
+  const justCancelledRef = useRef(false);
+  const editSessionRef = useRef(null);
   const items = groceries.items || [];
 
   const setItems = (updater) => {
@@ -616,15 +729,51 @@ function GroceriesSection({ groceries, setGroceries, theme, dayLabels }) {
     setItems(prev => prev.map(i => i.id === id ? { ...i, isStaple: !i.isStaple } : i));
   };
 
-  const remove = (id) => {
-    setItems(prev => prev.filter(i => i.id !== id));
+  const startEditItemName = (item) => {
+    justCancelledRef.current = false;
+    editSessionRef.current = item.id;
+    setEditingItemId(item.id);
+    setItemDraft(item.name);
+  };
+  const commitEditItemName = (id) => {
+    if (justCancelledRef.current) {
+      justCancelledRef.current = false;
+      return;
+    }
+    if (editSessionRef.current !== id) return;
+    editSessionRef.current = null;
+    const trimmed = itemDraft.trim();
+    if (trimmed) {
+      setItems(prev => prev.map(i => i.id === id ? { ...i, name: trimmed } : i));
+    }
+    setEditingItemId(null);
+  };
+  const cancelEditItemName = () => {
+    justCancelledRef.current = true;
+    editSessionRef.current = null;
+    setEditingItemId(null);
+    setItemDraft('');
   };
 
+  // Undo-flow zoals V04 (#127): snapshot het item vóórdat het verdwijnt,
+  // toon de undo-toast met dat snapshot als herstel-payload.
+  const remove = (id) => {
+    const snap = items.find(i => i.id === id);
+    if (!snap) return;
+    setItems(prev => prev.filter(i => i.id !== id));
+    showUndoToast(t('toast.groceryDeleted'), () => setItems(prev => prev.some(i => i.id === snap.id) ? prev : [...prev, snap]));
+  };
+
+  // Opruimen wist in één klik alle afgevinkte items en zet staples terug op
+  // niet-afgevinkt; snapshot de volledige lijst vooraf zodat een misklik
+  // herstelbaar is.
   const cleanup = () => {
+    const snapshot = items;
     setItems(prev => prev
       .filter(i => i.isStaple || !i.checked)
       .map(i => i.isStaple ? { ...i, checked: false } : i)
     );
+    showUndoToast(t('toast.groceriesCleanedUp'), () => setItems(() => snapshot));
   };
 
   const sorted = [...items].sort((a, b) => {
@@ -692,9 +841,28 @@ function GroceriesSection({ groceries, setGroceries, theme, dayLabels }) {
             >
               {item.checked && <Check className="w-3.5 h-3.5" />}
             </button>
-            <span className={`flex-1 text-sm ${theme.text} ${item.checked ? 'line-through opacity-50' : ''}`}>
-              {item.name}
-            </span>
+            {editingItemId === item.id ? (
+              <input
+                type="text"
+                autoFocus
+                value={itemDraft}
+                onChange={e => setItemDraft(e.target.value)}
+                onBlur={() => commitEditItemName(item.id)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') commitEditItemName(item.id);
+                  if (e.key === 'Escape') cancelEditItemName();
+                }}
+                aria-label={t('household.groceries.renameAria')}
+                className={`flex-1 text-sm px-1 py-0.5 ${theme.input} rounded focus:outline-none focus:ring-2 focus:ring-blue-300`}
+              />
+            ) : (
+              <span
+                onClick={() => startEditItemName(item)}
+                className={`flex-1 text-sm cursor-text ${theme.text} ${item.checked ? 'line-through opacity-50' : ''}`}
+              >
+                {item.name}
+              </span>
+            )}
             <button
               onClick={() => toggleStaple(item.id)}
               className={`p-1 rounded transition ${item.isStaple ? 'text-amber-500' : theme.textMuted}`}
@@ -731,10 +899,10 @@ function GroceriesSection({ groceries, setGroceries, theme, dayLabels }) {
 
 function FixedCostsSection({ budget, setBudget, theme, darkMode, monthsLong, monthsShort, dayLabels, monthlyIncome, monthlyExpenses, monthlyNetValue }) {
   const { t } = useTranslation();
+  const showUndoToast = useUndoToast();
   const [view, setView] = useState('recurring'); // 'recurring' | 'oneTime' | 'calendar'
   const [editing, setEditing] = useState(null); // { kind: 'income'|'expense'|'oneTime', item }
   const [adding, setAdding] = useState(null);   // 'income' | 'expense' | 'oneTime' | null
-  const [pendingDelete, setPendingDelete] = useState(null);
 
   const income = budget.income || [];
   const expenses = budget.expenses || [];
@@ -769,16 +937,37 @@ function FixedCostsSection({ budget, setBudget, theme, darkMode, monthsLong, mon
     setAdding(null);
   };
 
+  // Vaste lasten en eenmalige posten zijn geen historische meetdata, dus
+  // verwijderen gebeurt direct (geen bevestigingsdialoog) met een
+  // undo-toast in plaats daarvan. Snapshot het item vóórdat het verdwijnt;
+  // de guard in de restore voorkomt een dubbele toevoeging bij een dubbele
+  // "ongedaan maken"-klik.
   const removeRecurring = (kind, id) => {
     const collectionKey = kind === 'income' ? 'income' : 'expenses';
+    const snap = (budget[collectionKey] || []).find(x => x.id === id);
+    if (!snap) return;
     setBudget(prev => ({
       ...prev,
       [collectionKey]: (prev[collectionKey] || []).filter(x => x.id !== id),
     }));
+    showUndoToast(t('toast.fixedCostDeleted'), () => setBudget(prev => {
+      const current = prev[collectionKey] || [];
+      return current.some(x => x.id === snap.id)
+        ? prev
+        : { ...prev, [collectionKey]: [...current, snap] };
+    }));
   };
 
   const removeOneTime = (id) => {
+    const snap = (budget.oneTime || []).find(x => x.id === id);
+    if (!snap) return;
     setBudget(prev => ({ ...prev, oneTime: (prev.oneTime || []).filter(x => x.id !== id) }));
+    showUndoToast(t('toast.fixedCostDeleted'), () => setBudget(prev => {
+      const current = prev.oneTime || [];
+      return current.some(x => x.id === snap.id)
+        ? prev
+        : { ...prev, oneTime: [...current, snap] };
+    }));
   };
 
   const handlePickItem = (item, kind) => {
@@ -826,7 +1015,7 @@ function FixedCostsSection({ budget, setBudget, theme, darkMode, monthsLong, mon
           monthsLong={monthsLong}
           onEdit={(kind, item) => setEditing({ kind, item })}
           onAdd={(kind) => setAdding(kind)}
-          onDelete={(kind, item) => setPendingDelete({ flow: 'recurring', kind, item })}
+          onDelete={(kind, item) => removeRecurring(kind, item.id)}
         />
       )}
 
@@ -837,7 +1026,7 @@ function FixedCostsSection({ budget, setBudget, theme, darkMode, monthsLong, mon
           monthsLong={monthsLong}
           onEdit={(item) => setEditing({ kind: 'oneTime', item })}
           onAdd={() => setAdding('oneTime')}
-          onDelete={(item) => setPendingDelete({ flow: 'oneTime', item })}
+          onDelete={(item) => removeOneTime(item.id)}
         />
       )}
 
@@ -872,26 +1061,6 @@ function FixedCostsSection({ budget, setBudget, theme, darkMode, monthsLong, mon
         />
       )}
 
-      <ConfirmDialog
-        open={!!pendingDelete}
-        theme={theme}
-        variant="danger"
-        title={pendingDelete?.flow === 'oneTime'
-          ? t('household.fixedCosts.oneTime.deleteTitle')
-          : t('household.fixedCosts.recurring.deleteTitle')}
-        description={pendingDelete?.flow === 'oneTime'
-          ? t('household.fixedCosts.oneTime.deleteDescription', { name: pendingDelete?.item?.name || '' })
-          : t('household.fixedCosts.recurring.deleteDescription', { name: pendingDelete?.item?.name || '' })}
-        confirmLabel={t('common.delete')}
-        cancelLabel={t('common.cancel')}
-        onConfirm={() => {
-          if (!pendingDelete) return;
-          if (pendingDelete.flow === 'oneTime') removeOneTime(pendingDelete.item.id);
-          else removeRecurring(pendingDelete.kind, pendingDelete.item.id);
-          setPendingDelete(null);
-        }}
-        onCancel={() => setPendingDelete(null)}
-      />
     </div>
   );
 }

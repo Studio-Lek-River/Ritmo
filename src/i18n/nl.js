@@ -179,6 +179,9 @@ export default {
       empty: 'Nog geen klusjes',
       markDoneAria: 'Markeer als gedaan',
       removeAria: 'Verwijder',
+      renameAria: 'Klusnaam bewerken',
+      recurrenceAria: 'Wijzig frequentie',
+      customDaysAria: 'Aantal dagen',
       freq: {
         once: 'Eenmalig',
         weekly: 'Wekelijks',
@@ -205,6 +208,7 @@ export default {
       checkAria: 'Vink af',
       stapleAria: 'Markeer als vast',
       removeAria: 'Verwijder',
+      renameAria: 'Naam boodschap bewerken',
       cleanup: 'Opruimen',
     },
     utilities: {
@@ -302,8 +306,6 @@ export default {
             confirm: 'Vervangen',
           },
         },
-        deleteTitle: 'Verwijderen?',
-        deleteDescription: '"{name}" wordt verwijderd. Eerder ingevulde meterstanden in Duurzaamheid blijven staan.',
       },
       oneTime: {
         groupTitle: 'Eenmalige uitgaven',
@@ -317,8 +319,6 @@ export default {
         save: 'Opslaan',
         editTitle: 'Eenmalig bewerken',
         addTitle: 'Eenmalig toevoegen',
-        deleteTitle: 'Verwijderen?',
-        deleteDescription: '"{name}" wordt verwijderd.',
         monthGroupHeader: '{month} {year}',
         editAria: 'Bewerk',
         removeAria: 'Verwijder',
@@ -771,6 +771,10 @@ export default {
     taskDeleted: 'Taak verwijderd',
     recurringDeleted: 'Terugkerende taak verwijderd',
     itemHidden: 'Item verborgen',
+    choreDeleted: 'Taak verwijderd',
+    groceryDeleted: 'Boodschap verwijderd',
+    groceriesCleanedUp: 'Lijst opgeruimd',
+    fixedCostDeleted: 'Post verwijderd',
   },
 
   modules: {
