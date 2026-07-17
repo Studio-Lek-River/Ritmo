@@ -1,3 +1,11 @@
+# [0.71.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.70.0...v0.71.0) (2026-07-17)
+
+
+### Features
+
+* **planner:** verberg Trello/GitHub-kaarten in Takenpool en ProjectsView ([fe484a9](https://github.com/Studio-Lek-River/Ritmo/commit/fe484a97def2491f948b41444f4a834493109413))
+* **sourceItemPrefs:** voeg hidden-veld en verberg-mechanisme toe voor bronitems ([785004e](https://github.com/Studio-Lek-River/Ritmo/commit/785004e90770940e3689019937d2293777c069d4))
+
 # [0.70.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.69.0...v0.70.0) (2026-07-17)
 
 
