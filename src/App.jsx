@@ -1317,12 +1317,14 @@ export default function Ritmo() {
       const { moduleId: projectId, subjectId, goalId: goalIdRaw } = parsed;
 
       // Een item van een gekoppelde bron zit niet in `modules` (het is
-      // afgeleid), dus daar landt alleen de tijd, in de override-map.
-      // `targetDateKey` gaat bewust NIET mee: de deadline blijft van de bron
-      // (de Trello-due), en een bronitem is sowieso niet naar een andere dag
-      // te slepen — het rooster toont alleen lokale modules.
+      // afgeleid), dus dag en tijd landen in de override-map. De dag gaat mee:
+      // zonder binding zou een vrij blok in élke dagkolom van het rooster
+      // verschijnen (zie sourceItemPrefs.js).
       if (isSourceItemId(goalIdRaw)) {
-        setSourceItemPrefs(prev => withItemOverride(prev, goalIdRaw, { time: time || undefined }));
+        setSourceItemPrefs(prev => withItemOverride(prev, goalIdRaw, {
+          dateKey: targetDateKey,
+          time: time || undefined,
+        }));
         return null;
       }
 
@@ -1418,6 +1420,21 @@ export default function Ritmo() {
       String(t.id) === parsed.taskId ? { ...t, duration: duration || undefined } : t
     ));
   }, [writeTasksForDay]);
+
+  // Haalt alle eigen aanpassingen van een bronitem weg, zodat het weer volledig
+  // door Trello/GitHub wordt bepaald (de due-datum, en een vrij blok dat op elke
+  // dag mag staan). De enige weg terug: dag en tijd komen uit een override die
+  // de bron overstemt, en zonder deze actie zou een eenmaal gezette dag blijven
+  // staan ook als de kaart in Trello verschuift.
+  const resetSourceItem = useCallback((itemKey) => {
+    const parsed = parseItemKey(itemKey);
+    if (parsed.kind !== 'subgoal' || !isSourceItemId(parsed.goalId)) return;
+    setSourceItemPrefs(prev => withItemOverride(prev, parsed.goalId, {
+      duration: undefined,
+      dateKey: undefined,
+      time: undefined,
+    }));
+  }, []);
 
   // Welke week het rooster toont, in hele weken t.o.v. deze week (0 = deze
   // week, 1 = volgende, -1 = vorige). Bewust alleen hier: `activeDate` blijft
@@ -1805,10 +1822,11 @@ export default function Ritmo() {
 
     if (parsed.kind === 'subgoal') {
       // Bronitem: de override-map is hier de bron van waarheid, want de bron
-      // zelf (Trello/GitHub) kent geen tijd. Alleen `time`, want dat is het
-      // enige dat de indeler op een bronitem schrijft.
+      // zelf (Trello/GitHub) kent geen dag-binding en geen tijd. `duration`
+      // blijft buiten de snapshot: de indeler raakt die niet aan.
       if (isSourceItemId(parsed.goalId)) {
-        return { kind: 'sourceItem', goalId: parsed.goalId, time: getSourceItemPref(sourceItemPrefs, parsed.goalId).time };
+        const pref = getSourceItemPref(sourceItemPrefs, parsed.goalId);
+        return { kind: 'sourceItem', goalId: parsed.goalId, dateKey: pref.dateKey, time: pref.time };
       }
 
       // Lokale subgoals staan in `modules`, niet in `allModules`.
@@ -1863,7 +1881,7 @@ export default function Ritmo() {
     // eerste-keer-tijd laat geen lege entry achter in de map.
     if (sourceEntries.length) {
       setSourceItemPrefs(prev => sourceEntries.reduce(
-        (acc, e) => withItemOverride(acc, e.goalId, { time: e.time }),
+        (acc, e) => withItemOverride(acc, e.goalId, { dateKey: e.dateKey, time: e.time }),
         prev,
       ));
     }
@@ -2581,6 +2599,7 @@ export default function Ritmo() {
             onToggleTaskInDay={toggleTaskInDay}
             onMoveItem={moveItemToDay}
             onSetItemDuration={setItemDuration}
+            onResetItem={resetSourceItem}
             pendingPlan={pendingPlan}
             onShareDay={handleShareDay}
             planUndoDateKey={planUndo?.dateKey || null}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Check, Clock, ExternalLink, MoreHorizontal, Plus } from 'lucide-react';
+import { Check, Clock, ExternalLink, MoreHorizontal, Plus, RotateCcw } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { getColorClasses, getColorHex } from '../utils/colors';
 import { encodeDragPayload, decodeDragPayload } from '../utils/dragPayload';
@@ -28,6 +28,7 @@ export default function TaskPoolPanel({
   onAddTask,
   onMoveItem,
   onSetItemDuration,
+  onResetItem,
   priorityPrefs,
   theme,
 }) {
@@ -141,6 +142,7 @@ export default function TaskPoolPanel({
                   selectedDateKey={selectedDateKey}
                   onMoveItem={onMoveItem}
                   onSetItemDuration={onSetItemDuration}
+                  onResetItem={onResetItem}
                   priorityPrefs={priorityPrefs}
                   menuOpen={openPopover?.key === item.key && openPopover.kind === 'menu'}
                   durationOpen={openPopover?.key === item.key && openPopover.kind === 'duration'}
@@ -165,6 +167,7 @@ function PoolItemCard({
   selectedDateKey,
   onMoveItem,
   onSetItemDuration,
+  onResetItem,
   priorityPrefs,
   menuOpen,
   durationOpen,
@@ -186,14 +189,13 @@ function PoolItemCard({
   // acties voor een gekoppelde bron, en niets om te openen): de trigger dan
   // helemaal verbergen in plaats van een lege popover te tonen. De kaart
   // blijft gewoon sleepbaar en afvinkbaar; alleen de menu-knop vervalt.
-  const hasMenu = !item.source || !!item.url;
   // De duur is alleen bewerkbaar waar er een record is om op te schrijven. Een
-  // bronkaart (Trello/GitHub) is geen echte taak, en een nog niet
-  // gematerialiseerde recurring-instantie heeft nog geen eigen record —
-  // materialiseren om enkel een duur te zetten zou een eager write zijn, en de
-  // duur van het sjabloon aanpassen zou élke dag raken. Beide missen hier al
-  // een `toggle`; de chip volgt dezelfde lijn en blijft statische tekst.
-  const canEditDuration = !item.source && !isVirtualTaskKey(item.key);
+  // bronkaart heeft dat sinds sourceItemPrefs.js wél (een override-map naast
+  // de afgeleide data), maar een nog niet gematerialiseerde recurring-instantie
+  // niet: materialiseren om enkel een duur te zetten zou een eager write zijn,
+  // en de duur van het sjabloon aanpassen zou élke dag raken. Die houdt een
+  // statisch label, net als hij hier al geen `toggle` heeft.
+  const canEditDuration = !isVirtualTaskKey(item.key);
   const durationLabel = t('planner.pool.durationMinutes', { min: item.duration ?? DEFAULT_BLOCK_MINUTES });
 
   return (
@@ -303,22 +305,53 @@ function PoolItemCard({
         </div>
       </div>
 
-      {hasMenu && (
-        <div className="relative shrink-0" data-pool-menu>
-          <button
-            type="button"
-            onClick={onToggleMenu}
-            aria-haspopup="true"
-            aria-expanded={menuOpen}
-            aria-label={t('common.options')}
-            className={`p-1.5 ${theme.hover} ${theme.radiusControl} ${theme.textMuted} transition`}
-          >
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
+      <div className="relative shrink-0" data-pool-menu>
+        <button
+          type="button"
+          onClick={onToggleMenu}
+          aria-haspopup="true"
+          aria-expanded={menuOpen}
+          aria-label={t('common.options')}
+          className={`p-1.5 ${theme.hover} ${theme.radiusControl} ${theme.textMuted} transition`}
+        >
+          <MoreHorizontal className="w-4 h-4" />
+        </button>
 
-          {menuOpen && (
-            <div className={`absolute right-0 top-full mt-1 z-20 ${theme.card} rounded-xl shadow-lg border ${theme.border} overflow-hidden min-w-[11rem] p-2`}>
-              {item.source ? (
+        {menuOpen && (
+          <div className={`absolute right-0 top-full mt-1 z-20 ${theme.card} rounded-xl shadow-lg border ${theme.border} overflow-hidden min-w-[11rem] p-2`}>
+            <div className="flex flex-col gap-2">
+              <TimeInput
+                value=""
+                onChange={(v) => v && onMoveItem(item.key, selectedDateKey, selectedDateKey, v)}
+                theme={theme}
+                className="w-full"
+              />
+              <select
+                value={selectedDateKey}
+                onChange={(e) => onMoveItem(item.key, selectedDateKey, e.target.value, item.time || undefined)}
+                aria-label={t('planner.pool.moveToDayAria')}
+                className={`w-full text-xs px-1.5 py-1.5 ${theme.input} ${theme.radiusControl}`}
+              >
+                {dayOptions.map(opt => (
+                  <option key={opt.dateKey} value={opt.dateKey}>{opt.label}</option>
+                ))}
+              </select>
+
+              {/* Een bronkaart is de enige die niet vanzelf terug kan: de dag
+                  en tijd komen uit een override die de bron overstemt, dus er
+                  moet een weg terug zijn naar wat Trello/GitHub zelf zegt. */}
+              {item.source && (
+                <button
+                  type="button"
+                  onClick={() => { onResetItem(item.key); onToggleMenu(); }}
+                  className={`flex items-center gap-1.5 px-2 py-1.5 text-sm ${theme.radiusControl} ${theme.textSecondary} ${theme.hover} transition`}
+                >
+                  <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+                  {t('planner.pool.resetToSource', { provider: providerLabel })}
+                </button>
+              )}
+
+              {item.source && item.url && (
                 <a
                   href={item.url}
                   target="_blank"
@@ -329,30 +362,11 @@ function PoolItemCard({
                   <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                   {t('planner.pool.openInSource', { provider: providerLabel })}
                 </a>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  <TimeInput
-                    value=""
-                    onChange={(v) => v && onMoveItem(item.key, selectedDateKey, selectedDateKey, v)}
-                    theme={theme}
-                    className="w-full"
-                  />
-                  <select
-                    value={selectedDateKey}
-                    onChange={(e) => onMoveItem(item.key, selectedDateKey, e.target.value, item.time || undefined)}
-                    aria-label={t('planner.pool.moveToDayAria')}
-                    className={`w-full text-xs px-1.5 py-1.5 ${theme.input} ${theme.radiusControl}`}
-                  >
-                    {dayOptions.map(opt => (
-                      <option key={opt.dateKey} value={opt.dateKey}>{opt.label}</option>
-                    ))}
-                  </select>
-                </div>
               )}
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

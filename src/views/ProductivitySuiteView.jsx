@@ -75,6 +75,7 @@ export default function ProductivitySuiteView({
   onToggleTaskInDay,
   onMoveItem,
   onSetItemDuration,
+  onResetItem,
   pendingPlan,
   onShareDay,
   planUndoDateKey,
@@ -139,13 +140,17 @@ export default function ProductivitySuiteView({
   const tasksColor = modules.find(m => m.enabled && m.type === 'tasks')?.color;
 
   // `modules` is hier `allModules` (App.jsx, S08/S09): bevat ook de afgeleide
-  // Trello- en GitHub-projecten. Die horen wél in de takenpool (poolItems
-  // hieronder, AC5) maar niet in het weekrooster of het Kanban-bord — beide
-  // staan expliciet buiten scope (Trello-kaarten en GitHub-issues blokkeren
-  // geen tijd, en KANBAN_COLUMNS mapt niet op externe statussen zonder
-  // informatieverlies). `localModules` is dus de settings-only
-  // deelverzameling voor die twee (elke module met een `source`-binding
-  // eruit gefilterd, ongeacht provider).
+  // Trello- en GitHub-projecten. Die horen in de takenpool én, sinds ze een
+  // eigen dag en tijd kunnen krijgen (sourceItemPrefs.js), in het weekrooster:
+  // anders verdwijnt een kaart zodra je hem inplant, want de pool toont alleen
+  // items zónder tijd. Alleen een kaart die de gebruiker zelf op een dag heeft
+  // gezet komt in het rooster terecht — een vrij blok zonder binding blijft in
+  // de pool en zou anders in elke dagkolom staan.
+  //
+  // Het Kanban-bord houdt ze wél buiten: KANBAN_COLUMNS mapt niet op externe
+  // statussen zonder informatieverlies. `localModules` is daarvoor de
+  // settings-only deelverzameling (elke module met een `source`-binding eruit,
+  // ongeacht provider).
   const localModules = useMemo(() => modules.filter(m => !m.source), [modules]);
 
   const selectedDay = (weekDays || []).find(d => d.dateKey === selectedDateKey) || weekDays?.[0];
@@ -312,6 +317,7 @@ export default function ProductivitySuiteView({
                 onAddTask={(text) => onAddTask(text, undefined, {}, selectedDay?.dateKey || todayKey)}
                 onMoveItem={onMoveItem}
                 onSetItemDuration={onSetItemDuration}
+                onResetItem={onResetItem}
                 priorityPrefs={priorityPrefs}
                 theme={theme}
               />
@@ -346,7 +352,7 @@ export default function ProductivitySuiteView({
               weekDays={weekDays || []}
               weekOffset={weekOffset}
               onWeekOffsetChange={onWeekOffsetChange}
-              modules={localModules}
+              modules={modules}
               agendaByDate={agendaByDate}
               includedAgendaIds={includedAgendaIds}
               onToggleAgendaBlock={onToggleAgendaBlock}

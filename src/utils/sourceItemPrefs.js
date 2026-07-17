@@ -26,8 +26,19 @@ import { TRELLO_CARD_ID_PREFIX } from './trelloModules';
 import { GITHUB_ISSUE_ID_PREFIX } from './githubModules';
 
 // Sleutel = de afgeleide subgoal-id (`trello:card:<id>`, `github:issue:<id>`).
-// Shape: { [subgoalId]: { duration?, time? } }
-const EMPTY_PREF = { duration: undefined, time: undefined };
+// Shape: { [subgoalId]: { duration?, dateKey?, time? } }
+//
+// `dateKey` is de dag-binding: staat hij er, dan heeft de gebruiker dit item
+// zelf op die dag gepland en gedraagt het zich verder als een gewoon subgoal
+// (één blok, op één dag). Staat hij er niet, dan bepaalt de bron het (de
+// Trello-due, of een vrij blok dat elke dag mag). Dat onderscheid is nodig
+// omdat het weekrooster per dagkolom een tijdlijn bouwt: een vrij blok mét
+// tijd zou anders in alle zeven kolommen tegelijk verschijnen.
+//
+// De binding maskeert de due-datum van de bron dus wél, maar alleen zolang de
+// gebruiker hem zelf heeft gezet, en één klik ("terug naar de bron") haalt hem
+// weg. Dat is bewust iets anders dan een stille, permanente overschrijving.
+const EMPTY_PREF = { duration: undefined, dateKey: undefined, time: undefined };
 
 // De prefixen komen uit de mappers zelf, die de enige makers van deze ids
 // zijn; een id met zo'n prefix ís dus per constructie een bron-item.
@@ -62,6 +73,7 @@ export function getSourceItemPref(prefs, subgoalId) {
 function pickAllowed(patch) {
   const out = {};
   if ('duration' in patch) out.duration = patch.duration;
+  if ('dateKey' in patch) out.dateKey = patch.dateKey;
   if ('time' in patch) out.time = patch.time;
   return out;
 }
@@ -76,7 +88,10 @@ export function withItemOverride(prefs, subgoalId, patch) {
   const merged = { ...getSourceItemPref(prefs, subgoalId), ...pickAllowed(patch) };
   const cleaned = {};
   if (merged.duration) cleaned.duration = merged.duration;
-  if (merged.time) cleaned.time = merged.time;
+  if (merged.dateKey) cleaned.dateKey = merged.dateKey;
+  // Een tijd zonder dag-binding kan het rooster niet plaatsen (het zou op elke
+  // dag verschijnen), dus die bewaren we niet los.
+  if (merged.dateKey && merged.time) cleaned.time = merged.time;
 
   const next = { ...(prefs || {}) };
   if (Object.keys(cleaned).length === 0) delete next[subgoalId];
@@ -107,6 +122,11 @@ export function clearOverridesWithPrefix(prefs, prefix) {
 // Conditionele spread (niet `duration: o.duration`) zodat een ontbrekende
 // waarde het veld weglaat in plaats van het op `undefined` te zetten —
 // dezelfde conventie als de mappers zelf.
+//
+// Een dag-binding (`dateKey`) zet `freeBlock` uit: een vrij blok mag op elke
+// dag verschijnen, maar zodra de gebruiker het item op één dag heeft gezet
+// hoort het daar alleen te staan. Zonder dat zou het rooster hetzelfde item in
+// alle zeven dagkolommen tonen.
 export function applyItemOverrides(modules, prefs) {
   if (!prefs || Object.keys(prefs).length === 0) return modules;
   return modules.map(mod => ({
@@ -119,6 +139,7 @@ export function applyItemOverrides(modules, prefs) {
         return {
           ...goal,
           ...(override.duration ? { duration: override.duration } : {}),
+          ...(override.dateKey ? { deadline: override.dateKey, freeBlock: false } : {}),
           ...(override.time ? { time: override.time } : {}),
         };
       }),

@@ -1634,6 +1634,7 @@ export default {
       empty: 'No unscheduled tasks for this day.',
       durationMinutes: '{min} min',
       durationChipAria: 'Change duration for {label}',
+      resetToSource: 'Back to {provider}',
       moveToDayAria: 'Move to day',
       countAria: '{count} tasks in the task pool',
       groups: {

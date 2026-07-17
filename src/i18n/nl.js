@@ -1645,6 +1645,7 @@ export default {
       empty: 'Geen ongeplande taken voor deze dag.',
       durationMinutes: '{min} min',
       durationChipAria: 'Duur aanpassen voor {label}',
+      resetToSource: 'Terug naar {provider}',
       moveToDayAria: 'Verplaats naar dag',
       countAria: '{count} taken in de takenpool',
       groups: {
