@@ -42,12 +42,12 @@ import { clearAgendaCache } from './utils/agendaCache';
 import { readAgendaSelection, writeAgendaSelection, clearAgendaSelection, pruneSelection } from './utils/agendaSelection';
 import { readTrelloBoardPrefs, writeTrelloBoardPrefs, clearTrelloBoardPrefs, includedBoardIds } from './utils/trelloBoardPrefs';
 import { clearTrelloCache } from './utils/trelloCache';
-import { buildTrelloModules } from './utils/trelloModules';
+import { buildTrelloModules, TRELLO_CARD_ID_PREFIX } from './utils/trelloModules';
 import { readGithubRepoPrefs, writeGithubRepoPrefs, clearGithubRepoPrefs, includedRepoIds } from './utils/githubRepoPrefs';
 import { clearGithubCache } from './utils/githubCache';
-import { buildGithubModules } from './utils/githubModules';
+import { buildGithubModules, GITHUB_ISSUE_ID_PREFIX } from './utils/githubModules';
 import { DEFAULT_SOURCE_PREFS, getSourcePref } from './utils/sourcePrefs';
-import { applyItemOverrides, getSourceItemPref, isSourceItemId, withItemOverride } from './utils/sourceItemPrefs';
+import { applyItemOverrides, clearOverridesWithPrefix, getSourceItemPref, isSourceItemId, withItemOverride } from './utils/sourceItemPrefs';
 import { DEFAULT_PRIORITY } from './utils/dayTimeline';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
@@ -1610,6 +1610,9 @@ export default function Ritmo() {
       clearTrelloCache();
       clearTrelloBoardPrefs();
       setTrelloBoardPrefsState({ boards: {} });
+      // Ook de eigen dag/tijd/duur per kaart: zonder de koppeling bestaan die
+      // kaarten niet meer, dus die overrides zouden wezen zijn.
+      setSourceItemPrefs(prev => clearOverridesWithPrefix(prev, TRELLO_CARD_ID_PREFIX));
     }
     wasTrelloConnectedRef.current = !!trelloConnection;
   }, [trelloConnection, connectionState.loading]);
@@ -1697,6 +1700,8 @@ export default function Ritmo() {
       clearGithubCache();
       clearGithubRepoPrefs();
       setGithubRepoPrefsState({ repos: {} });
+      // Zie de Trello-tak hierboven.
+      setSourceItemPrefs(prev => clearOverridesWithPrefix(prev, GITHUB_ISSUE_ID_PREFIX));
     }
     wasGithubConnectedRef.current = !!githubConnection;
   }, [githubConnection, connectionState.loading]);
