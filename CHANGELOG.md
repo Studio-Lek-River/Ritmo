@@ -1,3 +1,10 @@
+# [0.73.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.72.0...v0.73.0) (2026-07-17)
+
+
+### Features
+
+* **medicatie:** inname en bestelling terugdraaien ([4b945ae](https://github.com/Studio-Lek-River/Ritmo/commit/4b945ae9f8755cdcb7a417469b3269a0c4de2105))
+
 # [0.72.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.71.0...v0.72.0) (2026-07-17)
 
 
