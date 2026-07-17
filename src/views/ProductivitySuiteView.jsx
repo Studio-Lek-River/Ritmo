@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { WandSparkles } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { useToast } from '../hooks/useToast';
@@ -147,6 +147,12 @@ export default function ProductivitySuiteView({
   const localModules = useMemo(() => modules.filter(m => !m.source), [modules]);
 
   const selectedDay = (weekDays || []).find(d => d.dateKey === selectedDateKey) || weekDays?.[0];
+
+  // "Alles overnemen" schrijft de hele dag in één klik weg en meldt dat met een
+  // ongedaan-maken-toast. App.jsx zit zelf niet onder ToastProvider, dus het
+  // krijgt showToast van hier — zelfde constructie als onShareDay hieronder.
+  // Zo blijft showToast buiten WeekView.
+  const acceptAllPendingWithToast = useCallback(() => onAcceptAllPending(showToast), [onAcceptAllPending, showToast]);
 
   const shortLabels = useMemo(() => shortWeekdayLabelsMondayFirst(), []);
   const dayOptions = useMemo(() => (weekDays || []).map((d, idx) => ({
@@ -330,7 +336,7 @@ export default function ProductivitySuiteView({
               pendingPlan={pendingPlan}
               onAcceptPendingItem={onAcceptPendingItem}
               onDiscardPendingItem={onDiscardPendingItem}
-              onAcceptAllPending={onAcceptAllPending}
+              onAcceptAllPending={acceptAllPendingWithToast}
               onDiscardAllPending={onDiscardAllPending}
               onMovePendingItem={onMovePendingItem}
               theme={theme}

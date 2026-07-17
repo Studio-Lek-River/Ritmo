@@ -1766,6 +1766,117 @@ export default function Ritmo() {
     moveItemToDay(key, dateKey, dateKey, time)
   ), [moveItemToDay]);
 
+  // Legt de HUIDIGE staat van één item vast, vóór het indelen erover heen
+  // schrijft. Bewust een echte snapshot en geen reconstructie: moveItemToDay
+  // zet naast `time` ook `deadline`, dus "de tijd weer wissen" laat een
+  // deadline achter die een vrij-blok-taak nooit had. Nooit uit pendingPlan
+  // lezen — die is bij het indeel-moment gevuld en kan in de propose-stand
+  // verouderd zijn. Zoekt in `modules` (niet `allModules`): voor een item van
+  // een gekoppelde bron valt er niets te schrijven, dus ook niets te beloven.
+  const snapshotItem = useCallback((dateKey, itemKey) => {
+    const parsed = parseItemKey(itemKey);
+
+    if (parsed.kind === 'subgoal') {
+      const mod = modules.find(m => m.id === parsed.moduleId);
+      const subject = (mod?.subjects || []).find(s => s.id === parsed.subjectId);
+      const goal = (subject?.subgoals || []).find(g => String(g.id) === parsed.goalId);
+      if (!goal) return null;
+      return {
+        kind: 'subgoal',
+        moduleId: parsed.moduleId,
+        subjectId: parsed.subjectId,
+        goalId: parsed.goalId,
+        deadline: goal.deadline,
+        time: goal.time,
+      };
+    }
+
+    if (parsed.kind !== 'task') return null;
+    // Een virtuele instantie bestaat nog niet; die levert bij het toepassen een
+    // 'createdTask'-entry op (zie applyAssignments), niet een 'task'-entry.
+    if (parseVirtualTaskId(parsed.taskId)) return null;
+    const task = readTasksForDay(dateKey).find(t => String(t.id) === parsed.taskId);
+    if (!task) return null;
+    return { kind: 'task', taskId: parsed.taskId, time: task.time };
+  }, [modules, readTasksForDay]);
+
+  // Past een reeks toewijzingen toe en levert de undo-entries. Eén weg voor
+  // zowel de direct-stand als "alles overnemen". De snapshots worden binnen
+  // dezelfde render-closure gelezen, dus elke entry ziet de staat van vóór de
+  // hele indeling — React verwerkt de setStates pas na afloop.
+  const applyAssignments = useCallback((dateKey, assignments) => {
+    const entries = [];
+    assignments.forEach(a => {
+      const before = snapshotItem(dateKey, a.key);
+      const createdTaskId = applyPendingAssignment(dateKey, a.key, a.time);
+      if (createdTaskId) entries.push({ kind: 'createdTask', taskId: createdTaskId });
+      else if (before) entries.push(before);
+    });
+    return entries;
+  }, [snapshotItem, applyPendingAssignment]);
+
+  // Zet een snapshot terug: per bron één schrijfactie, niet één per item. Een
+  // item dat er inmiddels niet meer is matcht simpelweg niet en wordt stil
+  // overgeslagen — nooit opnieuw aanmaken.
+  const restorePlanSnapshot = useCallback(({ dateKey, entries }) => {
+    const subgoalEntries = entries.filter(e => e.kind === 'subgoal');
+    const taskEntries = entries.filter(e => e.kind === 'task');
+    const createdIds = entries.filter(e => e.kind === 'createdTask').map(e => e.taskId);
+
+    if (subgoalEntries.length) {
+      setModules(prev => prev.map(m => {
+        const forModule = subgoalEntries.filter(e => e.moduleId === m.id);
+        if (!forModule.length) return m;
+        return {
+          ...m,
+          subjects: (m.subjects || []).map(s => {
+            const forSubject = forModule.filter(e => e.subjectId === s.id);
+            if (!forSubject.length) return s;
+            return {
+              ...s,
+              subgoals: (s.subgoals || []).map(g => {
+                const entry = forSubject.find(e => e.goalId === String(g.id));
+                return entry ? { ...g, deadline: entry.deadline, time: entry.time } : g;
+              }),
+            };
+          }),
+        };
+      }));
+    }
+
+    if (taskEntries.length || createdIds.length) {
+      writeTasksForDay(dateKey, tasks => tasks
+        .filter(t => !createdIds.includes(String(t.id)))
+        .map(t => {
+          const entry = taskEntries.find(e => e.taskId === String(t.id));
+          return entry ? { ...t, time: entry.time } : t;
+        }));
+    }
+  }, [writeTasksForDay]);
+
+  // Snapshot van de laatste indeling. Ephemeer, net als pendingPlan: na een
+  // herlaadbeurt is er niets meer terug te draaien. Eén tegelijk — een nieuwe
+  // indeling vervangt de vorige.
+  const [planUndo, setPlanUndo] = useState(null);
+  // Ref-spiegel omdat de toast zijn onAction in state bewaart: undoLastPlan
+  // moet daarom een stabiele identiteit hebben én zelf idempotent zijn. Zonder
+  // deze guard zou "toast-undo" gevolgd door "knop-undo" de snapshot twee keer
+  // toepassen.
+  const planUndoRef = useRef(null);
+
+  const rememberPlanUndo = useCallback((snapshot) => {
+    planUndoRef.current = snapshot;
+    setPlanUndo(snapshot);
+  }, []);
+
+  const undoLastPlan = useCallback(() => {
+    const snapshot = planUndoRef.current;
+    if (!snapshot) return;
+    planUndoRef.current = null;
+    setPlanUndo(null);
+    restorePlanSnapshot(snapshot);
+  }, [restorePlanSnapshot]);
+
   // Hoofd-handler: verzamelt candidates/fixed voor `dateKey`, leidt dayStart
   // af uit een actieve slaap-module (of de nette fallback) en vertakt op
   // planMode. `notify` is optioneel en alleen nodig voor de ongedaan-maken-
@@ -1803,29 +1914,13 @@ export default function Ritmo() {
     if (assignments.length === 0) return;
 
     if (planMode === 'direct') {
-      assignments.forEach(a => applyPendingAssignment(dateKey, a.key, a.time));
+      const entries = applyAssignments(dateKey, assignments);
+      if (entries.length) rememberPlanUndo({ dateKey, entries });
       if (typeof notify === 'function') {
         notify({
           message: t('planner.toast.planned'),
           actionLabel: t('common.undo'),
-          onAction: () => {
-            // Een nog niet gematerialiseerde recurring-instantie (virtual key)
-            // krijgt bij het eerste apply-moment een nieuwe, echte task-id
-            // (zie moveItemToDay); de oorspronkelijke virtuele key opnieuw
-            // aanroepen zou een tweede, lege taak toevoegen in plaats van de
-            // net geplaatste te wissen. Ongedaan maken voor zo'n item
-            // verwijdert daarom de gematerialiseerde taak weer (terug naar
-            // virtueel) via recurringId, in plaats van de tijd te wissen.
-            assignments.forEach(a => {
-              const parsedAssignment = parseItemKey(a.key);
-              const virtual = parsedAssignment.kind === 'task' ? parseVirtualTaskId(parsedAssignment.taskId) : null;
-              if (virtual) {
-                writeTasksForDay(dateKey, tasks => tasks.filter(t => String(t.recurringId) !== virtual.recurringId));
-              } else {
-                applyPendingAssignment(dateKey, a.key, '');
-              }
-            });
-          },
+          onAction: undoLastPlan,
         });
       }
       return;
@@ -1841,7 +1936,7 @@ export default function Ritmo() {
         kind: meta[a.key]?.kind,
       })),
     });
-  }, [buildPlanInputs, modules, planMode, planPrefs, sourcePrefs, agendaSelection, applyPendingAssignment, writeTasksForDay, t, outlookEventsByDate]);
+  }, [buildPlanInputs, modules, planMode, planPrefs, sourcePrefs, agendaSelection, applyAssignments, rememberPlanUndo, undoLastPlan, t, outlookEventsByDate]);
 
   // Eén voorstel-/concept-blok overnemen resp. vastzetten: schrijft via de
   // bestaande handler en haalt het item uit de ephemere pendingPlan-state.
@@ -1863,14 +1958,27 @@ export default function Ritmo() {
     });
   }, []);
 
-  // Bulk "alles overnemen" (propose-stand).
-  const acceptAllPending = useCallback(() => {
-    setPendingPlan(prev => {
-      if (!prev) return prev;
-      prev.items.forEach(item => applyPendingAssignment(prev.dateKey, item.key, item.time));
-      return null;
-    });
-  }, [applyPendingAssignment]);
+  // Bulk "alles overnemen" (propose-stand). Dit is hetzelfde moment als een
+  // directe indeling — de hele dag wordt in één klik weggeschreven — dus het
+  // levert dezelfde snapshot en dezelfde ongedaan-maken-toast op.
+  //
+  // De toewijzingen worden bewust búíten de setPendingPlan-updater toegepast:
+  // een updater hoort puur te zijn, en onder StrictMode wordt hij dubbel
+  // aangeroepen — wat de indeling twee keer zou toepassen.
+  const acceptAllPending = useCallback((notify) => {
+    if (!pendingPlan) return;
+    const { dateKey, items } = pendingPlan;
+    const entries = applyAssignments(dateKey, items);
+    setPendingPlan(null);
+    if (entries.length) rememberPlanUndo({ dateKey, entries });
+    if (typeof notify === 'function') {
+      notify({
+        message: t('planner.toast.planned'),
+        actionLabel: t('common.undo'),
+        onAction: undoLastPlan,
+      });
+    }
+  }, [pendingPlan, applyAssignments, rememberPlanUndo, undoLastPlan, t]);
 
   const discardAllPending = useCallback(() => setPendingPlan(null), []);
 
