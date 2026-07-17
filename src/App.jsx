@@ -748,13 +748,21 @@ export default function Ritmo() {
     }
   };
 
+  // V10 (#133): snapshot moduleData van vóór de reset en retourneer een
+  // { undo } paar zodat CounterModule na "Reset vandaag" een undo-toast kan
+  // tonen die total/minutes/entries van vandaag exact herstelt.
   const resetCounter = (moduleId) => {
+    const snapshot = moduleData[moduleId];
     updateModuleData(moduleId, prev => ({
       ...prev,
       total: 0,
       minutes: 0,
       entries: [],
     }));
+    const undo = () => {
+      updateModuleData(moduleId, () => ({ ...snapshot }));
+    };
+    return { undo };
   };
 
   const addCounterEntry = (moduleId, amount, category) => {
@@ -790,17 +798,60 @@ export default function Ritmo() {
     }
   };
 
+  // V10 (#133): retourneert een { entry, undo } paar zodat CounterModule een
+  // undo-toast kan tonen. undo zet de invoer terug (analoog aan
+  // removeMedIntake hierboven) en telt het bedrag weer bij total/minutes op.
   const removeCounterEntry = (moduleId, entryId) => {
+    let removedEntry = null;
     updateModuleData(moduleId, prev => {
       const entries = prev.entries || [];
       const entry = entries.find(e => e.id === entryId);
       if (!entry) return prev;
-      const newTotal = Math.max(0, (prev.total ?? 0) - entry.amount);
+      removedEntry = entry;
+      const newTotal = Math.max(0, (prev.total ?? prev.minutes ?? 0) - entry.amount);
       return {
         ...prev,
         total: newTotal,
         minutes: newTotal,
         entries: entries.filter(e => e.id !== entryId),
+      };
+    });
+    const undo = () => {
+      if (!removedEntry) return;
+      updateModuleData(moduleId, prev => {
+        const entries = prev.entries || [];
+        if (entries.some(e => e.id === removedEntry.id)) return prev;
+        const newTotal = (prev.total ?? prev.minutes ?? 0) + removedEntry.amount;
+        return {
+          ...prev,
+          total: newTotal,
+          minutes: newTotal,
+          entries: [...entries, removedEntry],
+        };
+      });
+    };
+    return { entry: removedEntry, undo };
+  };
+
+  // V10 (#133): wijzigt het bedrag van een bestaande teller-invoer en stelt
+  // total/minutes bij met het verschil (nieuw - oud), niet door opnieuw op
+  // te tellen. Lege/0/negatieve waarde wordt genegeerd.
+  const setCounterEntryAmount = (moduleId, entryId, amount) => {
+    const parsed = Number(amount);
+    if (!parsed || parsed <= 0) return;
+    updateModuleData(moduleId, prev => {
+      const entries = prev.entries || [];
+      const idx = entries.findIndex(e => e.id === entryId);
+      if (idx === -1) return prev;
+      const delta = parsed - entries[idx].amount;
+      const newTotal = Math.max(0, (prev.total ?? prev.minutes ?? 0) + delta);
+      const nextEntries = [...entries];
+      nextEntries[idx] = { ...entries[idx], amount: parsed };
+      return {
+        ...prev,
+        total: newTotal,
+        minutes: newTotal,
+        entries: nextEntries,
       };
     });
   };
@@ -2407,6 +2458,7 @@ export default function Ritmo() {
           onResetCounter={() => resetCounter(mod.id)}
           onAddEntry={(amount, category) => addCounterEntry(mod.id, amount, category)}
           onRemoveEntry={(entryId) => removeCounterEntry(mod.id, entryId)}
+          onSetEntryAmount={(entryId, amount) => setCounterEntryAmount(mod.id, entryId, amount)}
           onDismissReminder={() => dismissCounterReminder(mod.id)}
           onEdit={() => setEditingModule(mod)}
           theme={theme}

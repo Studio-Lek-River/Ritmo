@@ -777,6 +777,8 @@ export default {
     fixedCostDeleted: 'Entry deleted',
     intakeRemoved: 'Intake removed',
     orderUndone: 'Order undone',
+    counterEntryDeleted: 'Entry deleted',
+    counterReset: 'Counter reset',
   },
 
   modules: {
@@ -878,6 +880,7 @@ export default {
     counterCategoryNone: 'none',
     counterAddBtn: 'Add',
     counterDeleteAria: 'Delete',
+    counterEntryEditAria: 'Edit entry amount',
     counterAmountPlaceholder: 'Amount ({unit})',
     counterMinutesValue: '{value} h',
     counterMinutesGoal: 'today (goal: {goal} h)',

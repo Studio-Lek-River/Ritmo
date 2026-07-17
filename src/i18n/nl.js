@@ -778,6 +778,8 @@ export default {
     fixedCostDeleted: 'Post verwijderd',
     intakeRemoved: 'Inname ongedaan gemaakt',
     orderUndone: 'Bestelling ongedaan gemaakt',
+    counterEntryDeleted: 'Invoer verwijderd',
+    counterReset: 'Teller gereset',
   },
 
   modules: {
@@ -882,6 +884,7 @@ export default {
     counterCategoryNone: 'geen',
     counterAddBtn: 'Toevoegen',
     counterDeleteAria: 'Verwijderen',
+    counterEntryEditAria: 'Bedrag van invoer bewerken',
     counterAmountPlaceholder: 'Aantal ({unit})',
     counterMinutesValue: '{value} uur',
     counterMinutesGoal: 'vandaag (doel: {goal} uur)',
