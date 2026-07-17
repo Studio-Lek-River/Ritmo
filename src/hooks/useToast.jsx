@@ -2,33 +2,54 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 
 const ToastContext = createContext(null);
 
-export function ToastProvider({ children }) {
-  const [toast, setToast] = useState(null);
-  const timerRef = useRef(null);
+// Maximum aantal gelijktijdige toasts. Bij een vierde verdwijnt de oudste.
+const MAX_TOASTS = 3;
 
-  const dismiss = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
+let nextToastId = 0;
+
+export function ToastProvider({ children }) {
+  const [toasts, setToasts] = useState([]);
+  const timersRef = useRef(new Map());
+
+  const clearTimer = useCallback((id) => {
+    const timer = timersRef.current.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      timersRef.current.delete(id);
     }
-    setToast(null);
   }, []);
+
+  const dismiss = useCallback((id) => {
+    clearTimer(id);
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, [clearTimer]);
 
   const showToast = useCallback(({ message, actionLabel, onAction, duration = 5000 }) => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    setToast({ message, actionLabel, onAction });
-    timerRef.current = setTimeout(() => {
-      timerRef.current = null;
-      setToast(null);
+    const id = ++nextToastId;
+    const timer = setTimeout(() => {
+      timersRef.current.delete(id);
+      setToasts((prev) => prev.filter((t) => t.id !== id));
     }, duration);
-  }, []);
+    timersRef.current.set(id, timer);
+
+    setToasts((prev) => {
+      const next = [...prev, { id, message, actionLabel, onAction }];
+      if (next.length > MAX_TOASTS) {
+        const [oldest, ...rest] = next;
+        clearTimer(oldest.id);
+        return rest;
+      }
+      return next;
+    });
+  }, [clearTimer]);
 
   useEffect(() => () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
+    timersRef.current.forEach((timer) => clearTimeout(timer));
+    timersRef.current.clear();
   }, []);
 
   return (
-    <ToastContext.Provider value={{ showToast, dismiss, toast }}>
+    <ToastContext.Provider value={{ showToast, dismiss, toasts }}>
       {children}
     </ToastContext.Provider>
   );
@@ -40,7 +61,7 @@ export function useToast() {
     return {
       showToast: () => {},
       dismiss: () => {},
-      toast: null,
+      toasts: [],
     };
   }
   return ctx;
