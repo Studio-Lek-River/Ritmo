@@ -1,3 +1,11 @@
+# [0.74.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.73.0...v0.74.0) (2026-07-17)
+
+
+### Features
+
+* **collecties:** gebeurtenis verwijderen bereikbaar en terugdraaibaar maken ([7d92869](https://github.com/Studio-Lek-River/Ritmo/commit/7d92869e82696b85b81311f5bd15daec7c12c439))
+* **teller:** invoer verwijderen en bedrag bewerken terugdraaibaar maken ([571c6b5](https://github.com/Studio-Lek-River/Ritmo/commit/571c6b5ebc02821ed48172059f97eaff3273aa36))
+
 # [0.73.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.72.0...v0.73.0) (2026-07-17)
 
 
