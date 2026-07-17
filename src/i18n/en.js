@@ -756,6 +756,8 @@ export default {
     sourceBadge: '{provider}',
     openBoardAria: 'Open board on {provider}',
     openCardAria: 'Open card',
+    renameSubjectAria: 'Edit subject name',
+    renameSubgoalAria: 'Edit subgoal label',
   },
 
   toast: {

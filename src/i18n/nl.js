@@ -757,6 +757,8 @@ export default {
     sourceBadge: '{provider}',
     openBoardAria: 'Open bord op {provider}',
     openCardAria: 'Open kaart',
+    renameSubjectAria: 'Onderwerpnaam bewerken',
+    renameSubgoalAria: 'Subdoel-label bewerken',
   },
 
   toast: {

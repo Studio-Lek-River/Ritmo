@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Clock, Sparkles, GraduationCap, MoreHorizontal, ExternalLink } from 'lucide-react';
 import ProgressBar from '../components/ProgressBar';
 import EmptyState from '../components/EmptyState';
@@ -66,6 +66,15 @@ export default function ProjectsView({
   const [confirmDeleteSubgoal, setConfirmDeleteSubgoal] = useState(null);
   const [confirmDeleteProject, setConfirmDeleteProject] = useState(null);
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const [editingSubjectId, setEditingSubjectId] = useState(null);
+  const [subjectNameDraft, setSubjectNameDraft] = useState('');
+  // Zelfde Escape-dan-blur-race als in TaskListPanel (V04, #127): Escape
+  // verwijdert de input-node terwijl hij focus heeft, en sommige browsers
+  // vuren daarna alsnog een blur-event op de al-wegrenderende node. Zonder
+  // deze vlaggen zou die late blur de annulering overschrijven met een
+  // opslag van de (dan alweer teruggezette) draft-state.
+  const justCancelledSubjectRef = useRef(false);
+  const editSubjectSessionRef = useRef(null);
 
   useEffect(() => {
     if (!activeProject) {
@@ -265,6 +274,53 @@ export default function ProjectsView({
     }));
   };
 
+  // V06 (#129): inline naam/label bewerken. Lege tekst wordt genegeerd
+  // (oude naam/label blijft staan) — geen expliciete validatie-melding,
+  // consistent met hoe addSubject/addSubgoal lege input al negeren.
+  const renameSubject = (subjectId, name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    updateProject(p => ({
+      ...p,
+      subjects: p.subjects.map(s => s.id !== subjectId ? s : { ...s, name: trimmed }),
+    }));
+  };
+
+  const renameSubgoal = (subjectId, goalId, label) => {
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    updateProject(p => ({
+      ...p,
+      subjects: p.subjects.map(s => s.id !== subjectId ? s : {
+        ...s,
+        subgoals: s.subgoals.map(g => g.id !== goalId ? g : { ...g, label: trimmed }),
+      }),
+    }));
+  };
+
+  const startEditSubject = (subject) => {
+    justCancelledSubjectRef.current = false;
+    editSubjectSessionRef.current = subject.id;
+    setEditingSubjectId(subject.id);
+    setSubjectNameDraft(subject.name);
+  };
+  const commitEditSubject = (id) => {
+    if (justCancelledSubjectRef.current) {
+      justCancelledSubjectRef.current = false;
+      return;
+    }
+    if (editSubjectSessionRef.current !== id) return;
+    editSubjectSessionRef.current = null;
+    renameSubject(id, subjectNameDraft);
+    setEditingSubjectId(null);
+  };
+  const cancelEditSubject = () => {
+    justCancelledSubjectRef.current = true;
+    editSubjectSessionRef.current = null;
+    setEditingSubjectId(null);
+    setSubjectNameDraft('');
+  };
+
   const handleConfirmDeleteSubject = () => {
     if (!confirmDeleteSubject) return;
     const snapshot = confirmDeleteSubject;
@@ -446,9 +502,29 @@ export default function ProjectsView({
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2 mb-1.5">
-                        <span className={`font-medium text-sm ${theme.textSecondary} truncate`}>
-                          {s.name}
-                        </span>
+                        {editingSubjectId === s.id ? (
+                          <input
+                            type="text"
+                            autoFocus
+                            value={subjectNameDraft}
+                            onChange={(e) => setSubjectNameDraft(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            onBlur={() => commitEditSubject(s.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') commitEditSubject(s.id);
+                              if (e.key === 'Escape') cancelEditSubject();
+                            }}
+                            aria-label={t('projectsView.renameSubjectAria')}
+                            className={`flex-1 min-w-0 font-medium text-sm px-1 py-0.5 ${theme.input} rounded focus:outline-none focus:ring-2 focus:ring-blue-300`}
+                          />
+                        ) : (
+                          <span
+                            onDoubleClick={!isReadOnly ? (e) => { e.stopPropagation(); startEditSubject(s); } : undefined}
+                            className={`font-medium text-sm ${theme.textSecondary} truncate ${!isReadOnly ? 'cursor-text' : ''}`}
+                          >
+                            {s.name}
+                          </span>
+                        )}
                         {avg !== null && (
                           <span className={`text-xs font-semibold r-chip ${c.pillBg} ${c.pillText} shrink-0`}>
                             {avg}
@@ -519,6 +595,7 @@ export default function ProjectsView({
                 onSetAutoPlan={(goalId, autoPlan) => setSubgoalAutoPlan(activeSubject.id, goalId, autoPlan)}
                 onSetDeepWork={(goalId, deepWork) => setSubgoalDeepWork(activeSubject.id, goalId, deepWork)}
                 onSetPriority={(goalId, priority) => setSubgoalPriority(activeSubject.id, goalId, priority)}
+                onRename={(goalId, label) => renameSubgoal(activeSubject.id, goalId, label)}
                 onRequestDelete={(goal) => setConfirmDeleteSubgoal({ subjectId: activeSubject.id, goal })}
                 onFirstSwipe={onFirstSwipe}
               />
@@ -648,6 +725,7 @@ function SubgoalList({
   onSetAutoPlan,
   onSetDeepWork,
   onSetPriority,
+  onRename,
   onRequestDelete,
   onFirstSwipe,
 }) {
@@ -658,6 +736,36 @@ function SubgoalList({
     arr.sort((a, b) => Number(a.completed) - Number(b.completed));
     return arr;
   }, [subject]);
+
+  const [editingGoalId, setEditingGoalId] = useState(null);
+  const [goalLabelDraft, setGoalLabelDraft] = useState('');
+  // Zelfde Escape-dan-blur-guard als in TaskListPanel (V04, #127), zie de
+  // toelichting bij justCancelledSubjectRef hierboven.
+  const justCancelledRef = useRef(false);
+  const editSessionRef = useRef(null);
+
+  const startEditGoal = (goal) => {
+    justCancelledRef.current = false;
+    editSessionRef.current = goal.id;
+    setEditingGoalId(goal.id);
+    setGoalLabelDraft(goal.label);
+  };
+  const commitEditGoal = (id) => {
+    if (justCancelledRef.current) {
+      justCancelledRef.current = false;
+      return;
+    }
+    if (editSessionRef.current !== id) return;
+    editSessionRef.current = null;
+    onRename?.(id, goalLabelDraft);
+    setEditingGoalId(null);
+  };
+  const cancelEditGoal = () => {
+    justCancelledRef.current = true;
+    editSessionRef.current = null;
+    setEditingGoalId(null);
+    setGoalLabelDraft('');
+  };
 
   if (sorted.length === 0) {
     return (
@@ -693,11 +801,30 @@ function SubgoalList({
                     disabled={readOnly}
                     className={`w-4 h-4 accent-${color}-500 ${readOnly ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
                   />
-                  <span className={`flex-1 text-sm ${theme.textSecondary} ${
-                    g.completed ? 'line-through' : ''
-                  } truncate`}>
-                    {g.label}
-                  </span>
+                  {editingGoalId === g.id ? (
+                    <input
+                      type="text"
+                      autoFocus
+                      value={goalLabelDraft}
+                      onChange={(e) => setGoalLabelDraft(e.target.value)}
+                      onBlur={() => commitEditGoal(g.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') commitEditGoal(g.id);
+                        if (e.key === 'Escape') cancelEditGoal();
+                      }}
+                      aria-label={t('projectsView.renameSubgoalAria')}
+                      className={`flex-1 min-w-0 px-1 py-0.5 text-sm ${theme.input} rounded focus:outline-none focus:ring-2 focus:ring-blue-300`}
+                    />
+                  ) : (
+                    <span
+                      onClick={!readOnly ? () => startEditGoal(g) : undefined}
+                      className={`flex-1 text-sm ${theme.textSecondary} ${
+                        g.completed ? 'line-through' : ''
+                      } truncate ${!readOnly ? 'cursor-text' : ''}`}
+                    >
+                      {g.label}
+                    </span>
+                  )}
                   {g.freeBlock && (
                     <span className={`text-[11px] shrink-0 r-chip ${theme.cardSecondary} ${theme.textMuted} border ${theme.border}`}>
                       {t('planner.freeBlock.chip')}
