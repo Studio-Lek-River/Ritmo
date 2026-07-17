@@ -1,3 +1,16 @@
+# [0.62.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.61.1...v0.62.0) (2026-07-17)
+
+
+### Bug Fixes
+
+* **connections:** gesloten GitHub-issues worden niet meer ingepland ([2525024](https://github.com/Studio-Lek-River/Ritmo/commit/252502442c2314d90a2a9447d9fe930c9daa6135))
+* **planner:** projecttaak met een dubbele punt in het id blijft verplaatsbaar ([b79a087](https://github.com/Studio-Lek-River/Ritmo/commit/b79a08794210b9686c2d81a6957756da16a86125))
+
+
+### Features
+
+* **connections:** GitHub lezen - toegewezen issues als planbare items ([00e22b7](https://github.com/Studio-Lek-River/Ritmo/commit/00e22b7c904f996240983320d6fcd5b2aad40a0d)), closes [#38](https://github.com/Studio-Lek-River/Ritmo/issues/38)
+
 ## [0.61.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.61.0...v0.61.1) (2026-07-16)
 
 
