@@ -683,6 +683,7 @@ export default {
     doseStatusNext: 'Volgende dosis om {time}',
     doseStatusUpcoming: 'Gepland om {time}',
     tomorrow: 'morgen',
+    undoIntakeAria: 'Inname van {time} ongedaan maken',
   },
 
   bodymap: {
@@ -775,6 +776,8 @@ export default {
     groceryDeleted: 'Boodschap verwijderd',
     groceriesCleanedUp: 'Lijst opgeruimd',
     fixedCostDeleted: 'Post verwijderd',
+    intakeRemoved: 'Inname ongedaan gemaakt',
+    orderUndone: 'Bestelling ongedaan gemaakt',
   },
 
   modules: {

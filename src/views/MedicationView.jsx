@@ -521,7 +521,9 @@ export function MedicationModuleCard({
         med={orderingMed}
         onClose={() => setOrderingMed(null)}
         onConfirm={(amount) => {
-          if (orderingMed) onOrderMed?.(mod.id, orderingMed.id, amount);
+          if (!orderingMed) return;
+          const result = onOrderMed?.(mod.id, orderingMed.id, amount);
+          showUndoToast(t('toast.orderUndone'), () => result?.undo?.());
         }}
         theme={theme}
       />
@@ -552,7 +554,7 @@ function nowAsTime() {
 // medicijn de doses van vandaag (medScheduleForDay), de eerstvolgende tijd en
 // een "Ingenomen"-knop die de huidige kloktijd logt. Rendert niets als er
 // geen enkel rooster-medicijn is (opt-in per medicijn, principe 2).
-export function MedicationScheduleCard({ modules, onLogIntake, theme }) {
+export function MedicationScheduleCard({ modules, onLogIntake, onRemoveIntake, theme }) {
   const { t } = useTranslation();
   const showUndoToast = useUndoToast();
   const todayKey = fmtDateKey(new Date());
@@ -570,6 +572,15 @@ export function MedicationScheduleCard({ modules, onLogIntake, theme }) {
   const handleTake = (moduleId, med) => {
     const result = onLogIntake?.(moduleId, med.id, nowAsTime());
     showUndoToast(t('medication.doseLogged'), () => result?.undo?.());
+  };
+
+  // V09: draait een als "ingenomen" gemarkeerde dosis van vandaag terug.
+  // medScheduleForDay levert 'taken'-slots alleen op met tijden uit
+  // medIntakesForDay(med, todayKey), dus dit raakt nooit een historische
+  // inname van een andere dag.
+  const handleRemove = (moduleId, med, time) => {
+    const result = onRemoveIntake?.(moduleId, med.id, todayKey, time);
+    showUndoToast(t('toast.intakeRemoved'), () => result?.undo?.());
   };
 
   return (
@@ -597,20 +608,39 @@ export function MedicationScheduleCard({ modules, onLogIntake, theme }) {
               </div>
 
               <div className="flex flex-wrap gap-1.5 mb-2">
-                {schedule.map((slot) => (
-                  <span
-                    key={slot.index}
-                    title={t(`medication.${DOSE_STATUS_LABEL_KEYS[slot.status]}`, { time: slot.time })}
-                    className={`text-xs px-2 py-1 rounded-full ${
-                      DOSE_STATUS_CHIP_CLASSES[slot.status] || `${theme.card} ${theme.textMuted}`
-                    }`}
-                  >
-                    {slot.time}
-                    {slot.nextDay && (
-                      <span className="ml-1 opacity-70">{t('medication.tomorrow')}</span>
-                    )}
-                  </span>
-                ))}
+                {schedule.map((slot) => {
+                  const isTaken = slot.status === 'taken';
+                  const label = isTaken
+                    ? t('medication.undoIntakeAria', { time: slot.time })
+                    : t(`medication.${DOSE_STATUS_LABEL_KEYS[slot.status]}`, { time: slot.time });
+                  const chipClasses = `text-xs px-2 py-1 rounded-full ${
+                    DOSE_STATUS_CHIP_CLASSES[slot.status] || `${theme.card} ${theme.textMuted}`
+                  } ${isTaken ? 'cursor-pointer hover:opacity-80 transition' : ''}`;
+                  const content = (
+                    <>
+                      {slot.time}
+                      {slot.nextDay && (
+                        <span className="ml-1 opacity-70">{t('medication.tomorrow')}</span>
+                      )}
+                    </>
+                  );
+                  return isTaken ? (
+                    <button
+                      key={slot.index}
+                      type="button"
+                      onClick={() => handleRemove(moduleId, med, slot.time)}
+                      title={label}
+                      aria-label={label}
+                      className={chipClasses}
+                    >
+                      {content}
+                    </button>
+                  ) : (
+                    <span key={slot.index} title={label} className={chipClasses}>
+                      {content}
+                    </span>
+                  );
+                })}
               </div>
 
               <div className="flex items-center justify-between gap-2">

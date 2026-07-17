@@ -18,7 +18,7 @@ export default function TodayView({
   totalCompletionItems, completedItems, overallPercentage,
   setShowSettings,
   StreakBadge,
-  modules, onLogMedIntake,
+  modules, onLogMedIntake, onRemoveMedIntake,
 }) {
   return (
     <div className={`slide-in ${(goldenBorderEnabled && todayFullyComplete) ? 'ritmo-golden-border rounded-2xl' : ''}`}>
@@ -53,7 +53,12 @@ export default function TodayView({
         </div>
       )}
 
-      <MedicationScheduleCard modules={modules} onLogIntake={onLogMedIntake} theme={theme} />
+      <MedicationScheduleCard
+        modules={modules}
+        onLogIntake={onLogMedIntake}
+        onRemoveIntake={onRemoveMedIntake}
+        theme={theme}
+      />
 
       {totalCompletionItems > 0 && (
         <div className={`${theme.card} rounded-2xl p-5 shadow-sm mb-4`}>

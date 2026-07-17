@@ -682,6 +682,7 @@ export default {
     doseStatusNext: 'Next dose at {time}',
     doseStatusUpcoming: 'Scheduled at {time}',
     tomorrow: 'tomorrow',
+    undoIntakeAria: 'Undo intake at {time}',
   },
 
   bodymap: {
@@ -774,6 +775,8 @@ export default {
     groceryDeleted: 'Item deleted',
     groceriesCleanedUp: 'List cleaned up',
     fixedCostDeleted: 'Entry deleted',
+    intakeRemoved: 'Intake removed',
+    orderUndone: 'Order undone',
   },
 
   modules: {

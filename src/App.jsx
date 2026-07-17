@@ -894,14 +894,26 @@ export default function Ritmo() {
     }));
   };
 
-  // "besteld": verhoogt de voorraad van dat medicijn.
+  // "besteld": verhoogt de voorraad van dat medicijn. V09: retourneert een
+  // { delta, undo } paar zodat de aanroeper een undo-toast kan tonen die de
+  // voorraad weer met exact dit bedrag verlaagt.
   const orderMed = (moduleId, medId, amount) => {
+    const delta = Number(amount) || 0;
     updateMedicationModule(moduleId, (m) => ({
       ...m,
       meds: (m.meds || []).map((med) =>
-        med.id === medId ? { ...med, supply: (med.supply || 0) + (Number(amount) || 0) } : med
+        med.id === medId ? { ...med, supply: (med.supply || 0) + delta } : med
       ),
     }));
+    const undo = () => {
+      updateMedicationModule(moduleId, (m) => ({
+        ...m,
+        meds: (m.meds || []).map((med) =>
+          med.id === medId ? { ...med, supply: (med.supply || 0) - delta } : med
+        ),
+      }));
+    };
+    return { delta, undo };
   };
 
   // H10: logt een inname op het dagrooster van dit medicijn (géén
@@ -929,6 +941,35 @@ export default function Ritmo() {
       }));
     };
     return { entry, undo };
+  };
+
+  // V09: draait een inname terug via de "taken"-dosischip in het dagrooster.
+  // Verwijdert de eerste matchende { date: dateKey, time } uit intakeLog en
+  // retourneert een { removed, undo } paar; undo zet exact die entry terug,
+  // analoog aan logMedIntake hierboven.
+  const removeMedIntake = (moduleId, medId, dateKey, time) => {
+    let removed = null;
+    updateMedicationModule(moduleId, (m) => ({
+      ...m,
+      meds: (m.meds || []).map((med) => {
+        if (med.id !== medId) return med;
+        const log = med.intakeLog || [];
+        const idx = log.findIndex((e) => e && e.date === dateKey && e.time === time);
+        if (idx === -1) return med;
+        removed = log[idx];
+        return { ...med, intakeLog: [...log.slice(0, idx), ...log.slice(idx + 1)] };
+      }),
+    }));
+    const undo = () => {
+      if (!removed) return;
+      updateMedicationModule(moduleId, (m) => ({
+        ...m,
+        meds: (m.meds || []).map((med) =>
+          med.id === medId ? { ...med, intakeLog: [...(med.intakeLog || []), removed] } : med
+        ),
+      }));
+    };
+    return { removed, undo };
   };
 
   // ---- bodymap handlers ---------------------------------------------------
@@ -2428,7 +2469,7 @@ export default function Ritmo() {
     enabledModules, todayVisibleModules, getModuleStreak, renderTodayModule,
     totalCompletionItems, completedItems, overallPercentage, setShowSettings,
     setView, StreakBadge,
-    modules, onLogMedIntake: logMedIntake,
+    modules, onLogMedIntake: logMedIntake, onRemoveMedIntake: removeMedIntake,
   };
   // Gezondheids-rondleiding: stappen + ingevuld-status live afgeleid uit data.
   const tourSteps = tourActive ? buildTourSteps(modules) : [];
@@ -2465,6 +2506,7 @@ export default function Ritmo() {
     onDeleteMed: deleteMed,
     onOrderMed: orderMed,
     onLogMedIntake: logMedIntake,
+    onRemoveMedIntake: removeMedIntake,
     onLogInjection: logInjectionEvent,
     onRemoveInjection: removeInjectionEvent,
     onMoveInjection: moveInjectionEvent,

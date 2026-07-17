@@ -54,6 +54,7 @@ export default function HealthView({
   onDeleteMed,
   onOrderMed,
   onLogMedIntake,
+  onRemoveMedIntake,
   onLogInjection,
   onRemoveInjection,
   onMoveInjection,
@@ -251,7 +252,12 @@ export default function HealthView({
         </div>
       </div>
 
-      <MedicationScheduleCard modules={modules} onLogIntake={onLogMedIntake} theme={theme} />
+      <MedicationScheduleCard
+        modules={modules}
+        onLogIntake={onLogMedIntake}
+        onRemoveIntake={onRemoveMedIntake}
+        theme={theme}
+      />
 
       {(healthModules.length + trackableHealth.length) === 0 ? (
         <div className={`${theme.card} rounded-2xl border ${theme.border} p-8 text-center`}>
