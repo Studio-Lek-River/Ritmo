@@ -234,6 +234,16 @@ doorgeven (zelfde regel als `api/connections/outlook/events.js`).
    naar het account", maar `sourcePrefs` leeft in `settings` en synct dus wél. Laat je daardoor niet
    verleiden de bordkeuze óók in `settings` te zetten — dat zou Trello-inhoud naar de cloud en in elk
    backup-bestand lekken. **`agendaSelection.js` is de blauwdruk, niet `sourcePrefs.js`.**
+
+   **Uitzondering (later toegevoegd): `src/utils/sourceItemPrefs.js` leeft wél in `settings`.** Die map
+   bewaart de dag, tijd en duur die de gebruiker zelf op een Trello-kaart of GitHub-issue zet, en die
+   moeten over apparaten gelijk zijn — een duur die alleen op de laptop staat is geen duur. Dat mag hier
+   omdat de inhoud ondoorzichtig is: de sleutels zijn opake ids (een Trello-ObjectId, een
+   GitHub-database-id) en de waarden zijn een aantal minuten, een dagsleutel of een klokwaarde. Er staat
+   geen bordnaam, kaarttitel of url in, en `withItemOverride` dwingt dat af door nooit de input van de
+   aanroeper te spreaden maar expliciet de drie toegestane velden te plukken. De regel hierboven blijft
+   dus staan voor bron-*inhoud*; hij gaat niet over opake verwijzingen. Zet hier nooit een label bij
+   "voor de debugbaarheid".
 2. **Tijdzone bij `due` → `deadline`.** Trello levert `due` als volledige UTC-ISO-timestamp (anders dan
    Graph, dat met de `Prefer`-header wall-clock levert). De `deadline` moet daarom via de **lokale**
    tijdzone: een kaart die om 23:00 UTC vervalt hoort in Amsterdam op de volgende dag. Dat wijkt bewust
