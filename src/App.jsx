@@ -2538,6 +2538,8 @@ export default function Ritmo() {
             onSetItemDuration={setItemDuration}
             pendingPlan={pendingPlan}
             onShareDay={handleShareDay}
+            planUndoDateKey={planUndo?.dateKey || null}
+            onUndoPlan={undoLastPlan}
             onAcceptPendingItem={acceptPendingItem}
             onDiscardPendingItem={discardPendingItem}
             onAcceptAllPending={acceptAllPending}

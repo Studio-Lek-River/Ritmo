@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { WandSparkles } from 'lucide-react';
+import { RotateCcw, WandSparkles } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { useToast } from '../hooks/useToast';
 import WeekView from './WeekView';
@@ -77,6 +77,8 @@ export default function ProductivitySuiteView({
   onSetItemDuration,
   pendingPlan,
   onShareDay,
+  planUndoDateKey,
+  onUndoPlan,
   onAcceptPendingItem,
   onDiscardPendingItem,
   onAcceptAllPending,
@@ -153,6 +155,13 @@ export default function ProductivitySuiteView({
   // krijgt showToast van hier — zelfde constructie als onShareDay hieronder.
   // Zo blijft showToast buiten WeekView.
   const acceptAllPendingWithToast = useCallback(() => onAcceptAllPending(showToast), [onAcceptAllPending, showToast]);
+
+  // De knop rendert alleen als er echt iets terug te draaien is, dus deze
+  // bevestiging liegt nooit.
+  const handleUndoPlan = useCallback(() => {
+    onUndoPlan();
+    showToast({ message: t('planner.toast.planUndone') });
+  }, [onUndoPlan, showToast, t]);
 
   const shortLabels = useMemo(() => shortWeekdayLabelsMondayFirst(), []);
   const dayOptions = useMemo(() => (weekDays || []).map((d, idx) => ({
@@ -247,6 +256,20 @@ export default function ProductivitySuiteView({
             <WandSparkles className="w-4 h-4" />
             {t('planner.actions.shareDay')}
           </button>
+          {/* Alleen zichtbaar zolang de laatste indeling van de getoonde dag
+              is: bij het bladeren naar een andere dag verdwijnt hij en bij
+              terugkeer staat hij er weer. Secundair gestyled — indelen blijft
+              de primaire actie. */}
+          {planUndoDateKey === (selectedDay?.dateKey || todayKey) && (
+            <button
+              type="button"
+              onClick={handleUndoPlan}
+              className={`flex items-center gap-1.5 px-3 py-2 ${theme.radiusControl} text-sm font-medium transition ${theme.cardSecondary} ${theme.textSecondary} ${theme.hover}`}
+            >
+              <RotateCcw className="w-4 h-4" />
+              {t('planner.actions.undoPlan')}
+            </button>
+          )}
           <div className={`flex gap-1 p-1 ${theme.cardSecondary} ${theme.radiusControl}`}>
             {TABS.map(id => (
               <button

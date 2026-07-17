@@ -1624,6 +1624,7 @@ export default {
   planner: {
     actions: {
       shareDay: 'Deel mijn dag in',
+      undoPlan: 'Indeling terugdraaien',
       acceptAll: 'Alles overnemen',
       accept: 'Overnemen',
       discard: 'Weggooien',
@@ -1631,6 +1632,7 @@ export default {
     },
     toast: {
       planned: 'Je dag is ingedeeld.',
+      planUndone: 'De indeling is teruggedraaid.',
     },
     week: {
       viewDag: 'Dag',

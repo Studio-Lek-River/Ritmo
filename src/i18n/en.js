@@ -1613,6 +1613,7 @@ export default {
   planner: {
     actions: {
       shareDay: 'Plan my day',
+      undoPlan: 'Undo layout',
       acceptAll: 'Accept all',
       accept: 'Accept',
       discard: 'Discard',
@@ -1620,6 +1621,7 @@ export default {
     },
     toast: {
       planned: 'Your day has been planned.',
+      planUndone: 'The layout has been undone.',
     },
     week: {
       viewDag: 'Day',
