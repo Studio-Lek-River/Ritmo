@@ -1296,6 +1296,11 @@ export default function Ritmo() {
   // module zelf, dus daar past deze handler `deadline` + `time` aan. Een nog
   // niet gematerialiseerde recurring-instantie (virtual, zie weekDays) wordt
   // pas nu voor het eerst als echte taak opgeslagen — nooit eager (principe 2).
+  //
+  // Geeft de id terug van een taak die hier voor het eerst gematerialiseerd is,
+  // anders `null`. Alleen "deel mijn dag in" gebruikt dat (om precies díé taak
+  // te kunnen terugdraaien in plaats van elke instantie van dezelfde
+  // recurring); sleep-aanroepers negeren de returnwaarde.
   const moveItemToDay = useCallback((itemKey, sourceDateKey, targetDateKey, time) => {
     const parsed = parseItemKey(itemKey);
 
@@ -1315,10 +1320,10 @@ export default function Ritmo() {
           }),
         };
       }));
-      return;
+      return null;
     }
 
-    if (parsed.kind !== 'task') return;
+    if (parsed.kind !== 'task') return null;
     const taskId = parsed.taskId;
 
     let moved = null;
@@ -1344,21 +1349,23 @@ export default function Ritmo() {
     } else {
       moved = readTasksForDay(sourceDateKey).find(t => String(t.id) === taskId) || null;
     }
-    if (!moved) return;
+    if (!moved) return null;
 
     const nextTask = { ...moved, time: time || undefined, ...(isVirtual ? { id: genId('task') } : {}) };
+    const createdTaskId = isVirtual ? String(nextTask.id) : null;
 
     if (sourceDateKey === targetDateKey) {
       writeTasksForDay(targetDateKey, tasks => tasks.some(t => String(t.id) === taskId)
         ? tasks.map(t => String(t.id) === taskId ? nextTask : t)
         : [...tasks, nextTask]);
-      return;
+      return createdTaskId;
     }
 
     writeTasksForDay(targetDateKey, tasks => [...tasks, nextTask]);
     if (!isVirtual) {
       writeTasksForDay(sourceDateKey, tasks => tasks.filter(t => String(t.id) !== taskId));
     }
+    return createdTaskId;
   }, [readTasksForDay, writeTasksForDay, recurringTasks]);
 
   // Zet de duur van één pool-item, ongeacht soort. Zusje van moveItemToDay:
@@ -1753,10 +1760,11 @@ export default function Ritmo() {
   // Past één plan-toewijzing toe via de bestaande cross-day-handler
   // (moveItemToDay dekt zowel losse taken, gematerialiseerde recurring als
   // project-subgoals) — dezelfde dag als bron en doel, want de indeler werkt
-  // op de geselecteerde dag zelf (geen dag-wissel).
-  const applyPendingAssignment = useCallback((dateKey, key, time) => {
-    moveItemToDay(key, dateKey, dateKey, time);
-  }, [moveItemToDay]);
+  // op de geselecteerde dag zelf (geen dag-wissel). Reikt de id door van een
+  // taak die hierbij voor het eerst gematerialiseerd is (zie moveItemToDay).
+  const applyPendingAssignment = useCallback((dateKey, key, time) => (
+    moveItemToDay(key, dateKey, dateKey, time)
+  ), [moveItemToDay]);
 
   // Hoofd-handler: verzamelt candidates/fixed voor `dateKey`, leidt dayStart
   // af uit een actieve slaap-module (of de nette fallback) en vertakt op
