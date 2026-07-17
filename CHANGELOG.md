@@ -1,3 +1,10 @@
+# [0.67.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.66.0...v0.67.0) (2026-07-17)
+
+
+### Features
+
+* **planner:** Vandaag-feed met voortgang per project over alle bronnen ([0f9c3ec](https://github.com/Studio-Lek-River/Ritmo/commit/0f9c3eca779a9445d72e9a2e2864fe7b49da7a1e)), closes [#39](https://github.com/Studio-Lek-River/Ritmo/issues/39)
+
 # [0.66.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.65.0...v0.66.0) (2026-07-17)
 
 
