@@ -159,6 +159,11 @@ export default function Ritmo() {
   const [moduleData, setModuleData] = useState({}); // per-module daily state
   const [history, setHistory] = useState({});
   const [customTasks, setCustomTasks] = useState([]);
+  // Terugkerende taken die de gebruiker op de actieve dag heeft weggeklikt
+  // (V03). Per dag bijgehouden in de dag-blob (skippedRecurring, naast
+  // moduleData/customTasks), zodat een skip van vandaag morgen niet
+  // doorwerkt. Ontbrekende key = lege lijst, geen migratie nodig.
+  const [skippedRecurring, setSkippedRecurring] = useState([]);
   const [recurringTasks, setRecurringTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
   const [newTaskTime, setNewTaskTime] = useState('');
@@ -287,6 +292,7 @@ export default function Ritmo() {
         const data = migrateDayData(JSON.parse(result.value));
         setModuleData(data.moduleData || {});
         setCustomTasks(data.customTasks || []);
+        setSkippedRecurring(data.skippedRecurring || []);
         skipNextSaveRef.current = true;
       }
     } catch (e) {}
@@ -351,6 +357,7 @@ export default function Ritmo() {
     skipNextSaveRef.current = true;
     setModuleData(data.moduleData || {});
     setCustomTasks(data.customTasks || []);
+    setSkippedRecurring(data.skippedRecurring || []);
     prevModuleStatusRef.current = {};
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeDateKey, loading]);
@@ -368,6 +375,7 @@ export default function Ritmo() {
         const dayData = {
           moduleData,
           customTasks,
+          skippedRecurring,
         };
         await window.storage.set(`day:${activeDateKey}`, JSON.stringify(dayData));
         setHistory(prev => ({ ...prev, [activeDateKey]: dayData }));
@@ -376,7 +384,7 @@ export default function Ritmo() {
       }
     };
     saveData();
-  }, [moduleData, customTasks, loading, activeDateKey, editable]);
+  }, [moduleData, customTasks, skippedRecurring, loading, activeDateKey, editable]);
 
   // Save settings
   useEffect(() => {
@@ -449,7 +457,11 @@ export default function Ritmo() {
 
     recurringTasks.forEach(rt => {
       if (rt.days.includes(todayDay)) {
-        const existsToday = customTasks.some(t => t.recurringId === rt.id);
+        // "Bestaat al" of "vandaag weggeklikt" (V03): skippedRecurring wordt
+        // net als customTasks bewust buiten de deps gehouden, zie de
+        // eslint-disable hieronder.
+        const existsToday = customTasks.some(t => t.recurringId === rt.id)
+          || skippedRecurring.includes(rt.id);
         if (!existsToday) {
           setCustomTasks(prev => [...prev, {
             id: genId('task'),
@@ -465,6 +477,13 @@ export default function Ritmo() {
         }
       }
     });
+    // customTasks en skippedRecurring blijven bewust buiten deze deps, om
+    // dezelfde reden als de bestaande customTasks-uitzondering: dit effect
+    // hoeft niet opnieuw te draaien bij elke toggle/afvink/wegklik-actie op
+    // zichzelf, alleen wanneer er een nieuwe dag is of de terugkerende taken
+    // zelf wijzigen. Draait het effect om zo'n reden, dan leest de closure
+    // gewoon de actuele customTasks/skippedRecurring van dat moment, dus een
+    // skip blijft correct staan (V03-acceptatiecriterium 3).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, recurringTasks, activeDateKey, todayKey]);
 
@@ -1225,7 +1244,14 @@ export default function Ritmo() {
     if (willBeDone) sfx('tick');
   };
 
+  // Een taak met een recurringId komt via het injectie-effect hierboven
+  // terug zolang de terugkerende taak in Instellingen bestaat en vandaag aan
+  // de beurt is — puur uit customTasks filteren is dus niet genoeg (V03). De
+  // dag zelf onthoudt de skip via addSkippedRecurring; een losse taak (geen
+  // recurringId) gedraagt zich ongewijzigd.
   const deleteTask = (id) => {
+    const task = customTasks.find(t => t.id === id);
+    if (task?.recurringId) addSkippedRecurring(activeDateKey, task.recurringId);
     setCustomTasks(prev => prev.filter(t => t.id !== id));
   };
 
@@ -1284,6 +1310,25 @@ export default function Ritmo() {
       const day = prev[dateKey] || { moduleData: {}, customTasks: [] };
       const nextCustomTasks = updater(day.customTasks || []);
       const nextDay = { ...day, customTasks: nextCustomTasks };
+      window.storage.set(`day:${dateKey}`, JSON.stringify(nextDay)).catch(() => {});
+      return { ...prev, [dateKey]: nextDay };
+    });
+  }, [activeDateKey]);
+
+  // Analoog aan writeTasksForDay hierboven, maar voor de skippedRecurring-
+  // lijst van een willekeurige dag (V03). Nu alleen aangeroepen voor de
+  // actieve dag (deleteTask hierboven); V04 hangt er de verwijderknop op
+  // toekomstige dagen aan, vandaar dat dit al voor elke dateKey werkt.
+  const addSkippedRecurring = useCallback((dateKey, recurringId) => {
+    if (dateKey === activeDateKey) {
+      setSkippedRecurring(prev => prev.includes(recurringId) ? prev : [...prev, recurringId]);
+      return;
+    }
+    setHistory(prev => {
+      const day = prev[dateKey] || { moduleData: {}, customTasks: [] };
+      const current = day.skippedRecurring || [];
+      if (current.includes(recurringId)) return prev;
+      const nextDay = { ...day, skippedRecurring: [...current, recurringId] };
       window.storage.set(`day:${dateKey}`, JSON.stringify(nextDay)).catch(() => {});
       return { ...prev, [dateKey]: nextDay };
     });
@@ -1463,9 +1508,13 @@ export default function Ritmo() {
 
       let dayTasks = stored;
       if (dateKey > todayKey) {
+        // Skip-lijst van díe dag (V03): een virtuele instantie mag alleen
+        // verschijnen als de gebruiker hem daar niet al heeft weggeklikt.
+        const skippedIds = dateKey === activeDateKey ? skippedRecurring : (history[dateKey]?.skippedRecurring || []);
         const missing = recurringTasks
           .filter(rt => rt.days.includes(i))
           .filter(rt => !stored.some(t => t.recurringId === rt.id))
+          .filter(rt => !skippedIds.includes(rt.id))
           .map(rt => ({
             id: virtualTaskId(rt.id, dateKey),
             recurringId: rt.id,
@@ -1483,7 +1532,7 @@ export default function Ritmo() {
 
       return { date, dateKey, customTasks: dayTasks };
     });
-  }, [activeDateKey, customTasks, history, recurringTasks, todayKey, weekOffset]);
+  }, [activeDateKey, customTasks, skippedRecurring, history, recurringTasks, todayKey, weekOffset]);
 
   // ---- Outlook-agenda (S07 / S07a, persistent sinds S07d) ------------------
   // Eigen useConnections-instantie (naast die van ConnectionsSection) puur om
