@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Check, Clock, ExternalLink, MoreHorizontal, Plus, RotateCcw } from 'lucide-react';
+import { Check, Clock, ExternalLink, EyeOff, MoreHorizontal, Plus, RotateCcw } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
+import { useUndoToast } from '../hooks/useUndoToast';
 import { getColorClasses, getColorHex } from '../utils/colors';
 import { encodeDragPayload, decodeDragPayload } from '../utils/dragPayload';
 import { DEFAULT_BLOCK_MINUTES, DEFAULT_PRIORITY, DURATION_PRESETS } from '../utils/dayTimeline';
-import { isVirtualTaskKey } from '../utils/itemKeys';
+import { isVirtualTaskKey, parseItemKey } from '../utils/itemKeys';
 import { SOURCE_ICONS } from '../utils/sourcePrefs';
 import { getPriorityColor } from '../utils/priorityPrefs';
 import DurationInput from './DurationInput';
@@ -29,10 +30,13 @@ export default function TaskPoolPanel({
   onMoveItem,
   onSetItemDuration,
   onResetItem,
+  onHideItem,
+  onUnhideItem,
   priorityPrefs,
   theme,
 }) {
   const { t } = useTranslation();
+  const showUndoToast = useUndoToast();
   const [text, setText] = useState('');
   // Eén popover-state voor het hele paneel (niet per kaart): garandeert dat er
   // nooit twee popovers tegelijk open staan en levert één click-outside/Escape-
@@ -64,6 +68,17 @@ export default function TaskPoolPanel({
   const togglePopover = (key, kind) => setOpenPopover(prev => (
     prev?.key === key && prev.kind === kind ? null : { key, kind }
   ));
+
+  // Verbergt een bronkaart lokaal (V07): de kaart-id zit vercodeerd in
+  // `item.key` (subgoalKey), dus eerst ontleden voor de opake subgoal-id die
+  // sourceItemPrefs.js verwacht. Met undo-toast, zelfde patroon als
+  // TaskListPanel's handleDeleteTask.
+  const handleHideItem = (item) => {
+    const parsed = parseItemKey(item.key);
+    if (parsed.kind !== 'subgoal') return;
+    onHideItem?.(parsed.goalId);
+    showUndoToast(t('toast.itemHidden'), () => onUnhideItem?.(parsed.goalId));
+  };
 
   const submit = () => {
     const trimmed = text.trim();
@@ -143,6 +158,7 @@ export default function TaskPoolPanel({
                   onMoveItem={onMoveItem}
                   onSetItemDuration={onSetItemDuration}
                   onResetItem={onResetItem}
+                  onHideItem={handleHideItem}
                   priorityPrefs={priorityPrefs}
                   menuOpen={openPopover?.key === item.key && openPopover.kind === 'menu'}
                   durationOpen={openPopover?.key === item.key && openPopover.kind === 'duration'}
@@ -168,6 +184,7 @@ function PoolItemCard({
   onMoveItem,
   onSetItemDuration,
   onResetItem,
+  onHideItem,
   priorityPrefs,
   menuOpen,
   durationOpen,
@@ -358,6 +375,21 @@ function PoolItemCard({
                   <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                   {t('planner.pool.openInSource', { provider: providerLabel })}
                 </a>
+              )}
+
+              {/* Lokaal verbergen (V07): de kaart blijft in Trello/GitHub
+                  bestaan, alleen Ritmo toont hem niet meer -- terug te halen
+                  via Instellingen -> Koppelingen of de undo-toast. */}
+              {item.source && (
+                <button
+                  type="button"
+                  onClick={() => { onHideItem(item); onToggleMenu(); }}
+                  aria-label={t('planner.pool.hideAria', { label: item.label })}
+                  className={`flex items-center gap-1.5 px-2 py-1.5 text-sm ${theme.radiusControl} ${theme.textSecondary} ${theme.hover} transition`}
+                >
+                  <EyeOff className="w-3.5 h-3.5 shrink-0" />
+                  {t('planner.pool.hideItem')}
+                </button>
               )}
             </div>
           </div>

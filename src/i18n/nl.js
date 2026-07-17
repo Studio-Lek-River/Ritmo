@@ -757,6 +757,7 @@ export default {
     sourceBadge: '{provider}',
     openBoardAria: 'Open bord op {provider}',
     openCardAria: 'Open kaart',
+    hideCardAria: 'Verberg kaart',
     renameSubjectAria: 'Onderwerpnaam bewerken',
     renameSubgoalAria: 'Subdoel-label bewerken',
   },
@@ -769,6 +770,7 @@ export default {
     collectionDeleted: 'Collectie verwijderd',
     taskDeleted: 'Taak verwijderd',
     recurringDeleted: 'Terugkerende taak verwijderd',
+    itemHidden: 'Item verborgen',
   },
 
   modules: {
@@ -1658,6 +1660,8 @@ export default {
         projecttaak: 'Projecttaken',
       },
       openInSource: 'Openen in {provider}',
+      hideItem: 'Verbergen',
+      hideAria: 'Verberg {label}',
     },
     legend: {
       agenda: 'Agenda',

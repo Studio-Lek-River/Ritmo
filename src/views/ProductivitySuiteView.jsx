@@ -81,6 +81,8 @@ export default function ProductivitySuiteView({
   onMoveItem,
   onSetItemDuration,
   onResetItem,
+  onHideItem,
+  onUnhideItem,
   pendingPlan,
   onShareDay,
   planUndoDateKey,
@@ -330,6 +332,8 @@ export default function ProductivitySuiteView({
                 onMoveItem={onMoveItem}
                 onSetItemDuration={onSetItemDuration}
                 onResetItem={onResetItem}
+                onHideItem={onHideItem}
+                onUnhideItem={onUnhideItem}
                 priorityPrefs={priorityPrefs}
                 theme={theme}
               />

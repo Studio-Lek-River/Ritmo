@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Clock, Sparkles, GraduationCap, MoreHorizontal, ExternalLink } from 'lucide-react';
+import { Plus, Clock, Sparkles, GraduationCap, MoreHorizontal, ExternalLink, EyeOff } from 'lucide-react';
 import ProgressBar from '../components/ProgressBar';
 import EmptyState from '../components/EmptyState';
 import SwipeRow from '../components/SwipeRow';
@@ -34,6 +34,8 @@ export default function ProjectsView({
   onDeleteProjectModule,
   hasUsedSwipe,
   onFirstSwipe,
+  onHideItem,
+  onUnhideItem,
   theme,
 }) {
   const { t } = useTranslation();
@@ -363,6 +365,14 @@ export default function ProjectsView({
     });
   };
 
+  // Verbergt de kaart van een bron-project lokaal (V07): geen delete, de
+  // kaart blijft gewoon in Trello/GitHub bestaan. Met undo-toast, zelfde
+  // patroon als de delete-flows hierboven.
+  const handleHideSubgoal = (goal) => {
+    onHideItem?.(goal.id);
+    showUndoToast(t('toast.itemHidden'), () => onUnhideItem?.(goal.id));
+  };
+
   const handleConfirmDeleteProject = () => {
     if (!confirmDeleteProject || confirmDeleteProject.source) return;
     const snapshot = confirmDeleteProject;
@@ -597,6 +607,7 @@ export default function ProjectsView({
                 onSetPriority={(goalId, priority) => setSubgoalPriority(activeSubject.id, goalId, priority)}
                 onRename={(goalId, label) => renameSubgoal(activeSubject.id, goalId, label)}
                 onRequestDelete={(goal) => setConfirmDeleteSubgoal({ subjectId: activeSubject.id, goal })}
+                onHide={handleHideSubgoal}
                 onFirstSwipe={onFirstSwipe}
               />
 
@@ -727,6 +738,7 @@ function SubgoalList({
   onSetPriority,
   onRename,
   onRequestDelete,
+  onHide,
   onFirstSwipe,
 }) {
   const { t } = useTranslation();
@@ -839,17 +851,30 @@ function SubgoalList({
                     </span>
                   )}
                   {readOnly ? (
-                    g.url && (
-                      <a
-                        href={g.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={t('projectsView.openCardAria')}
+                    <>
+                      {g.url && (
+                        <a
+                          href={g.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={t('projectsView.openCardAria')}
+                          className={`p-1 shrink-0 ${theme.textMuted} ${theme.hover} rounded`}
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                      {/* Lokaal verbergen (V07): geen delete, de kaart blijft
+                          gewoon in Trello/GitHub bestaan -- terug te halen via
+                          Instellingen -> Koppelingen of de undo-toast. */}
+                      <button
+                        type="button"
+                        onClick={() => onHide(g)}
+                        aria-label={t('projectsView.hideCardAria')}
                         className={`p-1 shrink-0 ${theme.textMuted} ${theme.hover} rounded`}
                       >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    )
+                        <EyeOff className="w-3.5 h-3.5" />
+                      </button>
+                    </>
                   ) : (
                     <input
                       type="number"

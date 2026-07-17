@@ -756,6 +756,7 @@ export default {
     sourceBadge: '{provider}',
     openBoardAria: 'Open board on {provider}',
     openCardAria: 'Open card',
+    hideCardAria: 'Hide card',
     renameSubjectAria: 'Edit subject name',
     renameSubgoalAria: 'Edit subgoal label',
   },
@@ -768,6 +769,7 @@ export default {
     collectionDeleted: 'Collection deleted',
     taskDeleted: 'Task deleted',
     recurringDeleted: 'Recurring task deleted',
+    itemHidden: 'Item hidden',
   },
 
   modules: {
@@ -1647,6 +1649,8 @@ export default {
         projecttaak: 'Project tasks',
       },
       openInSource: 'Open in {provider}',
+      hideItem: 'Hide',
+      hideAria: 'Hide {label}',
     },
     legend: {
       agenda: 'Agenda',
