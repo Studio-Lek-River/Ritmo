@@ -1,3 +1,18 @@
+# [0.63.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.62.2...v0.63.0) (2026-07-17)
+
+
+### Bug Fixes
+
+* **planner:** bron-icoon decoratief maken en lege menu-popover verbergen ([4840546](https://github.com/Studio-Lek-River/Ritmo/commit/484054660538107bb103391c7d1577d0faf1f334))
+
+
+### Features
+
+* **i18n:** vertaalsleutels voor prioriteit en takenpool-kaarten ([734e783](https://github.com/Studio-Lek-River/Ritmo/commit/734e7839c4c83e5fb6d84c937e9fb53afa1a2f01))
+* **planner:** prioriteit als eerste-klas veld op de dagtijdlijn ([e90f23b](https://github.com/Studio-Lek-River/Ritmo/commit/e90f23b9d784bd9a96cb0639ae8b1622aa02c7d2))
+* **planner:** prioriteit schrijfbaar op losse taken en project-subgoals ([e9e89b7](https://github.com/Studio-Lek-River/Ritmo/commit/e9e89b742505fd6171bbcad16b6b6df45f879884))
+* **planner:** takenpool-kaarten met chips en een "..."-menu per taak ([00ab9eb](https://github.com/Studio-Lek-River/Ritmo/commit/00ab9eb3ac9930595d07f719ec775a7efe519eb4))
+
 ## [0.62.2](https://github.com/Studio-Lek-River/Ritmo/compare/v0.62.1...v0.62.2) (2026-07-17)
 
 
