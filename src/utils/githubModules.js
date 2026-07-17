@@ -27,10 +27,15 @@ function dueToDeadline(dueOn) {
   return fmtDateKey(date);
 }
 
+// De id-vorm van een afgeleid subgoal staat alleen hier. Geëxporteerd zodat
+// sourceItemPrefs alle GitHub-overrides in één keer kan wissen zonder de
+// vorm te kopiëren.
+export const GITHUB_ISSUE_ID_PREFIX = 'github:issue:';
+
 function buildSubgoal(issue) {
   const isOpen = issue.state === 'open';
   return {
-    id: `github:issue:${issue.id}`,
+    id: `${GITHUB_ISSUE_ID_PREFIX}${issue.id}`,
     label: `#${issue.number} ${issue.title}`,
     completed: !isOpen,
     // Ontwerppunt 2 in de slice-spec: alleen open issues zijn planbaar

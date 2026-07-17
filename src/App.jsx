@@ -47,6 +47,7 @@ import { readGithubRepoPrefs, writeGithubRepoPrefs, clearGithubRepoPrefs, includ
 import { clearGithubCache } from './utils/githubCache';
 import { buildGithubModules } from './utils/githubModules';
 import { DEFAULT_SOURCE_PREFS, getSourcePref } from './utils/sourcePrefs';
+import { applyItemOverrides } from './utils/sourceItemPrefs';
 import { DEFAULT_PRIORITY } from './utils/dayTimeline';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
@@ -174,6 +175,12 @@ export default function Ritmo() {
   // `{}` is een geldige startwaarde, `getPriorityColor` vult ontbrekende
   // niveaus zelf aan met de default, dus geen migratie nodig.
   const [priorityPrefs, setPriorityPrefs] = useState({});
+  // Duur en tijd die de gebruiker zet op een item van een gekoppelde bron
+  // (Trello-kaart, GitHub-issue). Die items zijn afgeleid en dragen zelf geen
+  // gebruikerswaarden, dus dit is hun enige opslag — zie utils/sourceItemPrefs.js
+  // (inclusief waarom deze map wél in settings mag terwijl de bron-cache dat
+  // niet doet). Lege `{}` is een geldige startwaarde, geen migratie nodig.
+  const [sourceItemPrefs, setSourceItemPrefs] = useState({});
   // Heeft de gebruiker de Outlook-agenda al eens laten zien? Sinds S07d een
   // gepersisteerde setting (zie de Outlook-agenda-sectie verderop voor het
   // gedrag). Staat hier bij de andere settings-state omdat de save-effect
@@ -249,6 +256,7 @@ export default function Ritmo() {
         if (settings.planPrefs !== undefined) setPlanPrefs(settings.planPrefs);
         if (settings.sourcePrefs !== undefined) setSourcePrefs(settings.sourcePrefs);
         if (settings.priorityPrefs !== undefined) setPriorityPrefs(settings.priorityPrefs);
+        if (settings.sourceItemPrefs !== undefined) setSourceItemPrefs(settings.sourceItemPrefs);
         if (settings.agendaShown !== undefined) setAgendaShown(settings.agendaShown);
         if (settings.onboardingProfile !== undefined) setOnboardingProfile(settings.onboardingProfile);
         if (settings.hasUsedSwipe !== undefined) setHasUsedSwipe(settings.hasUsedSwipe);
@@ -388,6 +396,7 @@ export default function Ritmo() {
           planPrefs,
           sourcePrefs,
           priorityPrefs,
+          sourceItemPrefs,
           agendaShown,
           onboardingProfile,
           hasUsedSwipe,
@@ -400,7 +409,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, planPrefs, sourcePrefs, priorityPrefs, agendaShown, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, planPrefs, sourcePrefs, priorityPrefs, sourceItemPrefs, agendaShown, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
 
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
@@ -1579,14 +1588,18 @@ export default function Ritmo() {
   // Planner gebruiken; `modules` (settings-only) blijft voor SettingsModal,
   // ModuleEditor, CollectionsView en InsightView (zie de prop-routing-tabel
   // in de slice-spec).
+  // De mapper blijft puur "cache + prefs -> modules"; de duur/tijd die de
+  // gebruiker zelf op een kaart zette wordt er hier read-time overheen
+  // gemerged (sourceItemPrefs.js). Zo hoeft geen enkele consumer
+  // (dayTimeline, TaskPoolPanel, de indeler) van het bestaan te weten.
   const trelloModules = useMemo(() => {
     if (!trelloVisible) return [];
-    return buildTrelloModules(
+    return applyItemOverrides(buildTrelloModules(
       { boards: trelloCacheBoards },
       trelloBoardPrefs,
       { connectionId: trelloConnection?.id, color: getSourcePref(sourcePrefs, 'trello').color },
-    );
-  }, [trelloVisible, trelloCacheBoards, trelloBoardPrefs, trelloConnection, sourcePrefs]);
+    ), sourceItemPrefs);
+  }, [trelloVisible, trelloCacheBoards, trelloBoardPrefs, trelloConnection, sourcePrefs, sourceItemPrefs]);
 
   // ---- GitHub-repo's (S09) --------------------------------------------------
   // Hergebruikt dezelfde useConnections-instantie (connectionState) om ook de
@@ -1659,12 +1672,12 @@ export default function Ritmo() {
   // `setModules` raakt ze nooit (AC12, read-only is daarmee afdwingbaar).
   const githubModules = useMemo(() => {
     if (!githubVisible) return [];
-    return buildGithubModules(
+    return applyItemOverrides(buildGithubModules(
       { repos: githubCacheRepos },
       githubRepoPrefs,
       { connectionId: githubConnection?.id, color: getSourcePref(sourcePrefs, 'github').color },
-    );
-  }, [githubVisible, githubCacheRepos, githubRepoPrefs, githubConnection, sourcePrefs]);
+    ), sourceItemPrefs);
+  }, [githubVisible, githubCacheRepos, githubRepoPrefs, githubConnection, sourcePrefs, sourceItemPrefs]);
 
   const allModules = useMemo(
     () => [...modules, ...trelloModules, ...githubModules],

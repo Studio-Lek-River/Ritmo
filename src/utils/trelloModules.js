@@ -29,9 +29,14 @@ function dueToDeadline(due) {
   return fmtDateKey(date);
 }
 
+// De id-vorm van een afgeleid subgoal staat alleen hier. Geëxporteerd zodat
+// sourceItemPrefs alle Trello-overrides in één keer kan wissen zonder de
+// vorm te kopiëren.
+export const TRELLO_CARD_ID_PREFIX = 'trello:card:';
+
 function buildSubgoal(card, { isAlwaysList }) {
   return {
-    id: `trello:card:${card.id}`,
+    id: `${TRELLO_CARD_ID_PREFIX}${card.id}`,
     label: card.name || '',
     // Trello kent geen aparte done-vlag op een kaart: `dueComplete` is het
     // enige signaal en is alleen betekenisvol bij een kaart mét due-datum

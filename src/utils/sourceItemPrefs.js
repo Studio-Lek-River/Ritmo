@@ -1,0 +1,102 @@
+// Duur en tijd die de gebruiker zelf zet op een item van een gekoppelde bron
+// (een Trello-kaart, een GitHub-issue).
+//
+// WAAROM DIT BESTAAT: afgeleide bron-modules worden bij elke render opnieuw
+// opgebouwd uit de cache (trelloModules.js / githubModules.js zijn puur en
+// schrijven nooit) en `setModules` kent alleen de settings-only `modules`. Er
+// is dus geen veld op het item zelf waar zo'n waarde kan landen. Deze map is
+// dat zijkanaal: hij wordt read-time over de afgeleide modules gemerged
+// (applyItemOverrides), zodat `modules` settings-only blijft en de bron
+// structureel read-only.
+//
+// PRIVACY — LEES DIT VOOR JE HIER EEN VELD BIJ ZET:
+// Deze map leeft in de settings-blob en synct dus naar Supabase én staat in
+// elk backup-bestand (zie sync/userDataStorage.js `isUserSyncKey`). Dat mag
+// hier, en bewust NIET voor `trello:cards`/`github:issues` (S08 Valkuil 1),
+// om precies één reden: de inhoud is ondoorzichtig. De sleutels zijn opake
+// ids (een Trello-ObjectId, een GitHub-database-id) en de waarden zijn een
+// aantal minuten of een klokwaarde. Bordnamen, kaarttitels, issue-titels en
+// urls horen hier NOOIT — die zouden de bron-inhoud alsnog naar de cloud
+// tillen, wat de hele reden is dat de caches device-local staan.
+// `withItemOverride` spreadt daarom nooit de input van de aanroeper maar
+// plukt expliciet de twee toegestane velden; een per ongeluk meegegeven
+// `label` valt vanzelf af.
+
+// Sleutel = de afgeleide subgoal-id (`trello:card:<id>`, `github:issue:<id>`).
+// Shape: { [subgoalId]: { duration?, time? } }
+const EMPTY_PREF = { duration: undefined, time: undefined };
+
+// Merge met de default zodat een ontbrekend item nooit `undefined` teruggeeft.
+// Bestaande settings zonder `sourceItemPrefs` werken zo zonder migratie.
+export function getSourceItemPref(prefs, subgoalId) {
+  return { ...EMPTY_PREF, ...(prefs?.[subgoalId] || {}) };
+}
+
+// De enige plek die bepaalt wat er in de map mag staan. Expliciet plukken in
+// plaats van `...patch` spreaden: zie de privacy-toelichting hierboven.
+function pickAllowed(patch) {
+  const out = {};
+  if (patch.duration !== undefined) out.duration = patch.duration;
+  if (patch.time !== undefined) out.time = patch.time;
+  return out;
+}
+
+// Pure reducer: geeft een nieuwe map terug met `patch` toegepast op één item.
+// Delete-on-empty — een item zonder waarden verdwijnt uit de map in plaats van
+// als leeg object te blijven staan. Dat houdt de map (en dus de settings-blob)
+// begrensd tot wat de gebruiker echt heeft gezet, en het is meteen de
+// wis-actie: een lege duur of tijd ruimt zichzelf op. Zelfde
+// "leeg = geen waarde"-conventie als `duration`/`time` op een eigen taak.
+export function withItemOverride(prefs, subgoalId, patch) {
+  const merged = { ...getSourceItemPref(prefs, subgoalId), ...pickAllowed(patch) };
+  const cleaned = {};
+  if (merged.duration) cleaned.duration = merged.duration;
+  if (merged.time) cleaned.time = merged.time;
+
+  const next = { ...(prefs || {}) };
+  if (Object.keys(cleaned).length === 0) delete next[subgoalId];
+  else next[subgoalId] = cleaned;
+  return next;
+}
+
+// Wist alle overrides van één bron in één keer, gebruikt zodra een koppeling
+// verbroken blijkt (naast het wissen van de cache en de board/repo-prefs).
+// De prefix komt uit de mapper zelf, zodat de id-vorm op één plek staat.
+export function clearOverridesWithPrefix(prefs, prefix) {
+  if (!prefs) return prefs;
+  const keys = Object.keys(prefs).filter(k => k.startsWith(prefix));
+  if (keys.length === 0) return prefs;
+  const next = { ...prefs };
+  keys.forEach(k => { delete next[k]; });
+  return next;
+}
+
+// Read-time merge over afgeleide modules (bord -> module, lijst -> subject,
+// kaart -> subgoal). Alleen bedoeld voor bron-modules; lokale modules dragen
+// hun duur/tijd op het item zelf.
+//
+// De identity-fast-path is functioneel, niet cosmetisch: zonder hem levert
+// elke render een nieuwe array op, wat de memo-identiteit van `allModules`
+// breekt en daarmee die van `buildPlanInputs`.
+//
+// Conditionele spread (niet `duration: o.duration`) zodat een ontbrekende
+// waarde het veld weglaat in plaats van het op `undefined` te zetten —
+// dezelfde conventie als de mappers zelf.
+export function applyItemOverrides(modules, prefs) {
+  if (!prefs || Object.keys(prefs).length === 0) return modules;
+  return modules.map(mod => ({
+    ...mod,
+    subjects: (mod.subjects || []).map(subject => ({
+      ...subject,
+      subgoals: (subject.subgoals || []).map(goal => {
+        const override = prefs[goal.id];
+        if (!override) return goal;
+        return {
+          ...goal,
+          ...(override.duration ? { duration: override.duration } : {}),
+          ...(override.time ? { time: override.time } : {}),
+        };
+      }),
+    })),
+  }));
+}
