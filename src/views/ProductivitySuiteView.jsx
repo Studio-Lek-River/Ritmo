@@ -267,7 +267,7 @@ export default function ProductivitySuiteView({
           theme={theme}
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-[minmax(240px,300px)_1fr] items-start">
+        <div className="grid gap-4 md:grid-cols-[minmax(320px,28%)_1fr] items-start">
           {tab === 'dag' ? (
             <div className="space-y-4">
               {/* Toevoegen kan op elke dag van de getoonde week, niet alleen

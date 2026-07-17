@@ -29,7 +29,7 @@ export default function DesktopShell({
   const iconBtnClass = `p-2 rounded-xl shadow-sm ${theme.hover} transition ${theme.bg}`;
 
   return (
-    <div className="max-w-7xl mx-auto flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <header
         className={`${theme.card} rounded-2xl shadow-sm px-4 py-3 flex items-center justify-between gap-4`}
       >
