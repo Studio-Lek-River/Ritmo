@@ -22,6 +22,11 @@ export const DAGDEEL_ORDER = ['ochtend', 'middag', 'avond', 'ongepland'];
 // beide views dezelfde aanname delen (geen losse magic numbers).
 export const DEFAULT_BLOCK_MINUTES = 30;
 
+// Snelkeuzes (minuten) voor de duur-chip in de takenpool. Zelfde reden als
+// DEFAULT_BLOCK_MINUTES hierboven: geen verspreide magic numbers. Wie een
+// andere waarde wil gebruikt het vrije minutenveld in dezelfde popover.
+export const DURATION_PRESETS = [15, 30, 45, 60, 90];
+
 // Keuzelijst voor de dagdeel-voorkeur (`window`) op customTasks, project-
 // subgoals en recurringTasks. '' = geen voorkeur (veld weglaten bij opslag).
 // Hergebruikt de bestaande `productivity.dagdelen.*`-labels; alleen de lege

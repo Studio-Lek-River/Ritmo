@@ -1642,6 +1642,7 @@ export default {
       title: 'Takenpool',
       empty: 'Geen ongeplande taken voor deze dag.',
       durationMinutes: '{min} min',
+      durationChipAria: 'Duur aanpassen voor {label}',
       moveToDayAria: 'Verplaats naar dag',
       countAria: '{count} taken in de takenpool',
       groups: {

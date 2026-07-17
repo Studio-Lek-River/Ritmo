@@ -74,6 +74,7 @@ export default function ProductivitySuiteView({
   onSetSubgoalStatus,
   onToggleTaskInDay,
   onMoveItem,
+  onSetItemDuration,
   pendingPlan,
   onShareDay,
   onAcceptPendingItem,
@@ -281,6 +282,7 @@ export default function ProductivitySuiteView({
                 canAddTask
                 onAddTask={(text) => onAddTask(text, undefined, {}, selectedDay?.dateKey || todayKey)}
                 onMoveItem={onMoveItem}
+                onSetItemDuration={onSetItemDuration}
                 priorityPrefs={priorityPrefs}
                 theme={theme}
               />

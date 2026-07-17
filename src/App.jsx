@@ -637,6 +637,30 @@ export default function Ritmo() {
     updateModuleData(projectId, prev => ({ ...prev, touchedToday: true }));
   };
 
+  // Zet de duur van een project-subgoal ("projecttaak") vanuit de takenpool.
+  // Zelfde mutatie-patroon als ProjectsView's lokale setSubgoalDuration, hier
+  // op App-niveau zodat de Planner (die meerdere projectmodules tegelijk toont)
+  // er ook bij kan — zie toggleProjectSubgoal hierboven. Geen `touchedToday`:
+  // een duur bijstellen is geen voortgang op het project (zelfde keuze als
+  // ProjectsView's setSubgoalTime). `String(g.id)` omdat de aanroeper zijn
+  // goalId uit een item-key haalt (altijd een string), terwijl een opgeslagen
+  // id een getal kan zijn — zie moveItemToDay.
+  const setSubgoalDuration = (projectId, subjectId, goalId, duration) => {
+    setModules(prev => prev.map(m => {
+      if (m.id !== projectId) return m;
+      return {
+        ...m,
+        subjects: (m.subjects || []).map(s => s.id !== subjectId ? s : {
+          ...s,
+          subgoals: (s.subgoals || []).map(g => String(g.id) !== String(goalId) ? g : {
+            ...g,
+            duration: duration || undefined,
+          }),
+        }),
+      };
+    }));
+  };
+
   // Voegt een nieuw project-subgoal ("projecttaak") toe aan een bestaand project,
   // gebruikt door het kaart-toevoegveld in de Planner (Kanban). Nieuwe subgoals
   // hebben geen status/completed en belanden zo via deriveTaskStatus in Te doen.
@@ -1336,6 +1360,31 @@ export default function Ritmo() {
       writeTasksForDay(sourceDateKey, tasks => tasks.filter(t => String(t.id) !== taskId));
     }
   }, [readTasksForDay, writeTasksForDay, recurringTasks]);
+
+  // Zet de duur van één pool-item, ongeacht soort. Zusje van moveItemToDay:
+  // dezelfde item-key -> kind-dispatch, en dezelfde dag-bewuste schrijfweg.
+  // Bewust NIET via setTaskDuration: die schrijft alleen de actieve dag, en de
+  // takenpool toont een willekeurige dag van de zichtbare week — een duur op
+  // een kaart van morgen zou dan stil op vandaag landen. `duration ||
+  // undefined` houdt de "leeg = geen waarde"-conventie aan (zie dayTimeline).
+  const setItemDuration = useCallback((itemKey, dateKey, duration) => {
+    const parsed = parseItemKey(itemKey);
+
+    if (parsed.kind === 'subgoal') {
+      setSubgoalDuration(parsed.moduleId, parsed.subjectId, parsed.goalId, duration);
+      return;
+    }
+
+    if (parsed.kind !== 'task') return;
+    // Een nog niet gematerialiseerde recurring-instantie heeft geen record om
+    // op te schrijven; materialiseren om enkel een duur te zetten zou een
+    // eager write zijn. De kaart toont daar een statisch label (TaskPoolPanel).
+    if (parseVirtualTaskId(parsed.taskId)) return;
+
+    writeTasksForDay(dateKey, tasks => tasks.map(t =>
+      String(t.id) === parsed.taskId ? { ...t, duration: duration || undefined } : t
+    ));
+  }, [writeTasksForDay]);
 
   // Welke week het rooster toont, in hele weken t.o.v. deze week (0 = deze
   // week, 1 = volgende, -1 = vorige). Bewust alleen hier: `activeDate` blijft
@@ -2370,6 +2419,7 @@ export default function Ritmo() {
             onSetSubgoalStatus={setSubgoalStatus}
             onToggleTaskInDay={toggleTaskInDay}
             onMoveItem={moveItemToDay}
+            onSetItemDuration={setItemDuration}
             pendingPlan={pendingPlan}
             onShareDay={handleShareDay}
             onAcceptPendingItem={acceptPendingItem}

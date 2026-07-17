@@ -3,9 +3,11 @@ import { Check, Clock, ExternalLink, MoreHorizontal, Plus } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { getColorClasses, getColorHex } from '../utils/colors';
 import { encodeDragPayload, decodeDragPayload } from '../utils/dragPayload';
-import { DEFAULT_BLOCK_MINUTES, DEFAULT_PRIORITY } from '../utils/dayTimeline';
+import { DEFAULT_BLOCK_MINUTES, DEFAULT_PRIORITY, DURATION_PRESETS } from '../utils/dayTimeline';
+import { isVirtualTaskKey } from '../utils/itemKeys';
 import { SOURCE_ICONS } from '../utils/sourcePrefs';
 import { getPriorityColor } from '../utils/priorityPrefs';
+import DurationInput from './DurationInput';
 import TimeInput from './TimeInput';
 
 // Takenpool voor de WeekView: alle items zonder `time` van de geselecteerde
@@ -25,27 +27,30 @@ export default function TaskPoolPanel({
   canAddTask = false,
   onAddTask,
   onMoveItem,
+  onSetItemDuration,
   priorityPrefs,
   theme,
 }) {
   const { t } = useTranslation();
   const [text, setText] = useState('');
-  // Eén menu-state voor het hele paneel (niet per kaart): garandeert dat er
-  // nooit twee menu's tegelijk open staan en levert één click-outside/Escape-
+  // Eén popover-state voor het hele paneel (niet per kaart): garandeert dat er
+  // nooit twee popovers tegelijk open staan en levert één click-outside/Escape-
   // effect op in plaats van N. Het `ProjectsView`-patroon per rij kopiëren
   // zou botsen: `e.target.closest('[data-pool-menu]')` matcht dan een
-  // willekeurige kaart, niet per se de kaart waarvan het menu open staat.
-  const [openMenuKey, setOpenMenuKey] = useState(null);
+  // willekeurige kaart, niet per se de kaart waarvan de popover open staat.
+  // `kind` onderscheidt het "..."-menu van de duur-popover; één state houdt ze
+  // ook onderling exclusief.
+  const [openPopover, setOpenPopover] = useState(null); // { key, kind } | null
 
   useEffect(() => {
-    if (!openMenuKey) return undefined;
+    if (!openPopover) return undefined;
     const handleClick = (e) => {
-      if (!e.target.closest('[data-pool-menu]')) setOpenMenuKey(null);
+      if (!e.target.closest('[data-pool-menu]')) setOpenPopover(null);
     };
-    // Escape sluit ook: dit menu bevat formuliervelden (tijd-invoer, dag-
-    // keuze) waar je met Tab in vast kunt lopen zonder een muisklik-uitweg.
+    // Escape sluit ook: deze popovers bevatten formuliervelden (tijd-invoer,
+    // dag-keuze, duur) waar je met Tab in vast kunt lopen zonder muisklik-uitweg.
     const handleKey = (e) => {
-      if (e.key === 'Escape') setOpenMenuKey(null);
+      if (e.key === 'Escape') setOpenPopover(null);
     };
     window.addEventListener('mousedown', handleClick);
     window.addEventListener('keydown', handleKey);
@@ -53,7 +58,11 @@ export default function TaskPoolPanel({
       window.removeEventListener('mousedown', handleClick);
       window.removeEventListener('keydown', handleKey);
     };
-  }, [openMenuKey]);
+  }, [openPopover]);
+
+  const togglePopover = (key, kind) => setOpenPopover(prev => (
+    prev?.key === key && prev.kind === kind ? null : { key, kind }
+  ));
 
   const submit = () => {
     const trimmed = text.trim();
@@ -131,9 +140,13 @@ export default function TaskPoolPanel({
                   dayOptions={dayOptions}
                   selectedDateKey={selectedDateKey}
                   onMoveItem={onMoveItem}
+                  onSetItemDuration={onSetItemDuration}
                   priorityPrefs={priorityPrefs}
-                  menuOpen={openMenuKey === item.key}
-                  onToggleMenu={() => setOpenMenuKey(v => (v === item.key ? null : item.key))}
+                  menuOpen={openPopover?.key === item.key && openPopover.kind === 'menu'}
+                  durationOpen={openPopover?.key === item.key && openPopover.kind === 'duration'}
+                  popoverOpen={openPopover?.key === item.key}
+                  onToggleMenu={() => togglePopover(item.key, 'menu')}
+                  onToggleDuration={() => togglePopover(item.key, 'duration')}
                   theme={theme}
                   t={t}
                 />
@@ -146,7 +159,21 @@ export default function TaskPoolPanel({
   );
 }
 
-function PoolItemCard({ item, dayOptions, selectedDateKey, onMoveItem, priorityPrefs, menuOpen, onToggleMenu, theme, t }) {
+function PoolItemCard({
+  item,
+  dayOptions,
+  selectedDateKey,
+  onMoveItem,
+  onSetItemDuration,
+  priorityPrefs,
+  menuOpen,
+  durationOpen,
+  popoverOpen,
+  onToggleMenu,
+  onToggleDuration,
+  theme,
+  t,
+}) {
   const c = getColorClasses(item.color);
   const priorityColor = getPriorityColor(priorityPrefs, item.priority || DEFAULT_PRIORITY);
   const pc = getColorClasses(priorityColor);
@@ -160,10 +187,18 @@ function PoolItemCard({ item, dayOptions, selectedDateKey, onMoveItem, priorityP
   // helemaal verbergen in plaats van een lege popover te tonen. De kaart
   // blijft gewoon sleepbaar en afvinkbaar; alleen de menu-knop vervalt.
   const hasMenu = !item.source || !!item.url;
+  // De duur is alleen bewerkbaar waar er een record is om op te schrijven. Een
+  // bronkaart (Trello/GitHub) is geen echte taak, en een nog niet
+  // gematerialiseerde recurring-instantie heeft nog geen eigen record —
+  // materialiseren om enkel een duur te zetten zou een eager write zijn, en de
+  // duur van het sjabloon aanpassen zou élke dag raken. Beide missen hier al
+  // een `toggle`; de chip volgt dezelfde lijn en blijft statische tekst.
+  const canEditDuration = !item.source && !isVirtualTaskKey(item.key);
+  const durationLabel = t('planner.pool.durationMinutes', { min: item.duration ?? DEFAULT_BLOCK_MINUTES });
 
   return (
     <div
-      draggable={!menuOpen}
+      draggable={!popoverOpen}
       onDragStart={(e) => e.dataTransfer.setData('text/plain', encodeDragPayload(selectedDateKey, item.key))}
       style={{ borderLeft: `4px solid ${getColorHex(item.color)}` }}
       className={`flex items-start gap-2 ${theme.padRow} ${theme.cardSecondary} ${theme.radiusControl} cursor-grab active:cursor-grabbing`}
@@ -187,7 +222,55 @@ function PoolItemCard({ item, dayOptions, selectedDateKey, onMoveItem, priorityP
 
         <div className={`flex items-center gap-1 text-[11px] ${theme.textMuted}`}>
           <Clock className="w-3 h-3 shrink-0" />
-          {t('planner.pool.durationMinutes', { min: item.duration ?? DEFAULT_BLOCK_MINUTES })}
+          {canEditDuration ? (
+            // `left-0` in plaats van het `right-0` van het "..."-menu: de chip
+            // staat links op de kaart, dus rechts uitlijnen loopt op een smal
+            // scherm van beeld af.
+            <div className="relative" data-pool-menu>
+              <button
+                type="button"
+                onClick={onToggleDuration}
+                aria-haspopup="true"
+                aria-expanded={durationOpen}
+                aria-label={t('planner.pool.durationChipAria', { label: item.label })}
+                className={`r-chip px-1.5 py-0 ${theme.cardSecondary} border ${theme.border} ${theme.hover} transition`}
+              >
+                {durationLabel}
+              </button>
+
+              {durationOpen && (
+                <div className={`absolute left-0 top-full mt-1 z-20 ${theme.card} rounded-xl shadow-lg border ${theme.border} min-w-[11rem] p-2 space-y-2`}>
+                  <div className="flex flex-wrap gap-1">
+                    {DURATION_PRESETS.map(min => (
+                      <button
+                        key={min}
+                        type="button"
+                        aria-pressed={item.duration === min}
+                        onClick={() => { onSetItemDuration(item.key, selectedDateKey, min); onToggleDuration(); }}
+                        className={`text-[11px] r-chip ${theme.radiusControl} transition ${
+                          item.duration === min
+                            ? `${c.pillBg} ${c.pillText}`
+                            : `${theme.cardSecondary} ${theme.textMuted} border ${theme.border} ${theme.hover}`
+                        }`}
+                      >
+                        {t('planner.pool.durationMinutes', { min })}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Leeg veld => `undefined` => de kaart valt terug op de
+                      default-hint. Dat ís de wis-actie, dus geen aparte knop. */}
+                  <DurationInput
+                    value={item.duration}
+                    onChange={(v) => onSetItemDuration(item.key, selectedDateKey, v)}
+                    theme={theme}
+                    className="w-full"
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            durationLabel
+          )}
           {item.window && <span> · {t(`productivity.dagdelen.${item.window}`)}</span>}
         </div>
 
