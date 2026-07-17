@@ -765,6 +765,7 @@ export default {
     projectDeleted: 'Project deleted',
     collectionDeleted: 'Collection deleted',
     taskDeleted: 'Task deleted',
+    recurringDeleted: 'Recurring task deleted',
   },
 
   modules: {

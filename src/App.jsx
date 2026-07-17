@@ -5173,6 +5173,7 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
 // =============================================
 function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames }) {
   const { t } = useTranslation();
+  const showUndoToast = useUndoToast();
   const [newRecurringText, setNewRecurringText] = useState('');
   const [newRecurringDays, setNewRecurringDays] = useState([]);
   const [newRecurringTime, setNewRecurringTime] = useState('');
@@ -5180,6 +5181,14 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
   const [newRecurringWindow, setNewRecurringWindow] = useState('');
   const [newRecurringAutoPlan, setNewRecurringAutoPlan] = useState(false);
   const [newRecurringDeepWork, setNewRecurringDeepWork] = useState(false);
+  const [editingRecurringId, setEditingRecurringId] = useState(null);
+  const [recurringDraft, setRecurringDraft] = useState('');
+  // Zelfde Escape/blur-guard als TaskListPanel (V04): Escape verwijdert de
+  // input terwijl hij focus heeft, en de daaropvolgende blur zou zonder deze
+  // vlag alsnog opslaan (de Escape-dan-blur-race). `editSessionRef` volgt
+  // welke template-id nog actief bewerkt wordt buiten React-state om.
+  const justCancelledRef = useRef(false);
+  const editSessionRef = useRef(null);
 
   const toggleDay = (day) => {
     setNewRecurringDays(prev =>
@@ -5210,7 +5219,48 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
   };
 
   const removeRecurring = (id) => {
+    const snapshot = recurringTasks.find(rt => rt.id === id);
     setRecurringTasks(prev => prev.filter(t => t.id !== id));
+    if (!snapshot) return;
+    showUndoToast(t('toast.recurringDeleted'), () => setRecurringTasks(prev => prev.some(x => x.id === snapshot.id) ? prev : [...prev, snapshot]));
+  };
+
+  const setRecurringText = (id, text) => {
+    if (!text.trim()) return;
+    setRecurringTasks(prev => prev.map(rt => rt.id === id ? { ...rt, text: text.trim() } : rt));
+  };
+
+  const toggleRecurringDay = (id, day) => {
+    setRecurringTasks(prev => prev.map(rt => {
+      if (rt.id !== id) return rt;
+      const has = rt.days.includes(day);
+      if (has && rt.days.length <= 1) return rt;
+      const days = has ? rt.days.filter(d => d !== day) : [...rt.days, day];
+      return { ...rt, days };
+    }));
+  };
+
+  const startEditRecurring = (rt) => {
+    justCancelledRef.current = false;
+    editSessionRef.current = rt.id;
+    setEditingRecurringId(rt.id);
+    setRecurringDraft(rt.text);
+  };
+  const commitEditRecurring = (id) => {
+    if (justCancelledRef.current) {
+      justCancelledRef.current = false;
+      return;
+    }
+    if (editSessionRef.current !== id) return;
+    editSessionRef.current = null;
+    setRecurringText(id, recurringDraft);
+    setEditingRecurringId(null);
+  };
+  const cancelEditRecurring = () => {
+    justCancelledRef.current = true;
+    editSessionRef.current = null;
+    setEditingRecurringId(null);
+    setRecurringDraft('');
   };
 
   const setRecurringTime = (id, time) => {
@@ -5244,10 +5294,40 @@ function RecurringSettings({ recurringTasks, setRecurringTasks, theme, dayNames 
             recurringTasks.map(rt => (
               <div key={rt.id} className={`flex items-center gap-2 flex-wrap p-2 ${theme.cardSecondary} rounded-lg`}>
                 <Repeat className={`w-4 h-4 ${theme.textMuted}`} />
-                <div className="flex-1">
-                  <div className={`text-sm ${theme.textSecondary}`}>{rt.text}</div>
-                  <div className={`text-xs ${theme.textMuted}`}>
-                    {rt.days.map(d => dayNames[d]).join(', ')}
+                <div className="flex-1 min-w-[8rem]">
+                  {editingRecurringId === rt.id ? (
+                    <input
+                      type="text"
+                      autoFocus
+                      value={recurringDraft}
+                      onChange={(e) => setRecurringDraft(e.target.value)}
+                      onBlur={() => commitEditRecurring(rt.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') commitEditRecurring(rt.id);
+                        if (e.key === 'Escape') cancelEditRecurring();
+                      }}
+                      className={`w-full px-2 py-1 text-sm ${theme.input} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300`}
+                    />
+                  ) : (
+                    <div
+                      onClick={() => startEditRecurring(rt)}
+                      className={`text-sm cursor-text ${theme.textSecondary}`}
+                    >
+                      {rt.text}
+                    </div>
+                  )}
+                  <div className="flex gap-1 mt-1">
+                    {dayNames.map((day, i) => (
+                      <button
+                        key={i}
+                        onClick={() => toggleRecurringDay(rt.id, i)}
+                        className={`px-1.5 py-0.5 rounded text-[11px] font-medium transition ${
+                          rt.days.includes(i) ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    ))}
                   </div>
                 </div>
                 <TimeInput value={rt.time} onChange={(v) => setRecurringTime(rt.id, v)} theme={theme} className="w-24" />
