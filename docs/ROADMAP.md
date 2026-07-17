@@ -56,6 +56,8 @@ De open slices lopen als één doorlopende reeks in bouwvolgorde. De volgende te
 | S08 | #37 | KLAAR | Trello lezen |
 | S09 | #38 | Todo | GitHub lezen |
 | S10 | #39 | Todo | Vandaag-feed |
+| S10b | #121 | Todo | Aggregatie-cache via een scheduled functie |
+| S10c | #122 | Todo | Checklist-items planbaar in de dag |
 | S11 | #40 | Todo | Deel mijn dag in |
 | S12 | #41 | Todo | Outlook wegschrijven |
 | S13 | #42 | Todo | Ritmo MCP-server (lezen) |
@@ -129,8 +131,19 @@ Een lokale, offline versie van de planner die volledig op bestaande data draait,
 
 #### S10, Vandaag-feed. #39
 - **Doel:** alle items uit alle bronnen op één plek, gegroepeerd per project, met voortgang.
-- **Oplevering:** een aggregatie-cache (via een scheduled functie), een feed-view in Ritmo, filters per bron, voortgang per project. De prototype-UX uit Claude.ai is de referentie.
+- **Oplevering:** een feed-tab in de Planner, filters per bron, voortgang per project, en het activeren van `src/utils/normalizedItems.js` (dat sinds S02 op deze slice wacht). De prototype-UX uit Claude.ai is de referentie.
 - **Afhankelijk van:** minstens één leesbron (S07, S08 of S09).
+- **Correctie op de oorspronkelijke tekst:** hier stond "een aggregatie-cache (via een scheduled functie)". Die is niet te bouwen zoals beloofd: een cron draait zonder gebruiker-JWT en kent de opt-in-keuzes niet, want `trello:boardPrefs`, `github:repoPrefs` en de agendaselectie zijn bewust device-lokaal. De feed komt daarom client-side; de servercache is afgesplitst naar S10b (#121), inclusief de privacy-afweging die eraan vastzit.
+
+#### S10b, Aggregatie-cache via een scheduled functie. #121
+- **Doel:** de feed op elk apparaat vullen zonder recente fetch, via een cron die per account aggregeert.
+- **Eerst beslissen:** dit vraagt dat de opt-in-keuzes én de bron-titels naar Supabase gaan, wat de S08/S09-privacylijn omkeert (zie de PRIVACY-comment in `src/utils/sourceItemPrefs.js`). Geen spec voordat die knoop door is.
+- **Afhankelijk van:** S10.
+
+#### S10c, Checklist-items planbaar in de dag. #122
+- **Doel:** fysio-oefeningen en de avondroutine meenemen in de dagplanning, via een opt-in per item of per module.
+- **De crux:** `buildDayTimeline` leest alleen `tasks` en `projects`, en een checklist-item keert elke dag terug (status per dag in het `day:`-record) in plaats van één keer af te ronden.
+- **Afhankelijk van:** S10.
 
 #### S11, Deel mijn dag in. #40
 - **Doel:** de planner die je taken rond je Outlook-afspraken indeelt.
