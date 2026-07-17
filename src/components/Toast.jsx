@@ -6,7 +6,7 @@ export default function Toast({ theme }) {
   if (!toasts.length) return null;
 
   return (
-    <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-sm pointer-events-none flex flex-col gap-2">
+    <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] px-4 w-full max-w-sm pointer-events-none flex flex-col gap-2">
       {toasts.map((toast) => {
         const handleAction = () => {
           toast.onAction?.();

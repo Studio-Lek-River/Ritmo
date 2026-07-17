@@ -333,7 +333,7 @@ export default function CollectionItemFormModal({
                       <button
                         type="button"
                         onClick={() => onRemoveEvent?.(idx)}
-                        className={`opacity-0 group-hover:opacity-100 p-1 ${theme.hover} rounded ${theme.textMuted} transition`}
+                        className={`opacity-60 sm:opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 ${theme.hover} rounded ${theme.textMuted} transition shrink-0`}
                         aria-label={t('collections.deleteEventAria')}
                       >
                         <X className="w-3 h-3" />

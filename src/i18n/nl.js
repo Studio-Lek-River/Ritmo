@@ -780,6 +780,7 @@ export default {
     orderUndone: 'Bestelling ongedaan gemaakt',
     counterEntryDeleted: 'Invoer verwijderd',
     counterReset: 'Teller gereset',
+    collectionEventDeleted: 'Gebeurtenis verwijderd',
   },
 
   modules: {

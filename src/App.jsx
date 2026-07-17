@@ -904,13 +904,33 @@ export default function Ritmo() {
     }));
   };
 
+  // V10 (#133): retourneert een { event, undo } paar. undo zet de gebeurtenis
+  // terug op de oorspronkelijke index in item.events (niet vooraan, zoals
+  // logEvent zou doen), zodat de volgorde na undo weer klopt.
   const removeCollectionEvent = (moduleId, itemId, eventIndex) => {
+    let removedEvent = null;
     updateCollectionModule(moduleId, (m) => ({
       ...m,
-      items: (m.items || []).map((it) =>
-        it.id === itemId ? removeEvent(it, eventIndex) : it
-      ),
+      items: (m.items || []).map((it) => {
+        if (it.id !== itemId) return it;
+        removedEvent = (it.events || [])[eventIndex] ?? null;
+        return removeEvent(it, eventIndex);
+      }),
     }));
+    const undo = () => {
+      if (!removedEvent) return;
+      updateCollectionModule(moduleId, (m) => ({
+        ...m,
+        items: (m.items || []).map((it) => {
+          if (it.id !== itemId) return it;
+          const events = it.events || [];
+          if (events.includes(removedEvent)) return it;
+          const idx = Math.min(eventIndex, events.length);
+          return { ...it, events: [...events.slice(0, idx), removedEvent, ...events.slice(idx)] };
+        }),
+      }));
+    };
+    return { event: removedEvent, undo };
   };
 
   // ---- medication handlers -----------------------------------------------

@@ -779,6 +779,7 @@ export default {
     orderUndone: 'Order undone',
     counterEntryDeleted: 'Entry deleted',
     counterReset: 'Counter reset',
+    collectionEventDeleted: 'Event deleted',
   },
 
   modules: {

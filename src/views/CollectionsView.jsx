@@ -407,7 +407,9 @@ export default function CollectionsView({
           if (editingCollection && editingItem) onLogEvent?.(editingCollection.id, editingItem.id);
         }}
         onRemoveEvent={(idx) => {
-          if (editingCollection && editingItem) onRemoveEvent?.(editingCollection.id, editingItem.id, idx);
+          if (!editingCollection || !editingItem) return;
+          const result = onRemoveEvent?.(editingCollection.id, editingItem.id, idx);
+          showUndoToast(t('toast.collectionEventDeleted'), () => result?.undo?.());
         }}
         theme={theme}
       />
