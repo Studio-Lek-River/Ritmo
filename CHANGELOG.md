@@ -1,3 +1,10 @@
+# [0.70.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.69.0...v0.70.0) (2026-07-17)
+
+
+### Features
+
+* **projecten:** onderwerp-naam en subdoel-label inline bewerkbaar ([47de05c](https://github.com/Studio-Lek-River/Ritmo/commit/47de05cac25260b423ba6f9219b539a430a1f272))
+
 # [0.69.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.68.0...v0.69.0) (2026-07-17)
 
 
