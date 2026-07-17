@@ -1,3 +1,10 @@
+# [0.72.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.71.0...v0.72.0) (2026-07-17)
+
+
+### Features
+
+* **household:** klusjes, boodschappen en vaste lasten consistent met de rest van de app ([ecc0095](https://github.com/Studio-Lek-River/Ritmo/commit/ecc0095256a1171477772efaa3d7d30286c43672)), closes [#131](https://github.com/Studio-Lek-River/Ritmo/issues/131)
+
 # [0.71.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.70.0...v0.71.0) (2026-07-17)
 
 
