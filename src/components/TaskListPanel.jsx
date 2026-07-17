@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Check, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
+import { useUndoToast } from '../hooks/useUndoToast';
 import { getColorClasses } from '../utils/colors';
 import TimeInput from './TimeInput';
 import DurationInput from './DurationInput';
@@ -18,7 +19,9 @@ export default function TaskListPanel({
   onAddTask,
   onToggleTask,
   onDeleteTask,
+  onRestoreTask,
   onSetTaskTime,
+  onSetTaskText,
   onSetTaskDuration,
   onSetTaskWindow,
   onSetTaskAutoPlan,
@@ -27,6 +30,7 @@ export default function TaskListPanel({
   theme,
 }) {
   const { t } = useTranslation();
+  const showUndoToast = useUndoToast();
   const [text, setText] = useState('');
   const [time, setTime] = useState('');
   const [duration, setDuration] = useState(undefined);
@@ -34,6 +38,8 @@ export default function TaskListPanel({
   const [autoPlan, setAutoPlan] = useState(false);
   const [deepWork, setDeepWork] = useState(false);
   const [priority, setPriority] = useState(DEFAULT_PRIORITY);
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [taskDraft, setTaskDraft] = useState('');
   const c = getColorClasses(color);
 
   const submit = () => {
@@ -46,6 +52,24 @@ export default function TaskListPanel({
     setAutoPlan(false);
     setDeepWork(false);
     setPriority(DEFAULT_PRIORITY);
+  };
+
+  const startEditTask = (task) => {
+    setEditingTaskId(task.id);
+    setTaskDraft(task.text);
+  };
+  const commitEditTask = (id) => {
+    onSetTaskText?.(id, taskDraft);
+    setEditingTaskId(null);
+  };
+  const cancelEditTask = () => setEditingTaskId(null);
+
+  // Undo-flow voor V04 (#127): snapshot het task-object dat we al renderen
+  // vóórdat het verdwijnt, roep de raw delete aan (regelt de skip al sinds
+  // V03) en toon de undo-toast met dat snapshot als herstel-payload.
+  const handleDeleteTask = (task) => {
+    onDeleteTask?.(task.id);
+    showUndoToast(t('toast.taskDeleted'), () => onRestoreTask?.(task));
   };
 
   return (
@@ -115,9 +139,27 @@ export default function TaskListPanel({
               >
                 {task.done && <Check className="w-3 h-3 text-white" />}
               </button>
-              <span className={`flex-1 min-w-0 text-sm truncate ${task.done ? `line-through ${theme.textMuted}` : theme.textSecondary}`}>
-                {task.text}
-              </span>
+              {editingTaskId === task.id ? (
+                <input
+                  type="text"
+                  autoFocus
+                  value={taskDraft}
+                  onChange={(e) => setTaskDraft(e.target.value)}
+                  onBlur={() => commitEditTask(task.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commitEditTask(task.id);
+                    if (e.key === 'Escape') cancelEditTask();
+                  }}
+                  className={`flex-1 min-w-0 px-2 py-1 text-sm ${theme.input} ${theme.radiusControl} focus:outline-none focus:ring-2 focus:ring-blue-300`}
+                />
+              ) : (
+                <span
+                  onClick={() => startEditTask(task)}
+                  className={`flex-1 min-w-0 text-sm truncate cursor-text ${task.done ? `line-through ${theme.textMuted}` : theme.textSecondary}`}
+                >
+                  {task.text}
+                </span>
+              )}
               <TimeInput value={task.time} onChange={(v) => onSetTaskTime?.(task.id, v)} theme={theme} className="w-20" />
               <DurationInput value={task.duration} onChange={(v) => onSetTaskDuration?.(task.id, v)} theme={theme} className="w-16" />
               <DagdeelSelect value={task.window} onChange={(v) => onSetTaskWindow?.(task.id, v)} theme={theme} />
@@ -142,7 +184,7 @@ export default function TaskListPanel({
               </label>
               <button
                 type="button"
-                onClick={() => onDeleteTask?.(task.id)}
+                onClick={() => handleDeleteTask(task)}
                 aria-label={t('common.delete')}
                 className="opacity-50 sm:opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition shrink-0"
               >

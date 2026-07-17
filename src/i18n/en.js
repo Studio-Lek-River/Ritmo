@@ -764,6 +764,7 @@ export default {
     subgoalDeleted: 'Subgoal deleted',
     projectDeleted: 'Project deleted',
     collectionDeleted: 'Collection deleted',
+    taskDeleted: 'Task deleted',
   },
 
   modules: {

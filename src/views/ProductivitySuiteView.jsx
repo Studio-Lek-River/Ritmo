@@ -66,7 +66,9 @@ export default function ProductivitySuiteView({
   onAddSubgoal,
   onToggleTask,
   onDeleteTask,
+  onRestoreTask,
   onSetTaskTime,
+  onSetTaskText,
   onSetTaskDuration,
   onSetTaskWindow,
   onSetTaskAutoPlan,
@@ -347,7 +349,9 @@ export default function ProductivitySuiteView({
               onAddTask={onAddTask}
               onToggleTask={onToggleTask}
               onDeleteTask={onDeleteTask}
+              onRestoreTask={onRestoreTask}
               onSetTaskTime={onSetTaskTime}
+              onSetTaskText={onSetTaskText}
               onSetTaskDuration={onSetTaskDuration}
               onSetTaskWindow={onSetTaskWindow}
               onSetTaskAutoPlan={onSetTaskAutoPlan}

@@ -765,6 +765,7 @@ export default {
     subgoalDeleted: 'Subdoel verwijderd',
     projectDeleted: 'Project verwijderd',
     collectionDeleted: 'Collectie verwijderd',
+    taskDeleted: 'Taak verwijderd',
   },
 
   modules: {

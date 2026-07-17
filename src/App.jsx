@@ -78,6 +78,7 @@ import { scheduleEntryMed } from './utils/injectionSchedule';
 import { ScheduleEntryFormModal } from './views/InjectionScheduleView';
 import { BodymapModuleCard } from './views/BodymapView';
 import { ToastProvider } from './hooks/useToast';
+import { useUndoToast } from './hooks/useUndoToast';
 import Toast from './components/Toast';
 import { formatAmount, formatDuration } from './utils/format';
 import { MODULE_PRESETS } from './utils/presets';
@@ -1255,8 +1256,33 @@ export default function Ritmo() {
     setCustomTasks(prev => prev.filter(t => t.id !== id));
   };
 
+  // Herstel-logica voor de undo-toast van V04 (#127). App zit zelf boven
+  // ToastProvider en toont dus geen toast (zie comment bij handleShareDay
+  // hierboven); de twee consumers die de taak al in handen hebben
+  // (TaskListPanel, het tasks-blok in ModuleRenderer) snapshotten hem, roepen
+  // deleteTask aan en geven bij undo dat snapshot hier terug. Een recurringId
+  // moet weer van skippedRecurring af, anders blijft de dag hem als
+  // weggeklikt behandelen en injecteert het effect in App.jsx hem niet
+  // opnieuw (V03/#126) — dit spiegelt exact wat addSkippedRecurring in
+  // deleteTask hierboven deed.
+  const restoreTask = (task) => {
+    if (!task) return;
+    if (task.recurringId) {
+      setSkippedRecurring(prev => prev.filter(id => id !== task.recurringId));
+    }
+    setCustomTasks(prev => prev.some(t => t.id === task.id) ? prev : [...prev, task]);
+  };
+
   const setTaskTime = (id, time) => {
     setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, time: time || undefined } : t));
+  };
+
+  // Tekst wijzigen van een losse taak (V04, #127). Lege tekst wordt genegeerd
+  // zodat de oude tekst blijft staan in plaats van leeg te worden opgeslagen.
+  const setTaskText = (id, text) => {
+    const trimmed = (text || '').trim();
+    if (!trimmed) return;
+    setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, text: trimmed } : t));
   };
 
   const setTaskDuration = (id, duration) => {
@@ -2339,7 +2365,9 @@ export default function Ritmo() {
         addTask={addTask}
         toggleTask={toggleTask}
         deleteTask={deleteTask}
+        restoreTask={restoreTask}
         setTaskTime={setTaskTime}
+        setTaskText={setTaskText}
         theme={theme}
         darkMode={darkMode}
       />
@@ -2641,7 +2669,9 @@ export default function Ritmo() {
             onAddSubgoal={addProjectSubgoal}
             onToggleTask={toggleTask}
             onDeleteTask={deleteTask}
+            onRestoreTask={restoreTask}
             onSetTaskTime={setTaskTime}
+            onSetTaskText={setTaskText}
             onSetTaskDuration={setTaskDuration}
             onSetTaskWindow={setTaskWindow}
             onSetTaskAutoPlan={setTaskAutoPlan}
@@ -2776,8 +2806,11 @@ export default function Ritmo() {
 // =============================================
 // MODULE RENDERER
 // =============================================
-function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle, onChecklistIncrement, onChecklistNote, onChoiceToggle, onChoiceOptionSet, onEdit, weekDates, history, customTasks, newTask, setNewTask, newTaskTime, setNewTaskTime, addTask, toggleTask, deleteTask, setTaskTime, theme, darkMode }) {
+function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle, onChecklistIncrement, onChecklistNote, onChoiceToggle, onChoiceOptionSet, onEdit, weekDates, history, customTasks, newTask, setNewTask, newTaskTime, setNewTaskTime, addTask, toggleTask, deleteTask, restoreTask, setTaskTime, setTaskText, theme, darkMode }) {
   const { t } = useTranslation();
+  const showUndoToast = useUndoToast();
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [taskDraft, setTaskDraft] = useState('');
   const modName = resolveModuleName(mod, t);
   const editButton = onEdit ? (
     <button
@@ -2791,6 +2824,23 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
   ) : null;
   const Icon = ICON_OPTIONS[mod.icon] || Sparkles;
   const colorClass = `text-${mod.color}-500`;
+
+  // Inline tekst-edit + verwijderen-met-undo voor losse taken (V04, #127).
+  // Alleen relevant voor het tasks-blok hieronder, maar hier gedeclareerd
+  // omdat hooks niet na een conditionele return mogen komen.
+  const startEditTask = (task) => {
+    setEditingTaskId(task.id);
+    setTaskDraft(task.text);
+  };
+  const commitEditTask = (id) => {
+    setTaskText?.(id, taskDraft);
+    setEditingTaskId(null);
+  };
+  const cancelEditTask = () => setEditingTaskId(null);
+  const handleDeleteTask = (task) => {
+    deleteTask?.(task.id);
+    showUndoToast(t('toast.taskDeleted'), () => restoreTask?.(task));
+  };
 
   if (mod.type === 'checklist') {
     return (
@@ -2903,9 +2953,27 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
                   {task.done && <Check className="w-3 h-3 text-white" />}
                 </button>
                 {task.recurringId && <Repeat className={`w-3 h-3 ${theme.textMuted} flex-shrink-0`} />}
-                <span className={`flex-1 text-sm ${task.done ? `line-through ${theme.textMuted}` : theme.textSecondary}`}>
-                  {task.text}
-                </span>
+                {editable && editingTaskId === task.id ? (
+                  <input
+                    type="text"
+                    autoFocus
+                    value={taskDraft}
+                    onChange={(e) => setTaskDraft(e.target.value)}
+                    onBlur={() => commitEditTask(task.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') commitEditTask(task.id);
+                      if (e.key === 'Escape') cancelEditTask();
+                    }}
+                    className={`flex-1 min-w-0 px-2 py-1 text-sm ${theme.input} rounded-lg focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
+                  />
+                ) : (
+                  <span
+                    onClick={() => editable && startEditTask(task)}
+                    className={`flex-1 text-sm ${task.done ? `line-through ${theme.textMuted}` : theme.textSecondary} ${editable ? 'cursor-text' : ''}`}
+                  >
+                    {task.text}
+                  </span>
+                )}
                 {editable ? (
                   <TimeInput value={task.time} onChange={(v) => setTaskTime(task.id, v)} theme={theme} className="w-24" />
                 ) : task.time ? (
@@ -2913,7 +2981,7 @@ function ModuleRenderer({ module: mod, data, editable = true, onChecklistToggle,
                 ) : null}
                 {editable && (
                   <button
-                    onClick={() => deleteTask(task.id)}
+                    onClick={() => handleDeleteTask(task)}
                     className="opacity-50 sm:opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition"
                   >
                     <Trash2 className="w-4 h-4" />
