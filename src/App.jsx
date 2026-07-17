@@ -47,7 +47,7 @@ import { readGithubRepoPrefs, writeGithubRepoPrefs, clearGithubRepoPrefs, includ
 import { clearGithubCache } from './utils/githubCache';
 import { buildGithubModules } from './utils/githubModules';
 import { DEFAULT_SOURCE_PREFS, getSourcePref } from './utils/sourcePrefs';
-import { applyItemOverrides } from './utils/sourceItemPrefs';
+import { applyItemOverrides, getSourceItemPref, isSourceItemId, withItemOverride } from './utils/sourceItemPrefs';
 import { DEFAULT_PRIORITY } from './utils/dayTimeline';
 import { isStandalone, isIOS, onPromptAvailableChange, triggerInstallPrompt } from './utils/install';
 import FeedbackForm from './components/help/FeedbackForm';
@@ -1315,6 +1315,17 @@ export default function Ritmo() {
 
     if (parsed.kind === 'subgoal') {
       const { moduleId: projectId, subjectId, goalId: goalIdRaw } = parsed;
+
+      // Een item van een gekoppelde bron zit niet in `modules` (het is
+      // afgeleid), dus daar landt alleen de tijd, in de override-map.
+      // `targetDateKey` gaat bewust NIET mee: de deadline blijft van de bron
+      // (de Trello-due), en een bronitem is sowieso niet naar een andere dag
+      // te slepen — het rooster toont alleen lokale modules.
+      if (isSourceItemId(goalIdRaw)) {
+        setSourceItemPrefs(prev => withItemOverride(prev, goalIdRaw, { time: time || undefined }));
+        return null;
+      }
+
       setModules(prev => prev.map(m => {
         if (m.id !== projectId) return m;
         return {
@@ -1387,6 +1398,12 @@ export default function Ritmo() {
     const parsed = parseItemKey(itemKey);
 
     if (parsed.kind === 'subgoal') {
+      // Bronitem: zie moveItemToDay — afgeleid, dus de duur gaat naar de
+      // override-map in plaats van naar `modules`.
+      if (isSourceItemId(parsed.goalId)) {
+        setSourceItemPrefs(prev => withItemOverride(prev, parsed.goalId, { duration: duration || undefined }));
+        return;
+      }
       setSubgoalDuration(parsed.moduleId, parsed.subjectId, parsed.goalId, duration);
       return;
     }
@@ -1734,10 +1751,8 @@ export default function Ritmo() {
     // of uit de altijd-lijst heeft `autoPlan: true` (trelloModules.js), en een
     // open GitHub-issue heeft dat sowieso (githubModules.js, S09 AC5) — beide
     // mogen dus meedoen aan "deel mijn dag in", ook al is de module zelf niet
-    // in settings te vinden — "direct"-toepassen op zo'n key is een no-op
-    // (moveItemToDay vindt de module-id niet in `modules`), maar in de
-    // standaard propose/concept-standen rendert het voorstel toch (pendingPlan
-    // is ephemeer en heeft `modules` niet nodig).
+    // in settings te vinden. Toepassen werkt daar ook echt: de tijd landt in
+    // sourceItemPrefs in plaats van op de module (zie moveItemToDay).
     allModules.forEach(mod => {
       if (!mod.enabled || mod.type !== 'projects') return;
       (mod.subjects || []).forEach(subject => {
@@ -1784,12 +1799,19 @@ export default function Ritmo() {
   // zet naast `time` ook `deadline`, dus "de tijd weer wissen" laat een
   // deadline achter die een vrij-blok-taak nooit had. Nooit uit pendingPlan
   // lezen — die is bij het indeel-moment gevuld en kan in de propose-stand
-  // verouderd zijn. Zoekt in `modules` (niet `allModules`): voor een item van
-  // een gekoppelde bron valt er niets te schrijven, dus ook niets te beloven.
+  // verouderd zijn.
   const snapshotItem = useCallback((dateKey, itemKey) => {
     const parsed = parseItemKey(itemKey);
 
     if (parsed.kind === 'subgoal') {
+      // Bronitem: de override-map is hier de bron van waarheid, want de bron
+      // zelf (Trello/GitHub) kent geen tijd. Alleen `time`, want dat is het
+      // enige dat de indeler op een bronitem schrijft.
+      if (isSourceItemId(parsed.goalId)) {
+        return { kind: 'sourceItem', goalId: parsed.goalId, time: getSourceItemPref(sourceItemPrefs, parsed.goalId).time };
+      }
+
+      // Lokale subgoals staan in `modules`, niet in `allModules`.
       const mod = modules.find(m => m.id === parsed.moduleId);
       const subject = (mod?.subjects || []).find(s => s.id === parsed.subjectId);
       const goal = (subject?.subgoals || []).find(g => String(g.id) === parsed.goalId);
@@ -1811,7 +1833,7 @@ export default function Ritmo() {
     const task = readTasksForDay(dateKey).find(t => String(t.id) === parsed.taskId);
     if (!task) return null;
     return { kind: 'task', taskId: parsed.taskId, time: task.time };
-  }, [modules, readTasksForDay]);
+  }, [modules, sourceItemPrefs, readTasksForDay]);
 
   // Past een reeks toewijzingen toe en levert de undo-entries. Eén weg voor
   // zowel de direct-stand als "alles overnemen". De snapshots worden binnen
@@ -1833,8 +1855,18 @@ export default function Ritmo() {
   // overgeslagen — nooit opnieuw aanmaken.
   const restorePlanSnapshot = useCallback(({ dateKey, entries }) => {
     const subgoalEntries = entries.filter(e => e.kind === 'subgoal');
+    const sourceEntries = entries.filter(e => e.kind === 'sourceItem');
     const taskEntries = entries.filter(e => e.kind === 'task');
     const createdIds = entries.filter(e => e.kind === 'createdTask').map(e => e.taskId);
+
+    // `withItemOverride` normaliseert mee, dus het terugdraaien van een
+    // eerste-keer-tijd laat geen lege entry achter in de map.
+    if (sourceEntries.length) {
+      setSourceItemPrefs(prev => sourceEntries.reduce(
+        (acc, e) => withItemOverride(acc, e.goalId, { time: e.time }),
+        prev,
+      ));
+    }
 
     if (subgoalEntries.length) {
       setModules(prev => prev.map(m => {

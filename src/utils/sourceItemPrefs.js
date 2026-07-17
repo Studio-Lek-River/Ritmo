@@ -22,9 +22,28 @@
 // plukt expliciet de twee toegestane velden; een per ongeluk meegegeven
 // `label` valt vanzelf af.
 
+import { TRELLO_CARD_ID_PREFIX } from './trelloModules';
+import { GITHUB_ISSUE_ID_PREFIX } from './githubModules';
+
 // Sleutel = de afgeleide subgoal-id (`trello:card:<id>`, `github:issue:<id>`).
 // Shape: { [subgoalId]: { duration?, time? } }
 const EMPTY_PREF = { duration: undefined, time: undefined };
+
+// De prefixen komen uit de mappers zelf, die de enige makers van deze ids
+// zijn; een id met zo'n prefix ís dus per constructie een bron-item.
+const SOURCE_ITEM_ID_PREFIXES = [TRELLO_CARD_ID_PREFIX, GITHUB_ISSUE_ID_PREFIX];
+
+// Herkent of een subgoal-id van een gekoppelde bron komt, en dus hierheen
+// geschreven moet worden in plaats van naar `modules`.
+//
+// Dit kijkt naar de id-vorm en niet naar `module.source` (wat mooier zou zijn)
+// omdat de schrijvers in App.jsx boven de `allModules`-useMemo staan: die
+// mogen er in hun dependency-array niet naar verwijzen. Een nieuwe provider
+// voegt hier zijn prefix toe.
+export function isSourceItemId(subgoalId) {
+  if (typeof subgoalId !== 'string') return false;
+  return SOURCE_ITEM_ID_PREFIXES.some(prefix => subgoalId.startsWith(prefix));
+}
 
 // Merge met de default zodat een ontbrekend item nooit `undefined` teruggeeft.
 // Bestaande settings zonder `sourceItemPrefs` werken zo zonder migratie.
@@ -34,10 +53,16 @@ export function getSourceItemPref(prefs, subgoalId) {
 
 // De enige plek die bepaalt wat er in de map mag staan. Expliciet plukken in
 // plaats van `...patch` spreaden: zie de privacy-toelichting hierboven.
+//
+// De AANWEZIGHEID van de sleutel is het signaal, niet de waarde: `{ time:
+// undefined }` betekent "wis de tijd" en niet "laat de tijd met rust". Anders
+// zou zowel de wis-knop als het terugdraaien van een eerste tijd stil niets
+// doen, want die geven allebei een lege waarde mee. Een veld dat niet in
+// `patch` zit blijft ongemoeid.
 function pickAllowed(patch) {
   const out = {};
-  if (patch.duration !== undefined) out.duration = patch.duration;
-  if (patch.time !== undefined) out.time = patch.time;
+  if ('duration' in patch) out.duration = patch.duration;
+  if ('time' in patch) out.time = patch.time;
   return out;
 }
 
