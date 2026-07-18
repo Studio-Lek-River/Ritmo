@@ -1,3 +1,15 @@
+# [0.76.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.75.0...v0.76.0) (2026-07-18)
+
+
+### Bug Fixes
+
+* **modules:** verwijder-dialog belooft geen onomkeerbaarheid meer ([7adc7fa](https://github.com/Studio-Lek-River/Ritmo/commit/7adc7fa7c63670117cdfb5c0e01f24a9a1fc16ab))
+
+
+### Features
+
+* **modules:** bevestiging en undo bij module-, metric- en tagverwijdering ([0852a8c](https://github.com/Studio-Lek-River/Ritmo/commit/0852a8c5acadc12a55ebd416a918fa46d91eb1df)), closes [#136](https://github.com/Studio-Lek-River/Ritmo/issues/136)
+
 # [0.75.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.74.0...v0.75.0) (2026-07-18)
 
 
