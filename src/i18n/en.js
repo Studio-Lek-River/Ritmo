@@ -806,7 +806,7 @@ export default {
     itemSettings: 'Item settings',
     confirmDelete: {
       title: 'Delete "{name}"?',
-      description: 'This deletes the module and all its data (e.g. medications, measurements, log and items). This action cannot be undone.',
+      description: 'This deletes the module and all its data (e.g. medications, measurements, log and items). You can undo this right afterwards.',
       deleteAria: 'Delete module',
     },
     name: 'Name',

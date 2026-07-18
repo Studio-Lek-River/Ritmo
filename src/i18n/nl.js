@@ -807,7 +807,7 @@ export default {
     itemSettings: 'Item-instellingen',
     confirmDelete: {
       title: '"{name}" verwijderen?',
-      description: 'Dit verwijdert de module en alle bijbehorende gegevens (bijv. medicijnen, metingen, log en items). Deze actie kan niet ongedaan worden gemaakt.',
+      description: 'Dit verwijdert de module en alle bijbehorende gegevens (bijv. medicijnen, metingen, log en items). Je kunt dit direct daarna nog ongedaan maken.',
       deleteAria: 'Module verwijderen',
     },
     name: 'Naam',
