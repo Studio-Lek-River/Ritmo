@@ -1218,6 +1218,19 @@ export default function Ritmo() {
     }));
   };
 
+  // Herstel-logica voor de undo-toast op prikschema-entry-verwijderen (V13, #137).
+  // Idempotent: als de entry er (bv. door een dubbele undo-klik) al weer staat,
+  // gebeurt er niets.
+  const restoreInjectionEntry = (moduleId, entry) => {
+    if (!entry) return;
+    updateInjectionScheduleModule(moduleId, (m) => ({
+      ...m,
+      entries: (m.entries || []).some((e) => e.id === entry.id)
+        ? (m.entries || [])
+        : [...(m.entries || []), entry],
+    }));
+  };
+
   // ---- measurements handlers --------------------------------------------
 
   const updateMeasurementsModule = (updatedModule) => {
@@ -2653,6 +2666,7 @@ export default function Ritmo() {
     onAddScheduleEntry: addScheduleEntry,
     onUpdateScheduleEntry: updateScheduleEntry,
     onDeleteScheduleEntry: deleteScheduleEntry,
+    onRestoreScheduleEntry: restoreInjectionEntry,
     renderLogModule: renderTodayModule,
     appMode,
     theme,

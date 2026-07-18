@@ -744,8 +744,6 @@ export default {
     unknownMed: 'Unknown medicine',
     emptyEntries: 'No planned injections yet.',
     addEntry: 'Plan an injection',
-    deleteEntryTitle: 'Delete planned injection?',
-    deleteEntryDesc: 'This will delete this planned injection. This action cannot be undone.',
   },
 
   projectsView: {
@@ -791,6 +789,7 @@ export default {
     metricDeleted: 'Metric deleted',
     tagDeleted: 'Tag deleted',
     tagGroupDeleted: 'Tag group deleted',
+    injectionEntryDeleted: 'Injection removed',
   },
 
   modules: {

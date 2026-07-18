@@ -4,7 +4,7 @@ import { getColorHex } from '../utils/colors';
 import { INJECTION_ZONES } from '../utils/bodymap';
 import { FREQUENCY_OPTIONS, FREQUENCY_LABEL_KEYS } from '../utils/medication';
 import { createScheduleEntry, scheduleEntryMed } from '../utils/injectionSchedule';
-import ConfirmDialog from '../components/ConfirmDialog';
+import { useUndoToast } from '../hooks/useUndoToast';
 import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 
 // Formulier voor één geplande prik: medicijn, zone en frequentie. Mirror van
@@ -12,7 +12,6 @@ import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 export function ScheduleEntryFormModal({ open, mode = 'edit', meds, entry, onClose, onSave, onDelete, theme }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(() => createScheduleEntry());
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -25,7 +24,6 @@ export function ScheduleEntryFormModal({ open, mode = 'edit', meds, entry, onClo
         medModuleId: firstMed?.medModuleId ?? null,
       }));
     }
-    setConfirmDelete(false);
   }, [open, mode, entry, meds]);
 
   if (!open) return null;
@@ -38,8 +36,7 @@ export function ScheduleEntryFormModal({ open, mode = 'edit', meds, entry, onClo
     onClose?.();
   };
 
-  const confirmDeleteAction = () => {
-    setConfirmDelete(false);
+  const deleteAction = () => {
     onDelete?.();
     onClose?.();
   };
@@ -128,7 +125,7 @@ export function ScheduleEntryFormModal({ open, mode = 'edit', meds, entry, onClo
           {mode === 'edit' && (
             <button
               type="button"
-              onClick={() => setConfirmDelete(true)}
+              onClick={deleteAction}
               className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
               aria-label={t('common.delete')}
               title={t('common.delete')}
@@ -153,17 +150,6 @@ export function ScheduleEntryFormModal({ open, mode = 'edit', meds, entry, onClo
             {mode === 'add' ? t('injectionSchedule.submitAdd') : t('common.save')}
           </button>
         </div>
-
-        <ConfirmDialog
-          open={confirmDelete}
-          title={t('injectionSchedule.deleteEntryTitle')}
-          description={t('injectionSchedule.deleteEntryDesc')}
-          confirmLabel={t('common.delete')}
-          variant="danger"
-          onConfirm={confirmDeleteAction}
-          onCancel={() => setConfirmDelete(false)}
-          theme={theme}
-        />
       </div>
     </div>
   );
@@ -178,10 +164,12 @@ export function InjectionScheduleModuleCard({
   onAddEntry,
   onUpdateEntry,
   onDeleteEntry,
+  onRestoreEntry,
   onEditModule,
   theme,
 }) {
   const { t } = useTranslation();
+  const showUndoToast = useUndoToast();
 
   const [adding, setAdding] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
@@ -297,7 +285,10 @@ export function InjectionScheduleModuleCard({
           if (editingEntry) onUpdateEntry?.(mod.id, editingEntry.id, updated);
         }}
         onDelete={() => {
-          if (editingEntry) onDeleteEntry?.(mod.id, editingEntry.id);
+          if (!editingEntry) return;
+          const entry = editingEntry;
+          onDeleteEntry?.(mod.id, entry.id);
+          showUndoToast(t('toast.injectionEntryDeleted'), () => onRestoreEntry?.(mod.id, entry));
         }}
         theme={theme}
       />

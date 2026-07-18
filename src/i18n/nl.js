@@ -745,8 +745,6 @@ export default {
     unknownMed: 'Onbekend medicijn',
     emptyEntries: 'Nog geen geplande prikken.',
     addEntry: 'Prik inplannen',
-    deleteEntryTitle: 'Geplande prik verwijderen?',
-    deleteEntryDesc: 'Dit verwijdert deze geplande prik. Deze actie kan niet ongedaan worden gemaakt.',
   },
 
   projectsView: {
@@ -792,6 +790,7 @@ export default {
     metricDeleted: 'Meting verwijderd',
     tagDeleted: 'Tag verwijderd',
     tagGroupDeleted: 'Taggroep verwijderd',
+    injectionEntryDeleted: 'Prik verwijderd',
   },
 
   modules: {

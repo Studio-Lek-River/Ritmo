@@ -62,6 +62,7 @@ export default function HealthView({
   onAddScheduleEntry,
   onUpdateScheduleEntry,
   onDeleteScheduleEntry,
+  onRestoreScheduleEntry,
   renderLogModule,
   appMode,
   theme,
@@ -192,6 +193,7 @@ export default function HealthView({
             onAddEntry={onAddScheduleEntry}
             onUpdateEntry={onUpdateScheduleEntry}
             onDeleteEntry={onDeleteScheduleEntry}
+            onRestoreEntry={onRestoreScheduleEntry}
             onEditModule={onEditModule}
             theme={theme}
           />
