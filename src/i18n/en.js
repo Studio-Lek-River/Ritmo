@@ -787,6 +787,10 @@ export default {
     holdingDeleted: 'Holding deleted',
     investmentMeasurementDeleted: 'Measurement deleted',
     cardDeleted: 'Card deleted',
+    moduleDeleted: 'Module deleted',
+    metricDeleted: 'Metric deleted',
+    tagDeleted: 'Tag deleted',
+    tagGroupDeleted: 'Tag group deleted',
   },
 
   modules: {
@@ -800,6 +804,11 @@ export default {
     settingsAria: 'Settings for {name}',
     settingsTitle: 'Module settings',
     itemSettings: 'Item settings',
+    confirmDelete: {
+      title: 'Delete "{name}"?',
+      description: 'This deletes the module and all its data (e.g. medications, measurements, log and items). This action cannot be undone.',
+      deleteAria: 'Delete module',
+    },
     name: 'Name',
     namePlaceholder: 'e.g. Meditation, Reading, Drinking water...',
     icon: 'Icon',

@@ -788,6 +788,10 @@ export default {
     holdingDeleted: 'Aandeel verwijderd',
     investmentMeasurementDeleted: 'Meting verwijderd',
     cardDeleted: 'Kaart verwijderd',
+    moduleDeleted: 'Module verwijderd',
+    metricDeleted: 'Meting verwijderd',
+    tagDeleted: 'Tag verwijderd',
+    tagGroupDeleted: 'Taggroep verwijderd',
   },
 
   modules: {
@@ -801,6 +805,11 @@ export default {
     settingsAria: 'Instellingen voor {name}',
     settingsTitle: 'Module-instellingen',
     itemSettings: 'Item-instellingen',
+    confirmDelete: {
+      title: '"{name}" verwijderen?',
+      description: 'Dit verwijdert de module en alle bijbehorende gegevens (bijv. medicijnen, metingen, log en items). Deze actie kan niet ongedaan worden gemaakt.',
+      deleteAria: 'Module verwijderen',
+    },
     name: 'Naam',
     namePlaceholder: 'Bijv. Meditatie, Lezen, Water drinken...',
     icon: 'Icoon',

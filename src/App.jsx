@@ -1372,6 +1372,17 @@ export default function Ritmo() {
     });
   };
 
+  // Herstel-logica voor de undo-toast op module-verwijderen (V12, #136).
+  // ModuleEditor snapshot het volledige module-object (zijn `module`-prop,
+  // dus inclusief alle medicijnen/metingen/log/items) vóór het de raw
+  // onDelete hieronder aanroept, en geeft dat snapshot bij undo hier terug.
+  // Idempotent: als de module er (bv. door een dubbele undo-klik) al weer
+  // staat, gebeurt er niets.
+  const restoreModule = (module) => {
+    if (!module) return;
+    setModules(prev => prev.some(m => m.id === module.id) ? prev : [...prev, module]);
+  };
+
   // Kern-functie: voegt een losse taak toe. Hergebruikt door zowel het
   // Tasks-module-invoerveld (addTask) als het toevoeg-veld in de Planner
   // (TaskListPanel / Kanban Te doen-kolom).
@@ -3020,6 +3031,7 @@ export default function Ritmo() {
             setModules(prev => prev.filter(m => m.id !== id));
             setEditingModule(null);
           }}
+          onRestoreModule={restoreModule}
           theme={theme}
         />
       )}
@@ -3994,6 +4006,7 @@ function getTypeOptions(t) {
 
 function CollectionTagGroupsEditor({ tagGroups, items, onUpdateGroups, theme }) {
   const { t } = useTranslation();
+  const showUndoToast = useUndoToast();
   const [confirmPending, setConfirmPending] = useState(null);
 
   const applyUpdate = (newGroups, newItems) => onUpdateGroups(newGroups, newItems !== undefined ? newItems : items);
@@ -4014,12 +4027,20 @@ function CollectionTagGroupsEditor({ tagGroups, items, onUpdateGroups, theme }) 
     doRemoveGroup(groupId);
   };
 
+  // Snapshot van tagGroups én items vóór de mutatie (V12, #136): het
+  // verwijderen van een groep strips de bijbehorende tags ook van alle
+  // items, dus undo moet beide arrays in hun geheel terugzetten, niet alleen
+  // de groep zelf. applyUpdate vervangt de state volledig, dus een dubbele
+  // undo-klik zet 'm gewoon nogmaals op hetzelfde snapshot (idempotent).
   const doRemoveGroup = (groupId) => {
+    const oldGroups = tagGroups;
+    const oldItems = items;
     const group = tagGroups.find((g) => g.id === groupId);
     const usedTagIds = new Set((group?.tags || []).map((t) => t.id));
     const newItems = items.map((it) => ({ ...it, tags: (it.tags || []).filter((tid) => !usedTagIds.has(tid)) }));
     applyUpdate(tagGroups.filter((g) => g.id !== groupId), newItems);
     setConfirmPending(null);
+    showUndoToast(t('toast.tagGroupDeleted'), () => applyUpdate(oldGroups, oldItems));
   };
 
   const addTagToGroup = (groupId) => {
@@ -4040,13 +4061,18 @@ function CollectionTagGroupsEditor({ tagGroups, items, onUpdateGroups, theme }) 
     doRemoveTag(groupId, tagId);
   };
 
+  // Zelfde snapshot-redenering als doRemoveGroup hierboven, maar dan voor een
+  // losse tag.
   const doRemoveTag = (groupId, tagId) => {
+    const oldGroups = tagGroups;
+    const oldItems = items;
     const newGroups = tagGroups.map((g) =>
       g.id === groupId ? { ...g, tags: g.tags.filter((tag) => tag.id !== tagId) } : g
     );
     const newItems = items.map((it) => ({ ...it, tags: (it.tags || []).filter((id) => id !== tagId) }));
     applyUpdate(newGroups, newItems);
     setConfirmPending(null);
+    showUndoToast(t('toast.tagDeleted'), () => applyUpdate(oldGroups, oldItems));
   };
 
   const pendingGroup = confirmPending ? tagGroups.find((g) => g.id === confirmPending.groupId) : null;
@@ -4168,13 +4194,15 @@ function CollectionTagGroupsEditor({ tagGroups, items, onUpdateGroups, theme }) 
   );
 }
 
-function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme }) {
+function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRestoreModule, theme }) {
   const { t } = useTranslation();
+  const showUndoToast = useUndoToast();
   const TYPE_OPTIONS = useMemo(() => getTypeOptions(t), [t]);
   const [editing, setEditing] = useState(mod);
   const [newItem, setNewItem] = useState('');
   const [expandedItemId, setExpandedItemId] = useState(null);
   const [removingMetric, setRemovingMetric] = useState(null);
+  const [confirmDeleteModule, setConfirmDeleteModule] = useState(false);
   const [metricLibraryOpen, setMetricLibraryOpen] = useState(false);
   const [addingMedInline, setAddingMedInline] = useState(false);
   const [addingEntryInline, setAddingEntryInline] = useState(false);
@@ -4284,6 +4312,17 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
     }
     const { nameKey: _dropKey, ...rest } = editing;
     return { ...rest, name: trimmed };
+  };
+
+  // Zwaarste verwijdering van de audit (V12, #136): wist ineens alle
+  // medicijnen/metingen/log/items van de module, dus eerst een bevestiging
+  // en daarna undo. Snapshot is `mod`, de prop zoals meegegeven bij het
+  // openen van de editor, niet `editing` (dat kan onopgeslagen wijzigingen
+  // bevatten die de gebruiker net aan het intypen was).
+  const handleConfirmDeleteModule = () => {
+    setConfirmDeleteModule(false);
+    onDelete(mod.id);
+    showUndoToast(t('toast.moduleDeleted'), () => onRestoreModule?.(mod));
   };
 
   return (
@@ -5387,8 +5426,9 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
           <div className="flex gap-2 mt-6">
             {!isNew && (
               <button
-                onClick={() => onDelete(editing.id)}
+                onClick={() => setConfirmDeleteModule(true)}
                 className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition"
+                aria-label={t('modules.confirmDelete.deleteAria')}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -5425,8 +5465,23 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, theme 
             ...prev,
             metrics: (prev.metrics || []).filter(m => m.id !== target.id),
           }));
+          showUndoToast(t('toast.metricDeleted'), () => {
+            setEditing(prev => (prev.metrics || []).some(m => m.id === target.id)
+              ? prev
+              : { ...prev, metrics: [...(prev.metrics || []), target] });
+          });
         }}
         onCancel={() => setRemovingMetric(null)}
+        theme={theme}
+      />
+      <ConfirmDialog
+        open={confirmDeleteModule}
+        title={t('modules.confirmDelete.title', { name: resolveModuleName(mod, t) })}
+        description={t('modules.confirmDelete.description')}
+        confirmLabel={t('common.delete')}
+        variant="danger"
+        onConfirm={handleConfirmDeleteModule}
+        onCancel={() => setConfirmDeleteModule(false)}
         theme={theme}
       />
     </div>
