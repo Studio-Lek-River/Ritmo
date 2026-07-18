@@ -38,6 +38,14 @@ export function buildTaskBoard({ modules = [], customTasks = [], handlers = {} }
       color: tasksModuleColor,
       projectLabel: undefined,
       setStatus: (col) => handlers.onSetTaskStatus?.(task.id, col),
+      // Verwijderen/hernoemen (V11, #134): remove doet de echte delete en
+      // geeft een undo-callback terug (KanbanView toont de toast en roept
+      // die undo aan); rename hergebruikt de bestaande tekst-setter (V04).
+      remove: () => {
+        handlers.onDeleteTask?.(task.id);
+        return { undo: () => handlers.onRestoreTask?.(task) };
+      },
+      rename: (text) => handlers.onSetTaskText?.(task.id, text),
     };
     board[column].push(card);
   });
@@ -55,6 +63,14 @@ export function buildTaskBoard({ modules = [], customTasks = [], handlers = {} }
           color: mod.color,
           projectLabel: subject.name,
           setStatus: (col) => handlers.onSetSubgoalStatus?.(mod.id, subject.id, goal.id, col),
+          // Zelfde remove/rename-patroon als losseTaak hierboven, maar op
+          // subgoal-niveau (App.jsx deleteSubgoal/restoreSubgoal/renameSubgoal,
+          // V11 #134). renameSubgoal hergebruikt de naam uit V06.
+          remove: () => {
+            handlers.onDeleteSubgoal?.(mod.id, subject.id, goal.id);
+            return { undo: () => handlers.onRestoreSubgoal?.(mod.id, subject.id, goal) };
+          },
+          rename: (text) => handlers.onRenameSubgoal?.(mod.id, subject.id, goal.id, text),
         };
         board[column].push(card);
       });

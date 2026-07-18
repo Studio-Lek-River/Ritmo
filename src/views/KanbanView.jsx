@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import React, { useMemo, useState, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
+import { useUndoToast } from '../hooks/useUndoToast';
 import { getColorClasses } from '../utils/colors';
 import { buildTaskBoard, KANBAN_COLUMNS } from '../utils/taskBoard';
 
@@ -19,14 +20,60 @@ const COLUMN_HEAD = {
 // (onAddTask) of als projectdoel (onAddSubgoal) toegevoegd en belandt in Te doen.
 // Verplaatsen kan zowel via native drag-and-drop als via de toegankelijke
 // chevron-knoppen (principe 2: geen enkele interactievorm wordt opgelegd).
-export default function KanbanView({ modules, customTasks, onAddTask, onAddSubgoal, onSetTaskStatus, onSetSubgoalStatus, theme }) {
+// Een kaart is ook inline te hernoemen en te verwijderen met undo (V11,
+// #134): beide routeren in buildTaskBoard op `kind` naar de juiste App-
+// handler (losseTaak/deleteTask/restoreTask, projecttaak/deleteSubgoal/
+// restoreSubgoal/renameSubgoal). Kanban toont zelf alleen lokale projecten
+// (`localModules` in ProductivitySuiteView), dus geen bron-guard nodig.
+export default function KanbanView({
+  modules,
+  customTasks,
+  onAddTask,
+  onAddSubgoal,
+  onSetTaskStatus,
+  onSetSubgoalStatus,
+  onDeleteTask,
+  onRestoreTask,
+  onSetTaskText,
+  onDeleteSubgoal,
+  onRestoreSubgoal,
+  onRenameSubgoal,
+  theme,
+}) {
   const { t } = useTranslation();
+  const showUndoToast = useUndoToast();
   const [draggingKey, setDraggingKey] = useState(null);
 
   const board = useMemo(
-    () => buildTaskBoard({ modules, customTasks, handlers: { onSetTaskStatus, onSetSubgoalStatus } }),
-    [modules, customTasks, onSetTaskStatus, onSetSubgoalStatus]
+    () => buildTaskBoard({
+      modules,
+      customTasks,
+      handlers: {
+        onSetTaskStatus,
+        onSetSubgoalStatus,
+        onDeleteTask,
+        onRestoreTask,
+        onSetTaskText,
+        onDeleteSubgoal,
+        onRestoreSubgoal,
+        onRenameSubgoal,
+      },
+    }),
+    [
+      modules, customTasks, onSetTaskStatus, onSetSubgoalStatus,
+      onDeleteTask, onRestoreTask, onSetTaskText,
+      onDeleteSubgoal, onRestoreSubgoal, onRenameSubgoal,
+    ]
   );
+
+  // Verwijderen met undo (V11, #134): card.remove() doet de echte delete
+  // (losseTaak of projecttaak, zie buildTaskBoard) en geeft een undo-callback
+  // terug; deze toont daarna de gedeelde undo-toast, zelfde patroon als
+  // TaskListPanel.handleDeleteTask.
+  const handleRemoveCard = (card) => {
+    const result = card.remove?.();
+    showUndoToast(t('toast.cardDeleted'), () => result?.undo?.());
+  };
 
   // Beschikbare projecten (subjects) voor een projectdoel-kaart, afgeleid uit de
   // bestaande projects-modules. Leeg => het toevoegveld valt terug op taak-only.
@@ -80,6 +127,7 @@ export default function KanbanView({ modules, customTasks, onAddTask, onAddSubgo
                   setDraggingKey(card.key);
                 }}
                 onDragEnd={() => setDraggingKey(null)}
+                onRemove={() => handleRemoveCard(card)}
                 theme={theme}
                 t={t}
               />
@@ -184,11 +232,44 @@ function AddCardForm({ onAddTask, onAddSubgoal, projectOptions = [], theme, t })
   );
 }
 
-function KanbanCard({ card, column, onDragStart, onDragEnd, theme, t }) {
+function KanbanCard({ card, column, onDragStart, onDragEnd, onRemove, theme, t }) {
   const c = getColorClasses(card.color);
   const columnIndex = KANBAN_COLUMNS.indexOf(column);
   const prevColumn = columnIndex > 0 ? KANBAN_COLUMNS[columnIndex - 1] : null;
   const nextColumn = columnIndex < KANBAN_COLUMNS.length - 1 ? KANBAN_COLUMNS[columnIndex + 1] : null;
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(card.label);
+  // Zelfde Escape-dan-blur-guard als src/components/TaskListPanel.jsx (V04,
+  // #127): Escape sluit de input terwijl hij focus heeft, maar sommige
+  // browsers vuren daarna alsnog een blur-event op de node die al aan het
+  // wegrenderen is. `editSessionRef` volgt buiten React-state om of deze
+  // kaart nog een actieve edit-sessie heeft.
+  const justCancelledRef = useRef(false);
+  const editSessionRef = useRef(false);
+
+  const startEdit = () => {
+    justCancelledRef.current = false;
+    editSessionRef.current = true;
+    setDraft(card.label);
+    setEditing(true);
+  };
+  const commitEdit = () => {
+    if (justCancelledRef.current) {
+      justCancelledRef.current = false;
+      return;
+    }
+    if (!editSessionRef.current) return;
+    editSessionRef.current = false;
+    card.rename?.(draft);
+    setEditing(false);
+  };
+  const cancelEdit = () => {
+    justCancelledRef.current = true;
+    editSessionRef.current = false;
+    setEditing(false);
+    setDraft(card.label);
+  };
 
   return (
     <div
@@ -200,7 +281,29 @@ function KanbanCard({ card, column, onDragStart, onDragEnd, theme, t }) {
       <div className="flex items-start gap-2">
         <span className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${c.bar}`} />
         <div className="flex-1 min-w-0">
-          <div className={`text-sm ${theme.textSecondary}`}>{card.label}</div>
+          {editing ? (
+            <input
+              type="text"
+              autoFocus
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitEdit();
+                if (e.key === 'Escape') cancelEdit();
+              }}
+              onClick={(e) => e.stopPropagation()}
+              aria-label={t('productivity.renameCardAria')}
+              className={`w-full text-sm px-1 py-0.5 ${theme.input} rounded focus:outline-none focus:ring-2 focus:ring-blue-300`}
+            />
+          ) : (
+            <div
+              onClick={startEdit}
+              className={`text-sm ${theme.textSecondary} cursor-text`}
+            >
+              {card.label}
+            </div>
+          )}
           <div className={`text-xs ${theme.textMuted}`}>{t(`productivity.types.${card.kind}`)}</div>
           {card.kind === 'projecttaak' && card.projectLabel && (
             <span className={`inline-block mt-1 r-chip text-xs ${c.pillBg} ${c.pillText}`}>
@@ -227,6 +330,14 @@ function KanbanCard({ card, column, onDragStart, onDragEnd, theme, t }) {
           className={`p-1.5 rounded-lg transition ${theme.hover} ${theme.textMuted} disabled:opacity-40 disabled:cursor-not-allowed`}
         >
           <ChevronRight className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={t('productivity.deleteCardAria')}
+          className={`p-1.5 rounded-lg transition ${theme.hover} text-slate-400 hover:text-red-500`}
+        >
+          <Trash2 className="w-4 h-4" />
         </button>
       </div>
     </div>

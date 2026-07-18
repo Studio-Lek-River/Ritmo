@@ -1629,6 +1629,8 @@ export default {
     kanbanEmpty: 'Nog geen taken op het bord.',
     moveLeft: 'Verplaats naar vorige kolom',
     moveRight: 'Verplaats naar volgende kolom',
+    renameCardAria: 'Kaartlabel bewerken',
+    deleteCardAria: 'Kaart verwijderen',
     empty: 'Nog niets gepland voor vandaag.',
     noTime: '-',
     time: 'Tijd',

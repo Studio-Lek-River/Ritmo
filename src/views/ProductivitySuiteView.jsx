@@ -77,6 +77,9 @@ export default function ProductivitySuiteView({
   onToggleProjectSubgoal,
   onSetTaskStatus,
   onSetSubgoalStatus,
+  onDeleteSubgoal,
+  onRestoreSubgoal,
+  onRenameSubgoal,
   onToggleTaskInDay,
   onMoveItem,
   onSetItemDuration,
@@ -396,6 +399,12 @@ export default function ProductivitySuiteView({
               onAddSubgoal={onAddSubgoal}
               onSetTaskStatus={onSetTaskStatus}
               onSetSubgoalStatus={onSetSubgoalStatus}
+              onDeleteTask={onDeleteTask}
+              onRestoreTask={onRestoreTask}
+              onSetTaskText={onSetTaskText}
+              onDeleteSubgoal={onDeleteSubgoal}
+              onRestoreSubgoal={onRestoreSubgoal}
+              onRenameSubgoal={onRenameSubgoal}
               theme={theme}
             />
           )}

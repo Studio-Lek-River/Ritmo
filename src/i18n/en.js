@@ -1618,6 +1618,8 @@ export default {
     kanbanEmpty: 'No tasks on the board yet.',
     moveLeft: 'Move to previous column',
     moveRight: 'Move to next column',
+    renameCardAria: 'Edit card label',
+    deleteCardAria: 'Delete card',
     empty: 'Nothing planned for today yet.',
     noTime: '-',
     time: 'Time',

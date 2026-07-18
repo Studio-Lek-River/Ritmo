@@ -666,6 +666,62 @@ export default function Ritmo() {
     updateModuleData(projectId, prev => ({ ...prev, touchedToday: true }));
   };
 
+  // Verwijdert een project-subgoal ("projecttaak"), gebruikt door de Kanban-
+  // verwijderknop (V11, #134). Analoog aan deleteTask/restoreTask (V04)
+  // hierboven, maar op subgoal-niveau: deleteSubgoal wist alleen, de
+  // aanroeper (KanbanView, via buildTaskBoard) snapshot het goal-object
+  // eerst en geeft het bij undo terug aan restoreSubgoal.
+  const deleteSubgoal = (projectId, subjectId, goalId) => {
+    setModules(prev => prev.map(m => {
+      if (m.id !== projectId) return m;
+      return {
+        ...m,
+        subjects: (m.subjects || []).map(s => s.id !== subjectId ? s : {
+          ...s,
+          subgoals: (s.subgoals || []).filter(g => g.id !== goalId),
+        }),
+      };
+    }));
+  };
+
+  // Herstel-logica voor deleteSubgoal hierboven. Idempotent: als het subgoal
+  // er (bijvoorbeeld door een dubbele undo-klik) al weer staat, gebeurt er
+  // niets.
+  const restoreSubgoal = (projectId, subjectId, goal) => {
+    if (!goal) return;
+    setModules(prev => prev.map(m => {
+      if (m.id !== projectId) return m;
+      return {
+        ...m,
+        subjects: (m.subjects || []).map(s => s.id !== subjectId ? s : {
+          ...s,
+          subgoals: (s.subgoals || []).some(g => g.id === goal.id)
+            ? s.subgoals
+            : [...(s.subgoals || []), goal],
+        }),
+      };
+    }));
+  };
+
+  // Tekst/label wijzigen van een project-subgoal ("projecttaak") vanuit
+  // Kanban (V11, #134). Zelfde patroon als ProjectsView's lokale
+  // renameSubgoal (V06), hier op App-niveau zodat Kanban (dat meerdere
+  // projectmodules tegelijk toont) er ook bij kan. Lege tekst genegeerd.
+  const renameSubgoal = (projectId, subjectId, goalId, label) => {
+    const trimmed = (label || '').trim();
+    if (!trimmed) return;
+    setModules(prev => prev.map(m => {
+      if (m.id !== projectId) return m;
+      return {
+        ...m,
+        subjects: (m.subjects || []).map(s => s.id !== subjectId ? s : {
+          ...s,
+          subgoals: (s.subgoals || []).map(g => g.id !== goalId ? g : { ...g, label: trimmed }),
+        }),
+      };
+    }));
+  };
+
   // Zet de duur van een project-subgoal ("projecttaak") vanuit de takenpool.
   // Zelfde mutatie-patroon als ProjectsView's lokale setSubgoalDuration, hier
   // op App-niveau zodat de Planner (die meerdere projectmodules tegelijk toont)
@@ -2842,6 +2898,9 @@ export default function Ritmo() {
             onToggleProjectSubgoal={toggleProjectSubgoal}
             onSetTaskStatus={setTaskStatus}
             onSetSubgoalStatus={setSubgoalStatus}
+            onDeleteSubgoal={deleteSubgoal}
+            onRestoreSubgoal={restoreSubgoal}
+            onRenameSubgoal={renameSubgoal}
             onToggleTaskInDay={toggleTaskInDay}
             onMoveItem={moveItemToDay}
             onSetItemDuration={setItemDuration}
