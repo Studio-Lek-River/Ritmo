@@ -1,3 +1,11 @@
+# [0.75.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.74.0...v0.75.0) (2026-07-18)
+
+
+### Features
+
+* **household:** beleggingen hernoemen en verwijderen met undo ([41eeb7a](https://github.com/Studio-Lek-River/Ritmo/commit/41eeb7a1892f0c2c3a2610928b318689d1e6f1bf))
+* **planner:** Kanban-kaart hernoemen en verwijderen met undo ([142f215](https://github.com/Studio-Lek-River/Ritmo/commit/142f2153fe9544768e218700ffbb68ad0f4ca29d))
+
 # [0.74.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.73.0...v0.74.0) (2026-07-17)
 
 
