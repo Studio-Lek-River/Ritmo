@@ -3352,6 +3352,7 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
   }, []);
   const [draggingId, setDraggingId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
 
   const moveModule = (id, dir) => {
     setModules(prev => moveById(prev, id, dir));
@@ -3619,12 +3620,7 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
             )}
 
             <button
-              onClick={() => {
-                if (window.confirm(t('settings.resetConfirm'))) {
-                  setModules(instantiateDefaults(DEFAULT_MODULES));
-                  setStreakSettings({});
-                }
-              }}
+              onClick={() => setConfirmResetOpen(true)}
               className={`w-full mt-3 py-2 text-xs ${theme.textMuted} hover:text-red-500 transition`}
             >
               {t('settings.resetModules')}
@@ -3980,6 +3976,19 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
         </>
         )}
       </div>
+      <ConfirmDialog
+        open={confirmResetOpen}
+        title={t('settings.resetModulesTitle')}
+        description={t('settings.resetConfirm')}
+        variant="danger"
+        onConfirm={() => {
+          setModules(instantiateDefaults(DEFAULT_MODULES));
+          setStreakSettings({});
+          setConfirmResetOpen(false);
+        }}
+        onCancel={() => setConfirmResetOpen(false)}
+        theme={theme}
+      />
     </div>
   );
 }

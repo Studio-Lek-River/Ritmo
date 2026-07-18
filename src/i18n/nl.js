@@ -1114,6 +1114,7 @@ export default {
       householdNote: 'Huishoud-secties (klusjes, boodschappen, mee-eten) staan altijd in het Huishouden-tabblad.',
     },
     resetModules: 'Reset modules naar standaard',
+    resetModulesTitle: 'Modules resetten?',
     resetConfirm: 'Weet je zeker dat je alle modules wilt resetten? Je items en instellingen voor modules gaan verloren. Je dagelijkse data en geschiedenis blijven bewaard.',
 
     streaksManage: 'Streaks beheren',

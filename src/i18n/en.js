@@ -1105,6 +1105,7 @@ export default {
       householdNote: 'Household sections (chores, groceries, meal plan) always appear in the Household tab.',
     },
     resetModules: 'Reset modules to default',
+    resetModulesTitle: 'Reset modules?',
     resetConfirm: 'Are you sure you want to reset all modules? Your items and module settings will be lost. Your daily data and history are kept.',
 
     streaksManage: 'Manage streaks',
