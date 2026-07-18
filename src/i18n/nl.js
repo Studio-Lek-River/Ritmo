@@ -170,6 +170,10 @@ export default {
       newHoldingPlaceholder: 'Naam aandeel, bijv. ASML',
       addHolding: 'Aandeel',
       removeHolding: 'Aandeel verwijderen',
+      renameHoldingAria: 'Aandeelnaam bewerken',
+      editMeasurementAria: 'Metingwaarde bewerken',
+      deleteHoldingTitle: '"{name}" verwijderen?',
+      deleteHoldingDesc: 'Dit verwijdert het aandeel en de {count} bijbehorende metingen.',
     },
     chores: {
       title: 'Klusjes',
@@ -781,6 +785,9 @@ export default {
     counterEntryDeleted: 'Invoer verwijderd',
     counterReset: 'Teller gereset',
     collectionEventDeleted: 'Gebeurtenis verwijderd',
+    holdingDeleted: 'Aandeel verwijderd',
+    investmentMeasurementDeleted: 'Meting verwijderd',
+    cardDeleted: 'Kaart verwijderd',
   },
 
   modules: {

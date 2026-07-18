@@ -169,6 +169,10 @@ export default {
       newHoldingPlaceholder: 'Holding name, e.g. ASML',
       addHolding: 'Holding',
       removeHolding: 'Remove holding',
+      renameHoldingAria: 'Edit holding name',
+      editMeasurementAria: 'Edit entry value',
+      deleteHoldingTitle: 'Delete "{name}"?',
+      deleteHoldingDesc: 'This deletes the holding and its {count} entries.',
     },
     chores: {
       title: 'Chores',
@@ -780,6 +784,9 @@ export default {
     counterEntryDeleted: 'Entry deleted',
     counterReset: 'Counter reset',
     collectionEventDeleted: 'Event deleted',
+    holdingDeleted: 'Holding deleted',
+    investmentMeasurementDeleted: 'Measurement deleted',
+    cardDeleted: 'Card deleted',
   },
 
   modules: {
