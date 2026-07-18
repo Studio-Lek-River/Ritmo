@@ -2838,13 +2838,8 @@ export default function Ritmo() {
             onDeleteItem={deleteCollectionItem}
             onLogEvent={logCollectionEvent}
             onRemoveEvent={removeCollectionEvent}
-            onDeleteCollection={(collectionId) => {
-              setModules(prev => prev.filter(m => m.id !== collectionId));
-            }}
             onCreate={openCollectionCreator}
             onEditCollection={(mod) => setEditingModule(mod)}
-            hasUsedSwipe={hasUsedSwipe}
-            onFirstSwipe={() => setHasUsedSwipe(true)}
             theme={theme}
           />
         )}

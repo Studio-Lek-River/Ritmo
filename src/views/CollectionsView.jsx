@@ -41,10 +41,7 @@ export default function CollectionsView({
   onLogEvent,
   onRemoveEvent,
   onCreate,
-  onDeleteCollection: _onDeleteCollection,
   onEditCollection,
-  hasUsedSwipe: _hasUsedSwipe,
-  onFirstSwipe: _onFirstSwipe,
   editable = true,
   theme,
 }) {
