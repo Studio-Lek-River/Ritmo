@@ -1,3 +1,10 @@
+# [0.77.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.76.0...v0.77.0) (2026-07-18)
+
+
+### Features
+
+* **injectionSchedule:** undo in plaats van bevestigingsdialoog bij prik verwijderen ([174a477](https://github.com/Studio-Lek-River/Ritmo/commit/174a4770ddf612aa6ac00158983e914575fd41ec)), closes [#137](https://github.com/Studio-Lek-River/Ritmo/issues/137)
+
 # [0.76.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.75.0...v0.76.0) (2026-07-18)
 
 
