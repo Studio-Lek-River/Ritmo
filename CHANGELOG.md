@@ -1,3 +1,10 @@
+# [0.78.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.77.0...v0.78.0) (2026-07-22)
+
+
+### Features
+
+* **bodymap:** toon standaard alleen prikken van deze week op de figuur ([437b4f9](https://github.com/Studio-Lek-River/Ritmo/commit/437b4f9d135d0f2adf121ba248746e94631f2814)), closes [#138](https://github.com/Studio-Lek-River/Ritmo/issues/138)
+
 # [0.77.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.76.0...v0.77.0) (2026-07-18)
 
 
