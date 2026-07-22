@@ -58,7 +58,7 @@ export default function HealthView({
   onLogInjection,
   onRemoveInjection,
   onMoveInjection,
-  onSetHeatWindow,
+  onSetDotWindow,
   onAddScheduleEntry,
   onUpdateScheduleEntry,
   onDeleteScheduleEntry,
@@ -180,7 +180,7 @@ export default function HealthView({
             onLogInjection={onLogInjection}
             onRemoveInjection={onRemoveInjection}
             onMoveInjection={onMoveInjection}
-            onSetHeatWindow={onSetHeatWindow}
+            onSetDotWindow={onSetDotWindow}
             onEditModule={onEditModule}
             theme={theme}
           />

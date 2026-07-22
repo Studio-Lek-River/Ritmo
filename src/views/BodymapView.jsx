@@ -4,7 +4,9 @@ import { getColorHex } from '../utils/colors';
 import {
   INJECTION_ZONES,
   suggestNextZone,
-  DEFAULT_HEAT_WINDOW,
+  DOT_WINDOWS,
+  DEFAULT_DOT_WINDOW,
+  filterVisibleDots,
   ZONE_ANCHORS,
   VIEW_W,
   VIEW_H,
@@ -259,7 +261,7 @@ export function BodymapModuleCard({
   onLogInjection,
   onRemoveInjection,
   onMoveInjection,
-  onSetHeatWindow,
+  onSetDotWindow,
   onEditModule,
   theme,
 }) {
@@ -276,7 +278,8 @@ export function BodymapModuleCard({
   // prikken zonder x/y/view/id krijgen die on-the-fly, zonder de opgeslagen
   // data te herschrijven.
   const normLog = log.map((event, index) => normalizeInjectionEvent(event, index));
-  const heatWindow = mod.heatWindow || DEFAULT_HEAT_WINDOW;
+  const dotWindow = mod.dotWindow || DEFAULT_DOT_WINDOW;
+  const visibleDots = filterVisibleDots(normLog, dotWindow);
   const activeMedId = selectedMedId ?? meds[0]?.id ?? null;
   const selectedMed = meds.find((med) => med.id === activeMedId) || null;
   const accentHex = getColorHex(selectedMed?.color);
@@ -365,11 +368,24 @@ export function BodymapModuleCard({
           )}
         </div>
 
-        {/* H12: de heat-venster-knoppen (30d/14d/alles) sturen sinds deze slice
-            niets meer aan op het silhouet (heat-vulling is uit; stippen kleuren op
-            ouderdom). De onderliggende data/handlers (mod.heatWindow, onSetHeatWindow,
-            HEAT_WINDOWS, windowDaysFor) blijven intact voor een toekomstige
-            heat-feature; alleen de control wordt hier niet gerenderd. */}
+        <div className="px-4 pb-2">
+          <p className={`text-xs ${theme.textMuted} mb-1.5`}>{t('bodymap.dotWindowLabel')}</p>
+          <div className="flex gap-1.5 flex-wrap">
+            {DOT_WINDOWS.map((w) => (
+              <button
+                key={w.id}
+                type="button"
+                onClick={() => onSetDotWindow?.(mod.id, w.id)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                  dotWindow === w.id ? 'text-white' : `${theme.cardSecondary} ${theme.textMuted}`
+                }`}
+                style={dotWindow === w.id ? { backgroundColor: getColorHex(mod.color) } : undefined}
+              >
+                {t(w.labelKey)}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="px-4 pb-2">
           {canInject && (
@@ -377,7 +393,7 @@ export function BodymapModuleCard({
           )}
           <BodyMapSvg
             mod={mod}
-            log={normLog}
+            log={visibleDots}
             accentHex={accentHex}
             suggestedZoneId={suggestedZoneId}
             canInject={canInject}

@@ -1108,9 +1108,10 @@ export default function Ritmo() {
     }));
   };
 
-  // Bewaart het gekozen heat-venster (30d/14d/all) op de bodymap-module.
-  const setBodymapHeatWindow = (moduleId, windowId) => {
-    updateBodymapModule(moduleId, m => ({ ...m, heatWindow: windowId }));
+  // Bewaart het gekozen dot-venster (week/all) op de bodymap-module: welke
+  // prikken als klikbare stip op de figuur verschijnen.
+  const setBodymapDotWindow = (moduleId, windowId) => {
+    updateBodymapModule(moduleId, m => ({ ...m, dotWindow: windowId }));
   };
 
   // Eén pass die atomair de prik logt én de voorraad van het bronmedicijn
@@ -1279,6 +1280,7 @@ export default function Ritmo() {
           type: 'bodymap',
           log: [],
           heatWindow: '30d',
+          dotWindow: 'week',
         });
       }
 
@@ -1351,6 +1353,7 @@ export default function Ritmo() {
       ...(type === 'bodymap' ? {
         log: [],
         heatWindow: '30d',
+        dotWindow: 'week',
       } : {}),
       ...(type === 'injectionSchedule' ? {
         entries: [],
@@ -2662,7 +2665,7 @@ export default function Ritmo() {
     onLogInjection: logInjectionEvent,
     onRemoveInjection: removeInjectionEvent,
     onMoveInjection: moveInjectionEvent,
-    onSetHeatWindow: setBodymapHeatWindow,
+    onSetDotWindow: setBodymapDotWindow,
     onAddScheduleEntry: addScheduleEntry,
     onUpdateScheduleEntry: updateScheduleEntry,
     onDeleteScheduleEntry: deleteScheduleEntry,
@@ -5361,7 +5364,7 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
                   y: patch.y,
                   zoneId: zoneFor(patch.x, patch.y, patch.view || 'front'),
                 }))}
-                onSetHeatWindow={(modId, windowId) => setEditing(prev => ({ ...prev, heatWindow: windowId }))}
+                onSetDotWindow={(modId, windowId) => setEditing(prev => ({ ...prev, dotWindow: windowId }))}
                 theme={theme}
               />
             ) : (

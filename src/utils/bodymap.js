@@ -2,10 +2,11 @@
 // Prikken leven in settings.modules[i].log, niet in per-dag moduleData
 // (mirror van het collection-opslagpatroon, zie collections.js/medication.js).
 
-import { todayKey, parseDateKey } from './dates';
+import { todayKey, parseDateKey, startOfWeek } from './dates';
 
 // Instelbare heat-vensters voor de figuur. `days === null` = alle tijd.
 // De id wordt op de module bewaard als `heatWindow`; default is '30d'.
+// Intact voor toekomstige heat-feature (H12 zette de heat-vulling zelf uit).
 export const HEAT_WINDOWS = [
   { id: '30d', days: 30, labelKey: 'bodymap.heatWindow30' },
   { id: '14d', days: 14, labelKey: 'bodymap.heatWindow14' },
@@ -19,6 +20,26 @@ export function windowDaysFor(windowId) {
   const match = HEAT_WINDOWS.find((w) => w.id === windowId);
   if (match) return match.days;
   return HEAT_WINDOWS.find((w) => w.id === DEFAULT_HEAT_WINDOW).days;
+}
+
+// Welke prikken als klikbare stip op de figuur verschijnen. Repurpose van de
+// sinds H12 dormante heat-window-plumbing: de id wordt op de module bewaard
+// als `dotWindow`. Dit is een render-filter, `module.log` blijft ongemoeid.
+export const DOT_WINDOWS = [
+  { id: 'week', labelKey: 'bodymap.dotWindowWeek' },
+  { id: 'all', labelKey: 'bodymap.dotWindowAll' },
+];
+export const DEFAULT_DOT_WINDOW = 'week';
+
+// Filtert de (genormaliseerde) log tot de stippen die op de figuur zichtbaar
+// mogen zijn. `'week'` toont alleen prikken vanaf het begin van de huidige
+// kalenderweek (maandag); `'all'` toont de volledige log. Sluit aan bij het
+// cutoff-patroon in zoneInjectionCount hierboven.
+export function filterVisibleDots(log, windowId) {
+  const events = log || [];
+  if (windowId === 'all') return events;
+  const cutoff = startOfWeek(new Date());
+  return events.filter((e) => e.date && parseDateKey(e.date) >= cutoff);
 }
 
 // Geordende lijst van injectiezones. Volgorde bepaalt de deterministische
