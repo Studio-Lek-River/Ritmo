@@ -10,6 +10,7 @@ import { onAuthChange, getCurrentUser } from './auth';
 import { enqueue, getQueue } from './syncQueue';
 import { flushQueue } from './flush';
 import { markSyncing, markSynced, markError, refreshPending } from './syncStatus';
+import { mergeSyncedValue } from './mergeSettings';
 
 const store = createStore('ritmo-db', 'ritmo-store');
 const TABLE = 'user_data';
@@ -116,6 +117,38 @@ export async function deleteUserData(key) {
   flushQueue();
 }
 
+// Mergt een gepulde settings-cloudwaarde met de lokale waarde (union van
+// health-append-arrays, zie mergeSettings.js), schrijft het resultaat lokaal
+// weg en enqueuet — als loop-guard tegen oneindig ping-pong — alleen een
+// push van het mergeresultaat als dat verschilt van de cloudwaarde.
+async function applySettingsMerge(userId, cloudValue, cloudUpdatedAt, localValue) {
+  const merged = mergeSyncedValue('settings', cloudValue, localValue);
+  const cloudNormalized = JSON.stringify(toJsonValue(cloudValue));
+  const mergedNormalized = JSON.stringify(merged);
+
+  await idbSet('settings', toStorageValue(merged), store);
+
+  if (mergedNormalized === cloudNormalized) {
+    await idbSet(metaKey('settings'), cloudUpdatedAt, store);
+    return { pushed: false };
+  }
+
+  const now = new Date().toISOString();
+  await idbSet(metaKey('settings'), now, store);
+  await enqueue({
+    op: 'upsert',
+    table: TABLE,
+    onConflict: ON_CONFLICT,
+    record: {
+      user_id: userId,
+      key: 'settings',
+      value: merged,
+      updated_at: now,
+    },
+  });
+  return { pushed: true };
+}
+
 async function listLocalSyncKeys() {
   const all = await idbKeys(store);
   return all.filter((k) => typeof k === 'string' && isUserSyncKey(k));
@@ -153,8 +186,13 @@ export async function pullUserData(userId, resolveConflict) {
     const localExists = localValue !== undefined && localValue !== null;
 
     if (!localExists) {
-      await idbSet(row.key, toStorageValue(row.value), store);
-      await idbSet(metaKey(row.key), row.updated_at, store);
+      if (row.key === 'settings') {
+        const { pushed: didPush } = await applySettingsMerge(userId, row.value, row.updated_at, localValue);
+        if (didPush) pushed += 1;
+      } else {
+        await idbSet(row.key, toStorageValue(row.value), store);
+        await idbSet(metaKey(row.key), row.updated_at, store);
+      }
       pulled += 1;
       continue;
     }
@@ -165,8 +203,13 @@ export async function pullUserData(userId, resolveConflict) {
     }
 
     if (new Date(row.updated_at) > new Date(localMeta)) {
-      await idbSet(row.key, toStorageValue(row.value), store);
-      await idbSet(metaKey(row.key), row.updated_at, store);
+      if (row.key === 'settings') {
+        const { pushed: didPush } = await applySettingsMerge(userId, row.value, row.updated_at, localValue);
+        if (didPush) pushed += 1;
+      } else {
+        await idbSet(row.key, toStorageValue(row.value), store);
+        await idbSet(metaKey(row.key), row.updated_at, store);
+      }
       pulled += 1;
     }
   }
@@ -213,8 +256,14 @@ export async function pullUserData(userId, resolveConflict) {
     for (const { key, cloud } of conflicts) {
       if (!choice) break;
       if (choice === 'cloud') {
-        await idbSet(key, toStorageValue(cloud.value), store);
-        await idbSet(metaKey(key), cloud.updated_at, store);
+        if (key === 'settings') {
+          const localValueForKey = await idbGet(key, store);
+          const { pushed: didPush } = await applySettingsMerge(userId, cloud.value, cloud.updated_at, localValueForKey);
+          if (didPush) pushed += 1;
+        } else {
+          await idbSet(key, toStorageValue(cloud.value), store);
+          await idbSet(metaKey(key), cloud.updated_at, store);
+        }
         pulled += 1;
       } else {
         const localValue = await idbGet(key, store);
