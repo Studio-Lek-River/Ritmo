@@ -1,3 +1,10 @@
+## [0.78.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.78.0...v0.78.1) (2026-07-24)
+
+
+### Bug Fixes
+
+* **sync:** mergesettings-blob bij push/pull i.p.v. overschrijven ([a07abfb](https://github.com/Studio-Lek-River/Ritmo/commit/a07abfb4797b90ff172d192a75356a7c18099193))
+
 # [0.78.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.77.0...v0.78.0) (2026-07-22)
 
 
