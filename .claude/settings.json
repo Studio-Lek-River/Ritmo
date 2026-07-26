@@ -2,7 +2,16 @@
   "permissions": {
     "allow": [
       "PowerShell(npm ls -g --depth=0; Write-Output \"---ms-playwright---\"; if \\(Test-Path \"$env:LOCALAPPDATA\\\\ms-playwright\"\\) { Get-ChildItem \"$env:LOCALAPPDATA\\\\ms-playwright\" | Select-Object -ExpandProperty Name } else { \"geen browsers\" })",
-      "Bash(node \"C:/Users/BAS~1.VAN/AppData/Local/Temp/claude/c--Ritmo/284c68c0-d70d-4bae-9f4f-9085b30bc08f/scratchpad/verify143e.mjs\")"
+      "Bash(node \"C:/Users/BAS~1.VAN/AppData/Local/Temp/claude/c--Ritmo/284c68c0-d70d-4bae-9f4f-9085b30bc08f/scratchpad/verify143e.mjs\")",
+      "Bash(echo \"exit:$?\")",
+      "Bash(node --input-type=module -e ' *)",
+      "Bash(node verify115.mjs)",
+      "Read(//d/Ritmo/**)",
+      "Read(//c/Millennium-Dawn/**)",
+      "Bash(npm root *)",
+      "Bash(node \"C:/Users/BAS~1.VAN/AppData/Local/Temp/claude/c--Ritmo/679fd32e-65fc-44b4-a7e3-cf9a05d447ff/scratchpad/ac5.mjs\")",
+      "Bash(node \"C:/Users/BAS~1.VAN/AppData/Local/Temp/claude/c--Ritmo/679fd32e-65fc-44b4-a7e3-cf9a05d447ff/scratchpad/debug.mjs\")",
+      "Bash(node -e ' *)"
     ]
   }
 }
