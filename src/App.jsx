@@ -90,6 +90,9 @@ import { ICON_OPTIONS } from './utils/icons';
 import { isHealthModule } from './utils/healthModules';
 import { instantiateMetric } from './utils/metricLibrary';
 import MetricLibraryModal from './components/MetricLibraryModal';
+import { NutritionLibraryProvider } from './context/NutritionLibraryContext';
+import NutritionLibraryModal from './components/nutrition/NutritionLibraryModal';
+import { nutritionEnabled, defaultModuleNutrition } from './utils/nutrition';
 import {
   fmtDateKey, parseDateKey, addDays, sameDay, startOfWeek,
   isEditable, isFuture, isToday as isTodayDate,
@@ -2677,6 +2680,7 @@ export default function Ritmo() {
 
   return (
     <ToastProvider>
+    <NutritionLibraryProvider>
     <div className={`min-h-screen ${theme.bg} p-4 transition-colors duration-300 relative overflow-hidden`}>
       <Toast theme={theme} />
       <OAuthReturn onConnected={connectionState.refresh} />
@@ -3048,6 +3052,7 @@ export default function Ritmo() {
         />
       )}
     </div>
+    </NutritionLibraryProvider>
     </ToastProvider>
   );
 }
@@ -4225,6 +4230,7 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
   const [removingMetric, setRemovingMetric] = useState(null);
   const [confirmDeleteModule, setConfirmDeleteModule] = useState(false);
   const [metricLibraryOpen, setMetricLibraryOpen] = useState(false);
+  const [nutritionLibraryOpen, setNutritionLibraryOpen] = useState(false);
   const [addingMedInline, setAddingMedInline] = useState(false);
   const [addingEntryInline, setAddingEntryInline] = useState(false);
   const injMeds = injectableMeds(modules);
@@ -4924,6 +4930,39 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
                     </div>
                   );
                 })()}
+
+                {unit === 'kcal' && (() => {
+                  const nutrition = editing.nutrition || defaultModuleNutrition();
+                  return (
+                    <div className={`${theme.cardSecondary} rounded-lg p-3 space-y-3`}>
+                      <label className={`flex items-center gap-2 text-sm ${theme.textSecondary}`}>
+                        <input
+                          type="checkbox"
+                          checked={nutritionEnabled(editing)}
+                          onChange={(e) => update('nutrition', { ...nutrition, enabled: e.target.checked })}
+                        />
+                        {t('nutrition.library.enabledLabel')}
+                      </label>
+                      {nutritionEnabled(editing) && (
+                        <button
+                          type="button"
+                          onClick={() => setNutritionLibraryOpen(true)}
+                          className={`w-full px-3 py-2 ${theme.card} ${theme.textSecondary} rounded-lg text-sm font-medium flex items-center justify-center gap-1 ${theme.hover}`}
+                        >
+                          <BookOpen className="w-4 h-4" />
+                          {t('nutrition.library.manageButton')}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {nutritionLibraryOpen && (
+                  <NutritionLibraryModal
+                    onClose={() => setNutritionLibraryOpen(false)}
+                    theme={theme}
+                  />
+                )}
               </>
             );
           })()}

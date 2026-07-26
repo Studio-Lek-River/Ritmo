@@ -861,6 +861,7 @@ export default {
     units: {
       minutes: 'minutes',
       ml: 'ml',
+      g: 'g',
       l: 'l',
       glas: 'glass',
       pages: 'pages',
@@ -1077,6 +1078,38 @@ export default {
     noTasksAdded: 'No tasks added yet',
     noTasksOnDay: 'No tasks on this day',
     addTaskPlaceholder: 'Add a task...',
+  },
+
+  // Nutrition library (slice A): recording food items. Logging (amount ->
+  // kcal in the daily total) follows in slice B.
+  nutrition: {
+    library: {
+      enabledLabel: 'Use nutrition library',
+      manageButton: 'Manage nutrition library',
+      title: 'Nutrition library',
+      emptyTitle: 'No food items yet',
+      emptyDesc: 'Record how many kcal a food item has per 100 grams or millilitres, so you can log it quickly later.',
+      addButton: 'Add food item',
+      itemPer100: '{kcal} kcal / 100 {unit}',
+    },
+    item: {
+      addTitle: 'Add food item',
+      editTitle: 'Edit food item',
+      nameLabel: 'Name',
+      namePlaceholder: 'e.g. Oatmeal',
+      unitLabel: 'Unit',
+      kcalLabel: 'Kcal per 100 {unit}',
+      kcalPlaceholder: 'e.g. 370',
+      portionSectionLabel: 'Portion (optional)',
+      portionNamePlaceholder: 'e.g. slice',
+      portionAmountPlaceholder: '{unit}',
+      countsAsDrinkLabel: 'Also counts as a drink',
+      deleteTitle: 'Delete {name}?',
+      deleteDescription: 'This food item will be removed from the library.',
+    },
+    toast: {
+      itemDeleted: 'Food item deleted',
+    },
   },
 
   tasks: {

@@ -865,6 +865,7 @@ export default {
     units: {
       minutes: 'minuten',
       ml: 'ml',
+      g: 'g',
       l: 'l',
       glas: 'glas',
       pages: "pagina's",
@@ -1086,6 +1087,38 @@ export default {
     noTasksAdded: 'Nog geen taken toegevoegd',
     noTasksOnDay: 'Geen taken op deze dag',
     addTaskPlaceholder: 'Voeg een taak toe...',
+  },
+
+  // Voedingsbibliotheek (slice A): vastleggen van voedingsmiddelen. Loggen
+  // (hoeveelheid -> kcal in het dagtotaal) volgt in slice B.
+  nutrition: {
+    library: {
+      enabledLabel: 'Voedingsbibliotheek gebruiken',
+      manageButton: 'Voedingsbibliotheek beheren',
+      title: 'Voedingsbibliotheek',
+      emptyTitle: 'Nog geen voedingsmiddelen',
+      emptyDesc: 'Leg vast hoeveel kcal een voedingsmiddel per 100 gram of milliliter bevat, zodat je het straks snel kunt loggen.',
+      addButton: 'Voedingsmiddel toevoegen',
+      itemPer100: '{kcal} kcal / 100 {unit}',
+    },
+    item: {
+      addTitle: 'Voedingsmiddel toevoegen',
+      editTitle: 'Voedingsmiddel bewerken',
+      nameLabel: 'Naam',
+      namePlaceholder: 'bijv. Havermout',
+      unitLabel: 'Eenheid',
+      kcalLabel: 'Kcal per 100 {unit}',
+      kcalPlaceholder: 'bijv. 370',
+      portionSectionLabel: 'Portie (optioneel)',
+      portionNamePlaceholder: 'bijv. snee',
+      portionAmountPlaceholder: '{unit}',
+      countsAsDrinkLabel: 'Telt ook mee als drinken',
+      deleteTitle: '{name} verwijderen?',
+      deleteDescription: 'Dit voedingsmiddel wordt uit de bibliotheek verwijderd.',
+    },
+    toast: {
+      itemDeleted: 'Voedingsmiddel verwijderd',
+    },
   },
 
   tasks: {
