@@ -1105,7 +1105,7 @@ export default {
       portionAmountPlaceholder: '{unit}',
       countsAsDrinkLabel: 'Also counts as a drink',
       deleteTitle: 'Delete {name}?',
-      deleteDescription: 'This food item will be removed from the library.',
+      deleteDescription: 'This food item will be removed from the library. Meals already logged stay as they are.',
     },
     toast: {
       itemDeleted: 'Food item deleted',

@@ -1114,7 +1114,7 @@ export default {
       portionAmountPlaceholder: '{unit}',
       countsAsDrinkLabel: 'Telt ook mee als drinken',
       deleteTitle: '{name} verwijderen?',
-      deleteDescription: 'Dit voedingsmiddel wordt uit de bibliotheek verwijderd.',
+      deleteDescription: 'Dit voedingsmiddel wordt uit de bibliotheek verwijderd. Al gelogde maaltijden blijven staan.',
     },
     toast: {
       itemDeleted: 'Voedingsmiddel verwijderd',
