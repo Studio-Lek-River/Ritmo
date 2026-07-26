@@ -10,6 +10,7 @@
 // minimaal hoeven te wijzigen.
 
 import { t as defaultT } from '../i18n/useTranslation';
+import { defaultModuleNutrition } from './nutrition';
 
 function buildPresets(t) {
   return {
@@ -95,6 +96,10 @@ function buildPresets(t) {
         categoriesEnabled: false,
         categories: [],
         health: true,
+        // Een preset kiezen ís een expliciete gebruikersactie, dus mag de
+        // bibliotheek voor deze preset direct aan staan (in tegenstelling
+        // tot bestaande modules, waar het ontbrekende veld uit betekent).
+        nutrition: { ...defaultModuleNutrition(), enabled: true },
       },
       {
         nameKey: 'presets.reading.name',
