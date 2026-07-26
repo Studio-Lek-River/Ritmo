@@ -36,18 +36,21 @@ export default function CounterEntryRow({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const cancelledRef = useRef(false);
+  const sessionRef = useRef(false);
 
   const hasSource = !!entry.source;
 
   const startEdit = () => {
     if (!editable) return;
     cancelledRef.current = false;
+    sessionRef.current = true;
     setDraft(hasSource ? String(entry.source.quantity) : String(entry.amount));
     setEditing(true);
   };
 
   const cancelEdit = () => {
     cancelledRef.current = true;
+    sessionRef.current = false;
     setEditing(false);
     setDraft('');
   };
@@ -57,6 +60,12 @@ export default function CounterEntryRow({
       cancelledRef.current = false;
       return;
     }
+    // Enter commit al; de blur die sommige browsers daarna alsnog op de
+    // wegrenderende node vuren mag niet nogmaals schrijven — dat zou een
+    // identieke moduleData opleveren en dus een day:*-write en sync-push
+    // voor niets.
+    if (!sessionRef.current) return;
+    sessionRef.current = false;
     setEditing(false);
     if (hasSource) {
       const parsed = parseMeasurementInput(draft);
