@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npm ls -g --depth=0; Write-Output \"---ms-playwright---\"; if \\(Test-Path \"$env:LOCALAPPDATA\\\\ms-playwright\"\\) { Get-ChildItem \"$env:LOCALAPPDATA\\\\ms-playwright\" | Select-Object -ExpandProperty Name } else { \"geen browsers\" })"
+    ]
+  }
+}
