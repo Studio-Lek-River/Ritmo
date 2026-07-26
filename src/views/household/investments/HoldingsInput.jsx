@@ -5,15 +5,11 @@ import { useUndoToast } from '../../../hooks/useUndoToast';
 import ConfirmDialog from '../../../components/ConfirmDialog';
 import { formatEuro } from '../../../utils/household';
 import { COLOR_OPTIONS } from '../../../utils/colors';
-import { parseAmount, sortedAsc, newId } from '../../../utils/investments';
+import {
+  parseAmount, newId, holdingEntryMode, computeAmount, hasSharesAndPrice, lastEvent,
+} from '../../../utils/investments';
 import HoldingEventInput from './HoldingEventInput';
 import MeasurementList from './MeasurementList';
-
-// Laatst bekende waarde van een aandeel (chronologisch laatste event), of null.
-function holdingCurrent(holding) {
-  const evs = sortedAsc(holding?.events);
-  return evs.length ? evs[evs.length - 1].amount : null;
-}
 
 // ── Per-aandeel-modus ───────────────────────────────────────────────────────
 
@@ -103,11 +99,19 @@ export default function HoldingsInput({ investments, setInvestments, theme }) {
     });
   };
 
-  const addEvent = (hid, date, val) => setInvestments(prev => ({
+  const addEvent = (hid, date, val, extra) => setInvestments(prev => ({
     ...prev,
     holdings: (prev.holdings || []).map(h => h.id === hid
-      ? { ...h, events: [...(h.events || []), { id: newId(), date, amount: val }] }
+      ? { ...h, events: [...(h.events || []), { id: newId(), date, amount: val, ...(extra || {}) }] }
       : h),
+  }));
+
+  // Invoerwijze per aandeel wisselen (#115) raakt bestaande events niet aan:
+  // eerder ingevoerde shares/price blijven staan, alleen nieuwe metingen
+  // volgen de nieuwe modus.
+  const setHoldingEntry = (id, entry) => setInvestments(prev => ({
+    ...prev,
+    holdings: (prev.holdings || []).map(h => h.id === id ? { ...h, entry } : h),
   }));
 
   // Undo-flow voor een losse meting (V11, #134): licht genoeg voor undo-only,
@@ -148,13 +152,38 @@ export default function HoldingsInput({ investments, setInvestments, theme }) {
     }));
   };
 
+  // Aantal/koers los inline bewerken (#115): `amount` wordt herberekend via
+  // computeAmount zodat het de bron van waarde blijft. Negatieve invoer wordt
+  // genegeerd (betekenisloos voor aantal/koers), net als ongeldige invoer.
+  const editEventShares = (hid, eid, field, valStr) => {
+    const val = parseAmount(valStr);
+    if (val === null || val < 0) return;
+    setInvestments(prev => ({
+      ...prev,
+      holdings: (prev.holdings || []).map(h => {
+        if (h.id !== hid) return h;
+        return {
+          ...h,
+          events: (h.events || []).map(e => {
+            if (e.id !== eid) return e;
+            const next = { ...e, [field]: val };
+            const amount = computeAmount(next.shares, next.price);
+            return amount === null ? next : { ...next, amount };
+          }),
+        };
+      }),
+    }));
+  };
+
   return (
     <div className="space-y-3">
       <h3 className={`text-sm font-semibold ${theme.textSecondary}`}>{t('household.investments.holdingsHeading')}</h3>
 
       <ul className="space-y-2">
         {holdings.map(h => {
-          const current = holdingCurrent(h);
+          const last = lastEvent(h);
+          const current = last ? last.amount : null;
+          const entryMode = holdingEntryMode(h);
           const open = expandedId === h.id;
           return (
             <li key={h.id} className={`rounded-xl ${theme.cardSecondary} overflow-hidden`}>
@@ -189,7 +218,11 @@ export default function HoldingsInput({ investments, setInvestments, theme }) {
                   className="flex items-center gap-2 shrink-0"
                 >
                   <span className={`text-sm ${current === null ? theme.textMuted : theme.textSecondary}`}>
-                    {current === null ? t('household.investments.holdingNoValue') : formatEuro(current)}
+                    {current === null
+                      ? t('household.investments.holdingNoValue')
+                      : (hasSharesAndPrice(last)
+                        ? t('household.investments.sharesTimesPrice', { shares: last.shares, price: formatEuro(last.price) })
+                        : formatEuro(current))}
                   </span>
                   {open
                     ? <ChevronUp className={`w-4 h-4 ${theme.textMuted}`} />
@@ -198,11 +231,36 @@ export default function HoldingsInput({ investments, setInvestments, theme }) {
               </div>
               {open && (
                 <div className={`p-3 pt-0 space-y-3`}>
-                  <HoldingEventInput onAdd={(date, val) => addEvent(h.id, date, val)} theme={theme} />
+                  <div>
+                    <div className={`text-xs ${theme.textMuted} mb-1.5`}>{t('household.investments.entryLabel')}</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['total', 'shares'].map(id => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setHoldingEntry(h.id, id)}
+                          aria-pressed={entryMode === id}
+                          className={`rounded-lg px-2 py-1.5 text-xs font-medium transition ${
+                            entryMode === id
+                              ? 'bg-blue-500 text-white'
+                              : `${theme.cardSecondary} ${theme.textSecondary} ${theme.hover}`
+                          }`}
+                        >
+                          {id === 'total' ? t('household.investments.entryTotal') : t('household.investments.entryShares')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <HoldingEventInput
+                    entryMode={entryMode}
+                    onAdd={(date, val, extra) => addEvent(h.id, date, val, extra)}
+                    theme={theme}
+                  />
                   <MeasurementList
                     events={[...(h.events || [])].sort((a, b) => b.date.localeCompare(a.date))}
                     onRemove={(eid) => removeEvent(h.id, eid)}
                     onEditValue={(eid, val) => editEventAmount(h.id, eid, val)}
+                    onEditShares={(eid, field, val) => editEventShares(h.id, eid, field, val)}
                     theme={theme}
                   />
                   <button

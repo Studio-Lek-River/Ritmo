@@ -80,3 +80,39 @@ export function formatAmountInput(n) {
   if (!Number.isFinite(n)) return '';
   return String(n).replace('.', ',');
 }
+
+// ── Aantal x koers per meting (#115) ────────────────────────────────────────
+// `amount` blijft altijd de bron van waarde; shares/price zijn extra context.
+
+// Invoerwijze van een aandeel: 'shares' (aantal x koers) of 'total'
+// (totaalbedrag, huidig gedrag). Afwezigheid van `entry` betekent 'total'.
+// Dit is de enige plek waar die default leeft — nergens anders
+// `h.entry === 'shares'` inline testen.
+export function holdingEntryMode(holding) {
+  return holding?.entry === 'shares' ? 'shares' : 'total';
+}
+
+// shares x price afgerond op 2 decimalen, of null bij ontbrekende/ongeldige
+// invoer.
+export function computeAmount(shares, price) {
+  if (!Number.isFinite(shares) || !Number.isFinite(price)) return null;
+  return Math.round(shares * price * 100) / 100;
+}
+
+// Heeft dit event een bruikbare koers (voor de koersgrafiek)?
+export function hasPrice(event) {
+  return Number.isFinite(event?.price);
+}
+
+// Heeft dit event zowel een bruikbaar aantal als een bruikbare koers (nodig
+// om een interval aan koersdeel/inlegdeel toe te wijzen)?
+export function hasSharesAndPrice(event) {
+  return Number.isFinite(event?.shares) && Number.isFinite(event?.price);
+}
+
+// Chronologisch laatste event van een aandeel, of null. Vervangt de eerdere
+// lokale holdingCurrent() (twee gebruikers na de bestandsopsplitsing).
+export function lastEvent(holding) {
+  const evs = sortedAsc(holding?.events);
+  return evs.length ? evs[evs.length - 1] : null;
+}
