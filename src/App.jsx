@@ -93,6 +93,7 @@ import MetricLibraryModal from './components/MetricLibraryModal';
 import { NutritionLibraryProvider } from './context/NutritionLibraryContext';
 import NutritionLibraryModal from './components/nutrition/NutritionLibraryModal';
 import { nutritionEnabled, defaultModuleNutrition } from './utils/nutrition';
+import { createEntry, addEntry, removeEntryById, restoreEntry, setEntryAmount } from './utils/counterEntries';
 import {
   fmtDateKey, parseDateKey, addDays, sameDay, startOfWeek,
   isEditable, isFuture, isToday as isTodayDate,
@@ -828,26 +829,13 @@ export default function Ritmo() {
     if (!amount || amount <= 0) return;
     const mod = modules.find(m => m.id === moduleId);
     const goal = mod?.dailyGoal ?? 0;
-    const now = new Date();
-    const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const entry = {
-      id: `e_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      amount,
-      category: category ?? null,
-      time,
-    };
+    const entry = createEntry({ amount, category: category ?? null });
 
     let crossedGoal = false;
     updateModuleData(moduleId, prev => {
-      const prevTotal = prev.total ?? prev.minutes ?? 0;
-      const newTotal = prevTotal + amount;
-      if (goal > 0 && prevTotal < goal && newTotal >= goal) crossedGoal = true;
-      return {
-        ...prev,
-        total: newTotal,
-        minutes: newTotal,
-        entries: [...(prev.entries || []), entry],
-      };
+      const { next, crossed } = addEntry(prev, entry, goal);
+      crossedGoal = crossed;
+      return next;
     });
 
     sfx('tick');
@@ -863,31 +851,13 @@ export default function Ritmo() {
   const removeCounterEntry = (moduleId, entryId) => {
     let removedEntry = null;
     updateModuleData(moduleId, prev => {
-      const entries = prev.entries || [];
-      const entry = entries.find(e => e.id === entryId);
-      if (!entry) return prev;
+      const { next, entry } = removeEntryById(prev, entryId);
       removedEntry = entry;
-      const newTotal = Math.max(0, (prev.total ?? prev.minutes ?? 0) - entry.amount);
-      return {
-        ...prev,
-        total: newTotal,
-        minutes: newTotal,
-        entries: entries.filter(e => e.id !== entryId),
-      };
+      return next;
     });
     const undo = () => {
       if (!removedEntry) return;
-      updateModuleData(moduleId, prev => {
-        const entries = prev.entries || [];
-        if (entries.some(e => e.id === removedEntry.id)) return prev;
-        const newTotal = (prev.total ?? prev.minutes ?? 0) + removedEntry.amount;
-        return {
-          ...prev,
-          total: newTotal,
-          minutes: newTotal,
-          entries: [...entries, removedEntry],
-        };
-      });
+      updateModuleData(moduleId, prev => restoreEntry(prev, removedEntry));
     };
     return { entry: removedEntry, undo };
   };
@@ -899,19 +869,8 @@ export default function Ritmo() {
     const parsed = Number(amount);
     if (!parsed || parsed <= 0) return;
     updateModuleData(moduleId, prev => {
-      const entries = prev.entries || [];
-      const idx = entries.findIndex(e => e.id === entryId);
-      if (idx === -1) return prev;
-      const delta = parsed - entries[idx].amount;
-      const newTotal = Math.max(0, (prev.total ?? prev.minutes ?? 0) + delta);
-      const nextEntries = [...entries];
-      nextEntries[idx] = { ...entries[idx], amount: parsed };
-      return {
-        ...prev,
-        total: newTotal,
-        minutes: newTotal,
-        entries: nextEntries,
-      };
+      const { next } = setEntryAmount(prev, entryId, parsed);
+      return next;
     });
   };
 
