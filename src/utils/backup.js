@@ -1,9 +1,10 @@
 import { storage } from '../storage';
 
-const BACKUP_VERSION = 2;
+const BACKUP_VERSION = 3;
 const SETTINGS_KEY = 'settings';
 const DAY_PREFIX = 'day:';
 const HOUSEHOLD_PREFIX = 'household:';
+const NUTRITION_PREFIX = 'nutrition:';
 
 // Verzamelt alle key/value-paren onder een prefix als plain object.
 async function collectByPrefix(prefix) {
@@ -24,6 +25,7 @@ export async function exportData() {
   const settingsResult = await storage.get(SETTINGS_KEY);
   const days = await collectByPrefix(DAY_PREFIX);
   const household = await collectByPrefix(HOUSEHOLD_PREFIX);
+  const nutrition = await collectByPrefix(NUTRITION_PREFIX);
 
   const payload = {
     app: 'ritmo',
@@ -33,6 +35,7 @@ export async function exportData() {
       settings: settingsResult ? settingsResult.value : null,
       days,
       household,
+      nutrition,
     },
   };
 
@@ -79,10 +82,10 @@ export async function importData(jsonString, { mode = 'replace' } = {}) {
     throw new Error(validationError);
   }
 
-  const { settings, days, household } = parsed.data;
+  const { settings, days, household, nutrition } = parsed.data;
 
   if (mode === 'replace') {
-    for (const prefix of [DAY_PREFIX, HOUSEHOLD_PREFIX]) {
+    for (const prefix of [DAY_PREFIX, HOUSEHOLD_PREFIX, NUTRITION_PREFIX]) {
       const existing = await storage.list(prefix);
       if (existing && Array.isArray(existing.keys)) {
         for (const key of existing.keys) {
@@ -111,10 +114,18 @@ export async function importData(jsonString, { mode = 'replace' } = {}) {
     }
   }
 
+  if (nutrition && typeof nutrition === 'object') {
+    for (const [key, value] of Object.entries(nutrition)) {
+      if (typeof key !== 'string' || !key.startsWith(NUTRITION_PREFIX)) continue;
+      await storage.set(key, value);
+    }
+  }
+
   return {
     settingsRestored: settings !== null && settings !== undefined,
     daysRestored: days ? Object.keys(days).length : 0,
     householdRestored: household ? Object.keys(household).length : 0,
+    nutritionRestored: nutrition ? Object.keys(nutrition).length : 0,
   };
 }
 

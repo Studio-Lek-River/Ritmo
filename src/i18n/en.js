@@ -362,6 +362,7 @@ export default {
       keepLocal: 'Keep local',
       itemSettings: 'Settings',
       itemDay: 'Day of {date}',
+      itemNutrition: 'Nutrition library',
     },
     error: {
       pullFailed: 'Could not fetch cloud data',
@@ -1543,6 +1544,7 @@ export default {
     importCancel: 'Cancel',
     importSuccess: 'Backup restored.',
     importDays: '{count} days restored.',
+    importNutrition: '{count} food items restored.',
     importErrorParse: 'This file is not valid JSON.',
     importErrorNotRitmo: 'This does not look like a Ritmo backup.',
     importErrorVersion: 'This backup is from a newer version of Ritmo.',

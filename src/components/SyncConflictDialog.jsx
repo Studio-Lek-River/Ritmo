@@ -4,6 +4,7 @@ import { parseDateKey, formatDaySubtitle } from '../utils/dates';
 
 function labelForKey(key, t) {
   if (key === 'settings') return t('sync.conflict.itemSettings');
+  if (key === 'nutrition:library') return t('sync.conflict.itemNutrition');
   if (key.startsWith('day:')) {
     const date = parseDateKey(key.slice(4));
     return t('sync.conflict.itemDay', { date: formatDaySubtitle(date) });

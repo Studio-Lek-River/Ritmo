@@ -363,6 +363,7 @@ export default {
       keepLocal: 'Behoud lokaal',
       itemSettings: 'Instellingen',
       itemDay: 'Dag van {date}',
+      itemNutrition: 'Voedingsbibliotheek',
     },
     error: {
       pullFailed: 'Kon cloud-data niet ophalen',
@@ -1554,6 +1555,7 @@ export default {
     importCancel: 'Annuleer',
     importSuccess: 'Back-up teruggezet.',
     importDays: '{count} dagen hersteld.',
+    importNutrition: '{count} voedingsmiddelen hersteld.',
     importErrorParse: 'Dit bestand is geen geldige JSON.',
     importErrorNotRitmo: 'Dit lijkt geen Ritmo-back-up te zijn.',
     importErrorVersion: 'Deze back-up is van een nieuwere versie van Ritmo.',

@@ -47,6 +47,7 @@ export function isUserSyncKey(key) {
   if (key === 'settings') return true;
   if (key.startsWith('day:')) return true;
   if (key.startsWith('household:')) return true;
+  if (key.startsWith('nutrition:')) return true;
   return false;
 }
 
