@@ -6,6 +6,7 @@ import './storage';
 import { isSyncEnabled } from './sync/supabase';
 import { onAuthChange, getCurrentUser } from './sync/auth';
 import { pullUserData } from './sync/userDataStorage';
+import { useSyncReady } from './hooks/useSyncReady';
 import SyncConflictDialog from './components/SyncConflictDialog';
 import ProjectsModule from './modules/ProjectsModule';
 import CounterModule from './modules/CounterModule';
@@ -151,6 +152,10 @@ export default function Ritmo() {
   const today = todayKey;
   const editable = isEditable(activeDate);
   const skipNextSaveRef = useRef(false);
+  // Zelfde patroon als skipNextSaveRef, maar voor de instellingen-opslag:
+  // voorkomt dat het inladen van settings ze meteen weer met een verse
+  // sync-stempel terugschrijft (zie issue #145).
+  const skipNextSettingsSaveRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [splashDone, setSplashDone] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -215,6 +220,10 @@ export default function Ritmo() {
   const [celebrationOverlay, setCelebrationOverlay] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [pendingConflicts, setPendingConflicts] = useState(null);
+  // Ophaal-poort (issue #145): true totdat de eerste cloud-ophaal is geweest
+  // (of de timeout viel), zodat de dag- en instellingen-opslag niet vóór die
+  // tijd een verse lokale stempel zetten die de cloudrij zou overschrijven.
+  const { ready: syncReady } = useSyncReady();
   const conflictResolverRef = useRef(null);
 
   const previousCompletionRef = useRef(null);
@@ -274,6 +283,9 @@ export default function Ritmo() {
         if (settings.hasSeenHealthTour !== undefined) setHasSeenHealthTour(settings.hasSeenHealthTour);
         if (loadedModules) setModules(loadedModules);
         if (settings.hasOnboarded !== undefined) setHasOnboarded(settings.hasOnboarded);
+        // Er is echt een settings-record geladen: de eerstvolgende
+        // save-effect-run is een echo van dit laden, geen gebruikerswijziging.
+        skipNextSettingsSaveRef.current = true;
       } else {
         setHasOnboarded(false);
       }
@@ -371,6 +383,10 @@ export default function Ritmo() {
   useEffect(() => {
     if (loading) return;
     if (!editable) return;
+    // Wacht op de eerste cloud-ophaal (issue #145) vóórdat skipNextSaveRef
+    // wordt geconsumeerd — anders is de skip hieronder al "opgesoupeerd"
+    // terwijl de poort nog dicht zit, en schrijft de volgende render alsnog.
+    if (!syncReady) return;
     if (skipNextSaveRef.current) {
       skipNextSaveRef.current = false;
       return;
@@ -389,11 +405,17 @@ export default function Ritmo() {
       }
     };
     saveData();
-  }, [moduleData, customTasks, skippedRecurring, loading, activeDateKey, editable]);
+  }, [moduleData, customTasks, skippedRecurring, loading, activeDateKey, editable, syncReady]);
 
   // Save settings
   useEffect(() => {
     if (loading) return;
+    // Zelfde poort als de dag-opslag hierboven.
+    if (!syncReady) return;
+    if (skipNextSettingsSaveRef.current) {
+      skipNextSettingsSaveRef.current = false;
+      return;
+    }
     const saveSettings = async () => {
       try {
         await window.storage.set('settings', JSON.stringify({
@@ -422,7 +444,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, planPrefs, sourcePrefs, priorityPrefs, sourceItemPrefs, agendaShown, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, planPrefs, sourcePrefs, priorityPrefs, sourceItemPrefs, agendaShown, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading, syncReady]);
 
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
