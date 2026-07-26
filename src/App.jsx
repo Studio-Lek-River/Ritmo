@@ -3641,6 +3641,7 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
               { id: 'theme', label: t('settings.tabTheme') },
             ],
             [
+              { id: 'nutrition', label: t('settings.tabNutrition') },
               { id: 'language', label: t('settings.tabLanguage') },
               { id: 'install', label: t('install.settingsHeader') },
               { id: 'account', label: t('settings.tabAccount') },
@@ -4081,6 +4082,13 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
                 {t('settings.soundsHint')}
               </p>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'nutrition' && (
+          <div>
+            <h3 className={`font-semibold ${theme.textSecondary} mb-3`}>{t('nutrition.library.title')}</h3>
+            <NutritionLibraryPanel theme={theme} />
           </div>
         )}
 
@@ -5136,6 +5144,11 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
                         />
                         {t('nutrition.library.enabledLabel')}
                       </label>
+                      {nutritionEnabled(editing) && (
+                        <p className={`text-xs ${theme.textSecondary} opacity-70`}>
+                          {t('nutrition.library.settingsHint')}
+                        </p>
+                      )}
                       {nutritionEnabled(editing) && (
                         <div>
                           <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>

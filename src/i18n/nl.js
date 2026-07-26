@@ -1115,7 +1115,7 @@ export default {
   nutrition: {
     library: {
       enabledLabel: 'Voedingsbibliotheek gebruiken',
-      manageButton: 'Voedingsbibliotheek beheren',
+      settingsHint: 'Beheer je voedingsmiddelen en maaltijden via Instellingen → Voeding.',
       title: 'Voedingsbibliotheek',
       emptyTitle: 'Nog geen voedingsmiddelen',
       emptyDesc: 'Leg vast hoeveel kcal een voedingsmiddel per 100 gram of milliliter bevat, zodat je het straks snel kunt loggen.',
@@ -1206,6 +1206,7 @@ export default {
     tabStreaks: 'Streaks',
     tabRecurring: 'Terugkerend',
     tabTheme: 'Thema',
+    tabNutrition: 'Voeding',
     tabLanguage: 'Taal',
     tabAccount: 'Account',
     manageModules: 'Beheer modules',

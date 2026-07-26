@@ -1106,7 +1106,7 @@ export default {
   nutrition: {
     library: {
       enabledLabel: 'Use nutrition library',
-      manageButton: 'Manage nutrition library',
+      settingsHint: 'Manage your foods and meals in Settings → Nutrition.',
       title: 'Nutrition library',
       emptyTitle: 'No food items yet',
       emptyDesc: 'Record how many kcal a food item has per 100 grams or millilitres, so you can log it quickly later.',
@@ -1197,6 +1197,7 @@ export default {
     tabStreaks: 'Streaks',
     tabRecurring: 'Recurring',
     tabTheme: 'Theme',
+    tabNutrition: 'Nutrition',
     tabLanguage: 'Language',
     tabAccount: 'Account',
     manageModules: 'Manage modules',
