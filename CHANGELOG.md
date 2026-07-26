@@ -1,3 +1,13 @@
+# [0.81.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.80.0...v0.81.0) (2026-07-26)
+
+
+### Features
+
+* **nutrition:** i18n-keys voor maaltijden-UI ([2abe9e1](https://github.com/Studio-Lek-River/Ritmo/commit/2abe9e1030b08807c4307baca6da02672e4b1ed6)), closes [#142](https://github.com/Studio-Lek-River/Ritmo/issues/142)
+* **nutrition:** maaltijden aanmaken en beheren via nieuwe tab ([676e1e3](https://github.com/Studio-Lek-River/Ritmo/commit/676e1e329cf6d02cfbbc9c46fcaa1ef03bf0b43a))
+* **nutrition:** recepten als sjabloon van meerdere ingrediënten ([e93a90e](https://github.com/Studio-Lek-River/Ritmo/commit/e93a90e0e1e8ddbcb337f53a6c7fe4e406636c29))
+* **nutrition:** recepten in één klik loggen vanaf de dagkaart ([764ea54](https://github.com/Studio-Lek-River/Ritmo/commit/764ea54e172844d29942c9a76a75bfd46a728f64))
+
 # [0.80.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.79.0...v0.80.0) (2026-07-26)
 
 
