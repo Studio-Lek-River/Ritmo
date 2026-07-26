@@ -30,3 +30,10 @@ export function euroPriceAxis(v) {
 export function indexAxis(v) {
   return new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 0 }).format(v || 0);
 }
+
+// Aantal stuks via Intl (locale-decimaalteken), i.p.v. het getal rechtstreeks
+// interpoleren — anders staat er in nl altijd een punt ("10.5") terwijl de
+// koers ernaast wel via formatEuro/Intl loopt.
+export function formatShares(n) {
+  return new Intl.NumberFormat(getLocale()).format(n);
+}

@@ -3,7 +3,7 @@ import { Trash2 } from 'lucide-react';
 import { useTranslation } from '../../../i18n/useTranslation';
 import { formatEuro } from '../../../utils/household';
 import { formatAmountInput, hasSharesAndPrice } from '../../../utils/investments';
-import { fmtDate } from './format';
+import { fmtDate, formatShares } from './format';
 
 // Waarde inline bewerken (V11, #134; uitgebreid met aantal/koers in #115).
 // Dezelfde Escape-dan-blur-guard als src/components/TaskListPanel.jsx.
@@ -80,7 +80,7 @@ export default function MeasurementList({ events, onRemove, onEditValue, onEditS
                       onClick={() => startEdit(e.id, 'shares', e.shares)}
                       className={`text-sm font-medium ${theme.text} cursor-text`}
                     >
-                      {e.shares}
+                      {formatShares(e.shares)}
                     </span>
                   )}
                 <span className={`text-xs ${theme.textMuted}`}>×</span>

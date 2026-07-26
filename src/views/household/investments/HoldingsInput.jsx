@@ -10,6 +10,20 @@ import {
 } from '../../../utils/investments';
 import HoldingEventInput from './HoldingEventInput';
 import MeasurementList from './MeasurementList';
+import { formatShares } from './format';
+
+// Label voor de ingeklapte rij: "geen waarde", "12,5 × €81,20" (alleen als de
+// laatste meting zowel aantal als koers heeft), of anders het totaalbedrag.
+function holdingCurrentLabel(t, current, last) {
+  if (current === null) return t('household.investments.holdingNoValue');
+  if (hasSharesAndPrice(last)) {
+    return t('household.investments.sharesTimesPrice', {
+      shares: formatShares(last.shares),
+      price: formatEuro(last.price),
+    });
+  }
+  return formatEuro(current);
+}
 
 // ── Per-aandeel-modus ───────────────────────────────────────────────────────
 
@@ -218,11 +232,7 @@ export default function HoldingsInput({ investments, setInvestments, theme }) {
                   className="flex items-center gap-2 shrink-0"
                 >
                   <span className={`text-sm ${current === null ? theme.textMuted : theme.textSecondary}`}>
-                    {current === null
-                      ? t('household.investments.holdingNoValue')
-                      : (hasSharesAndPrice(last)
-                        ? t('household.investments.sharesTimesPrice', { shares: last.shares, price: formatEuro(last.price) })
-                        : formatEuro(current))}
+                    {holdingCurrentLabel(t, current, last)}
                   </span>
                   {open
                     ? <ChevronUp className={`w-4 h-4 ${theme.textMuted}`} />

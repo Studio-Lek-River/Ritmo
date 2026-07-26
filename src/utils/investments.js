@@ -217,10 +217,18 @@ export function changeBreakdown(holdings) {
   }
 
   const changeAll = seriesStats(buildTotalSeries(list))?.changeAll ?? 0;
+  // Rond priceGain en unattributed onafhankelijk af, en bereken contribution
+  // pas ná die afronding als sluitpost. Onafhankelijk alle drie afronden kan
+  // de optelling met changeAll breken (twee componenten die allebei op een
+  // halve-cent-grens omhoog afronden); dit garandeert de invariant per
+  // constructie, ook bij fractionele aantallen/koersen.
+  const priceGainR = round2(priceGain);
+  const unattributedR = round2(unattributed);
+  const contributionR = round2(changeAll) - priceGainR - unattributedR;
   return {
-    priceGain: round2(priceGain),
-    contribution: round2(contribution),
-    unattributed: round2(unattributed),
+    priceGain: priceGainR,
+    contribution: contributionR,
+    unattributed: unattributedR,
     changeAll,
     hasSplit: attributedSteps > 0,
   };

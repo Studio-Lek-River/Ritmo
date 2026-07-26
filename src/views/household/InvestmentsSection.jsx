@@ -22,6 +22,18 @@ function StatCard({ theme, label, value, accent, icon }) {
   );
 }
 
+// '+' voor positief, '-' voor negatief, geen teken bij exact 0.
+function signPrefix(v) {
+  if (v > 0) return '+';
+  if (v < 0) return '-';
+  return '';
+}
+
+// Getekend eurobedrag voor de koersdeel/inlegdeel-splitsing, bv. "+€1.000,00".
+function fmtSigned(v) {
+  return `${signPrefix(v)}${formatEuro(Math.abs(v))}`;
+}
+
 // Legenda onder een series-grafiek: gekleurde stip + naam per lijn. Namen
 // zijn user-data en hebben dus geen i18n-key nodig.
 function ChartLegend({ items, theme }) {
@@ -93,7 +105,6 @@ export default function InvestmentsSection({ investments, setInvestments, theme 
 
   // Koersdeel/inlegdeel-splitsing (alleen relevant in per-aandeel-modus).
   const breakdown = mode === 'holdings' ? changeBreakdown(investments.holdings) : null;
-  const fmtSigned = (v) => `${v > 0 ? '+' : v < 0 ? '-' : ''}${formatEuro(Math.abs(v))}`;
 
   // Grafiek: in holdings-modus met "toon losse aandelen" een series-array
   // (totaal-lijn + lijn per aandeel), anders de enkele actieve reeks.
