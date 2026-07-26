@@ -948,12 +948,17 @@ export default function Ritmo() {
     const mod = modules.find(m => m.id === moduleId);
     const drinkModule = resolveDrinkModule(modules, mod);
     const ml = Math.round((log.source?.quantity ?? 0) * (log.source?.perUnit?.ml ?? 0));
-    const entry = createEntry({ amount: log.amount, category: category ?? null, source: log.source });
+    // Eén tijdstempel voor het hele paar: twee losse new Date()-aanroepen
+    // kunnen precies op een minuutgrens uiteenlopen, en dan tonen de twee
+    // kaarten een verschillende tijd voor wat één handeling was.
+    const at = new Date();
+    const entry = createEntry({ amount: log.amount, category: category ?? null, source: log.source, at });
 
     if (drinkModule && ml > 0) {
       const drinkEntry = createEntry({
         amount: ml,
         linkedTo: { moduleId, entryId: entry.id, name: log.source?.name || '' },
+        at,
       });
       const linkedEntry = {
         ...entry,
