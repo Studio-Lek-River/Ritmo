@@ -182,6 +182,13 @@ export default {
       sharesTimesPrice: '{shares} × {price}',
       editSharesAria: 'Edit shares',
       editPriceAria: 'Edit price',
+      chartViewLabel: 'Chart view',
+      chartTotal: 'Total value',
+      chartPrice: 'Price per share',
+      priceScaleAbs: 'Euro',
+      priceScaleIndexed: 'Index 100',
+      priceScaleHint: 'Index 100: every line starts at 100, regardless of the actual price.',
+      priceIndexSkipped: '{n} skipped due to an unusable starting price',
     },
     chores: {
       title: 'Chores',

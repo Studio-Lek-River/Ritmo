@@ -183,6 +183,13 @@ export default {
       sharesTimesPrice: '{shares} × {price}',
       editSharesAria: 'Aantal bewerken',
       editPriceAria: 'Koers bewerken',
+      chartViewLabel: 'Grafiekweergave',
+      chartTotal: 'Totale waarde',
+      chartPrice: 'Koers per stuk',
+      priceScaleAbs: 'Euro',
+      priceScaleIndexed: 'Index 100',
+      priceScaleHint: 'Index 100: elke lijn start op 100, ongeacht de werkelijke koers.',
+      priceIndexSkipped: '{n} overgeslagen wegens onbruikbare startkoers',
     },
     chores: {
       title: 'Klusjes',

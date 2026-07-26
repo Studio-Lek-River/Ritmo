@@ -17,3 +17,16 @@ export function fmtDate(iso) {
   return new Intl.DateTimeFormat(getLocale(), { day: 'numeric', month: 'short', year: 'numeric' })
     .format(new Date(y, m - 1, d));
 }
+
+// Euro-formatter mét centen voor de koers-as (absolute schaal): koersen zijn
+// vaak < €1.000 met relevante decimalen, anders zijn ze onleesbaar op de as.
+export function euroPriceAxis(v) {
+  return new Intl.NumberFormat(getLocale(), {
+    style: 'currency', currency: 'EUR', maximumFractionDigits: 2,
+  }).format(v || 0);
+}
+
+// Kale-getal-formatter voor de geïndexeerde koers-as (eerste meting = 100).
+export function indexAxis(v) {
+  return new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 0 }).format(v || 0);
+}

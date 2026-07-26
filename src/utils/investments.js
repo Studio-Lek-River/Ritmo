@@ -116,3 +116,39 @@ export function lastEvent(holding) {
   const evs = sortedAsc(holding?.events);
   return evs.length ? evs[evs.length - 1] : null;
 }
+
+// Koersreeks per aandeel, direct in het LineChart-formaat
+// [{ id, name, color, events:[{id,date,value}] }]. Alleen metingen mét
+// koers, geen forward-fill: een koerslijn is een reeks gemeten koersen, geen
+// som (forward-fill is alleen nodig bij buildTotalSeries). Leeg -> aandeel
+// valt stil weg. Absoluut: value = koers. Geïndexeerd: eerste koers = 100;
+// is die koers niet > 0, dan valt het aandeel weg én telt `skipped` op.
+//
+// Gedreven door de event-data, niet door `entry`: zet je een aandeel terug
+// op totaalbedrag, dan blijven eerder ingevoerde koersen zichtbaar.
+export function buildPriceSeries(holdings, { indexed } = {}) {
+  let skipped = 0;
+  const series = [];
+  for (const h of holdings || []) {
+    const pts = sortedAsc(h.events).filter(hasPrice);
+    if (pts.length === 0) continue;
+    if (indexed) {
+      const base = pts[0].price;
+      if (!(base > 0)) { skipped += 1; continue; }
+      series.push({
+        id: h.id,
+        name: h.name,
+        color: h.color,
+        events: pts.map(e => ({ id: e.id, date: e.date, value: (e.price / base) * 100 })),
+      });
+    } else {
+      series.push({
+        id: h.id,
+        name: h.name,
+        color: h.color,
+        events: pts.map(e => ({ id: e.id, date: e.date, value: e.price })),
+      });
+    }
+  }
+  return { series, skipped };
+}
