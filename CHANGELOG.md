@@ -1,3 +1,15 @@
+# [0.80.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.79.0...v0.80.0) (2026-07-26)
+
+
+### Bug Fixes
+
+* **nutrition:** verwijderdialoog vermeldt dat gelogde maaltijden blijven staan ([b3f58ee](https://github.com/Studio-Lek-River/Ritmo/commit/b3f58ee1bed42d4ddb54c9d4b495e19fdb1925b8))
+
+
+### Features
+
+* **nutrition:** log losse voedingsmiddelen met automatische kcal-berekening ([f9a3ad4](https://github.com/Studio-Lek-River/Ritmo/commit/f9a3ad4b7a873adb8fe6cbc44b0f33a562ac900e)), closes [#143](https://github.com/Studio-Lek-River/Ritmo/issues/143) [#141](https://github.com/Studio-Lek-River/Ritmo/issues/141)
+
 # [0.79.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.78.1...v0.79.0) (2026-07-26)
 
 
