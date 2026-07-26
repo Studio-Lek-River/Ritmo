@@ -1110,6 +1110,18 @@ export default {
     toast: {
       itemDeleted: 'Food item deleted',
     },
+    log: {
+      title: 'Log food',
+      searchPlaceholder: 'Search a food item...',
+      addNew: '+ New food item',
+      amountLabel: 'Amount ({unit})',
+      preview: '≈ {kcal} kcal',
+      previewInvalid: 'Enter a valid amount',
+      confirm: 'Log',
+    },
+    entry: {
+      editQuantityAria: 'Edit entry amount',
+    },
   },
 
   tasks: {

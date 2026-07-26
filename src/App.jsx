@@ -93,7 +93,7 @@ import MetricLibraryModal from './components/MetricLibraryModal';
 import { NutritionLibraryProvider } from './context/NutritionLibraryContext';
 import NutritionLibraryModal from './components/nutrition/NutritionLibraryModal';
 import { nutritionEnabled, defaultModuleNutrition } from './utils/nutrition';
-import { createEntry, addEntry, removeEntryById, restoreEntry, setEntryAmount } from './utils/counterEntries';
+import { createEntry, addEntry, removeEntryById, restoreEntry, setEntryAmount, updateEntry, applyEntryWrites } from './utils/counterEntries';
 import {
   fmtDateKey, parseDateKey, addDays, sameDay, startOfWeek,
   isEditable, isFuture, isToday as isTodayDate,
@@ -870,6 +870,56 @@ export default function Ritmo() {
     if (!parsed || parsed <= 0) return;
     updateModuleData(moduleId, prev => {
       const { next } = setEntryAmount(prev, entryId, parsed);
+      return next;
+    });
+  };
+
+  // Schrijft entries over (mogelijk) meerdere modules in één setModuleData-
+  // call — nodig omdat het save-effect (r. 369-391) anders twee keer vuurt
+  // voor wat conceptueel één actie is. `writes` is [{ moduleId, entry }].
+  // Na de write viert elke module in `crossed` zijn dagdoel-viering, net als
+  // addCounterEntry doet. Dit is de consument die applyEntryWrites (#141)
+  // een echte aanroeper geeft.
+  const applyCounterEntryWrites = (writes) => {
+    const goals = {};
+    writes.forEach(({ moduleId }) => {
+      const mod = modules.find(m => m.id === moduleId);
+      goals[moduleId] = mod?.dailyGoal ?? 0;
+    });
+    let crossedModuleIds = [];
+    setModuleData(prev => {
+      const { next, crossed } = applyEntryWrites(prev, writes, goals);
+      crossedModuleIds = crossed;
+      return next;
+    });
+    crossedModuleIds.forEach(moduleId => {
+      const mod = modules.find(m => m.id === moduleId);
+      if (mod) tryCounterCelebration(mod, t('today.goalReached', { name: resolveModuleName(mod, t) }));
+    });
+  };
+
+  // Logt één voedingsregel (item + hoeveelheid, #141): de kcal (log.amount)
+  // en de bevroren source-snapshot komen kant-en-klaar uit buildNutritionLog.
+  // Krijgt de actieve categorie mee, net als de presetknoppen.
+  const addNutritionEntry = (moduleId, log, category) => {
+    const entry = createEntry({ amount: log.amount, category: category ?? null, source: log.source });
+    applyCounterEntryWrites([{ moduleId, entry }]);
+    sfx('tick');
+  };
+
+  // Herrekent amount uit de bevroren perUnit-rate (nooit uit de oude amount,
+  // anders driftt het dagtotaal) en stelt total bij met precies het verschil.
+  // perUnit blijft onafgerond zodat opeenvolgende wijzigingen niet cumulatief
+  // afronden.
+  const setNutritionEntryQuantity = (moduleId, entryId, quantity) => {
+    updateModuleData(moduleId, prev => {
+      const { next } = updateEntry(prev, entryId, (entry) => {
+        const perUnitKcal = entry.source?.perUnit?.kcal ?? 0;
+        return {
+          amount: Math.round(quantity * perUnitKcal),
+          source: { ...entry.source, quantity },
+        };
+      });
       return next;
     });
   };
@@ -2524,6 +2574,8 @@ export default function Ritmo() {
           onAddEntry={(amount, category) => addCounterEntry(mod.id, amount, category)}
           onRemoveEntry={(entryId) => removeCounterEntry(mod.id, entryId)}
           onSetEntryAmount={(entryId, amount) => setCounterEntryAmount(mod.id, entryId, amount)}
+          onLogNutrition={(log, category) => addNutritionEntry(mod.id, log, category)}
+          onSetEntryQuantity={(entryId, quantity) => setNutritionEntryQuantity(mod.id, entryId, quantity)}
           onDismissReminder={() => dismissCounterReminder(mod.id)}
           onEdit={() => setEditingModule(mod)}
           theme={theme}

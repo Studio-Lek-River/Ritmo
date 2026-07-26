@@ -1,16 +1,25 @@
 import React, { useRef, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { formatAmount } from '../utils/format';
-import { useTranslation } from '../i18n/useTranslation';
+import { parseMeasurementInput } from '../utils/measurements';
+import { useTranslation, getLocale } from '../i18n/useTranslation';
 import { useUndoToast } from '../hooks/useUndoToast';
 
 // Eén gelogde teller-regel, geëxtraheerd uit CounterModule.jsx (V10, #133) —
-// nul gedragswijziging bij deze extractie zelf (#141). Per-rij state
-// (i.p.v. gedeeld op CounterUI-niveau) is hier correcter: er kan door focus
-// toch maar één rij tegelijk in bewerkmodus staan. Het escape/blur-guard-
-// patroon (cancelledRef) blijft nodig: Escape sluit de input terwijl hij
-// focus heeft, en sommige browsers vuren daarna alsnog een blur op de al
+// nul gedragswijziging bij de extractie zelf (#141). Per-rij state (i.p.v.
+// gedeeld op CounterUI-niveau) is hier correcter: er kan door focus toch
+// maar één rij tegelijk in bewerkmodus staan. Het escape/blur-guard-patroon
+// (cancelledRef) blijft nodig: Escape sluit de input terwijl hij focus
+// heeft, en sommige browsers vuren daarna alsnog een blur op de al
 // wegrenderende node — die late blur moet genegeerd worden.
+//
+// Twee renderpaden op één guard (`entry.source`, #141):
+// - afwezig  ⇒ de bestaande rauwe-kcal-regel; tap bewerkt via onSetAmount
+//   (parseFloat + type="number", ongewijzigd — komma-support is beperkt tot
+//   de nieuwe voedings-UI).
+// - aanwezig ⇒ voedingsregel "Havermout · 60 g — 222 kcal · 08:14"; tap op de
+//   hoeveelheid bewerkt via onSetQuantity (parseMeasurementInput, komma OF
+//   punt). Naam en kcal zijn niet tapbaar.
 export default function CounterEntryRow({
   entry,
   unit,
@@ -18,6 +27,7 @@ export default function CounterEntryRow({
   editable,
   onRemoveEntry,
   onSetAmount,
+  onSetQuantity,
   theme,
   darkMode,
 }) {
@@ -27,10 +37,12 @@ export default function CounterEntryRow({
   const [draft, setDraft] = useState('');
   const cancelledRef = useRef(false);
 
+  const hasSource = !!entry.source;
+
   const startEdit = () => {
     if (!editable) return;
     cancelledRef.current = false;
-    setDraft(String(entry.amount));
+    setDraft(hasSource ? String(entry.source.quantity) : String(entry.amount));
     setEditing(true);
   };
 
@@ -46,8 +58,13 @@ export default function CounterEntryRow({
       return;
     }
     setEditing(false);
-    const parsed = parseFloat(draft);
-    if (parsed > 0) onSetAmount?.(entry.id, parsed);
+    if (hasSource) {
+      const parsed = parseMeasurementInput(draft);
+      if (parsed !== null && parsed > 0) onSetQuantity?.(entry.id, parsed);
+    } else {
+      const parsed = parseFloat(draft);
+      if (parsed > 0) onSetAmount?.(entry.id, parsed);
+    }
   };
 
   const handleRemove = () => {
@@ -55,30 +72,68 @@ export default function CounterEntryRow({
     showUndoToast(t('toast.counterEntryDeleted'), () => result?.undo?.());
   };
 
+  const unitLabelText = hasSource
+    ? (entry.source.unit === 'serving' ? entry.source.unitLabel : t(`modules.units.${entry.source.unit}`))
+    : null;
+
   return (
     <div className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${theme.cardSecondary} text-sm`}>
-      {editing ? (
-        <input
-          type="number"
-          inputMode="decimal"
-          autoFocus
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commitEdit}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') commitEdit();
-            if (e.key === 'Escape') cancelEdit();
-          }}
-          aria-label={t('modules.counterEntryEditAria')}
-          className={`w-20 min-w-0 px-2 py-1 text-sm ${theme.input} rounded focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
-        />
+      {hasSource ? (
+        <>
+          <span className={`font-medium ${theme.textSecondary} truncate`}>{entry.source.name}</span>
+          <span className={theme.textMuted}>·</span>
+          {editing ? (
+            <input
+              type="text"
+              inputMode="decimal"
+              autoFocus
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitEdit();
+                if (e.key === 'Escape') cancelEdit();
+              }}
+              aria-label={t('nutrition.entry.editQuantityAria')}
+              className={`w-16 min-w-0 px-2 py-1 text-sm ${theme.input} rounded focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
+            />
+          ) : (
+            <span
+              onClick={startEdit}
+              className={`${theme.textSecondary} ${editable ? 'cursor-text' : ''}`}
+            >
+              {formatQuantity(entry.source.quantity)} {unitLabelText}
+            </span>
+          )}
+          <span className={theme.textMuted}>—</span>
+          <span className={`font-medium ${theme.textSecondary}`}>
+            {entry.amount} {t('modules.units.kcal')}
+          </span>
+        </>
       ) : (
-        <span
-          onClick={startEdit}
-          className={`font-medium ${theme.textSecondary} ${editable ? 'cursor-text' : ''}`}
-        >
-          {formatAmount(entry.amount, unit)}
-        </span>
+        editing ? (
+          <input
+            type="number"
+            inputMode="decimal"
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitEdit();
+              if (e.key === 'Escape') cancelEdit();
+            }}
+            aria-label={t('modules.counterEntryEditAria')}
+            className={`w-20 min-w-0 px-2 py-1 text-sm ${theme.input} rounded focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
+          />
+        ) : (
+          <span
+            onClick={startEdit}
+            className={`font-medium ${theme.textSecondary} ${editable ? 'cursor-text' : ''}`}
+          >
+            {formatAmount(entry.amount, unit)}
+          </span>
+        )
       )}
       {entry.category && (
         <span className={`px-2 py-0.5 rounded-full text-xs ${darkMode ? `bg-${mod.color}-900/40 text-${mod.color}-300` : `bg-${mod.color}-100 text-${mod.color}-700`}`}>
@@ -97,4 +152,14 @@ export default function CounterEntryRow({
       )}
     </div>
   );
+}
+
+// Locale-bewuste hoeveelheidweergave (niet formatAmount — die rondt af en
+// zou 60,5 als "61 g" tonen terwijl de inline-edit 60,5 voorvult).
+function formatQuantity(value) {
+  try {
+    return new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 2 }).format(value);
+  } catch {
+    return String(value);
+  }
 }

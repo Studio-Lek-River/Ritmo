@@ -126,3 +126,42 @@ export function nutritionEnabled(mod) {
 export function defaultModuleNutrition() {
   return { enabled: false, drinkModuleId: null };
 }
+
+// Bouwt een logbare { amount, source } uit een bibliotheek-item en een
+// hoeveelheid (slice B, #141). `null` is het enige ongeldig-signaal (geen
+// item, quantity niet-eindig of <= 0, of mode: 'portion' zonder geldige
+// item.portion) — de modal gebruikt hem voor zowel de live preview als de
+// disabled-state van de bevestigknop, dus is er één formule/validatie in de
+// hele app.
+//
+// `source` bevriest naam, portie-label en tarief (per 1 quantity-eenheid,
+// ONAFGEROND) op het moment van loggen: een latere bibliotheek-correctie mag
+// het dagtotaal van weken geleden niet met terugwerkende kracht veranderen
+// (uitgangspunt 1). `amount` is wél afgerond, zodat het zichtbare dagtotaal
+// exact de som van de zichtbare regels blijft.
+export function buildNutritionLog(item, { quantity, mode = 'base' } = {}) {
+  if (!item) return null;
+  const qty = typeof quantity === 'number' ? quantity : Number(quantity);
+  if (!Number.isFinite(qty) || qty <= 0) return null;
+  const usePortion = mode === 'portion';
+  if (usePortion && !item.portion) return null;
+
+  const baseRate = itemRate(item, 'kcal');
+  const perUnitQty = usePortion ? item.portion.amount : 1;
+  const kcalPerUnit = baseRate * perUnitQty;
+  const mlPerUnit = (item.unit === 'ml' && item.countsAsDrink) ? perUnitQty : 0;
+  const amount = Math.round(qty * kcalPerUnit);
+
+  return {
+    amount,
+    source: {
+      kind: 'item',
+      refId: item.id,
+      name: item.name,
+      quantity: qty,
+      unit: usePortion ? 'serving' : item.unit,
+      unitLabel: usePortion ? item.portion.label : null,
+      perUnit: { kcal: kcalPerUnit, ml: mlPerUnit },
+    },
+  };
+}

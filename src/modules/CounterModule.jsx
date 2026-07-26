@@ -4,7 +4,9 @@ import { formatAmount } from '../utils/format';
 import ReminderBanner from '../components/ReminderBanner';
 import CounterDisplay from '../components/CounterDisplay';
 import CounterEntryRow from './CounterEntryRow';
+import CounterNutritionPanel from './CounterNutritionPanel';
 import { getColorClasses } from '../utils/colors';
+import { nutritionEnabled } from '../utils/nutrition';
 import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 import { useUndoToast } from '../hooks/useUndoToast';
 
@@ -21,6 +23,8 @@ export default function CounterModule({
   onAddEntry,
   onRemoveEntry,
   onSetEntryAmount,
+  onLogNutrition,
+  onSetEntryQuantity,
   onDismissReminder,
   onEdit,
   theme,
@@ -152,6 +156,8 @@ export default function CounterModule({
       onAddEntry={onAddEntry}
       onRemoveEntry={onRemoveEntry}
       onSetEntryAmount={onSetEntryAmount}
+      onLogNutrition={onLogNutrition}
+      onSetEntryQuantity={onSetEntryQuantity}
       onDismissReminder={onDismissReminder}
       onEdit={onEdit}
       theme={theme}
@@ -179,6 +185,8 @@ function CounterUI({
   onAddEntry,
   onRemoveEntry,
   onSetEntryAmount,
+  onLogNutrition,
+  onSetEntryQuantity,
   onDismissReminder,
   onEdit,
   theme,
@@ -310,6 +318,14 @@ function CounterUI({
         </div>
       )}
 
+      {nutritionEnabled(mod) && editable && useEntries && (
+        <CounterNutritionPanel
+          colorKey={mod.color}
+          theme={theme}
+          onLog={(log) => onLogNutrition?.(log, activeCategory)}
+        />
+      )}
+
       {presets.length > 0 && (
         <div className={`grid gap-2 mb-3 ${presets.length <= 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
           {presets.map((amount, i) => (
@@ -368,6 +384,7 @@ function CounterUI({
               editable={editable}
               onRemoveEntry={onRemoveEntry}
               onSetAmount={onSetEntryAmount}
+              onSetQuantity={onSetEntryQuantity}
               theme={theme}
               darkMode={darkMode}
             />

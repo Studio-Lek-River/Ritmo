@@ -1119,6 +1119,18 @@ export default {
     toast: {
       itemDeleted: 'Voedingsmiddel verwijderd',
     },
+    log: {
+      title: 'Voeding loggen',
+      searchPlaceholder: 'Zoek een voedingsmiddel...',
+      addNew: '+ Nieuw voedingsmiddel',
+      amountLabel: 'Hoeveelheid ({unit})',
+      preview: '≈ {kcal} kcal',
+      previewInvalid: 'Vul een geldige hoeveelheid in',
+      confirm: 'Loggen',
+    },
+    entry: {
+      editQuantityAria: 'Hoeveelheid van invoer bewerken',
+    },
   },
 
   tasks: {
