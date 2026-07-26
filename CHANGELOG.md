@@ -1,3 +1,19 @@
+# [0.83.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.82.0...v0.83.0) (2026-07-26)
+
+
+### Bug Fixes
+
+* **investments:** decimale bedragen blijven behouden bij inline bewerken ([14501a7](https://github.com/Studio-Lek-River/Ritmo/commit/14501a7d4ce3b3f05b855a575fa66fb552ff224f))
+* **investments:** koersdeel-splitsing rondt af als formatEuro, niet als Math.round ([3eddfec](https://github.com/Studio-Lek-River/Ritmo/commit/3eddfec0ad28c21feb9ecda189dd840d1ef90d63))
+* **investments:** sluitpost-afronding en geneste ternaries in koersdeel-splitsing ([633ab26](https://github.com/Studio-Lek-River/Ritmo/commit/633ab266f41c561a2c98e22b122f93be9ea46e53))
+
+
+### Features
+
+* **investments:** aantal en koers per meting ([bfbcafc](https://github.com/Studio-Lek-River/Ritmo/commit/bfbcafc4e7c07fdd528e77211092abb6f8561225))
+* **investments:** koersgrafiek met euro- of indexschaal ([05744ce](https://github.com/Studio-Lek-River/Ritmo/commit/05744ce2eccdb8cc61ed02cd25df9ea857f59cc5))
+* **investments:** koerswinst gescheiden van inleg ([ca30b1d](https://github.com/Studio-Lek-River/Ritmo/commit/ca30b1dfbc0610db5144eb37e890b272609b1a1b)), closes [#115](https://github.com/Studio-Lek-River/Ritmo/issues/115)
+
 # [0.82.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.81.0...v0.82.0) (2026-07-26)
 
 
