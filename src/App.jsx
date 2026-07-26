@@ -141,6 +141,11 @@ const DEFAULT_PLAN_PREFS = {
 const PLAN_DAY_END = '22:00';
 const PLAN_DAY_START_FALLBACK = '08:00';
 
+// Minimale tijd tussen twee ophalingen bij terugkeer naar het tabblad
+// (issue #145). Kort genoeg om na het wisselen van apparaat actueel te zijn,
+// lang genoeg om heen-en-weer klikken niet in verzoeken om te zetten.
+const PULL_THROTTLE_MS = 60_000;
+
 // Canonieke serialisatie van een dag-blob, gebruikt als basislijn om te
 // bepalen of de dag-opslag écht iets te schrijven heeft (issue #145). Dezelfde
 // vorm als wat naar `day:<datum>` gaat, dus een ongewijzigde dag serialiseert
@@ -362,24 +367,53 @@ export default function Ritmo() {
   }, [loadFromStorage]);
 
   const userId = currentUser?.id;
-  useEffect(() => {
+  const pullingRef = useRef(false);
+  const lastPullAtRef = useRef(0);
+
+  // Haalt de cloudgegevens op en laadt de app opnieuw als er daadwerkelijk iets
+  // is binnengekomen. Draait bij het openen én bij terugkeer naar het tabblad
+  // (zie het effect hieronder), vandaar de eigen callback in plaats van code in
+  // het effect zelf.
+  const runPull = useCallback(async () => {
     if (!isSyncEnabled() || !userId) return;
-    let cancelled = false;
-    (async () => {
+    if (pullingRef.current) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+    pullingRef.current = true;
+    try {
       const result = await pullUserData(userId, (conflicts) =>
         new Promise((resolve) => {
           conflictResolverRef.current = resolve;
           setPendingConflicts(conflicts);
         }),
       );
-      if (cancelled) return;
+      lastPullAtRef.current = Date.now();
       if (result.pulled > 0 || result.conflicts > 0) {
         skipNextSaveRef.current = true;
         await loadFromStorage();
       }
-    })();
-    return () => { cancelled = true; };
+    } finally {
+      pullingRef.current = false;
+    }
   }, [userId, loadFromStorage]);
+
+  useEffect(() => {
+    runPull();
+  }, [runPull]);
+
+  // Een tabblad dat de hele dag openstaat haalde nooit meer op, dus wat je
+  // intussen op je telefoon logde bleef onzichtbaar (issue #145). Terugkeren
+  // naar het tabblad haalt opnieuw op, hooguit eens per minuut zodat wisselen
+  // tussen tabbladen geen stroom aan verzoeken wordt.
+  useEffect(() => {
+    if (!isSyncEnabled() || !userId) return;
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastPullAtRef.current < PULL_THROTTLE_MS) return;
+      runPull();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [userId, runPull]);
 
   const handleResolveConflict = useCallback((choice) => {
     const resolver = conflictResolverRef.current;
