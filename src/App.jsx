@@ -141,6 +141,18 @@ const DEFAULT_PLAN_PREFS = {
 const PLAN_DAY_END = '22:00';
 const PLAN_DAY_START_FALLBACK = '08:00';
 
+// Canonieke serialisatie van een dag-blob, gebruikt als basislijn om te
+// bepalen of de dag-opslag écht iets te schrijven heeft (issue #145). Dezelfde
+// vorm als wat naar `day:<datum>` gaat, dus een ongewijzigde dag serialiseert
+// exact gelijk aan wat net is geladen — inclusief de lege dag (geen record).
+function serializeDayBaseline(data) {
+  return JSON.stringify({
+    moduleData: data?.moduleData || {},
+    customTasks: data?.customTasks || [],
+    skippedRecurring: data?.skippedRecurring || [],
+  });
+}
+
 export default function Ritmo() {
   const { t, language, languageSetting, setLanguage } = useTranslation();
   const [view, setView] = useState('today');
@@ -152,6 +164,11 @@ export default function Ritmo() {
   const today = todayKey;
   const editable = isEditable(activeDate);
   const skipNextSaveRef = useRef(false);
+  // Laatst opgeslagen (of geladen) serialisatie van de dagblob. Het
+  // save-effect vergelijkt hiermee vóórdat het schrijft, zodat een ongewijzigd
+  // geladen dag — inclusief een dag zonder record — geen schrijfactie
+  // veroorzaakt (issue #145, AC3).
+  const dayBaselineRef = useRef(null);
   // Zelfde patroon als skipNextSaveRef, maar voor de instellingen-opslag:
   // voorkomt dat het inladen van settings ze meteen weer met een verse
   // sync-stempel terugschrijft (zie issue #145).
@@ -311,6 +328,12 @@ export default function Ritmo() {
         setCustomTasks(data.customTasks || []);
         setSkippedRecurring(data.skippedRecurring || []);
         skipNextSaveRef.current = true;
+        dayBaselineRef.current = serializeDayBaseline(data);
+      } else {
+        // Geen record voor vandaag (bv. vers apparaat): de basislijn is de
+        // lege dag, zodat er pas geschreven wordt zodra de gebruiker echt
+        // iets toevoegt — niet doordat de ophaal nog moet komen (AC3).
+        dayBaselineRef.current = serializeDayBaseline({});
       }
     } catch (e) {}
 
@@ -375,6 +398,7 @@ export default function Ritmo() {
     setModuleData(data.moduleData || {});
     setCustomTasks(data.customTasks || []);
     setSkippedRecurring(data.skippedRecurring || []);
+    dayBaselineRef.current = serializeDayBaseline(data);
     prevModuleStatusRef.current = {};
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeDateKey, loading]);
@@ -391,14 +415,17 @@ export default function Ritmo() {
       skipNextSaveRef.current = false;
       return;
     }
+    const dayData = { moduleData, customTasks, skippedRecurring };
+    const serialized = serializeDayBaseline(dayData);
+    // Geen wijziging t.o.v. de basislijn: niets te schrijven. Voorkomt dat het
+    // openen van de app op een apparaat zonder lokale data van vandaag een
+    // léég dag-record naar de cloud stuurt en zo gelogde taken van een ander
+    // apparaat overschrijft (issue #145, AC3).
+    if (serialized === dayBaselineRef.current) return;
     const saveData = async () => {
       try {
-        const dayData = {
-          moduleData,
-          customTasks,
-          skippedRecurring,
-        };
-        await window.storage.set(`day:${activeDateKey}`, JSON.stringify(dayData));
+        await window.storage.set(`day:${activeDateKey}`, serialized);
+        dayBaselineRef.current = serialized;
         setHistory(prev => ({ ...prev, [activeDateKey]: dayData }));
       } catch (e) {
         console.error('Save failed', e);
