@@ -1135,6 +1135,7 @@ export default {
       removeIngredientAria: 'Ingrediënt verwijderen',
       totalLabel: 'Totaal: {kcal} kcal per portie',
       servingUnit: 'portie',
+      servingUnitPlural: 'porties',
       chipLabel: '{name} · {kcal} kcal',
       missingHint: '{count} ingrediënt bestaat niet meer — niet meegeteld',
       missingHintPlural: '{count} ingrediënten bestaan niet meer — niet meegeteld',

@@ -101,9 +101,14 @@ export default function CounterEntryRow({
   // na een taalwissel stale Nederlandse tekst tonen op oude regels. Een
   // item-regel in portie-modus heeft altijd al wél een unitLabel, dus die
   // verandert hier niets.
+  //
+  // Alleen de systeemfallback buigt mee met het aantal ("2 porties"); een
+  // zelfgekozen portie-label blijft staan zoals de gebruiker het typte —
+  // diens woord vervoegen we niet.
   const unitLabelText = hasSource
     ? (entry.source.unit === 'serving'
-      ? (entry.source.unitLabel || t('nutrition.recipe.servingUnit'))
+      ? (entry.source.unitLabel
+        || t(entry.source.quantity === 1 ? 'nutrition.recipe.servingUnit' : 'nutrition.recipe.servingUnitPlural'))
       : t(`modules.units.${entry.source.unit}`))
     : null;
 

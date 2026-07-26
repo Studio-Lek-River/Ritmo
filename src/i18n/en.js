@@ -1126,6 +1126,7 @@ export default {
       removeIngredientAria: 'Remove ingredient',
       totalLabel: 'Total: {kcal} kcal per serving',
       servingUnit: 'serving',
+      servingUnitPlural: 'servings',
       chipLabel: '{name} · {kcal} kcal',
       missingHint: '{count} ingredient no longer exists — not counted',
       missingHintPlural: '{count} ingredients no longer exist — not counted',
