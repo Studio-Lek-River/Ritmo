@@ -152,3 +152,76 @@ export function buildPriceSeries(holdings, { indexed } = {}) {
   }
   return { series, skipped };
 }
+
+// Rond af op hele centen; voorkomt dat float-ruis (bv. 2.7999999999999998)
+// de "≠ 0"-check op `unattributed` of de weergave verstoort.
+function round2(n) {
+  return Math.round(n * 100) / 100;
+}
+
+// Decompositie van de waardeverandering in koersdeel, inlegdeel en
+// niet-toewijsbaar deel, zonder restterm.
+//
+// Invariant: priceGain + contribution + unattributed ===
+// seriesStats(buildTotalSeries(holdings)).changeAll
+//
+// Twee details dwingen die invariant af: `baseIdx` gebruikt `<= firstDate`
+// (niet `===`), zodat bij twee metingen op dezelfde eerste datum dezelfde
+// basislijn wordt gekozen als in buildTotalSeries; en de eerste meting van
+// een aandeel dat láter start is volledig inleg — precies hoe
+// buildTotalSeries het ook ziet. Het inlegdeel wordt per interval als *rest*
+// berekend (waardeverandering min koersdeel), niet rechtstreeks uit de
+// aantallen, zodat de optelling altijd klopt met `amount`.
+export function changeBreakdown(holdings) {
+  const list = holdings || [];
+
+  let firstDate = null;
+  for (const h of list) {
+    for (const e of h.events || []) {
+      if (firstDate === null || e.date < firstDate) firstDate = e.date;
+    }
+  }
+  if (firstDate === null) return null;
+
+  let priceGain = 0;
+  let contribution = 0;
+  let unattributed = 0;
+  let attributedSteps = 0;
+
+  for (const h of list) {
+    const evs = sortedAsc(h.events);
+    let baseIdx = -1;
+    for (let i = 0; i < evs.length; i += 1) {
+      if (evs[i].date <= firstDate) baseIdx = i; else break;
+    }
+    let prev = baseIdx >= 0 ? evs[baseIdx] : null;
+    for (let i = baseIdx + 1; i < evs.length; i += 1) {
+      const e = evs[i];
+      if (prev === null) {
+        if (hasSharesAndPrice(e)) {
+          contribution += e.amount;
+          attributedSteps += 1;
+        } else {
+          unattributed += e.amount;
+        }
+      } else if (hasSharesAndPrice(e) && hasSharesAndPrice(prev)) {
+        const pg = prev.shares * (e.price - prev.price);
+        priceGain += pg;
+        contribution += (e.amount - prev.amount) - pg;
+        attributedSteps += 1;
+      } else {
+        unattributed += e.amount - prev.amount;
+      }
+      prev = e;
+    }
+  }
+
+  const changeAll = seriesStats(buildTotalSeries(list))?.changeAll ?? 0;
+  return {
+    priceGain: round2(priceGain),
+    contribution: round2(contribution),
+    unattributed: round2(unattributed),
+    changeAll,
+    hasSplit: attributedSteps > 0,
+  };
+}

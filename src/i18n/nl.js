@@ -190,6 +190,11 @@ export default {
       priceScaleIndexed: 'Index 100',
       priceScaleHint: 'Index 100: elke lijn start op 100, ongeacht de werkelijke koers.',
       priceIndexSkipped: '{n} overgeslagen wegens onbruikbare startkoers',
+      splitHeading: 'Waarvan:',
+      splitPriceLabel: 'koers {value}',
+      splitContributionLabel: 'inleg {value}',
+      splitUnknownLabel: 'niet toe te wijzen {value}',
+      splitHint: 'Koersdeel komt door prijsverandering, inlegdeel door bijkopen of verkopen.',
     },
     chores: {
       title: 'Klusjes',

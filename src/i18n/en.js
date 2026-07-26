@@ -189,6 +189,11 @@ export default {
       priceScaleIndexed: 'Index 100',
       priceScaleHint: 'Index 100: every line starts at 100, regardless of the actual price.',
       priceIndexSkipped: '{n} skipped due to an unusable starting price',
+      splitHeading: 'Of which:',
+      splitPriceLabel: 'price {value}',
+      splitContributionLabel: 'contributions {value}',
+      splitUnknownLabel: 'unattributed {value}',
+      splitHint: 'The price part comes from price changes, the contribution part from buying or selling.',
     },
     chores: {
       title: 'Chores',

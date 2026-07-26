@@ -5,7 +5,7 @@ import LineChart from '../../components/LineChart';
 import { formatEuro } from '../../utils/household';
 import { getColorHex } from '../../utils/colors';
 import {
-  activeSeries, buildTotalSeries, buildPriceSeries, seriesStats, sortedAsc,
+  activeSeries, buildTotalSeries, buildPriceSeries, changeBreakdown, seriesStats, sortedAsc,
 } from '../../utils/investments';
 import TotalInput from './investments/TotalInput';
 import HoldingsInput from './investments/HoldingsInput';
@@ -91,6 +91,10 @@ export default function InvestmentsSection({ investments, setInvestments, theme 
     ? changeStat(stats.changePrev)
     : { value: t('household.investments.notApplicable'), accent: theme.textMuted, icon: null };
 
+  // Koersdeel/inlegdeel-splitsing (alleen relevant in per-aandeel-modus).
+  const breakdown = mode === 'holdings' ? changeBreakdown(investments.holdings) : null;
+  const fmtSigned = (v) => `${v > 0 ? '+' : v < 0 ? '-' : ''}${formatEuro(Math.abs(v))}`;
+
   // Grafiek: in holdings-modus met "toon losse aandelen" een series-array
   // (totaal-lijn + lijn per aandeel), anders de enkele actieve reeks.
   const useSeries = mode === 'holdings' && showHoldings;
@@ -136,6 +140,25 @@ export default function InvestmentsSection({ investments, setInvestments, theme 
           <StatCard theme={theme} label={t('household.investments.statCurrent')} value={formatEuro(stats.current)} accent={theme.text} />
           <StatCard theme={theme} label={t('household.investments.statSinceFirst')} value={sinceFirst.value} accent={sinceFirst.accent} icon={sinceFirst.icon} />
           <StatCard theme={theme} label={t('household.investments.statSincePrev')} value={sincePrev.value} accent={sincePrev.accent} icon={sincePrev.icon} />
+        </div>
+      )}
+
+      {/* Koersdeel/inlegdeel-splitsing */}
+      {mode === 'holdings' && breakdown?.hasSplit && (
+        <div className={`${theme.cardSecondary} rounded-xl p-3`}>
+          <p className={`text-xs ${theme.textSecondary}`}>
+            {t('household.investments.splitHeading')}{' '}
+            {t('household.investments.splitPriceLabel', { value: fmtSigned(breakdown.priceGain) })}
+            {' · '}
+            {t('household.investments.splitContributionLabel', { value: fmtSigned(breakdown.contribution) })}
+            {breakdown.unattributed !== 0 && (
+              <>
+                {' · '}
+                {t('household.investments.splitUnknownLabel', { value: fmtSigned(breakdown.unattributed) })}
+              </>
+            )}
+          </p>
+          <p className={`text-[11px] ${theme.textMuted} mt-1`}>{t('household.investments.splitHint')}</p>
         </div>
       )}
 
