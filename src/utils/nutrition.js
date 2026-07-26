@@ -73,7 +73,56 @@ export function createFoodItem({
 }
 
 export function emptyNutritionLibrary() {
-  return { items: [] };
+  return { items: [], recipes: [] };
+}
+
+// Eén ingrediëntrij is alleen geldig met zowel een itemId als een positief,
+// eindig bedrag; anders is de rij zinloos en wordt hij niet bewaard. Dit
+// controleert bewust NIET of het item nog bestaat — dat weet deze module
+// niet (geen `items`-parameter) en zou hier stil dataverlies veroorzaken.
+function normalizeIngredientRow(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const itemId = typeof raw.itemId === 'string' && raw.itemId ? raw.itemId : '';
+  if (!itemId) return null;
+  const amount = typeof raw.amount === 'number' ? raw.amount : Number(raw.amount);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  return { itemId, amount };
+}
+
+function normalizeIngredients(raw) {
+  const rows = Array.isArray(raw) ? raw : [];
+  const out = [];
+  for (const row of rows) {
+    const ingredient = normalizeIngredientRow(row);
+    if (ingredient) out.push(ingredient);
+  }
+  return out;
+}
+
+// Bouwt een nieuw, volledig genormaliseerd recept. Zelfde rol als
+// createFoodItem: platte formuliervelden erin, een opslagbare shape eruit —
+// gebruikt voor zowel een nieuw als een bewerkt recept (in het laatste geval
+// overschrijft de aanroeper `id` met het bestaande id).
+export function createRecipe({ name, ingredients = [] } = {}) {
+  return {
+    id: genId('recipe'),
+    name: (name || '').trim(),
+    ingredients: normalizeIngredients(ingredients),
+  };
+}
+
+// Privé, zoals normalizeFoodItem: leest een opgeslagen recept en levert
+// altijd een geldige shape of null (bij een lege naam) — nooit een crash op
+// corrupte data.
+function normalizeRecipe(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const name = typeof raw.name === 'string' ? raw.name.trim() : '';
+  if (!name) return null;
+  return {
+    id: typeof raw.id === 'string' && raw.id ? raw.id : genId('recipe'),
+    name,
+    ingredients: normalizeIngredients(raw.ingredients),
+  };
 }
 
 function normalizeFoodItem(raw) {
@@ -103,6 +152,13 @@ export function normalizeNutritionLibrary(raw) {
   for (const rawItem of rawItems) {
     const item = normalizeFoodItem(rawItem);
     if (item) library.items.push(item);
+  }
+  // Een bestaande opgeslagen blob zonder `recipes` (van vóór deze slice)
+  // levert hier vanzelf een lege lijst op — geen aparte migratie nodig.
+  const rawRecipes = Array.isArray(raw.recipes) ? raw.recipes : [];
+  for (const rawRecipe of rawRecipes) {
+    const recipe = normalizeRecipe(rawRecipe);
+    if (recipe) library.recipes.push(recipe);
   }
   return library;
 }
@@ -162,6 +218,85 @@ export function buildNutritionLog(item, { quantity, mode = 'base' } = {}) {
       unit: usePortion ? 'serving' : item.unit,
       unitLabel: usePortion ? item.portion.label : null,
       perUnit: { kcal: kcalPerUnit, ml: mlPerUnit },
+    },
+  };
+}
+
+// Som van itemRate * hoeveelheid over alle ingrediënten waarvan het item nog
+// bestaat. Symmetrisch met itemRate: ontbrekende items tellen als 0 in
+// plaats van de hele berekening te laten falen, zodat een recept met een
+// verwijderd ingrediënt gewoon met het resterende deel blijft rekenen.
+export function recipeRate(recipe, items, nutrientKey = 'kcal') {
+  const list = Array.isArray(items) ? items : [];
+  const ingredients = recipe?.ingredients || [];
+  let total = 0;
+  for (const ingredient of ingredients) {
+    const item = list.find((it) => it.id === ingredient.itemId);
+    if (!item) continue;
+    total += itemRate(item, nutrientKey) * ingredient.amount;
+  }
+  return total;
+}
+
+// Som van de ml uit ingrediënten die zelf als drinken meetellen. Nog niet
+// gebruikt buiten deze module (de koppeling met de Drinken-teller volgt in
+// #143); alvast op recept-niveau beschikbaar zodat perUnit.ml al klopt.
+export function recipeDrinkMl(recipe, items) {
+  const list = Array.isArray(items) ? items : [];
+  const ingredients = recipe?.ingredients || [];
+  let total = 0;
+  for (const ingredient of ingredients) {
+    const item = list.find((it) => it.id === ingredient.itemId);
+    if (!item) continue;
+    if (item.unit === 'ml' && item.countsAsDrink) total += ingredient.amount;
+  }
+  return total;
+}
+
+// Ingrediënt-itemId's zonder bijbehorend bibliotheekitem — een verwijderd
+// item wordt niet stil uit het recept gefilterd (normalizeRecipe kent
+// `items` niet), dus het formulier en de log-modal hebben deze lijst nodig
+// om een zichtbare hint te tonen in plaats van data-onzichtbaar-weg te laten
+// vallen.
+export function missingIngredientIds(recipe, items) {
+  const list = Array.isArray(items) ? items : [];
+  const ingredients = recipe?.ingredients || [];
+  const ids = [];
+  for (const ingredient of ingredients) {
+    const exists = list.some((it) => it.id === ingredient.itemId);
+    if (!exists) ids.push(ingredient.itemId);
+  }
+  return ids;
+}
+
+// Bouwt een logbare { amount, source } uit een recept en een aantal porties
+// — exact hetzelfde contract als buildNutritionLog: `null` is het enige
+// ongeldig-signaal (servings niet eindig of <= 0), nooit bij een leeg
+// recept (dat levert gewoon kcalPerServing 0 en dus amount 0 op, AC7).
+//
+// `perUnit` bevriest de kcal/ml van één portie ONAFGEROND op het moment van
+// loggen: een latere receptwijziging mag het dagtotaal van weken geleden
+// niet met terugwerkende kracht veranderen (uitgangspunt 1) — hetzelfde doel
+// als bij buildNutritionLog, nu toegepast op een sjabloon i.p.v. een los item.
+export function buildRecipeLog(recipe, items, { servings } = {}) {
+  if (!recipe) return null;
+  const s = typeof servings === 'number' ? servings : Number(servings);
+  if (!Number.isFinite(s) || s <= 0) return null;
+
+  const kcalPerServing = recipeRate(recipe, items, 'kcal');
+  const mlPerServing = recipeDrinkMl(recipe, items);
+  const amount = Math.round(s * kcalPerServing);
+
+  return {
+    amount,
+    source: {
+      kind: 'recipe',
+      refId: recipe.id,
+      name: recipe.name,
+      quantity: s,
+      unit: 'serving',
+      unitLabel: null,
+      perUnit: { kcal: kcalPerServing, ml: mlPerServing },
     },
   };
 }
