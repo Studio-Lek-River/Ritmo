@@ -1,8 +1,9 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { Sparkles, AlertCircle, Trash2, Settings } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Sparkles, AlertCircle, Settings } from 'lucide-react';
 import { formatAmount } from '../utils/format';
 import ReminderBanner from '../components/ReminderBanner';
 import CounterDisplay from '../components/CounterDisplay';
+import CounterEntryRow from './CounterEntryRow';
 import { getColorClasses } from '../utils/colors';
 import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 import { useUndoToast } from '../hooks/useUndoToast';
@@ -184,21 +185,11 @@ function CounterUI({
   darkMode,
 }) {
   const { t } = useTranslation();
-  const showUndoToast = useUndoToast();
   const name = resolveModuleName(mod, t);
   const initialCategory = categoriesEnabled && categories.length ? categories[0] : null;
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [manualAmount, setManualAmount] = useState('');
   const [manualCategory, setManualCategory] = useState(initialCategory);
-  const [editingEntryId, setEditingEntryId] = useState(null);
-  const [entryDraft, setEntryDraft] = useState('');
-  // Escape/blur-guard geleend van TaskListPanel (V04, #127): Escape sluit de
-  // input terwijl hij focus heeft, en sommige browsers vuren daarna alsnog
-  // een blur op de al wegrenderende node. editSessionRef volgt de actieve
-  // bewerk-sessie buiten React-state om zodat een late blur na Escape wordt
-  // genegeerd in plaats van alsnog op te slaan.
-  const justCancelledEntryRef = useRef(false);
-  const editEntrySessionRef = useRef(null);
 
   const pct = dailyGoal > 0 ? Math.min(100, (total / dailyGoal) * 100) : 0;
   const reachedGoal = dailyGoal > 0 && total >= dailyGoal;
@@ -224,38 +215,6 @@ function CounterUI({
     if (!parsed || parsed <= 0) return;
     handleAdd(parsed, manualCategory);
     setManualAmount('');
-  };
-
-  // V10 (#133): verwijderen met undo-toast; het { entry, undo } paar komt van
-  // removeCounterEntry in App.jsx.
-  const handleRemoveEntry = (entryId) => {
-    const result = onRemoveEntry?.(entryId);
-    showUndoToast(t('toast.counterEntryDeleted'), () => result?.undo?.());
-  };
-
-  const startEditEntry = (entry) => {
-    if (!editable) return;
-    justCancelledEntryRef.current = false;
-    editEntrySessionRef.current = entry.id;
-    setEditingEntryId(entry.id);
-    setEntryDraft(String(entry.amount));
-  };
-  const commitEditEntry = (entryId) => {
-    if (justCancelledEntryRef.current) {
-      justCancelledEntryRef.current = false;
-      return;
-    }
-    if (editEntrySessionRef.current !== entryId) return;
-    editEntrySessionRef.current = null;
-    const parsed = parseFloat(entryDraft);
-    if (parsed > 0) onSetEntryAmount?.(entryId, parsed);
-    setEditingEntryId(null);
-  };
-  const cancelEditEntry = () => {
-    justCancelledEntryRef.current = true;
-    editEntrySessionRef.current = null;
-    setEditingEntryId(null);
-    setEntryDraft('');
   };
 
   const goalLabel = dailyGoal > 0
@@ -401,49 +360,17 @@ function CounterUI({
       {useEntries && entries.length > 0 && (
         <div className={`pt-3 mt-2 border-t ${theme.border} space-y-1`}>
           {[...entries].reverse().map(entry => (
-            <div
+            <CounterEntryRow
               key={entry.id}
-              className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${theme.cardSecondary} text-sm`}
-            >
-              {editingEntryId === entry.id ? (
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  autoFocus
-                  value={entryDraft}
-                  onChange={(e) => setEntryDraft(e.target.value)}
-                  onBlur={() => commitEditEntry(entry.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') commitEditEntry(entry.id);
-                    if (e.key === 'Escape') cancelEditEntry();
-                  }}
-                  aria-label={t('modules.counterEntryEditAria')}
-                  className={`w-20 min-w-0 px-2 py-1 text-sm ${theme.input} rounded focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
-                />
-              ) : (
-                <span
-                  onClick={() => startEditEntry(entry)}
-                  className={`font-medium ${theme.textSecondary} ${editable ? 'cursor-text' : ''}`}
-                >
-                  {formatAmount(entry.amount, unit)}
-                </span>
-              )}
-              {entry.category && (
-                <span className={`px-2 py-0.5 rounded-full text-xs ${darkMode ? `bg-${mod.color}-900/40 text-${mod.color}-300` : `bg-${mod.color}-100 text-${mod.color}-700`}`}>
-                  {entry.category}
-                </span>
-              )}
-              <span className={`text-xs ${theme.textMuted} ml-auto`}>{entry.time}</span>
-              {editable && (
-                <button
-                  onClick={() => handleRemoveEntry(entry.id)}
-                  aria-label={t('common.delete')}
-                  className={`p-1 rounded ${theme.hover} ${theme.textMuted} hover:text-red-500 transition`}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
+              entry={entry}
+              unit={unit}
+              mod={mod}
+              editable={editable}
+              onRemoveEntry={onRemoveEntry}
+              onSetAmount={onSetEntryAmount}
+              theme={theme}
+              darkMode={darkMode}
+            />
           ))}
         </div>
       )}
