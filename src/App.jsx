@@ -92,8 +92,8 @@ import { instantiateMetric } from './utils/metricLibrary';
 import MetricLibraryModal from './components/MetricLibraryModal';
 import { NutritionLibraryProvider } from './context/NutritionLibraryContext';
 import NutritionLibraryModal from './components/nutrition/NutritionLibraryModal';
-import { nutritionEnabled, defaultModuleNutrition } from './utils/nutrition';
-import { createEntry, addEntry, removeEntryById, restoreEntry, setEntryAmount, updateEntry, applyEntryWrites } from './utils/counterEntries';
+import { nutritionEnabled, defaultModuleNutrition, drinkModuleCandidates, resolveDrinkModule } from './utils/nutrition';
+import { createEntry, addEntry, setEntryAmount, applyEntryWrites, applyEntryRemovals, applyEntryRestores, applyEntryUpdates } from './utils/counterEntries';
 import {
   fmtDateKey, parseDateKey, addDays, sameDay, startOfWeek,
   isEditable, isFuture, isToday as isTodayDate,
@@ -848,18 +848,54 @@ export default function Ritmo() {
   // V10 (#133): retourneert een { entry, undo } paar zodat CounterModule een
   // undo-toast kan tonen. undo zet de invoer terug (analoog aan
   // removeMedIntake hierboven) en telt het bedrag weer bij total/minutes op.
+  //
+  // #143: symmetrisch voor een gekoppelde voedingsregel. Verwijderen aan de
+  // calorieënkant (`source.drinkEntry`) haalt ook de ml weg, en verwijderen
+  // aan de drinkkant (`linkedTo`) haalt ook de kcal weg — beide in één
+  // setModuleData-call, en één undo herstelt beide totalen. Bestaat de
+  // tegenhanger niet meer, dan verdwijnt gewoon de gevonden kant (`pair`
+  // blijft null en de rij toont de gewone toast).
   const removeCounterEntry = (moduleId, entryId) => {
-    let removedEntry = null;
-    updateModuleData(moduleId, prev => {
-      const { next, entry } = removeEntryById(prev, entryId);
-      removedEntry = entry;
+    // De rij die de gebruiker aantikte is per definitie de rij die net
+    // gerenderd is, dus `moduleData` uit de render-closure is hier de juiste
+    // bron — en anders dan de state-updater is hij synchroon beschikbaar,
+    // wat nodig is omdat de toast van `pair` afhangt.
+    const removedEntry = (moduleData[moduleId]?.entries || []).find(e => e.id === entryId) ?? null;
+    const counterpart = removedEntry?.source?.drinkEntry || removedEntry?.linkedTo || null;
+    const partnerEntry = counterpart?.moduleId && counterpart?.entryId
+      ? (moduleData[counterpart.moduleId]?.entries || []).find(e => e.id === counterpart.entryId) ?? null
+      : null;
+
+    const targets = [{ moduleId, entryId }];
+    if (counterpart?.moduleId && counterpart?.entryId) {
+      targets.push({ moduleId: counterpart.moduleId, entryId: counterpart.entryId });
+    }
+
+    let removedRows = [];
+    setModuleData(prev => {
+      const { next, removed } = applyEntryRemovals(prev, targets);
+      removedRows = removed;
       return next;
     });
     const undo = () => {
-      if (!removedEntry) return;
-      updateModuleData(moduleId, prev => restoreEntry(prev, removedEntry));
+      if (!removedRows.length) return;
+      setModuleData(prev => applyEntryRestores(prev, removedRows));
     };
-    return { entry: removedEntry, undo };
+
+    // De toast noemt beide bedragen alleen als er ook echt twee regels weg
+    // zijn; welke kant de kcal draagt en welke de ml volgt uit het veld op de
+    // entry, niet uit de kant waar de gebruiker klikte.
+    let pair = null;
+    if (removedEntry && partnerEntry) {
+      const kcalEntry = removedEntry.source ? removedEntry : partnerEntry;
+      const mlEntry = removedEntry.linkedTo ? removedEntry : partnerEntry;
+      pair = {
+        name: kcalEntry.source?.name || mlEntry.linkedTo?.name || '',
+        kcal: kcalEntry.amount,
+        ml: mlEntry.amount,
+      };
+    }
+    return { entry: removedEntry, undo, pair };
   };
 
   // V10 (#133): wijzigt het bedrag van een bestaande teller-invoer en stelt
@@ -898,12 +934,38 @@ export default function Ritmo() {
     });
   };
 
-  // Logt één voedingsregel (item + hoeveelheid, #141): de kcal (log.amount)
+  // Logt één voedingsregel (item of recept, #141/#142): de kcal (log.amount)
   // en de bevroren source-snapshot komen kant-en-klaar uit buildNutritionLog.
   // Krijgt de actieve categorie mee, net als de presetknoppen.
+  //
+  // #143: is er een gekoppelde drinkteller én bevat de regel drinkbare ml,
+  // dan gaat er in dezelfde handeling een tweede entry naar die teller. De
+  // twee entries wijzen kruislings naar elkaar zodat verwijderen en bewerken
+  // het paar terugvinden. De ml-entry krijgt bewust géén categorie: de
+  // categorie van de calorieënteller hoort niet in de drink-categorieën te
+  // lekken. Zonder koppeling of zonder ml is dit exact het oude pad.
   const addNutritionEntry = (moduleId, log, category) => {
+    const mod = modules.find(m => m.id === moduleId);
+    const drinkModule = resolveDrinkModule(modules, mod);
+    const ml = Math.round((log.source?.quantity ?? 0) * (log.source?.perUnit?.ml ?? 0));
     const entry = createEntry({ amount: log.amount, category: category ?? null, source: log.source });
-    applyCounterEntryWrites([{ moduleId, entry }]);
+
+    if (drinkModule && ml > 0) {
+      const drinkEntry = createEntry({
+        amount: ml,
+        linkedTo: { moduleId, entryId: entry.id, name: log.source?.name || '' },
+      });
+      const linkedEntry = {
+        ...entry,
+        source: { ...log.source, drinkEntry: { moduleId: drinkModule.id, entryId: drinkEntry.id } },
+      };
+      applyCounterEntryWrites([
+        { moduleId, entry: linkedEntry },
+        { moduleId: drinkModule.id, entry: drinkEntry },
+      ]);
+    } else {
+      applyCounterEntryWrites([{ moduleId, entry }]);
+    }
     sfx('tick');
   };
 
@@ -911,15 +973,31 @@ export default function Ritmo() {
   // anders driftt het dagtotaal) en stelt total bij met precies het verschil.
   // perUnit blijft onafgerond zodat opeenvolgende wijzigingen niet cumulatief
   // afronden.
+  //
+  // #143: bij een gekoppelde regel schuift de ml-entry in dezelfde call mee,
+  // uit dezelfde bevroren perUnit.ml. Geen dagdoel-viering hier — dat is het
+  // bestaande gedrag van dit pad en blijft zo; alleen loggen viert.
   const setNutritionEntryQuantity = (moduleId, entryId, quantity) => {
-    updateModuleData(moduleId, prev => {
-      const { next } = updateEntry(prev, entryId, (entry) => {
-        const perUnitKcal = entry.source?.perUnit?.kcal ?? 0;
-        return {
-          amount: Math.round(quantity * perUnitKcal),
-          source: { ...entry.source, quantity },
-        };
-      });
+    setModuleData(prev => {
+      const entry = (prev[moduleId]?.entries || []).find(e => e.id === entryId);
+      const updates = [{
+        moduleId,
+        entryId,
+        patchFn: (e) => ({
+          amount: Math.round(quantity * (e.source?.perUnit?.kcal ?? 0)),
+          source: { ...e.source, quantity },
+        }),
+      }];
+      const link = entry?.source?.drinkEntry;
+      if (link?.moduleId && link?.entryId) {
+        const perUnitMl = entry.source?.perUnit?.ml ?? 0;
+        updates.push({
+          moduleId: link.moduleId,
+          entryId: link.entryId,
+          patchFn: () => ({ amount: Math.round(quantity * perUnitMl) }),
+        });
+      }
+      const { next } = applyEntryUpdates(prev, updates);
       return next;
     });
   };
@@ -2559,10 +2637,18 @@ export default function Ritmo() {
       );
     }
     if (mod.type === 'counter') {
+      // De resolve en de naamvertaling blijven hier: componenten krijgen geen
+      // modulelijst mee, alleen het al opgeloste doel (of null als de
+      // koppeling stil uit staat).
+      const drinkModule = resolveDrinkModule(modules, mod);
+      const drinkTarget = drinkModule
+        ? { id: drinkModule.id, name: resolveModuleName(drinkModule, t) }
+        : null;
       return (
         <CounterModule
           key={mod.id}
           module={mod}
+          drinkTarget={drinkTarget}
           Icon={ICON_OPTIONS[mod.icon] || Sparkles}
           data={moduleData[mod.id] || {}}
           weekDates={weekDates}
@@ -4944,6 +5030,15 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
 
                 {unit === 'kcal' && (() => {
                   const nutrition = editing.nutrition || defaultModuleNutrition();
+                  // Alleen andere modules zijn kandidaat: een teller die naar
+                  // zichzelf wijst zou zijn eigen kcal-regel verdubbelen.
+                  const drinkCandidates = drinkModuleCandidates(modules).filter(m => m.id !== editing.id);
+                  const savedDrinkId = nutrition.drinkModuleId || '';
+                  // Opgeslagen id dat niet (meer) resolvet: de module is uit,
+                  // verwijderd of van eenheid veranderd. De waarde blijft
+                  // staan — de select toont hem als eigen, uitgeschakelde
+                  // optie zodat hij niet stil "Geen" lijkt te zijn.
+                  const drinkDangling = !!savedDrinkId && !resolveDrinkModule(modules, editing);
                   return (
                     <div className={`${theme.cardSecondary} rounded-lg p-3 space-y-3`}>
                       <label className={`flex items-center gap-2 text-sm ${theme.textSecondary}`}>
@@ -4963,6 +5058,36 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
                           <BookOpen className="w-4 h-4" />
                           {t('nutrition.library.manageButton')}
                         </button>
+                      )}
+                      {nutritionEnabled(editing) && (
+                        <div>
+                          <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                            {t('nutrition.drink.label')}
+                          </label>
+                          <select
+                            value={savedDrinkId}
+                            onChange={(e) => update('nutrition', { ...nutrition, drinkModuleId: e.target.value || null })}
+                            className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm`}
+                          >
+                            <option value="">{t('nutrition.drink.none')}</option>
+                            {drinkCandidates.map(m => (
+                              <option key={m.id} value={m.id}>{resolveModuleName(m, t)}</option>
+                            ))}
+                            {drinkDangling && (
+                              <option value={savedDrinkId} disabled>{t('nutrition.drink.unavailableOption')}</option>
+                            )}
+                          </select>
+                          {drinkDangling && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                              {t('nutrition.drink.unavailableWarning')}
+                            </p>
+                          )}
+                          {!drinkDangling && drinkCandidates.length === 0 && (
+                            <p className={`text-xs ${theme.textSecondary} opacity-70 mt-2`}>
+                              {t('nutrition.drink.noCandidatesHint')}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   );

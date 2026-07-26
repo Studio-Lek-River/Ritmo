@@ -17,7 +17,7 @@ const MAX_RECIPE_CHIPS = 4;
 // kan ophangen zonder CounterUI opnieuw aan te raken. Het panel leest de
 // bibliotheek zelf via useNutritionLibrary() — CounterUI en App.jsx blijven
 // zo ongewijzigd.
-export default function CounterNutritionPanel({ colorKey, theme, onLog }) {
+export default function CounterNutritionPanel({ colorKey, drinkTarget = null, theme, onLog }) {
   const { t } = useTranslation();
   const { library } = useNutritionLibrary();
   const [open, setOpen] = useState(false);
@@ -68,6 +68,7 @@ export default function CounterNutritionPanel({ colorKey, theme, onLog }) {
         <NutritionLogModal
           onSubmit={handleSubmit}
           onClose={() => setOpen(false)}
+          drinkTarget={drinkTarget}
           theme={theme}
         />
       )}

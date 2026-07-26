@@ -17,6 +17,10 @@ export default function CounterModule({
   weekDates,
   history,
   today,
+  // Al opgeloste drinkteller ({ id, name }) of null als er geen koppeling is
+  // (#143). Bewust géén modulelijst: het paneel hoeft alleen te weten of en
+  // waarheen de ml gaan.
+  drinkTarget = null,
   editable = true,
   onIncrementCounter,
   onResetCounter,
@@ -151,6 +155,7 @@ export default function CounterModule({
       useEntries={useEntries}
       data={data}
       today={today}
+      drinkTarget={drinkTarget}
       editable={editable}
       onIncrementCounter={onIncrementCounter}
       onAddEntry={onAddEntry}
@@ -180,6 +185,7 @@ function CounterUI({
   useEntries,
   data,
   today,
+  drinkTarget = null,
   editable = true,
   onIncrementCounter,
   onAddEntry,
@@ -321,6 +327,7 @@ function CounterUI({
       {nutritionEnabled(mod) && editable && useEntries && (
         <CounterNutritionPanel
           colorKey={mod.color}
+          drinkTarget={drinkTarget}
           theme={theme}
           onLog={(log) => onLogNutrition?.(log, activeCategory)}
         />

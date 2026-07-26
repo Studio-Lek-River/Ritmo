@@ -17,7 +17,10 @@ import { useTranslation } from '../../i18n/useTranslation';
 // is daarom { kind: 'item' | 'recipe', data } i.p.v. een kaal item — zelfde
 // reden als bij selectedItem hierboven: `library` komt uit useStoredState en
 // loopt een render achter, dus een object i.p.v. een id-lookup.
-export default function NutritionLogModal({ onSubmit, onClose, theme }) {
+// `drinkTarget` is de al opgeloste drinkteller ({ id, name }) of null (#143).
+// De modal rekent zelf niets uit over modules; hij toont alleen vooraf waar
+// de ml naartoe gaan, zodat de dubbele boeking geen verrassing is.
+export default function NutritionLogModal({ onSubmit, onClose, drinkTarget = null, theme }) {
   const { t } = useTranslation();
   const { library, addItem } = useNutritionLibrary();
   const [step, setStep] = useState('pick');
@@ -118,6 +121,7 @@ export default function NutritionLogModal({ onSubmit, onClose, theme }) {
               rawAmount={rawAmount}
               setRawAmount={setRawAmount}
               log={log}
+              drinkTarget={drinkTarget}
               onBack={() => setStep('pick')}
               onConfirm={() => log && onSubmit(log)}
             />
@@ -212,13 +216,18 @@ function PickStep({ t, theme, query, setQuery, items, recipes, allItems, hasLibr
   );
 }
 
-function AmountStep({ t, theme, selected, items, mode, setMode, rawAmount, setRawAmount, log, onBack, onConfirm }) {
+function AmountStep({ t, theme, selected, items, mode, setMode, rawAmount, setRawAmount, log, drinkTarget, onBack, onConfirm }) {
   const isRecipe = selected?.kind === 'recipe';
   const item = !isRecipe ? selected?.data : null;
   const recipe = isRecipe ? selected?.data : null;
   const hasPortion = !!item?.portion;
   const unitLabel = mode === 'portion' ? item.portion.label : t(`modules.units.${item?.unit}`);
   const missingIds = isRecipe ? missingIngredientIds(recipe, items) : [];
+
+  // Exact dezelfde formule als addNutritionEntry in App.jsx gebruikt, uit
+  // dezelfde bevroren perUnit — de preview kan dus niet afwijken van wat er
+  // straks daadwerkelijk geboekt wordt.
+  const drinkMl = log ? Math.round(log.source.quantity * (log.source.perUnit?.ml ?? 0)) : 0;
 
   // Bij 'portion' is de input een aantal (default 1 portie); bij 'base' is
   // het weer een gewicht/volume (default: het gewicht van één portie).
@@ -274,9 +283,16 @@ function AmountStep({ t, theme, selected, items, mode, setMode, rawAmount, setRa
         </p>
       )}
 
-      <p className={`text-sm font-medium ${theme.textSecondary} mb-4`}>
-        {log ? t('nutrition.log.preview', { kcal: log.amount }) : t('nutrition.log.previewInvalid')}
-      </p>
+      <div className="mb-4">
+        <p className={`text-sm font-medium ${theme.textSecondary}`}>
+          {log ? t('nutrition.log.preview', { kcal: log.amount }) : t('nutrition.log.previewInvalid')}
+        </p>
+        {drinkTarget && drinkMl > 0 && (
+          <p className={`text-xs ${theme.textMuted} mt-1`}>
+            {t('nutrition.log.drinkPreview', { ml: drinkMl, name: drinkTarget.name })}
+          </p>
+        )}
+      </div>
 
       <div className="flex items-center gap-2">
         <button

@@ -1135,6 +1135,7 @@ export default {
     toast: {
       itemDeleted: 'Food item deleted',
       recipeDeleted: 'Meal deleted',
+      pairDeleted: '{name} deleted — {kcal} kcal and {ml} ml',
     },
     log: {
       title: 'Log food',
@@ -1144,10 +1145,20 @@ export default {
       recipeAmountLabel: 'Number of servings',
       preview: '≈ {kcal} kcal',
       previewInvalid: 'Enter a valid amount',
+      drinkPreview: '+ {ml} ml to {name}',
       confirm: 'Log',
     },
     entry: {
       editQuantityAria: 'Edit entry amount',
+    },
+    // Link with a drink counter (#143): drinks from the library also count
+    // towards the hydration goal.
+    drink: {
+      label: 'Count drinks towards',
+      none: 'None',
+      noCandidatesHint: 'Create a counter with unit ml first to let drinks count towards it.',
+      unavailableOption: 'Unavailable',
+      unavailableWarning: 'The linked counter is switched off or no longer exists. Drinks only count as calories right now; switch the counter back on and the link works again.',
     },
   },
 

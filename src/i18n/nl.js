@@ -1144,6 +1144,7 @@ export default {
     toast: {
       itemDeleted: 'Voedingsmiddel verwijderd',
       recipeDeleted: 'Maaltijd verwijderd',
+      pairDeleted: '{name} verwijderd — {kcal} kcal en {ml} ml',
     },
     log: {
       title: 'Voeding loggen',
@@ -1153,10 +1154,20 @@ export default {
       recipeAmountLabel: 'Aantal porties',
       preview: '≈ {kcal} kcal',
       previewInvalid: 'Vul een geldige hoeveelheid in',
+      drinkPreview: '+ {ml} ml naar {name}',
       confirm: 'Loggen',
     },
     entry: {
       editQuantityAria: 'Hoeveelheid van invoer bewerken',
+    },
+    // Koppeling met een drinkteller (#143): drankjes uit de bibliotheek
+    // tellen ook mee in het vochtdoel.
+    drink: {
+      label: 'Telt drinken mee in',
+      none: 'Geen',
+      noCandidatesHint: 'Maak eerst een teller met eenheid ml om drankjes te laten meetellen.',
+      unavailableOption: 'Niet beschikbaar',
+      unavailableWarning: 'De gekoppelde teller staat uit of bestaat niet meer. Drankjes tellen nu alleen als calorieën; zet de teller weer aan en de koppeling werkt weer.',
     },
   },
 

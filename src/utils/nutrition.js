@@ -7,8 +7,8 @@
 import { genId } from './genId';
 
 // Eenheden waarin een voedingsmiddel wordt vastgelegd. 'ml' is de enige
-// eenheid waarbij "telt ook mee als drinken" betekenis heeft (koppeling met
-// de Drinken-teller volgt pas in slice D).
+// eenheid waarbij "telt ook mee als drinken" betekenis heeft (zie
+// resolveDrinkModule: alleen ml-tellers kunnen die ml ontvangen).
 export const NUTRITION_UNITS = [
   { key: 'g', labelKey: 'modules.units.g' },
   { key: 'ml', labelKey: 'modules.units.ml' },
@@ -177,10 +177,33 @@ export function nutritionEnabled(mod) {
   return !!(mod && mod.nutrition && mod.nutrition.enabled === true);
 }
 
-// Standaard nutrition-config voor een counter-module. `drinkModuleId` wordt
-// pas in slice D daadwerkelijk gebruikt; het datamodel ligt nu al vast.
+// Standaard nutrition-config voor een counter-module. `drinkModuleId` wijst
+// naar de teller die de ml van drankjes ontvangt (#143); `null` = geen
+// koppeling, en dat is ook de betekenis van een ontbrekend veld.
 export function defaultModuleNutrition() {
   return { enabled: false, drinkModuleId: null };
+}
+
+// De tellers die drankjes kunnen ontvangen: aanstaande counters met eenheid
+// ml. Bewust géén 'l' of 'glas' — die zouden een omrekening vragen en dat is
+// een aparte keuze, geen stille aanname. Voedt de keuzelijst in de
+// module-editor; een lege lijst is een geldige uitkomst (dan is er alleen
+// "Geen").
+export function drinkModuleCandidates(modules) {
+  const list = Array.isArray(modules) ? modules : [];
+  return list.filter((m) => m && m.enabled && m.type === 'counter' && m.unit === 'ml');
+}
+
+// De gekoppelde drinkteller van een calorieënmodule, of `null`. `null` is het
+// enige "de koppeling staat stil uit"-signaal in de hele app: geen
+// drinkModuleId, module verwijderd, uitgezet, van eenheid gewijzigd of naar
+// zichzelf wijzend ⇒ er wordt gewoon alleen kcal gelogd. De opgeslagen
+// drinkModuleId wordt daarbij nooit gewist, zodat de koppeling weer werkt
+// zodra de gebruiker de module opnieuw aanzet.
+export function resolveDrinkModule(modules, calorieModule) {
+  const id = calorieModule?.nutrition?.drinkModuleId;
+  if (!id || id === calorieModule?.id) return null;
+  return drinkModuleCandidates(modules).find((m) => m.id === id) || null;
 }
 
 // Bouwt een logbare { amount, source } uit een bibliotheek-item en een
@@ -238,9 +261,9 @@ export function recipeRate(recipe, items, nutrientKey = 'kcal') {
   return total;
 }
 
-// Som van de ml uit ingrediënten die zelf als drinken meetellen. Nog niet
-// gebruikt buiten deze module (de koppeling met de Drinken-teller volgt in
-// #143); alvast op recept-niveau beschikbaar zodat perUnit.ml al klopt.
+// Som van de ml uit ingrediënten die zelf als drinken meetellen, per portie.
+// Voedt perUnit.ml in buildRecipeLog, zodat 2 porties van een recept met 200
+// ml melk 400 ml naar de gekoppelde drinkteller schrijven.
 export function recipeDrinkMl(recipe, items) {
   const list = Array.isArray(items) ? items : [];
   const ingredients = recipe?.ingredients || [];

@@ -13,13 +13,17 @@ import { useUndoToast } from '../hooks/useUndoToast';
 // heeft, en sommige browsers vuren daarna alsnog een blur op de al
 // wegrenderende node — die late blur moet genegeerd worden.
 //
-// Twee renderpaden op één guard (`entry.source`, #141):
-// - afwezig  ⇒ de bestaande rauwe-kcal-regel; tap bewerkt via onSetAmount
-//   (parseFloat + type="number", ongewijzigd — komma-support is beperkt tot
-//   de nieuwe voedings-UI).
-// - aanwezig ⇒ voedingsregel "Havermout · 60 g — 222 kcal · 08:14"; tap op de
-//   hoeveelheid bewerkt via onSetQuantity (parseMeasurementInput, komma OF
-//   punt). Naam en kcal zijn niet tapbaar.
+// Drie renderpaden:
+// - `entry.linkedTo` (#143) ⇒ de drinkkant van een gekoppelde voedingsregel:
+//   "Melk — 200 ml". Bewust niet inline bewerkbaar: de hoeveelheid hoort bij
+//   de kcal-kant (die de perUnit bevat), dus hier de ml wijzigen zou het paar
+//   stil laten desynchroniseren. Verwijderen kan er wél, symmetrisch.
+// - `entry.source` (#141) ⇒ voedingsregel "Havermout · 60 g — 222 kcal ·
+//   08:14"; tap op de hoeveelheid bewerkt via onSetQuantity
+//   (parseMeasurementInput, komma OF punt). Naam en kcal zijn niet tapbaar.
+// - geen van beide ⇒ de bestaande rauwe-kcal-regel; tap bewerkt via
+//   onSetAmount (parseFloat + type="number", ongewijzigd — komma-support is
+//   beperkt tot de nieuwe voedings-UI).
 export default function CounterEntryRow({
   entry,
   unit,
@@ -38,10 +42,11 @@ export default function CounterEntryRow({
   const cancelledRef = useRef(false);
   const sessionRef = useRef(false);
 
+  const linkedTo = entry.linkedTo || null;
   const hasSource = !!entry.source;
 
   const startEdit = () => {
-    if (!editable) return;
+    if (!editable || linkedTo) return;
     cancelledRef.current = false;
     sessionRef.current = true;
     setDraft(hasSource ? String(entry.source.quantity) : String(entry.amount));
@@ -76,9 +81,17 @@ export default function CounterEntryRow({
     }
   };
 
+  // Bij een gekoppelde regel (#143) verdwijnen er twee regels tegelijk;
+  // `result.pair` is alleen gevuld als dat ook echt gebeurd is (de
+  // tegenhanger kan al weg zijn). Zonder die tekst zou de dubbele
+  // verwijdering een verrassing zijn.
   const handleRemove = () => {
     const result = onRemoveEntry?.(entry.id);
-    showUndoToast(t('toast.counterEntryDeleted'), () => result?.undo?.());
+    const pair = result?.pair;
+    const message = pair
+      ? t('nutrition.toast.pairDeleted', { name: pair.name, kcal: pair.kcal, ml: pair.ml })
+      : t('toast.counterEntryDeleted');
+    showUndoToast(message, () => result?.undo?.());
   };
 
   // Een receptregel (#142) heeft geen door de gebruiker gekozen portie-label
@@ -96,7 +109,16 @@ export default function CounterEntryRow({
 
   return (
     <div className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${theme.cardSecondary} text-sm`}>
-      {hasSource ? (
+      {linkedTo ? (
+        <>
+          <span className={`font-medium ${theme.textSecondary} truncate`}>{linkedTo.name}</span>
+          <span className={theme.textMuted}>—</span>
+          {/* Vast 'ml': het bedrag ís ml (alleen ml-tellers kunnen een
+              gekoppelde regel ontvangen), niet de eenheid die de module
+              vandaag toevallig draagt. */}
+          <span className={`font-medium ${theme.textSecondary}`}>{formatAmount(entry.amount, 'ml')}</span>
+        </>
+      ) : hasSource ? (
         <>
           <span className={`font-medium ${theme.textSecondary} truncate`}>{entry.source.name}</span>
           <span className={theme.textMuted}>·</span>
