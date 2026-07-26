@@ -30,7 +30,13 @@ export function writeTotal(data, total) {
 // Bouwt een nieuwe entry. `at` is optioneel (override voor tests/undo-replay);
 // zonder `at` wordt `new Date()` gebruikt, net als de oorspronkelijke inline
 // tijdopbouw in addCounterEntry.
-export function createEntry({ amount, category = null, source, at } = {}) {
+//
+// `linkedTo` volgt hetzelfde optionele patroon als `source`: alleen aanwezig
+// als de aanroeper hem meegeeft, zodat een gewone entry exact dezelfde shape
+// houdt als voorheen (geen migratie). Het veld wijst naar de entry in een
+// andere module waar deze bij hoort: { moduleId, entryId, name } — gebruikt
+// door de drink-kant van een gekoppelde voedingsregel (#143).
+export function createEntry({ amount, category = null, source, linkedTo, at } = {}) {
   const now = at instanceof Date ? at : new Date();
   const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const entry = {
@@ -40,6 +46,7 @@ export function createEntry({ amount, category = null, source, at } = {}) {
     time,
   };
   if (source) entry.source = source;
+  if (linkedTo) entry.linkedTo = linkedTo;
   return entry;
 }
 
@@ -117,6 +124,57 @@ export function applyEntryWrites(prevAll, writes, goals = {}) {
     const prevModuleData = next[moduleId] || {};
     const goal = goals[moduleId] ?? 0;
     const { next: nextModuleData, crossed: didCross } = addEntry(prevModuleData, entry, goal);
+    next = { ...next, [moduleId]: nextModuleData };
+    if (didCross) crossed.push(moduleId);
+  }
+  return { next, crossed };
+}
+
+// Spiegel van applyEntryWrites voor verwijderen. `targets` is
+// [{ moduleId, entryId }]. Een target dat niet (meer) bestaat levert gewoon
+// geen `removed`-rij op — een dangling pointer naar een al verwijderde
+// tegenhanger mag nooit crashen of de rest van de verwijdering blokkeren.
+// `removed` is [{ moduleId, entry }] en is precies de input van
+// applyEntryRestores, zodat de undo van een gepaarde verwijdering óók in één
+// setModuleData-call past.
+export function applyEntryRemovals(prevAll, targets) {
+  let next = prevAll;
+  const removed = [];
+  for (const { moduleId, entryId } of targets) {
+    const prevModuleData = next[moduleId] || {};
+    const { next: nextModuleData, entry } = removeEntryById(prevModuleData, entryId);
+    if (!entry) continue;
+    next = { ...next, [moduleId]: nextModuleData };
+    removed.push({ moduleId, entry });
+  }
+  return { next, removed };
+}
+
+// Undo van applyEntryRemovals: zet elke verwijderde entry terug in zijn eigen
+// module. Erft de idempotentie-guard van restoreEntry, dus een dubbele
+// undo-klik verandert niets.
+export function applyEntryRestores(prevAll, removed) {
+  let next = prevAll;
+  for (const { moduleId, entry } of removed) {
+    const prevModuleData = next[moduleId] || {};
+    next = { ...next, [moduleId]: restoreEntry(prevModuleData, entry) };
+  }
+  return next;
+}
+
+// Spiegel van applyEntryWrites voor bewerken. `updates` is
+// [{ moduleId, entryId, patchFn }]; patchFn krijgt de oude entry en geeft een
+// partiële patch terug, net als bij updateEntry. Een niet-gevonden entry
+// wordt overgeslagen (prev blijft by reference staan), zodat een gepaarde
+// bewerking met een verdwenen tegenhanger de gevonden kant gewoon bijwerkt.
+export function applyEntryUpdates(prevAll, updates, goals = {}) {
+  let next = prevAll;
+  const crossed = [];
+  for (const { moduleId, entryId, patchFn } of updates) {
+    const prevModuleData = next[moduleId] || {};
+    const goal = goals[moduleId] ?? 0;
+    const { next: nextModuleData, entry, crossed: didCross } = updateEntry(prevModuleData, entryId, patchFn, goal);
+    if (!entry) continue;
     next = { ...next, [moduleId]: nextModuleData };
     if (didCross) crossed.push(moduleId);
   }
