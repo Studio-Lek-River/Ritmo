@@ -1,3 +1,12 @@
+# [0.79.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.78.1...v0.79.0) (2026-07-26)
+
+
+### Features
+
+* **nutrition:** voeg opslag, sync en backup toe voor voedingsbibliotheek ([1edb072](https://github.com/Studio-Lek-River/Ritmo/commit/1edb072b4084164e931d1add2d0c9444ede56c47))
+* **nutrition:** voeg voedingsbibliotheek-beheer toe aan de counter-editor ([9141010](https://github.com/Studio-Lek-River/Ritmo/commit/91410105b374731b22e5d14b710771c9854548bf))
+* **nutrition:** voeg voedingsbibliotheek-domein en provider toe ([db25b2c](https://github.com/Studio-Lek-River/Ritmo/commit/db25b2c2e50162940e034fb9abf19953b01138b2))
+
 ## [0.78.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.78.0...v0.78.1) (2026-07-24)
 
 
