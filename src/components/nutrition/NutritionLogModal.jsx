@@ -9,8 +9,9 @@ import { useTranslation } from '../../i18n/useTranslation';
 
 // Twee stappen, mobiel-eerst (#141): Kiezen (zoeken in de bibliotheek, of
 // een nieuw item vastleggen) en Hoeveelheid (live kcal-preview, bevestigen
-// pas mogelijk bij een geldige hoeveelheid). Modal-skelet identiek aan
-// NutritionLibraryModal; niet in modules/ want #142 hergebruikt hem voor
+// pas mogelijk bij een geldige hoeveelheid). Modal-skelet identiek aan het
+// voormalige NutritionLibraryModal (sinds #146 het NutritionLibraryPanel in
+// Instellingen → Voeding); niet in modules/ want #142 hergebruikt hem voor
 // recepten en hij is niet counter-specifiek.
 //
 // #142: recepten staan naast items in de keuzelijst. De geselecteerde keuze

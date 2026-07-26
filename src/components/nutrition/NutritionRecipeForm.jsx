@@ -18,7 +18,7 @@ function draftFromRecipe(recipe) {
   };
 }
 
-// Add/edit-formulier voor één recept, als modal boven NutritionLibraryModal.
+// Add/edit-formulier voor één recept, als modal boven NutritionLibraryPanel.
 // Volgt het NutritionItemForm-patroon één-op-één: lokale draft-state die pas
 // op submit naar de provider gaat (anders enqueuet elke toetsaanslag een
 // sync-push), reset via useEffect op open/mode/recipe, en dezelfde

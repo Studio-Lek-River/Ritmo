@@ -92,7 +92,7 @@ import { isHealthModule } from './utils/healthModules';
 import { instantiateMetric } from './utils/metricLibrary';
 import MetricLibraryModal from './components/MetricLibraryModal';
 import { NutritionLibraryProvider } from './context/NutritionLibraryContext';
-import NutritionLibraryModal from './components/nutrition/NutritionLibraryModal';
+import NutritionLibraryPanel from './components/nutrition/NutritionLibraryPanel';
 import { nutritionEnabled, defaultModuleNutrition, drinkModuleCandidates, resolveDrinkModule } from './utils/nutrition';
 import { createEntry, addEntry, setEntryAmount, applyEntryWrites, applyEntryRemovals, applyEntryRestores, applyEntryUpdates } from './utils/counterEntries';
 import {
@@ -4415,7 +4415,6 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
   const [removingMetric, setRemovingMetric] = useState(null);
   const [confirmDeleteModule, setConfirmDeleteModule] = useState(false);
   const [metricLibraryOpen, setMetricLibraryOpen] = useState(false);
-  const [nutritionLibraryOpen, setNutritionLibraryOpen] = useState(false);
   const [addingMedInline, setAddingMedInline] = useState(false);
   const [addingEntryInline, setAddingEntryInline] = useState(false);
   const injMeds = injectableMeds(modules);
@@ -5138,16 +5137,6 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
                         {t('nutrition.library.enabledLabel')}
                       </label>
                       {nutritionEnabled(editing) && (
-                        <button
-                          type="button"
-                          onClick={() => setNutritionLibraryOpen(true)}
-                          className={`w-full px-3 py-2 ${theme.card} ${theme.textSecondary} rounded-lg text-sm font-medium flex items-center justify-center gap-1 ${theme.hover}`}
-                        >
-                          <BookOpen className="w-4 h-4" />
-                          {t('nutrition.library.manageButton')}
-                        </button>
-                      )}
-                      {nutritionEnabled(editing) && (
                         <div>
                           <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
                             {t('nutrition.drink.label')}
@@ -5180,13 +5169,6 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
                     </div>
                   );
                 })()}
-
-                {nutritionLibraryOpen && (
-                  <NutritionLibraryModal
-                    onClose={() => setNutritionLibraryOpen(false)}
-                    theme={theme}
-                  />
-                )}
               </>
             );
           })()}

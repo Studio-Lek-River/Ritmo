@@ -27,7 +27,7 @@ function draftFromItem(item) {
 }
 
 // Add/edit-formulier voor één voedingsmiddel, als modal boven
-// NutritionLibraryModal. Volgt het CollectionItemFormModal-patroon: een
+// NutritionLibraryPanel. Volgt het CollectionItemFormModal-patroon: een
 // lokale draft-state die pas op submit naar de provider gaat, zodat niet
 // elke toetsaanslag een sync-push enqueuet.
 export default function NutritionItemForm({ open, mode = 'add', item, onClose, onSave, onDelete, theme }) {
