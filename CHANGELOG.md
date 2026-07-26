@@ -1,3 +1,17 @@
+# [0.82.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.81.0...v0.82.0) (2026-07-26)
+
+
+### Bug Fixes
+
+* **nutrition:** gepaarde voedingsregels krijgen hetzelfde tijdstempel ([83bd359](https://github.com/Studio-Lek-River/Ritmo/commit/83bd359ffd06fa0c6398769056f767dcfd2313c7))
+* **nutrition:** meervoud voor het aantal porties op een gelogde maaltijd ([12334e5](https://github.com/Studio-Lek-River/Ritmo/commit/12334e55d7df39ae2d8ec933fa10794b6c708aea))
+* **ui:** toast kapt zijn eigen boodschap niet meer af ([277ea88](https://github.com/Studio-Lek-River/Ritmo/commit/277ea88d3b4420433841c2b07b697a7df241679a))
+
+
+### Features
+
+* **nutrition:** drankjes tellen mee in de gekoppelde Drinken-teller ([4bdb532](https://github.com/Studio-Lek-River/Ritmo/commit/4bdb532d086b11674bb01af24da7cf2572624933)), closes [#143](https://github.com/Studio-Lek-River/Ritmo/issues/143)
+
 # [0.81.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.80.0...v0.81.0) (2026-07-26)
 
 
