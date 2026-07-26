@@ -153,25 +153,35 @@ export function buildPriceSeries(holdings, { indexed } = {}) {
   return { series, skipped };
 }
 
-// Rond af op hele centen; voorkomt dat float-ruis (bv. 2.7999999999999998)
-// de "≠ 0"-check op `unattributed` of de weergave verstoort.
+// Rond af op hele centen, op precies dezelfde manier als formatEuro
+// (src/utils/household.js): via toFixed(2), niet via Math.round(n*100)/100.
+// Die twee regels verschillen op halve-cent-grenzen door hoe floats intern
+// worden gerepresenteerd — bv. 95.005 rondt met toFixed(2) naar "95.00",
+// maar Math.round(95.005*100)/100 geeft 95.01. changeBreakdown moet dezelfde
+// regel gebruiken als de UI die het totaal toont, anders klopt de splitsing
+// niet met "Sinds eerste meting" zoals de gebruiker die leest (AC5). Verander
+// dit dus niet terug naar Math.round(n*100)/100.
 function round2(n) {
-  return Math.round(n * 100) / 100;
+  return Number((Number(n) || 0).toFixed(2));
 }
 
 // Decompositie van de waardeverandering in koersdeel, inlegdeel en
 // niet-toewijsbaar deel, zonder restterm.
 //
-// Invariant: priceGain + contribution + unattributed ===
-// seriesStats(buildTotalSeries(holdings)).changeAll
+// Invariant: formatEuro(priceGain + contribution + unattributed) ===
+// formatEuro(seriesStats(buildTotalSeries(holdings)).changeAll) — d.w.z. de
+// splitsing telt op tot het *getoonde* totaal, niet noodzakelijk tot het
+// ruwe float-getal (die twee kunnen op halve-cent-grenzen verschillen; zie
+// round2 hierboven). Daarom rondt deze functie met dezelfde regel als
+// formatEuro af.
 //
-// Twee details dwingen die invariant af: `baseIdx` gebruikt `<= firstDate`
-// (niet `===`), zodat bij twee metingen op dezelfde eerste datum dezelfde
-// basislijn wordt gekozen als in buildTotalSeries; en de eerste meting van
-// een aandeel dat láter start is volledig inleg — precies hoe
-// buildTotalSeries het ook ziet. Het inlegdeel wordt per interval als *rest*
-// berekend (waardeverandering min koersdeel), niet rechtstreeks uit de
-// aantallen, zodat de optelling altijd klopt met `amount`.
+// Twee andere details dwingen de invariant verder af: `baseIdx` gebruikt
+// `<= firstDate` (niet `===`), zodat bij twee metingen op dezelfde eerste
+// datum dezelfde basislijn wordt gekozen als in buildTotalSeries; en de
+// eerste meting van een aandeel dat láter start is volledig inleg — precies
+// hoe buildTotalSeries het ook ziet. Het inlegdeel wordt per interval als
+// *rest* berekend (waardeverandering min koersdeel), niet rechtstreeks uit
+// de aantallen, zodat de optelling altijd klopt met `amount`.
 export function changeBreakdown(holdings) {
   const list = holdings || [];
 
