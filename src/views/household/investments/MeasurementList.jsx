@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Trash2 } from 'lucide-react';
 import { useTranslation } from '../../../i18n/useTranslation';
 import { formatEuro } from '../../../utils/household';
+import { formatAmountInput } from '../../../utils/investments';
 import { fmtDate } from './format';
 
 // Waarde inline bewerken (V11, #134): dezelfde Escape-dan-blur-guard als
@@ -18,7 +19,7 @@ export default function MeasurementList({ events, onRemove, onEditValue, theme }
   const startEdit = (e) => {
     justCancelledRef.current = false;
     editSessionRef.current = e.id;
-    setDraft(String(e.amount));
+    setDraft(formatAmountInput(e.amount));
     setEditingId(e.id);
   };
   const commitEdit = (id) => {

@@ -70,3 +70,13 @@ export function seriesStats(points) {
 export function newId() {
   return Math.random().toString(36).slice(2, 10);
 }
+
+// Number -> bewerkbare draft-string in NL/locale-decimaalnotatie (comma).
+// Tegenhanger van parseAmount: een draft die hiermee geseed is, geeft
+// ongewijzigd teruggeparsed exact hetzelfde getal (1234.5 -> '1234,5' ->
+// 1234.5), i.p.v. String(n) die de punt laat staan en door parseAmount als
+// duizendtalscheiding wordt gelezen (1234.5 -> '1234.5' -> 12345).
+export function formatAmountInput(n) {
+  if (!Number.isFinite(n)) return '';
+  return String(n).replace('.', ',');
+}
