@@ -81,8 +81,17 @@ export default function CounterEntryRow({
     showUndoToast(t('toast.counterEntryDeleted'), () => result?.undo?.());
   };
 
+  // Een receptregel (#142) heeft geen door de gebruiker gekozen portie-label
+  // (source.unitLabel is bewust null, zie buildRecipeLog): zonder fallback
+  // zou de regel een leeg label renderen. De fallback is een live vertaling
+  // i.p.v. "portie" te bevriezen in de bron — een bevroren systeemwoord zou
+  // na een taalwissel stale Nederlandse tekst tonen op oude regels. Een
+  // item-regel in portie-modus heeft altijd al wél een unitLabel, dus die
+  // verandert hier niets.
   const unitLabelText = hasSource
-    ? (entry.source.unit === 'serving' ? entry.source.unitLabel : t(`modules.units.${entry.source.unit}`))
+    ? (entry.source.unit === 'serving'
+      ? (entry.source.unitLabel || t('nutrition.recipe.servingUnit'))
+      : t(`modules.units.${entry.source.unit}`))
     : null;
 
   return (

@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { X, Plus, Search, Utensils } from 'lucide-react';
+import { X, Plus, Search, Utensils, UtensilsCrossed } from 'lucide-react';
 import EmptyState from '../EmptyState';
 import NutritionItemForm from './NutritionItemForm';
 import { useNutritionLibrary } from '../../context/NutritionLibraryContext';
-import { buildNutritionLog } from '../../utils/nutrition';
+import { buildNutritionLog, buildRecipeLog, recipeRate, missingIngredientIds } from '../../utils/nutrition';
 import { parseMeasurementInput } from '../../utils/measurements';
 import { useTranslation } from '../../i18n/useTranslation';
 
@@ -12,24 +12,33 @@ import { useTranslation } from '../../i18n/useTranslation';
 // pas mogelijk bij een geldige hoeveelheid). Modal-skelet identiek aan
 // NutritionLibraryModal; niet in modules/ want #142 hergebruikt hem voor
 // recepten en hij is niet counter-specifiek.
+//
+// #142: recepten staan naast items in de keuzelijst. De geselecteerde keuze
+// is daarom { kind: 'item' | 'recipe', data } i.p.v. een kaal item — zelfde
+// reden als bij selectedItem hierboven: `library` komt uit useStoredState en
+// loopt een render achter, dus een object i.p.v. een id-lookup.
 export default function NutritionLogModal({ onSubmit, onClose, theme }) {
   const { t } = useTranslation();
   const { library, addItem } = useNutritionLibrary();
   const [step, setStep] = useState('pick');
   const [query, setQuery] = useState('');
-  // Object, geen id-lookup: addItem geeft het opgeslagen item terug, maar
-  // `library` komt uit useStoredState en is pas een render later bij.
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [selected, setSelected] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
   const [mode, setMode] = useState('base');
   const [rawAmount, setRawAmount] = useState('');
 
   const items = library?.items || [];
-  const filtered = useMemo(() => {
+  const recipes = library?.recipes || [];
+  const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return items;
     return items.filter((it) => it.name.toLowerCase().includes(q));
   }, [items, query]);
+  const filteredRecipes = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return recipes;
+    return recipes.filter((r) => r.name.toLowerCase().includes(q));
+  }, [recipes, query]);
 
   // Default-mode is altijd 'base' (g/ml): bij een portie is 100 geen zinnig
   // voorstel, dus wordt het gewicht van één portie voorgevuld. Pas als de
@@ -37,9 +46,19 @@ export default function NutritionLogModal({ onSubmit, onClose, theme }) {
   // aantal in plaats van een gewicht (zie switchMode in AmountStep).
   const selectItem = (item) => {
     const hasPortion = !!item.portion;
-    setSelectedItem(item);
+    setSelected({ kind: 'item', data: item });
     setMode('base');
     setRawAmount(hasPortion ? String(item.portion.amount) : '100');
+    setStep('amount');
+  };
+
+  // Bij een recept is de hoeveelheid altijd een aantal porties, voorgevuld
+  // met 1 (Poort-0: recepten aanmaken kan alleen in de beheermodal, hier dus
+  // geen g/ml-modetoggle nodig).
+  const selectRecipe = (recipe) => {
+    setSelected({ kind: 'recipe', data: recipe });
+    setMode('base');
+    setRawAmount('1');
     setStep('amount');
   };
 
@@ -50,9 +69,13 @@ export default function NutritionLogModal({ onSubmit, onClose, theme }) {
   };
 
   const quantity = parseMeasurementInput(rawAmount);
-  const log = selectedItem && quantity !== null
-    ? buildNutritionLog(selectedItem, { quantity, mode })
-    : null;
+  const log = useMemo(() => {
+    if (!selected || quantity === null) return null;
+    if (selected.kind === 'recipe') {
+      return buildRecipeLog(selected.data, items, { servings: quantity });
+    }
+    return buildNutritionLog(selected.data, { quantity, mode });
+  }, [selected, quantity, mode, items]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40">
@@ -76,16 +99,20 @@ export default function NutritionLogModal({ onSubmit, onClose, theme }) {
               theme={theme}
               query={query}
               setQuery={setQuery}
-              items={filtered}
-              hasLibraryItems={items.length > 0}
-              onSelect={selectItem}
+              items={filteredItems}
+              recipes={filteredRecipes}
+              allItems={items}
+              hasLibraryEntries={items.length > 0 || recipes.length > 0}
+              onSelectItem={selectItem}
+              onSelectRecipe={selectRecipe}
               onAddNew={() => setFormOpen(true)}
             />
           ) : (
             <AmountStep
               t={t}
               theme={theme}
-              item={selectedItem}
+              selected={selected}
+              items={items}
               mode={mode}
               setMode={setMode}
               rawAmount={rawAmount}
@@ -110,7 +137,11 @@ export default function NutritionLogModal({ onSubmit, onClose, theme }) {
   );
 }
 
-function PickStep({ t, theme, query, setQuery, items, hasLibraryItems, onSelect, onAddNew }) {
+// Recepten en items in één lijst (#142): de gebruiker kiest wat hij wil
+// loggen zonder eerst tussen twee categorieën te moeten schakelen. Items
+// staan eerst, recepten daarna — beide blijven zichtbaar onder dezelfde
+// zoekfilter.
+function PickStep({ t, theme, query, setQuery, items, recipes, allItems, hasLibraryEntries, onSelectItem, onSelectRecipe, onAddNew }) {
   return (
     <>
       <div className="relative mb-3">
@@ -125,7 +156,7 @@ function PickStep({ t, theme, query, setQuery, items, hasLibraryItems, onSelect,
         />
       </div>
 
-      {!hasLibraryItems ? (
+      {!hasLibraryEntries ? (
         <EmptyState
           icon={Utensils}
           title={t('nutrition.library.emptyTitle')}
@@ -138,15 +169,30 @@ function PickStep({ t, theme, query, setQuery, items, hasLibraryItems, onSelect,
         <>
           <ul className="space-y-2 max-h-72 overflow-y-auto mb-3">
             {items.map((item) => (
-              <li key={item.id}>
+              <li key={`item-${item.id}`}>
                 <button
                   type="button"
-                  onClick={() => onSelect(item)}
+                  onClick={() => onSelectItem(item)}
                   className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 ${theme.cardSecondary} ${theme.hover} rounded-xl text-left transition`}
                 >
                   <span className={`text-sm font-medium ${theme.textSecondary} truncate`}>{item.name}</span>
                   <span className={`text-[11px] ${theme.textMuted} flex-shrink-0`}>
                     {t('nutrition.library.itemPer100', { kcal: item.per100.kcal, unit: t(`modules.units.${item.unit}`) })}
+                  </span>
+                </button>
+              </li>
+            ))}
+            {recipes.map((recipe) => (
+              <li key={`recipe-${recipe.id}`}>
+                <button
+                  type="button"
+                  onClick={() => onSelectRecipe(recipe)}
+                  className={`w-full flex items-center gap-2 px-3 py-2.5 ${theme.cardSecondary} ${theme.hover} rounded-xl text-left transition`}
+                >
+                  <UtensilsCrossed className={`w-4 h-4 flex-shrink-0 ${theme.textMuted}`} />
+                  <span className={`flex-1 min-w-0 text-sm font-medium ${theme.textSecondary} truncate`}>{recipe.name}</span>
+                  <span className={`text-[11px] ${theme.textMuted} flex-shrink-0`}>
+                    {t('nutrition.library.recipePerServing', { kcal: Math.round(recipeRate(recipe, allItems, 'kcal')) })}
                   </span>
                 </button>
               </li>
@@ -166,9 +212,13 @@ function PickStep({ t, theme, query, setQuery, items, hasLibraryItems, onSelect,
   );
 }
 
-function AmountStep({ t, theme, item, mode, setMode, rawAmount, setRawAmount, log, onBack, onConfirm }) {
+function AmountStep({ t, theme, selected, items, mode, setMode, rawAmount, setRawAmount, log, onBack, onConfirm }) {
+  const isRecipe = selected?.kind === 'recipe';
+  const item = !isRecipe ? selected?.data : null;
+  const recipe = isRecipe ? selected?.data : null;
   const hasPortion = !!item?.portion;
-  const unitLabel = mode === 'portion' ? item.portion.label : t(`modules.units.${item.unit}`);
+  const unitLabel = mode === 'portion' ? item.portion.label : t(`modules.units.${item?.unit}`);
+  const missingIds = isRecipe ? missingIngredientIds(recipe, items) : [];
 
   // Bij 'portion' is de input een aantal (default 1 portie); bij 'base' is
   // het weer een gewicht/volume (default: het gewicht van één portie).
@@ -179,9 +229,9 @@ function AmountStep({ t, theme, item, mode, setMode, rawAmount, setRawAmount, lo
 
   return (
     <div>
-      <p className={`text-sm font-medium ${theme.textSecondary} mb-3`}>{item.name}</p>
+      <p className={`text-sm font-medium ${theme.textSecondary} mb-3`}>{isRecipe ? recipe.name : item.name}</p>
 
-      {hasPortion && (
+      {!isRecipe && hasPortion && (
         <div className="flex gap-2 mb-3">
           <button
             type="button"
@@ -203,7 +253,9 @@ function AmountStep({ t, theme, item, mode, setMode, rawAmount, setRawAmount, lo
       )}
 
       <div className="mb-3">
-        <p className={`text-xs ${theme.textMuted} mb-1`}>{t('nutrition.log.amountLabel', { unit: unitLabel })}</p>
+        <p className={`text-xs ${theme.textMuted} mb-1`}>
+          {isRecipe ? t('nutrition.log.recipeAmountLabel') : t('nutrition.log.amountLabel', { unit: unitLabel })}
+        </p>
         <input
           type="text"
           inputMode="decimal"
@@ -213,6 +265,14 @@ function AmountStep({ t, theme, item, mode, setMode, rawAmount, setRawAmount, lo
           className={`w-full px-3 py-2 rounded-lg text-sm ${theme.input} ${theme.textSecondary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
         />
       </div>
+
+      {isRecipe && missingIds.length > 0 && (
+        <p className="text-xs text-amber-600 dark:text-amber-400 mb-3">
+          {missingIds.length === 1
+            ? t('nutrition.recipe.missingHint', { count: missingIds.length })
+            : t('nutrition.recipe.missingHintPlural', { count: missingIds.length })}
+        </p>
+      )}
 
       <p className={`text-sm font-medium ${theme.textSecondary} mb-4`}>
         {log ? t('nutrition.log.preview', { kcal: log.amount }) : t('nutrition.log.previewInvalid')}
