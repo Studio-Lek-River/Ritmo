@@ -1,3 +1,16 @@
+# [0.84.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.83.0...v0.84.0) (2026-07-26)
+
+
+### Bug Fixes
+
+* **sync:** lege dag overschrijft niet langer de gelogde taken uit de cloud ([1a110ff](https://github.com/Studio-Lek-River/Ritmo/commit/1a110fff75972a14ccda36343b56387cec3bb287))
+* **sync:** opnieuw ophalen bij terugkeer naar het tabblad en na-ophaal herladen ([d7fe711](https://github.com/Studio-Lek-River/Ritmo/commit/d7fe711d5c61ef81656f5d6e07b8323d32e82edd)), closes [#145](https://github.com/Studio-Lek-River/Ritmo/issues/145)
+
+
+### Features
+
+* **sync:** ophaal-poort die lokale schrijfacties laat wachten op de cloud ([1a97dec](https://github.com/Studio-Lek-River/Ritmo/commit/1a97dec47cbff0b67ca096009444c04981ee9c1b))
+
 # [0.83.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.82.0...v0.83.0) (2026-07-26)
 
 
