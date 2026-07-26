@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(npm ls -g --depth=0; Write-Output \"---ms-playwright---\"; if \\(Test-Path \"$env:LOCALAPPDATA\\\\ms-playwright\"\\) { Get-ChildItem \"$env:LOCALAPPDATA\\\\ms-playwright\" | Select-Object -ExpandProperty Name } else { \"geen browsers\" })"
+      "PowerShell(npm ls -g --depth=0; Write-Output \"---ms-playwright---\"; if \\(Test-Path \"$env:LOCALAPPDATA\\\\ms-playwright\"\\) { Get-ChildItem \"$env:LOCALAPPDATA\\\\ms-playwright\" | Select-Object -ExpandProperty Name } else { \"geen browsers\" })",
+      "Bash(node \"C:/Users/BAS~1.VAN/AppData/Local/Temp/claude/c--Ritmo/284c68c0-d70d-4bae-9f4f-9085b30bc08f/scratchpad/verify143e.mjs\")"
     ]
   }
 }
