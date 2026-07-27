@@ -11,7 +11,10 @@
       "Bash(npm root *)",
       "Bash(node \"C:/Users/BAS~1.VAN/AppData/Local/Temp/claude/c--Ritmo/679fd32e-65fc-44b4-a7e3-cf9a05d447ff/scratchpad/ac5.mjs\")",
       "Bash(node \"C:/Users/BAS~1.VAN/AppData/Local/Temp/claude/c--Ritmo/679fd32e-65fc-44b4-a7e3-cf9a05d447ff/scratchpad/debug.mjs\")",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(git log *)",
+      "Bash(git mv *)",
+      "Bash(npx eslint *)"
     ]
   }
 }
