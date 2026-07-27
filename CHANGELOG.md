@@ -1,3 +1,10 @@
+# [0.85.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.84.0...v0.85.0) (2026-07-26)
+
+
+### Features
+
+* **instellingen:** voedingsbibliotheek beheren via een eigen tab in Instellingen ([1417ec2](https://github.com/Studio-Lek-River/Ritmo/commit/1417ec233bd907538d6a7383edf472677fbad8f3)), closes [#146](https://github.com/Studio-Lek-River/Ritmo/issues/146)
+
 # [0.84.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.83.0...v0.84.0) (2026-07-26)
 
 
