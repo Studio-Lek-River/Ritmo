@@ -1,6 +1,8 @@
 import React from 'react';
 import InsightCardShell from './InsightCardShell';
-import { aggregateCounter } from '../../utils/insights';
+import MacroSummary from '../nutrition/MacroSummary';
+import { aggregateCounter, aggregateNutritionMacros } from '../../utils/insights';
+import { nutritionEnabled } from '../../utils/nutrition';
 import { getColorHex } from '../../utils/colors';
 import { formatAmount, formatDuration } from '../../utils/format';
 
@@ -47,6 +49,10 @@ export default function CounterInsightCard({ mod, days, theme, darkMode, t }) {
   const slot = innerW / agg.series.length;
   const barW = slot * 0.7;
 
+  // Alleen voor een calorieënmodule mét voedingsbibliotheek (AC3): een
+  // module zonder nutrition raakt de aggregator dan niet eens aan.
+  const macroAgg = nutritionEnabled(mod) ? aggregateNutritionMacros(mod, days) : null;
+
   return (
     <InsightCardShell
       mod={mod}
@@ -86,6 +92,11 @@ export default function CounterInsightCard({ mod, days, theme, darkMode, t }) {
         <p className={`text-xs ${theme.textMuted} mt-1`}>
           {t('insight.counter.goalLabel', { value: formatValue(agg.goal, unit) })}
         </p>
+      )}
+      {macroAgg?.hasData && (
+        <div className="mt-1">
+          <MacroSummary macros={macroAgg.averages} theme={theme} t={t} label="insight.counter.macrosLabel" />
+        </div>
       )}
     </InsightCardShell>
   );
