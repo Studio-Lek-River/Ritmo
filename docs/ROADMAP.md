@@ -59,7 +59,8 @@ De open slices lopen als één doorlopende reeks in bouwvolgorde. De volgende te
 | S10b | #121 | Todo | Aggregatie-cache via een scheduled functie |
 | S10c | #122 | Todo | Checklist-items planbaar in de dag |
 | S11 | #40 | KLAAR | Deel mijn dag in |
-| S12 | #41 | Todo | Outlook wegschrijven |
+| S12 | #41 | IN UITVOERING | Outlook wegschrijven |
+| S12a | #153 | Todo | Agenda-write verfijningen |
 | S13 | #42 | Todo | Ritmo MCP-server (lezen) |
 | S14 | #43 | Todo | Uitvoer-context per bron |
 | S15 | #44 | Todo | MCP write-back (status + resultaat) |
@@ -157,10 +158,20 @@ Een lokale, offline versie van de planner die volledig op bestaande data draait,
   2. De lokale Ollama-provider is in deze slice echt werkend opgeleverd (instelbare URL en model, timeout, foutafhandeling), niet doorgeschoven.
   3. De server-seam is een echt endpoint (`api/plan.js`, POST-only, JWT-check, `501 not_configured` zonder AI-env) in plaats van alleen een client-side contract in commentaar.
 
-#### S12, Outlook wegschrijven. #41
-- **Doel:** de gegenereerde indeling naar Outlook schrijven.
+#### S12, Outlook wegschrijven. #41. IN UITVOERING
+- **Doel:** de dagplanning naar Outlook schrijven.
 - **Oplevering:** `Calendars.ReadWrite`, een aparte "Ritmo"-agenda die via Graph wordt aangemaakt, getagde en regenereerbare blokken, en een instelbare bestemming (Ritmo-agenda en/of hoofdagenda). De write is deterministisch via directe Graph-calls.
 - **Afhankelijk van:** S11.
+- **Poort-0-beslissingen (bij goedkeuring van de spec vastgelegd):**
+  1. Beide bestemmingen komen in deze slice. Omdat de hoofdagenda meedoet is een harde per-event tag verplicht (Graph extended property), zodat regenereren alléén Ritmo-blokken verwijdert en nooit een eigen afspraak van de gebruiker raakt. De zichtbare categorie "Ritmo" is puur cosmetisch en bepaalt nooit wat er verwijderd wordt.
+  2. Weggeschreven wordt de héle dagplanning van die dag, niet alleen de laatste indeler-run. Alleen dan is de write idempotent (agenda voor dag X == Ritmo voor dag X) en loopt de agenda niet uit de pas zodra je na het indelen nog iets versleept.
+  3. De trigger is een expliciete knop per dag; opnieuw klikken is regenereren. Er wordt nooit ongevraagd naar buiten geschreven.
+  4. Verbinden vraagt voortaan altijd `Calendars.ReadWrite`. Consent is per gebruiker, dus bestaande koppelingen blijven lezen op hun oude consent (de token-refresh gebruikt de opgeslagen scope, niet de constante) en krijgen bij de eerste schrijfpoging een "Opnieuw koppelen"-melding.
+- **Afgesplitst:** S12a (#153) voor diff/PATCH, week-in-één-klik, twee-richtingsverkeer en de overige verfijningen.
+
+#### S12a, Agenda-write verfijningen. #153
+- **Doel:** de write-back uit S12 afmaken op de punten die daar bewust buiten scope bleven: diff/PATCH in plaats van delete+create (behoud van event-ids), een reeks dagen in één klik, twee-richtingsverkeer, all-day en herhalingen, en een `returnTo` door de OAuth-state.
+- **Afhankelijk van:** S12.
 
 ### Fase D, Uitvoeren (Claude als uitvoerder). S13–S16
 
