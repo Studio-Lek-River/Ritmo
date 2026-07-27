@@ -1939,6 +1939,8 @@ export default {
         timeout: 'no response in time',
         invalid_response: 'invalid response',
         desktop_only: 'only available on desktop',
+        unauthenticated: 'not logged in or session expired',
+        server_config: 'server not configured',
         unknown: 'unknown error',
       },
       usedNotice: 'Planned with {provider}.',

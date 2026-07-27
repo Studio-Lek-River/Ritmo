@@ -15,12 +15,29 @@ function providerError(code, message) {
   return err;
 }
 
+// `callApi` (sync/connections.js) kan `err.code` zetten op `server_config`
+// (sync uitgeschakeld), `unauthenticated` (geen sessie of verlopen token), of
+// een server-`code` van `api/plan.js` (`not_configured`, maar ook
+// `unexpected`/`invalid_request`/`method_not_allowed` die hier niet verwacht
+// worden). Alleen codes die de `planner.provider.reasons`-dictionary
+// (nl.js/en.js) kent mogen als `fallbackReason` naar buiten — de rest wordt
+// hier al `'unknown'`. `planWithProvider` (index.js) herhaalt deze whitelist
+// als laatste garantie, zodat geen enkele provider (ook een toekomstige) ooit
+// een onbekende code kan laten lekken.
+const KNOWN_REASON_CODES = new Set(['not_configured', 'unauthenticated', 'server_config']);
+
+function classifyError(err) {
+  // Geen `code`: `fetch` zelf gooide (bv. offline), dus geen server-antwoord.
+  if (!err?.code) return 'network';
+  return KNOWN_REASON_CODES.has(err.code) ? err.code : 'unknown';
+}
+
 export async function runServerProvider({ candidates, fixed, external, prefs }) {
   let data;
   try {
     data = await fetchServerPlan({ candidates, fixed, external, prefs });
   } catch (err) {
-    throw providerError(err?.code === 'not_configured' ? 'not_configured' : (err?.code || 'network'), 'planner_server_request_failed');
+    throw providerError(classifyError(err), 'planner_server_request_failed');
   }
 
   const hint = validatePlanHint(data);

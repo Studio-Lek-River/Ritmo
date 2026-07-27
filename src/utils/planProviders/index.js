@@ -26,6 +26,21 @@ export const PLANNER_PROVIDERS = [
   { id: 'server', desktopOnly: false, run: runServerProvider },
 ];
 
+// Elke `fallbackReason` die de UI bereikt, moet een key hebben onder
+// `planner.provider.reasons` in zowel nl.js als en.js — anders toont `t()`
+// de kale key-string. Elke provider zou zelf al netjes moeten mappen (zie
+// local.js/server.js), maar deze whitelist is de laatste garantie: een
+// onbekende of nieuwe code (ook van een toekomstige provider) wordt hier
+// alsnog `'unknown'` in plaats van dat hij ongefilterd doorlekt.
+const KNOWN_FALLBACK_REASONS = new Set([
+  'not_configured', 'network', 'timeout', 'invalid_response', 'desktop_only',
+  'unauthenticated', 'server_config', 'unknown',
+]);
+
+function normalizeFallbackReason(code) {
+  return KNOWN_FALLBACK_REASONS.has(code) ? code : 'unknown';
+}
+
 function resolveProvider(providerId) {
   return PLANNER_PROVIDERS.find((p) => p.id === providerId) || PLANNER_PROVIDERS[0];
 }
@@ -81,6 +96,6 @@ export async function planWithProvider({
       fallbackReason: null,
     };
   } catch (err) {
-    return fallbackToHeuristic(dayArgs, provider.id, err?.code || 'unknown');
+    return fallbackToHeuristic(dayArgs, provider.id, normalizeFallbackReason(err?.code));
   }
 }

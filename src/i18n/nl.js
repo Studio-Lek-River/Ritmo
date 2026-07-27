@@ -1951,6 +1951,8 @@ export default {
         timeout: 'geen antwoord binnen de tijd',
         invalid_response: 'ongeldig antwoord',
         desktop_only: 'alleen beschikbaar op desktop',
+        unauthenticated: 'niet ingelogd of sessie verlopen',
+        server_config: 'server niet geconfigureerd',
         unknown: 'onbekende fout',
       },
       usedNotice: 'Ingedeeld met {provider}.',
