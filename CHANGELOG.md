@@ -1,3 +1,11 @@
+# [0.86.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.85.0...v0.86.0) (2026-07-27)
+
+
+### Features
+
+* **nutrition:** porties en maaltijden in het datamodel ([877f34c](https://github.com/Studio-Lek-River/Ritmo/commit/877f34c9516fe75b4287bbc890dfc1126927fb00))
+* **nutrition:** porties en maaltijden samenstellen en loggen ([20f9d66](https://github.com/Studio-Lek-River/Ritmo/commit/20f9d665985fc289ade98d8c0cc6c3cbc596c07c)), closes [#147](https://github.com/Studio-Lek-River/Ritmo/issues/147)
+
 # [0.85.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.84.0...v0.85.0) (2026-07-26)
 
 
