@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Trash2 } from 'lucide-react';
 import ConfirmDialog from '../ConfirmDialog';
-import { NUTRITION_UNITS, createFoodItem, kcalPerProduct } from '../../utils/nutrition';
+import { MACRO_KEYS, NUTRITION_UNITS, createFoodItem, kcalPerProduct } from '../../utils/nutrition';
 import { parseMeasurementInput } from '../../utils/measurements';
 import { useTranslation } from '../../i18n/useTranslation';
 
@@ -188,46 +188,30 @@ export default function NutritionItemForm({ open, mode = 'add', item, onClose, o
           />
         </div>
 
-        {/* Drie optionele macro's (#148): leeg laten telt als 0 (AC1). */}
-        <div className="mb-4 grid grid-cols-3 gap-2">
-          <div>
-            <p className={`text-xs ${theme.textMuted} mb-1`}>
-              {t('nutrition.item.proteinLabel', { unit: unitLabel })}
-            </p>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={draft.protein}
-              onChange={(e) => setDraft((prev) => ({ ...prev, protein: e.target.value }))}
-              placeholder={t('nutrition.item.proteinPlaceholder')}
-              className={`w-full px-3 py-2 rounded-lg text-sm ${theme.input} ${theme.textSecondary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-            />
-          </div>
-          <div>
-            <p className={`text-xs ${theme.textMuted} mb-1`}>
-              {t('nutrition.item.carbsLabel', { unit: unitLabel })}
-            </p>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={draft.carbs}
-              onChange={(e) => setDraft((prev) => ({ ...prev, carbs: e.target.value }))}
-              placeholder={t('nutrition.item.carbsPlaceholder')}
-              className={`w-full px-3 py-2 rounded-lg text-sm ${theme.input} ${theme.textSecondary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-            />
-          </div>
-          <div>
-            <p className={`text-xs ${theme.textMuted} mb-1`}>
-              {t('nutrition.item.fatLabel', { unit: unitLabel })}
-            </p>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={draft.fat}
-              onChange={(e) => setDraft((prev) => ({ ...prev, fat: e.target.value }))}
-              placeholder={t('nutrition.item.fatPlaceholder')}
-              className={`w-full px-3 py-2 rounded-lg text-sm ${theme.input} ${theme.textSecondary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-            />
+        {/* Drie optionele macro's (#148): leeg laten telt als 0 (AC1). Het
+            "optioneel per 100 {unit}"-deel staat één keer in het sectielabel;
+            per veld alleen de korte naam, anders wrapt elk label op een andere
+            hoogte en lopen de drie invoervelden uit lijn. */}
+        <div className="mb-4">
+          <p className={`text-xs ${theme.textMuted} mb-1`}>
+            {t('nutrition.item.macrosSectionLabel', { unit: unitLabel })}
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {MACRO_KEYS.map((key) => (
+              <div key={key}>
+                <p className={`text-xs ${theme.textMuted} mb-1`}>
+                  {t(`nutrition.macros.${key}Label`)}
+                </p>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={draft[key]}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, [key]: e.target.value }))}
+                  placeholder={t(`nutrition.item.${key}Placeholder`)}
+                  className={`w-full px-3 py-2 rounded-lg text-sm ${theme.input} ${theme.textSecondary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                />
+              </div>
+            ))}
           </div>
         </div>
 

@@ -1133,13 +1133,14 @@ export default {
       unitLabel: 'Unit',
       kcalLabel: 'Kcal per 100 {unit}',
       kcalPlaceholder: 'e.g. 370',
-      // #148: three optional macros next to kcal — leaving them empty counts
-      // as 0 (AC1), so the label always says "optional" explicitly.
-      proteinLabel: 'Protein per 100 {unit} (optional, in grams)',
+      // #148: three optional macros next to kcal. "Optional" appears once in
+      // the section label instead of three times per field: with the long
+      // per-field variant each label wrapped differently and the three inputs
+      // fell out of line. The field names come from nutrition.macros.* — the
+      // same three labels the calculated macro line uses.
+      macrosSectionLabel: 'Macros per 100 {unit} (optional, in grams)',
       proteinPlaceholder: 'e.g. 8',
-      carbsLabel: 'Carbs per 100 {unit} (optional, in grams)',
       carbsPlaceholder: 'e.g. 60',
-      fatLabel: 'Fat per 100 {unit} (optional, in grams)',
       fatPlaceholder: 'e.g. 6',
       // Poort-0 addition (#147): the size is required, so no more
       // "(optional)" — without a valid "1 product = ..." the save button

@@ -1143,13 +1143,14 @@ export default {
       unitLabel: 'Eenheid',
       kcalLabel: 'Kcal per 100 {unit}',
       kcalPlaceholder: 'bijv. 370',
-      // #148: drie optionele macro's naast kcal — leeg laten telt als 0
-      // (AC1), dus altijd expliciet "optioneel" in het label.
-      proteinLabel: 'Eiwit per 100 {unit} (optioneel, in gram)',
+      // #148: drie optionele macro's naast kcal. "Optioneel" staat één keer in
+      // het sectielabel i.p.v. drie keer per veld: met de lange variant per
+      // veld wrapte elk label anders en liepen de drie invoervelden uit
+      // lijn. De veldnamen zelf komen uit nutrition.macros.* — dezelfde drie
+      // labels die de berekende macroregel gebruikt.
+      macrosSectionLabel: "Macro's per 100 {unit} (optioneel, in gram)",
       proteinPlaceholder: 'bijv. 8',
-      carbsLabel: 'Koolhydraten per 100 {unit} (optioneel, in gram)',
       carbsPlaceholder: 'bijv. 60',
-      fatLabel: 'Vet per 100 {unit} (optioneel, in gram)',
       fatPlaceholder: 'bijv. 6',
       // Poort-0-aanvulling (#147): de maat is verplicht, dus geen
       // "(optioneel)" meer — zonder een geldige "1 product = ..." blijft de
