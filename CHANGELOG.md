@@ -1,3 +1,16 @@
+# [0.92.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.91.0...v0.92.0) (2026-07-27)
+
+
+### Bug Fixes
+
+* **planner:** voorkom onvertaalde fallback-redenen bij de server-provider ([fb1c1bc](https://github.com/Studio-Lek-River/Ritmo/commit/fb1c1bc7ec4b73d8358224094ce2b493087f71b6))
+
+
+### Features
+
+* **planner:** koppel "deel mijn dag in" aan de provider-keuze ([45680ba](https://github.com/Studio-Lek-River/Ritmo/commit/45680bad1957f0f54b5bf943c1d63c56dc2e2f69))
+* **planner:** voeg planner-provider-abstractie en server-seam toe ([370ccbb](https://github.com/Studio-Lek-River/Ritmo/commit/370ccbbe50297de811de566e49786042d3f0e8d4))
+
 # [0.91.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.90.0...v0.91.0) (2026-07-27)
 
 
