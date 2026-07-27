@@ -29,6 +29,7 @@ import useIsDesktop from './hooks/useIsDesktop';
 import ErrorBoundary from './components/ErrorBoundary';
 import HelpOverlay from './components/help/HelpOverlay';
 import InstallGuide from './components/help/InstallGuide';
+import NutritionGuide from './components/help/NutritionGuide';
 import BackupSection from './components/BackupSection';
 import AuthSection from './components/auth/AuthSection';
 import SyncStatusRow from './components/SyncStatusRow';
@@ -3565,7 +3566,13 @@ function HiddenSourceItemsSection({ theme, items, onUnhide }) {
 function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, planMode, setPlanMode, switchToStandard, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour, hiddenSourceItems, onUnhideSourceItem }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
-  const [helpView, setHelpView] = useState(initialHelp ? 'list' : null); // null | 'list' | 'install' | 'feedback'
+  // Mini-stack i.p.v. een enkel helpView-veld (#150): 'nutrition' is bereikbaar
+  // vanaf zowel de help-lijst als de Voeding-tab, dus de juiste terugweg is
+  // niet meer af te leiden uit alleen de huidige view. helpView blijft bestaan
+  // als afgeleide van de stack, zodat de rest van deze modal ongewijzigd blijft.
+  const [helpStack, setHelpStack] = useState(initialHelp ? ['list'] : []);
+  const helpView = helpStack[helpStack.length - 1] ?? null; // null | 'list' | 'install' | 'feedback' | 'nutrition'
+  const openHelp = (id) => setHelpStack((prev) => [...prev, id]);
   const [reorderMode, setReorderMode] = useState(false);
   const [androidPromptable, setAndroidPromptable] = useState(false);
   useEffect(() => {
@@ -3598,15 +3605,10 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
     list: t('help.title'),
     install: t('help.install'),
     feedback: t('help.feedback'),
+    nutrition: t('help.nutrition'),
   };
 
-  const handleBack = () => {
-    if (helpView === 'install' || helpView === 'feedback') {
-      setHelpView('list');
-    } else {
-      setHelpView(null);
-    }
-  };
+  const handleBack = () => setHelpStack((prev) => prev.slice(0, -1));
 
   return (
     <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4 overflow-y-auto">
@@ -3629,7 +3631,7 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
           <div className="flex items-center gap-1 flex-shrink-0">
             {helpView === null && (
               <button
-                onClick={() => setHelpView('list')}
+                onClick={() => openHelp('list')}
                 className={`p-2 ${theme.hover} rounded-lg`}
                 aria-label={t('settings.helpAria')}
               >
@@ -3646,7 +3648,7 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
           <HelpOverlay
             theme={theme}
             showTour={appMode === 'health' && modules.some((m) => m.enabled && isHealthModule(m))}
-            onSelect={(id) => { if (id === 'tour') { onStartTour?.(); } else { setHelpView(id); } }}
+            onSelect={(id) => { if (id === 'tour') { onStartTour?.(); } else { openHelp(id); } }}
           />
         )}
 
@@ -3654,8 +3656,12 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
           <InstallGuide theme={theme} />
         )}
 
+        {helpView === 'nutrition' && (
+          <NutritionGuide theme={theme} />
+        )}
+
         {helpView === 'feedback' && (
-          <FeedbackForm theme={theme} onBack={() => setHelpView('list')} />
+          <FeedbackForm theme={theme} onBack={handleBack} />
         )}
 
         {helpView === null && (
@@ -4115,7 +4121,16 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
 
         {activeTab === 'nutrition' && (
           <div>
-            <h3 className={`font-semibold ${theme.textSecondary} mb-3`}>{t('nutrition.library.title')}</h3>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <h3 className={`font-semibold ${theme.textSecondary}`}>{t('nutrition.library.title')}</h3>
+              <button
+                onClick={() => openHelp('nutrition')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition border ${theme.border} ${theme.textSecondary} ${theme.hover}`}
+              >
+                <HelpCircle className="w-3.5 h-3.5" />
+                {t('nutrition.guide.openButton')}
+              </button>
+            </div>
             <NutritionLibraryPanel theme={theme} />
           </div>
         )}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { GraduationCap, Smartphone, MessageSquare } from 'lucide-react';
+import { GraduationCap, Smartphone, MessageSquare, UtensilsCrossed } from 'lucide-react';
 import HelpItemRow from './HelpItemRow';
 import { useTranslation } from '../../i18n/useTranslation';
 import { APP_VERSION } from '../../utils/appVersion';
@@ -18,6 +18,15 @@ export default function HelpOverlay({ theme, onSelect, showTour }) {
       icon: Smartphone,
       title: t('help.install'),
       description: t('help.installDesc'),
+    },
+    // Onvoorwaardelijk zichtbaar (#150): de Voeding-tab is dat ook, en juist
+    // wie de voedingsbibliotheek nog niet aan heeft staan heeft de uitleg
+    // nodig.
+    {
+      id: 'nutrition',
+      icon: UtensilsCrossed,
+      title: t('help.nutrition'),
+      description: t('help.nutritionDesc'),
     },
     {
       id: 'feedback',

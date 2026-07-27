@@ -1219,6 +1219,59 @@ export default {
       fatLabel: 'Vet',
       summary: '{proteinLabel} {protein} · {carbsLabel} {carbs} · {fatLabel} {fat}',
     },
+    // Uitlegpagina "Van product naar maaltijd" (#150): geen enkel getal
+    // hierin — alle kcal/ml-bedragen komen berekend uit
+    // src/utils/nutritionExample.js binnen via t()-interpolatie. setupSteps
+    // en logSteps zijn arrays; scripts/check-i18n.mjs ziet arrays als blad,
+    // dus de lengte tussen nl/en wordt hier bewust handmatig gelijk gehouden.
+    guide: {
+      openButton: 'Hoe werkt dit?',
+      intro: 'Voeding werkt in Ritmo in drie lagen: een product, een portie en een maaltijd. Hieronder zie je hoe die in elkaar grijpen, met een doorgerekend voorbeeld dat je met één klik kunt overnemen.',
+      setupTitle: 'Eerst aanzetten',
+      setupSteps: [
+        'Open in Instellingen → Modules een teller met eenheid kcal en tik op bewerken.',
+        'Zet "Voedingsbibliotheek gebruiken" aan — deze optie verschijnt alleen bij een kcal-teller.',
+        'Koppel er optioneel een ml-teller aan, zodat drankjes automatisch meetellen voor je vochtdoel.',
+      ],
+      productTitle: '1. Product',
+      productBody: 'Een product is de basis: hoeveel kcal (en eventueel eiwit, koolhydraten en vet) er per 100 gram of 100 milliliter in zitten, plus hoeveel dat één stuk is — bijvoorbeeld "1 schep = 30 g".',
+      portionTitle: '2. Portie',
+      portionBody: 'Een portie combineert een of meer producten met een aantal, bijvoorbeeld twee scheppen havermout plus een glas melk. Een portie mag ook uit precies één product bestaan.',
+      mealTitle: '3. Maaltijd',
+      mealBody: 'Een maaltijd combineert een of meer porties tot wat je in één keer logt, bijvoorbeeld een kom havermout plus een stuk fruit.',
+      entryLine: '{count}× {name} · {kcal} kcal',
+      exampleNote: 'Dit voorbeeld is alleen een illustratie — je bibliotheek verandert pas als je hieronder op de knop klikt.',
+      addButton: 'Zet dit voorbeeld in mijn bibliotheek',
+      addedButton: 'Voorbeeld staat in je bibliotheek',
+      addedToast: 'Voorbeeld toegevoegd aan je bibliotheek',
+      addHint: 'Je bibliotheek blijft leeg tot je zelf iets toevoegt. Eenmaal overgenomen kun je het voorbeeld gewoon bewerken of verwijderen, net als elk ander item.',
+      logTitle: 'Loggen',
+      logSteps: [
+        'Open de kcal-teller op je dagkaart en tik op loggen.',
+        'Zoek het product, de portie of de maaltijd op en kies hoeveel je ervan neemt.',
+        'Bevestig — het bedrag komt direct bij je dagtotaal.',
+      ],
+      editTitle: 'Hoeveelheid corrigeren',
+      editBody: 'Te veel of te weinig gelogd? Tik op de regel in je dag-log om de hoeveelheid aan te passen of de regel te verwijderen — het dagtotaal werkt automatisch bij.',
+      drinkTitle: 'Drinken telt mee',
+      drinkBody: 'Zet bij een ml-product "Telt ook mee als drinken" aan en koppel de kcal-teller aan een ml-teller. Bij het loggen krijg je dan zowel de kcal als de ml erbij.',
+      drinkExample: '{name} in "{portion}" telt voor {ml} ml mee — in de hele maaltijd "{meal}" is dat samen {mealMl} ml.',
+      macrosTitle: "Macro's",
+      macrosBody: "Vul optioneel eiwit, koolhydraten en vet per 100 gram of milliliter in bij een product. Ritmo telt ze automatisch op naar portie- en maaltijdniveau en toont ze onder het totaal.",
+      insightTitle: 'Terugkijken',
+      insightBody: "De inzicht-kaart van je kcal-teller laat per dag zien wat je gegeten hebt, inclusief de macro's — zo zie je in één oogopslag hoe je dag eruitzag.",
+      example: {
+        oatmealName: 'Havermout',
+        milkName: 'Halfvolle melk',
+        bananaName: 'Banaan',
+        scoopLabel: 'schep',
+        glassLabel: 'glas',
+        bananaLabel: 'banaan',
+        bowlName: 'Kom havermout',
+        fruitName: 'Stuk fruit',
+        breakfastName: 'Ontbijt',
+      },
+    },
     // servingUnit/servingUnitPlural blijven bestaan als fallback voor
     // gelogde regels van vóór #147 (kind: 'recipe', unit: 'serving') — die
     // regels blijven ongewijzigd zichtbaar (AC6), ook al bestaat het
@@ -1530,6 +1583,9 @@ export default {
     tourDesc: 'Stel de basis van gezondheidsmodus stap voor stap in',
     install: 'App op beginscherm zetten',
     installDesc: 'Open Ritmo sneller, vanaf jouw startscherm',
+    // #150: help-lijst-item voor de uitlegpagina "Van product naar maaltijd".
+    nutrition: 'Van product naar maaltijd',
+    nutritionDesc: 'Zie hoe voeding in drie lagen werkt, met een voorbeeld',
     feedback: 'Feedback geven',
     feedbackDesc: 'Probleem melden of een idee delen',
     version: 'Ritmo v{version}',

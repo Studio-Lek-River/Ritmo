@@ -1209,6 +1209,59 @@ export default {
       fatLabel: 'Fat',
       summary: '{proteinLabel} {protein} · {carbsLabel} {carbs} · {fatLabel} {fat}',
     },
+    // "From product to meal" guide (#150): no numbers in here at all — every
+    // kcal/ml amount comes in calculated from src/utils/nutritionExample.js
+    // via t() interpolation. setupSteps and logSteps are arrays;
+    // scripts/check-i18n.mjs treats arrays as a leaf, so the length is kept
+    // equal to nl.js by hand here.
+    guide: {
+      openButton: 'How does this work?',
+      intro: 'Nutrition in Ritmo works in three layers: a product, a portion and a meal. Below you can see how they fit together, with a worked example you can add with one tap.',
+      setupTitle: 'Turn it on first',
+      setupSteps: [
+        'In Settings → Modules, open a counter with unit kcal and tap edit.',
+        'Turn on "Use nutrition library" — this option only appears on a kcal counter.',
+        'Optionally link it to an ml counter, so drinks automatically count towards your hydration goal.',
+      ],
+      productTitle: '1. Product',
+      productBody: 'A product is the base: how many kcal (and optionally protein, carbs and fat) it has per 100 grams or 100 millilitres, plus how much one piece is — for example "1 scoop = 30 g".',
+      portionTitle: '2. Portion',
+      portionBody: 'A portion combines one or more products with a count, for example two scoops of oatmeal plus a glass of milk. A portion can also consist of exactly one product.',
+      mealTitle: '3. Meal',
+      mealBody: 'A meal combines one or more portions into what you log in one go, for example a bowl of oatmeal plus a piece of fruit.',
+      entryLine: '{count}× {name} · {kcal} kcal',
+      exampleNote: 'This example is just an illustration — your library only changes once you tap the button below.',
+      addButton: 'Add this example to my library',
+      addedButton: 'Example is in your library',
+      addedToast: 'Example added to your library',
+      addHint: 'Your library stays empty until you add something yourself. Once added, you can simply edit or delete the example, just like any other item.',
+      logTitle: 'Logging',
+      logSteps: [
+        'Open the kcal counter on your day card and tap log.',
+        'Search for the product, portion or meal and choose how much you take.',
+        'Confirm — the amount is added to your day total immediately.',
+      ],
+      editTitle: 'Correcting an amount',
+      editBody: 'Logged too much or too little? Tap the entry in your day log to change the amount or remove it — the day total updates automatically.',
+      drinkTitle: 'Drinks count too',
+      drinkBody: 'Turn on "Also counts as a drink" on an ml product and link the kcal counter to an ml counter. Logging then adds both the kcal and the ml.',
+      drinkExample: '{name} in "{portion}" counts for {ml} ml — across the whole meal "{meal}" that adds up to {mealMl} ml.',
+      macrosTitle: 'Macros',
+      macrosBody: 'Optionally fill in protein, carbs and fat per 100 grams or millilitres on a product. Ritmo adds them up automatically to portion and meal level and shows them under the total.',
+      insightTitle: 'Looking back',
+      insightBody: "Your kcal counter's insight card shows what you ate that day, including the macros — so you can see how your day went at a glance.",
+      example: {
+        oatmealName: 'Oatmeal',
+        milkName: 'Semi-skimmed milk',
+        bananaName: 'Banana',
+        scoopLabel: 'scoop',
+        glassLabel: 'glass',
+        bananaLabel: 'banana',
+        bowlName: 'Bowl of oatmeal',
+        fruitName: 'Piece of fruit',
+        breakfastName: 'Breakfast',
+      },
+    },
     // servingUnit/servingUnitPlural remain as a fallback for entries logged
     // before #147 (kind: 'recipe', unit: 'serving') — those entries stay
     // visible unchanged (AC6), even though the recipe form itself no longer
@@ -1518,6 +1571,9 @@ export default {
     tourDesc: 'Set up the basics of health mode step by step',
     install: 'Add app to home screen',
     installDesc: 'Open Ritmo faster, from your home screen',
+    // #150: help list item for the "From product to meal" guide.
+    nutrition: 'From product to meal',
+    nutritionDesc: 'See how nutrition works in three layers, with an example',
     feedback: 'Give feedback',
     feedbackDesc: 'Report a problem or share an idea',
     version: 'Ritmo v{version}',
