@@ -2052,7 +2052,7 @@ export default {
       none: 'Geen voorkeur',
     },
     autoPlan: {
-      label: 'Automatisch inplannen (later beschikbaar)',
+      label: 'Automatisch inplannen',
       short: 'Auto',
     },
     deepWork: {

@@ -2040,7 +2040,7 @@ export default {
       none: 'No preference',
     },
     autoPlan: {
-      label: 'Auto-plan (available later)',
+      label: 'Auto-plan',
       short: 'Auto',
     },
     deepWork: {
