@@ -1,3 +1,10 @@
+# [0.88.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.87.1...v0.88.0) (2026-07-27)
+
+
+### Features
+
+* **nutrition:** drink- en calorieënteller samenvoegen tot één kaart ([7940a4d](https://github.com/Studio-Lek-River/Ritmo/commit/7940a4d56483f806cc439ea6c133803f5e19ebab)), closes [#151](https://github.com/Studio-Lek-River/Ritmo/issues/151)
+
 ## [0.87.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.87.0...v0.87.1) (2026-07-27)
 
 
