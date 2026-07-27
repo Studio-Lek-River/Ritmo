@@ -93,6 +93,11 @@ export default function ConnectionsSection({ theme, accountId, onCalendarCleaned
   // { connectionId, unknown: true } (scan mislukt, Poort-0 4) — bepaalt welke
   // variant van de dialoog open staat. null = dialoog dicht.
   const [pendingDisconnect, setPendingDisconnect] = useState(null);
+  // Cumulatief aantal verwijderd tijdens cleanupStage === 'cleaning', zelfde
+  // patroon als `deletedSoFar` in CalendarCleanupSection.jsx — zodat de
+  // Verbreken-knop hier hetzelfde oplopende aantal toont als de opruimknop in
+  // Instellingen (hergebruikt settings.calendarCleanupBusy).
+  const [deletedSoFar, setDeletedSoFar] = useState(0);
 
   function reportCleanupError(err) {
     // Zelfde ERROR_KEYS-mapping als de opruimknop in Instellingen
@@ -145,8 +150,9 @@ export default function ConnectionsSection({ theme, accountId, onCalendarCleaned
     const target = pendingDisconnect;
     setPendingDisconnect(null);
     setCleanupStage('cleaning');
+    setDeletedSoFar(0);
     try {
-      const result = await runCalendarCleanup();
+      const result = await runCalendarCleanup({ onProgress: ({ deleted }) => setDeletedSoFar(deleted) });
       setCleanupStage(null);
       if (result.deleted > 0) onCalendarCleaned?.();
       if (result.failed === 0 && !result.capped) {
@@ -260,8 +266,10 @@ export default function ConnectionsSection({ theme, accountId, onCalendarCleaned
           const disconnectingBusy = provider === 'outlook'
             ? connectBusy || cleanupStage !== null || !!(connection && busyId === connection.id)
             : connectingBusy;
-          const disconnectLabel = provider === 'outlook' && cleanupStage
-            ? t(`connections.disconnectCleanup.${cleanupStage === 'scanning' ? 'scanning' : 'busy'}`)
+          const disconnectLabel = provider === 'outlook' && cleanupStage === 'scanning'
+            ? t('connections.disconnectCleanup.scanning')
+            : provider === 'outlook' && cleanupStage === 'cleaning'
+            ? t('settings.calendarCleanupBusy', { deleted: deletedSoFar })
             : t('connections.disconnect');
 
           return (

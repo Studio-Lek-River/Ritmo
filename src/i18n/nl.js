@@ -2191,7 +2191,6 @@ export default {
       confirmOnly: 'Alleen verbreken',
       confirmAnyway: 'Toch verbreken',
       scanning: 'Blokken tellen…',
-      busy: 'Ritmo-blokken opruimen…',
     },
     trello: {
       title: 'Trello koppelen',

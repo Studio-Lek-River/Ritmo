@@ -2179,7 +2179,6 @@ export default {
       confirmOnly: 'Disconnect only',
       confirmAnyway: 'Disconnect anyway',
       scanning: 'Counting blocks…',
-      busy: 'Cleaning up Ritmo blocks…',
     },
     trello: {
       title: 'Connect Trello',
