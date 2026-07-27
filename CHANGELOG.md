@@ -1,3 +1,11 @@
+# [0.93.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.92.0...v0.93.0) (2026-07-27)
+
+
+### Features
+
+* **outlook:** schrijf de dagplanning naar Outlook via "Zet in agenda" ([9436961](https://github.com/Studio-Lek-River/Ritmo/commit/9436961b37773b7dc8722771639a958a638683ad)), closes [#41](https://github.com/Studio-Lek-River/Ritmo/issues/41)
+* **outlook:** vraag Calendars.ReadWrite en deel de write-keten voor write.js ([2173498](https://github.com/Studio-Lek-River/Ritmo/commit/2173498aa061b7ecdc5471f5fcfb46a083fe44e1))
+
 # [0.92.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.91.0...v0.92.0) (2026-07-27)
 
 
