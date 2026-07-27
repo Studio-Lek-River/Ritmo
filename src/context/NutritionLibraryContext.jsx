@@ -58,54 +58,100 @@ export function NutritionLibraryProvider({ children }) {
     return { item: removedItem, undo };
   }, [setRaw]);
 
-  // Recept-mutators, één-op-één gemodelleerd naar de item-mutators hierboven
+  // Portie-mutators, één-op-één gemodelleerd naar de item-mutators hierboven
   // (zelfde undo-contract). De item-mutators gebruiken al `{ ...base, ... }`
-  // bij het schrijven, dus `recipes` blijft daar vanzelf ongemoeid — deze
-  // drie zijn de enige plek die `recipes` zelf muteert.
-  const addRecipe = useCallback((recipe) => {
+  // bij het schrijven, dus `recipes` blijft daar vanzelf ongemoeid (#147) —
+  // deze zes (portie + maaltijd) zijn de enige plekken die `portions`/`meals`
+  // zelf muteren.
+  const addPortion = useCallback((portion) => {
     setRaw((prev) => {
       const base = normalizeNutritionLibrary(prev);
-      return { ...base, recipes: [...base.recipes, recipe] };
+      return { ...base, portions: [...base.portions, portion] };
     });
-    return recipe;
+    return portion;
   }, [setRaw]);
 
-  const updateRecipe = useCallback((recipe) => {
+  const updatePortion = useCallback((portion) => {
     setRaw((prev) => {
       const base = normalizeNutritionLibrary(prev);
-      return { ...base, recipes: base.recipes.map((r) => (r.id === recipe.id ? recipe : r)) };
+      return { ...base, portions: base.portions.map((p) => (p.id === portion.id ? portion : p)) };
     });
   }, [setRaw]);
 
-  // Zelfde undo-contract als removeItem: { recipe, undo } terug, undo zet het
-  // recept terug op zijn oorspronkelijke index en is idempotent (id-guard),
+  // Zelfde undo-contract als removeItem: { portion, undo } terug, undo zet de
+  // portie terug op zijn oorspronkelijke index en is idempotent (id-guard),
   // zodat een dubbele klik op de undo-actie niet per ongeluk dupliceert.
-  const removeRecipe = useCallback((recipeId) => {
-    let removedRecipe = null;
+  const removePortion = useCallback((portionId) => {
+    let removedPortion = null;
     let removedIndex = -1;
     setRaw((prev) => {
       const base = normalizeNutritionLibrary(prev);
-      const idx = base.recipes.findIndex((r) => r.id === recipeId);
+      const idx = base.portions.findIndex((p) => p.id === portionId);
       if (idx === -1) return base;
-      removedRecipe = base.recipes[idx];
+      removedPortion = base.portions[idx];
       removedIndex = idx;
-      return { ...base, recipes: [...base.recipes.slice(0, idx), ...base.recipes.slice(idx + 1)] };
+      return { ...base, portions: [...base.portions.slice(0, idx), ...base.portions.slice(idx + 1)] };
     });
     const undo = () => {
-      if (!removedRecipe) return;
+      if (!removedPortion) return;
       setRaw((prev) => {
         const base = normalizeNutritionLibrary(prev);
-        if (base.recipes.some((r) => r.id === removedRecipe.id)) return base;
-        const idx = Math.min(removedIndex, base.recipes.length);
-        return { ...base, recipes: [...base.recipes.slice(0, idx), removedRecipe, ...base.recipes.slice(idx)] };
+        if (base.portions.some((p) => p.id === removedPortion.id)) return base;
+        const idx = Math.min(removedIndex, base.portions.length);
+        return { ...base, portions: [...base.portions.slice(0, idx), removedPortion, ...base.portions.slice(idx)] };
       });
     };
-    return { recipe: removedRecipe, undo };
+    return { portion: removedPortion, undo };
+  }, [setRaw]);
+
+  // Maaltijd-mutators, zelfde patroon als de portie-mutators hierboven, één
+  // laag hoger.
+  const addMeal = useCallback((meal) => {
+    setRaw((prev) => {
+      const base = normalizeNutritionLibrary(prev);
+      return { ...base, meals: [...base.meals, meal] };
+    });
+    return meal;
+  }, [setRaw]);
+
+  const updateMeal = useCallback((meal) => {
+    setRaw((prev) => {
+      const base = normalizeNutritionLibrary(prev);
+      return { ...base, meals: base.meals.map((m) => (m.id === meal.id ? meal : m)) };
+    });
+  }, [setRaw]);
+
+  const removeMeal = useCallback((mealId) => {
+    let removedMeal = null;
+    let removedIndex = -1;
+    setRaw((prev) => {
+      const base = normalizeNutritionLibrary(prev);
+      const idx = base.meals.findIndex((m) => m.id === mealId);
+      if (idx === -1) return base;
+      removedMeal = base.meals[idx];
+      removedIndex = idx;
+      return { ...base, meals: [...base.meals.slice(0, idx), ...base.meals.slice(idx + 1)] };
+    });
+    const undo = () => {
+      if (!removedMeal) return;
+      setRaw((prev) => {
+        const base = normalizeNutritionLibrary(prev);
+        if (base.meals.some((m) => m.id === removedMeal.id)) return base;
+        const idx = Math.min(removedIndex, base.meals.length);
+        return { ...base, meals: [...base.meals.slice(0, idx), removedMeal, ...base.meals.slice(idx)] };
+      });
+    };
+    return { meal: removedMeal, undo };
   }, [setRaw]);
 
   const value = useMemo(
-    () => ({ library, addItem, updateItem, removeItem, addRecipe, updateRecipe, removeRecipe }),
-    [library, addItem, updateItem, removeItem, addRecipe, updateRecipe, removeRecipe]
+    () => ({
+      library,
+      addItem, updateItem, removeItem,
+      addPortion, updatePortion, removePortion,
+      addMeal, updateMeal, removeMeal,
+    }),
+    [library, addItem, updateItem, removeItem, addPortion, updatePortion, removePortion, addMeal, updateMeal, removeMeal]
   );
 
   return (
