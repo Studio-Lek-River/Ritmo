@@ -1,3 +1,10 @@
+# [0.89.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.88.0...v0.89.0) (2026-07-27)
+
+
+### Features
+
+* **nutrition:** uitleg van product naar maaltijd met voorbeeld ([c9b5f3a](https://github.com/Studio-Lek-River/Ritmo/commit/c9b5f3ad435970838fb1fcfa76845e6efef00311)), closes [#150](https://github.com/Studio-Lek-River/Ritmo/issues/150)
+
 # [0.88.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.87.1...v0.88.0) (2026-07-27)
 
 
