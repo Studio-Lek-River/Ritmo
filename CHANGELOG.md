@@ -1,3 +1,11 @@
+# [0.98.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.97.0...v0.98.0) (2026-07-27)
+
+
+### Features
+
+* **connections:** toon het aantal opgeruimde blokken tijdens verbreken ([cbb2bd6](https://github.com/Studio-Lek-River/Ritmo/commit/cbb2bd61f3925737993240e239e1bd38a51128d1))
+* **connections:** vraag bij verbreken van Outlook om de Ritmo-blokken op te ruimen ([ebd82b4](https://github.com/Studio-Lek-River/Ritmo/commit/ebd82b43b874525a51cceb2b5c29acc330988212)), closes [#160](https://github.com/Studio-Lek-River/Ritmo/issues/160)
+
 # [0.97.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.96.0...v0.97.0) (2026-07-27)
 
 
