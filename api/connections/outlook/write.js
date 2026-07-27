@@ -131,7 +131,10 @@ async function fetchTaggedEvents(accessToken, calendarId, dateKey, windowStart, 
   const params = new URLSearchParams({
     startDateTime: windowStart,
     endDateTime: windowEnd,
-    $select: 'id,subject',
+    // Alleen het id: de titel is hier nergens voor nodig, en juist op het
+    // destructieve pad hoort er geen persoonsdata mee te komen die we niet
+    // gebruiken.
+    $select: 'id',
     $expand: `singleValueExtendedProperties($filter=id eq '${RITMO_TAG_ID}')`,
     $top: '250',
   });
