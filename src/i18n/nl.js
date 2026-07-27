@@ -2180,6 +2180,18 @@ export default {
       outlookConnected: 'Outlook is verbonden.',
       trelloConnected: 'Trello is verbonden als {username}.',
       githubConnected: 'GitHub is verbonden als {login}.',
+      outlookDisconnectedCleaned: 'Outlook is verbroken en de Ritmo-blokken zijn opgeruimd.',
+    },
+    disconnectCleanup: {
+      title: 'Ritmo-blokken opruimen vóór het verbreken?',
+      body: 'Ritmo vond {count} Ritmo-blok(ken) in je Outlook-agenda. Ruim ze eerst op, of verbreek meteen — dan blijven de blokken definitief staan, want zonder koppeling kan Ritmo ze niet meer verwijderen.',
+      bodyAtLeast: 'Ritmo vond minstens {count} Ritmo-blok(ken) in je Outlook-agenda (mogelijk meer). Ruim ze eerst op, of verbreek meteen — dan blijven de blokken definitief staan, want zonder koppeling kan Ritmo ze niet meer verwijderen.',
+      bodyUnknown: 'Ritmo kon niet nagaan of er nog Ritmo-blokken in je Outlook-agenda staan. Je kunt de koppeling toch verbreken, maar eventuele blokken kunnen daarna niet meer opgeruimd worden.',
+      confirmCleanup: 'Opruimen en verbreken',
+      confirmOnly: 'Alleen verbreken',
+      confirmAnyway: 'Toch verbreken',
+      scanning: 'Blokken tellen…',
+      busy: 'Ritmo-blokken opruimen…',
     },
     trello: {
       title: 'Trello koppelen',

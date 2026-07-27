@@ -2168,6 +2168,18 @@ export default {
       outlookConnected: 'Outlook is connected.',
       trelloConnected: 'Trello is connected as {username}.',
       githubConnected: 'GitHub is connected as {login}.',
+      outlookDisconnectedCleaned: 'Outlook is disconnected and the Ritmo blocks have been cleaned up.',
+    },
+    disconnectCleanup: {
+      title: 'Clean up Ritmo blocks before disconnecting?',
+      body: 'Ritmo found {count} Ritmo block(s) in your Outlook calendar. Clean them up first, or disconnect right away — then the blocks stay forever, because without a connection Ritmo can no longer remove them.',
+      bodyAtLeast: 'Ritmo found at least {count} Ritmo block(s) in your Outlook calendar (possibly more). Clean them up first, or disconnect right away — then the blocks stay forever, because without a connection Ritmo can no longer remove them.',
+      bodyUnknown: 'Ritmo could not check whether there are still Ritmo blocks in your Outlook calendar. You can disconnect anyway, but any remaining blocks can no longer be cleaned up afterwards.',
+      confirmCleanup: 'Clean up and disconnect',
+      confirmOnly: 'Disconnect only',
+      confirmAnyway: 'Disconnect anyway',
+      scanning: 'Counting blocks…',
+      busy: 'Cleaning up Ritmo blocks…',
     },
     trello: {
       title: 'Connect Trello',

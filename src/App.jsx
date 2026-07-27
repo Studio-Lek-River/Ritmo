@@ -4830,7 +4830,7 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
             )}
             <SyncStatusRow theme={theme} signedIn={!!currentUser} userId={currentUser?.id} />
             {isSyncEnabled() && currentUser && (
-              <ConnectionsSection theme={theme} accountId={currentUser.id} />
+              <ConnectionsSection theme={theme} accountId={currentUser.id} onCalendarCleaned={onCalendarBlocksCleaned} />
             )}
             <HiddenSourceItemsSection
               theme={theme}
