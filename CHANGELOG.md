@@ -1,3 +1,11 @@
+## [0.89.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.89.0...v0.89.1) (2026-07-27)
+
+
+### Bug Fixes
+
+* **nutrition:** productmaat in de voedingsuitleg berekenen in plaats van hardcoderen ([18f59af](https://github.com/Studio-Lek-River/Ritmo/commit/18f59af47b8998834fa643b8c1f28b4a96084f16))
+* **settings:** tandwiel opent weer de tabs na het starten van de rondleiding ([18a85d7](https://github.com/Studio-Lek-River/Ritmo/commit/18a85d70ba2a61c03000e35e36a48d5292f284a1)), closes [#152](https://github.com/Studio-Lek-River/Ritmo/issues/152)
+
 # [0.89.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.88.0...v0.89.0) (2026-07-27)
 
 
