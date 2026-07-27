@@ -1,3 +1,16 @@
+# [0.91.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.90.0...v0.91.0) (2026-07-27)
+
+
+### Bug Fixes
+
+* **connections:** controleer eerst op een bestaande member-id-rij vóór het claimen van een legacy Trello-rij ([d82a1bb](https://github.com/Studio-Lek-River/Ritmo/commit/d82a1bbab2a94d64539da6f216af11bc6ded9822))
+* **connections:** meld een falend Trello-account ook bij een deels geslaagde fetch ([f626aad](https://github.com/Studio-Lek-River/Ritmo/commit/f626aad6b69a9d3ee915450d1b69574b8a78668f))
+
+
+### Features
+
+* **connections:** meerdere Trello-accounts naast elkaar koppelen ([43a45b1](https://github.com/Studio-Lek-River/Ritmo/commit/43a45b1ca35daccb6c0aef8fa654d1f772fb6adb)), closes [#120](https://github.com/Studio-Lek-River/Ritmo/issues/120)
+
 # [0.90.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.89.1...v0.90.0) (2026-07-27)
 
 
