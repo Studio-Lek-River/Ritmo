@@ -3238,7 +3238,7 @@ export default function Ritmo() {
           theme={theme}
           dayNames={dayNames}
           setEditingModule={setEditingModule}
-          onStartTour={() => { setShowSettings(false); setSettingsInitialTab(null); startHealthTour(); }}
+          onStartTour={() => { setShowSettings(false); setSettingsInitialTab(null); setOpenSettingsToHelp(false); startHealthTour(); }}
           hiddenSourceItems={hiddenSourceItems}
           onUnhideSourceItem={unhideSourceItem}
         />
