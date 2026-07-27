@@ -22,10 +22,18 @@ import { ERROR_KEYS } from './ConnectionsSection';
 // (server-side gededupeerd op board-id, AC7). Bij meer dan één account krijgt
 // elke groep een kop met de accountnaam; bij precies één account blijft de
 // weergave visueel ongewijzigd (platte lijst, geen kop).
+//
+// AC8-fix: `boards.js` geeft ook `failedConnectionIds` terug (een account met
+// bv. een ingetrokken token, terwijl de andere accounts wél lukken). Die
+// werden hier eerder stilzwijgend genegeerd — een falend account toonde dan
+// gewoon geen borden, zonder uitleg. Elk account uit die lijst krijgt nu een
+// eigen foutregel (hergebruikt `planner.trello.fetchError`) in plaats van een
+// lege of ontbrekende sectie.
 export default function TrelloBoardPicker({ accounts = [], boardPrefs, onChangeBoardPrefs, cacheBoards = [], theme }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [availableBoards, setAvailableBoards] = useState(null);
+  const [failedConnectionIds, setFailedConnectionIds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -43,6 +51,7 @@ export default function TrelloBoardPicker({ accounts = [], boardPrefs, onChangeB
       .then((data) => {
         if (cancelled) return;
         setAvailableBoards(data?.boards || []);
+        setFailedConnectionIds(data?.failedConnectionIds || []);
       })
       .catch((err) => {
         console.warn('Ritmo trello boards fetch failed', err);
@@ -121,6 +130,38 @@ export default function TrelloBoardPicker({ accounts = [], boardPrefs, onChangeB
     );
   };
 
+  // Eén account-sectie: zijn borden (indien gelukt) plus, als dit account in
+  // `failedConnectionIds` staat, een foutregel — nooit stilletjes niets tonen
+  // voor een account waarvan het ophalen mislukte (AC8). `null` wanneer er
+  // voor dit account niets te tonen valt (geen borden, geen fout): dat
+  // account laat dan gewoon geen sectie achter, zoals vandaag.
+  const renderAccountSection = (account, showHeading) => {
+    const accountBoards = boardsByConnection.get(account.connectionId) || [];
+    const failed = failedConnectionIds.includes(account.connectionId);
+    if (accountBoards.length === 0 && !failed) return null;
+    return (
+      <div key={account.connectionId} className="space-y-2">
+        {showHeading && (
+          <p className={`text-xs font-semibold ${theme.textMuted}`}>
+            {t('planner.trello.accountHeading', { name: account.label || t('connections.providers.trello') })}
+          </p>
+        )}
+        {failed && (
+          <p className="text-xs text-red-500">{t('planner.trello.fetchError')}</p>
+        )}
+        {accountBoards.length > 0 && (
+          <ul className="space-y-2">
+            {accountBoards.map(renderBoard)}
+          </ul>
+        )}
+      </div>
+    );
+  };
+
+  const accountSections = accounts.length > 0
+    ? accounts.map((account) => renderAccountSection(account, accounts.length > 1)).filter(Boolean)
+    : [];
+
   return (
     <div className={`pt-2 border-t ${theme.border} space-y-2`}>
       <button
@@ -143,29 +184,10 @@ export default function TrelloBoardPicker({ accounts = [], boardPrefs, onChangeB
           <p className="text-xs text-red-500">
             {ERROR_KEYS[error] ? t(ERROR_KEYS[error]) : t('planner.trello.fetchError')}
           </p>
-        ) : (availableBoards || []).length === 0 ? (
+        ) : accountSections.length === 0 ? (
           <p className={`text-xs ${theme.textMuted}`}>{t('planner.trello.empty')}</p>
-        ) : accounts.length > 1 ? (
-          <div className="space-y-3">
-            {accounts.map((account) => {
-              const accountBoards = boardsByConnection.get(account.connectionId) || [];
-              if (accountBoards.length === 0) return null;
-              return (
-                <div key={account.connectionId} className="space-y-2">
-                  <p className={`text-xs font-semibold ${theme.textMuted}`}>
-                    {t('planner.trello.accountHeading', { name: account.label || t('connections.providers.trello') })}
-                  </p>
-                  <ul className="space-y-2">
-                    {accountBoards.map(renderBoard)}
-                  </ul>
-                </div>
-              );
-            })}
-          </div>
         ) : (
-          <ul className="space-y-2">
-            {availableBoards.map(renderBoard)}
-          </ul>
+          <div className="space-y-3">{accountSections}</div>
         )
       )}
     </div>
