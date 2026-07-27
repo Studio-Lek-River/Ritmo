@@ -1947,6 +1947,8 @@ export default {
     toast: {
       planned: 'Je dag is ingedeeld.',
       planUndone: 'De indeling is teruggedraaid.',
+      nothingToPlan: 'Er stond niets klaar om in te delen — alles heeft al een tijd.',
+      noRoom: 'Geen vrije ruimte gevonden om iets in te delen.',
     },
     provider: {
       names: {

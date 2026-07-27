@@ -1935,6 +1935,8 @@ export default {
     toast: {
       planned: 'Your day has been planned.',
       planUndone: 'The layout has been undone.',
+      nothingToPlan: 'Nothing was waiting to be planned — everything already has a time.',
+      noRoom: 'No free space found to plan anything.',
     },
     provider: {
       names: {

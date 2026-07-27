@@ -2723,7 +2723,13 @@ export default function Ritmo() {
   // synchrone heuristiek als die faalt (AC4).
   const handleShareDay = useCallback(async (dateKey, notify) => {
     const { candidates, fixed, meta } = buildPlanInputs(dateKey);
-    if (candidates.length === 0) return;
+    // Twee lege uitkomsten die er van buitenaf identiek uitzien maar een
+    // andere oorzaak hebben: hier stond er niets zonder tijd klaar, verderop
+    // vond de indeler geen vrije ruimte. Zonder melding lijkt de knop stuk.
+    if (candidates.length === 0) {
+      if (typeof notify === 'function') notify({ message: t('planner.toast.nothingToPlan') });
+      return;
+    }
 
     const sleepModule = modules.find(m => m.enabled && m.type === 'sleep');
     const wake = sleepModule ? goalsForNight(sleepModule.goals, parseDateKey(dateKey)).wake : null;
@@ -2754,7 +2760,10 @@ export default function Ritmo() {
       // JWT-fetch-laag, geen device-lokale settings).
       config: plannerProvider.local,
     });
-    if (assignments.length === 0) return;
+    if (assignments.length === 0) {
+      if (typeof notify === 'function') notify({ message: t('planner.toast.noRoom') });
+      return;
+    }
 
     const providerNotice = describePlanProvider({ providerUsed, fallbackFrom, fallbackReason });
 
