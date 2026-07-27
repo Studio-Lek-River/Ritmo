@@ -2426,10 +2426,10 @@ export default function Ritmo() {
 
   // ---- "Deel mijn dag in" (S05) -------------------------------------------
   // Bouwt de input voor de pure planDay-motor voor één dag: candidates zijn
-  // pool-items (autoPlan === true, zonder tijd), fixed zijn items die al een
-  // tijd hebben. Spiegelt dayTimeline.js' bronnen (project-subgoals +
-  // customTasks, incl. gematerialiseerde recurring via weekDays) maar geeft
-  // ook `autoPlan` door — dat veld heeft de Dag-tijdlijn zelf niet nodig.
+  // pool-items zonder tijd, fixed zijn items die al een tijd hebben.
+  // Spiegelt dayTimeline.js' bronnen (project-subgoals + customTasks, incl.
+  // gematerialiseerde recurring via weekDays, plus de module-items) maar leest
+  // daar bovenop `autoPlan` — dat veld heeft de Dag-tijdlijn zelf niet nodig.
   // `meta` onthoudt per key de weergave-info (label/kleur/soort) voor de
   // pending-blokken; planDay zelf blijft puur en krijgt alleen platte data.
   const buildPlanInputs = useCallback((dateKey) => {
@@ -2476,10 +2476,14 @@ export default function Ritmo() {
       }
     });
 
-    // Module-items/-blokken (S10c): dezelfde opt-in-gate en dezelfde
-    // fixed/candidate-splitsing als hierboven — effectieve tijd (dagafwijking
-    // uit dayModuleData, anders de standaardtijd uit de moduleconfig) gezet
-    // betekent `fixed`, anders `autoPlan` betekent `candidates`.
+    // Module-items/-blokken (S10c): effectieve tijd (dagafwijking uit
+    // dayModuleData, anders de standaardtijd uit de moduleconfig) gezet
+    // betekent `fixed`, anders `candidates`. Routines kennen bewust één
+    // opt-in — `planInDay`, dezelfde poort die `buildDayTimeline` gebruikt om
+    // ze in de takenpool te zetten — zodat wat in de pool staat ook echt
+    // meedoet met "deel mijn dag in". Losse taken en projecttaken hierboven
+    // houden hun eigen `autoPlan`-vinkje; die staan altijd in de pool en
+    // hebben dus wél een tweede keuze nodig.
     modules.forEach(mod => {
       if (!mod.enabled || !mod.planInDay) return;
       if (!['checklist', 'choice', 'counter'].includes(mod.type)) return;
@@ -2492,7 +2496,7 @@ export default function Ritmo() {
           const effectiveTime = dayModuleData[mod.id]?.[item.id]?.plannedTime ?? item.time;
           if (effectiveTime) {
             fixed.push({ time: effectiveTime, duration: item.duration });
-          } else if (item.autoPlan) {
+          } else {
             candidates.push({ key, duration: item.duration, window: item.window || '', deepWork: false, order: order++ });
           }
         });
@@ -2504,7 +2508,7 @@ export default function Ritmo() {
       const effectiveTime = dayModuleData[mod.id]?.plannedTime ?? mod.time;
       if (effectiveTime) {
         fixed.push({ time: effectiveTime, duration: mod.duration });
-      } else if (mod.autoPlan) {
+      } else {
         candidates.push({ key, duration: mod.duration, window: mod.window || '', deepWork: false, order: order++ });
       }
     });
@@ -4934,8 +4938,8 @@ function PlanInDayToggle({ editing, update, theme, t }) {
   );
 }
 
-// Herbruikbare blok-configuratie (S10c): tijd, duur, dagdeel-voorkeur en
-// autoPlan voor één module-blok — checklist in blok-modus, of een choice-/
+// Herbruikbare blok-configuratie (S10c): tijd, duur en dagdeel-voorkeur voor
+// één module-blok — checklist in blok-modus, of een choice-/
 // counter-module (die altijd één blok zijn, geen losse items). Hergebruikt
 // dezelfde componenten als customTasks/subgoals (TimeInput/DurationInput/
 // DagdeelSelect), nu voor het eerst op moduleconfig-niveau.
@@ -4969,14 +4973,6 @@ function ModulePlanBlockConfig({ editing, update, theme, t }) {
           className="w-full"
         />
       </div>
-      <label className={`flex items-center gap-2 text-sm ${theme.textSecondary}`}>
-        <input
-          type="checkbox"
-          checked={!!editing.autoPlan}
-          onChange={(e) => update('autoPlan', e.target.checked)}
-        />
-        {t('planner.autoPlan.label')}
-      </label>
     </div>
   );
 }
@@ -5269,8 +5265,8 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
           </div>
 
           {/* Meenemen in de dagplanning (S10c): choice en counter zijn altijd
-              één blok (geen items), dus dezelfde toggle + tijd/duur/dagdeel/
-              autoPlan-configuratie als checklist in blok-modus hieronder. Het
+              één blok (geen items), dus dezelfde toggle + tijd/duur/dagdeel-
+              configuratie als checklist in blok-modus hieronder. Het
               bestaande tijdveld (voorheen altijd zichtbaar maar dood — nergens
               gelezen) verhuist mee onder de toggle: het krijgt nu pas een
               echt effect (de Planner leest het), dus hoort ook pas te tonen
@@ -5319,7 +5315,7 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
 
               {/* Alleen zichtbaar met de toggle hierboven aan (S10c): los per
                   item of als één blok in de Planner. Blok-modus toont daarna
-                  hetzelfde tijd/duur/dagdeel/autoPlan-groepje als choice/counter
+                  hetzelfde tijd/duur/dagdeel-groepje als choice/counter
                   hieronder — één module is dan één plan-item, geen losse items. */}
               {!!editing.planInDay && (
                 <div>
@@ -5455,14 +5451,6 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
                                     theme={theme}
                                   />
                                 </div>
-                                <label className={`flex items-center gap-2 text-xs ${theme.textMuted}`}>
-                                  <input
-                                    type="checkbox"
-                                    checked={!!item.autoPlan}
-                                    onChange={(e) => updateItem(item.id, { autoPlan: e.target.checked })}
-                                  />
-                                  {t('planner.autoPlan.label')}
-                                </label>
                                 <label className={`flex items-center gap-2 text-xs ${theme.textMuted}`}>
                                   <input
                                     type="checkbox"
