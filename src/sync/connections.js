@@ -31,7 +31,12 @@ export async function listConnections(accountId) {
   return data || [];
 }
 
-async function callConnectionsApi(path, body) {
+// Gedeelde JWT-plus-fetch-kern voor élk `api/`-endpoint dat een ingelogde
+// gebruiker nodig heeft, niet alleen `api/connections/**` — S11 trekt hem
+// hierheen zodat `fetchServerPlan` (die naar `api/plan.js` post) geen tweede
+// kopie van deze logica hoeft te onderhouden. `path` is het volledige
+// `/api/...`-pad.
+async function callApi(path, body) {
   if (!isSyncEnabled()) {
     const err = new Error('sync_not_configured');
     err.code = 'server_config';
@@ -46,7 +51,7 @@ async function callConnectionsApi(path, body) {
     throw err;
   }
 
-  const response = await fetch(`/api/connections/${path}`, {
+  const response = await fetch(path, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -58,12 +63,16 @@ async function callConnectionsApi(path, body) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    const err = new Error(data.error || 'connections_api_failed');
+    const err = new Error(data.error || 'api_request_failed');
     err.code = data.code || 'unexpected';
     throw err;
   }
 
   return data;
+}
+
+async function callConnectionsApi(path, body) {
+  return callApi(`/api/connections/${path}`, body);
 }
 
 export async function disconnectConnection(connectionId) {
@@ -137,4 +146,14 @@ export async function fetchGithubRepos() {
 // `repoIds` is een array van `{ id, fullName }` (zie utils/githubRepoPrefs.js).
 export async function fetchGithubIssues(repoIds) {
   return callConnectionsApi('github/issues', { repoIds: repoIds || [] });
+}
+
+// Server-provider-seam voor de planner-AI (S11, `api/plan.js`). Geen
+// `/api/connections`-pad — dit endpoint hoort niet bij de koppelingen-laag —
+// dus rechtstreeks via `callApi`. Zolang de AI-env op de server ontbreekt
+// geeft dat endpoint `501 { code: 'not_configured' }` terug; de aanroeper
+// (`src/utils/planProviders/server.js`) vertaalt dat naar de fallback op de
+// heuristiek.
+export async function fetchServerPlan(payload) {
+  return callApi('/api/plan', payload || {});
 }
