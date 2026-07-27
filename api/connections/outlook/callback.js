@@ -11,6 +11,7 @@ import {
   verifyOAuthState,
   MS_TOKEN_URL,
   OUTLOOK_SCOPES,
+  LEGACY_OUTLOOK_READ_SCOPES,
 } from './_shared.js';
 
 function redirectTo(res, params) {
@@ -99,7 +100,12 @@ export default async function handler(req, res) {
       access_token: tokenData.access_token,
       refresh_token: tokenData.refresh_token,
       expires_at: nowSeconds + (Number(tokenData.expires_in) || 0),
-      scope: tokenData.scope || OUTLOOK_SCOPES,
+      // Microsoft geeft de toegekende scope terug in `tokenData.scope`; alleen
+      // wanneer dat écht ontbreekt vallen we terug op de veilige kant
+      // (leesrechten), nooit stilzwijgend op de volledige `OUTLOOK_SCOPES` —
+      // een onbekende situatie mag nooit als "heeft schrijfrecht" geboekt
+      // worden (S12, de kritieke scope-regel).
+      scope: tokenData.scope || LEGACY_OUTLOOK_READ_SCOPES,
     });
 
     const { error: rpcError } = await supabase.rpc('connections_set_secret', {
