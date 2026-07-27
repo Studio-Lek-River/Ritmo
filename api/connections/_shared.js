@@ -149,6 +149,15 @@ export const CONNECTION_ID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 // doorloopt de provider-consent meteen na het aanroepen van `start.js`.
 const STATE_TTL_SECONDS = 600;
 
+// Formaat-hek voor de optionele `return_to`-waarde die door de OAuth-state
+// heen reist (S12a, deel A: "kom na opnieuw koppelen terug in de planner").
+// Vorm: `planner:<dateKey>` — een token, geen pad of URL, dus per constructie
+// geen open-redirect. De client houdt zijn eigen kopie van precies deze regex
+// (`src/utils/oauthReturn.js`, puur): `api/` importeert nergens uit `src/`,
+// en die grens doorbreken voor één regex is de verkeerde ruil. Beide plekken
+// verwijzen in hun comment naar de andere.
+const RETURN_TO_REGEX = /^planner:\d{4}-\d{2}-\d{2}$/;
+
 function base64url(buffer) {
   return buffer.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
@@ -164,13 +173,21 @@ function base64urlToBuffer(value) {
 // tussen `start.js` en `callback.js` van een OAuth-provider (er is geen
 // server-side sessie tussen de twee calls, de state zelf draagt de
 // handtekening).
-export function signOAuthState({ accountId }) {
+// `returnTo` is optioneel en backward-compatibel: zonder argument (GitHub,
+// Trello, en Outlook's "Verbinden" via Instellingen) blijft dit exact het
+// oude gedrag — geen `return_to` in de payload. Een waarde die niet aan
+// `RETURN_TO_REGEX` voldoet wordt genegeerd in plaats van een fout te geven,
+// zodat een onverwachte client-waarde nooit de hele koppeling blokkeert.
+export function signOAuthState({ accountId, returnTo }) {
   const secret = process.env.OAUTH_STATE_SECRET;
   const payload = {
     account_id: accountId,
     nonce: randomBytes(16).toString('hex'),
     exp: Math.floor(Date.now() / 1000) + STATE_TTL_SECONDS,
   };
+  if (typeof returnTo === 'string' && RETURN_TO_REGEX.test(returnTo)) {
+    payload.return_to = returnTo;
+  }
   const payloadB64 = base64url(Buffer.from(JSON.stringify(payload), 'utf8'));
   const signature = createHmac('sha256', secret).update(payloadB64).digest();
   return `${payloadB64}.${base64url(signature)}`;
@@ -207,5 +224,10 @@ export function verifyOAuthState(state) {
   }
   if (!payload || typeof payload.account_id !== 'string') return null;
   if (typeof payload.exp !== 'number' || payload.exp < Math.floor(Date.now() / 1000)) return null;
+  // Tweede laag (zie RETURN_TO_REGEX hierboven): ook een correct ondertekende
+  // maar niet-passende `return_to` wordt hier genegeerd, niet doorgegeven.
+  if (payload.return_to !== undefined && (typeof payload.return_to !== 'string' || !RETURN_TO_REGEX.test(payload.return_to))) {
+    delete payload.return_to;
+  }
   return payload;
 }

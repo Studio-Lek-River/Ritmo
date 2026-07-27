@@ -45,6 +45,7 @@ import { buildCalendarBlocks, buildWritePayload } from './utils/calendarWrite';
 import { DEFAULT_CALENDAR_WRITE_PREFS, activeCalendarDestinations, getCalendarWritePrefs } from './utils/calendarWritePrefs';
 import { readCalendarWriteLog, recordCalendarWrite, clearCalendarWriteLog } from './utils/calendarWriteLog';
 import { writeOutlookDay, startOutlookConnect } from './sync/connections';
+import { buildPlannerReturnTo, parseReturnTo } from './utils/oauthReturn';
 import { readAgendaSelection, writeAgendaSelection, clearAgendaSelection, pruneSelection } from './utils/agendaSelection';
 import { readTrelloBoardPrefs, writeTrelloBoardPrefs, clearTrelloBoardPrefs, includedBoardPairs } from './utils/trelloBoardPrefs';
 import { clearTrelloCache } from './utils/trelloCache';
@@ -180,9 +181,23 @@ function serializeDayBaseline(data) {
   });
 }
 
+// Leest en parseert de `returnTo`-parameter van een Outlook-OAuth-terugkeer
+// (S12a, deel A) vóór de eerste render. Puur behalve de `window.location`-
+// lezing zelf; de parsing (`parseReturnTo`, utils/oauthReturn.js) is puur en
+// levert `null` op bij een ontbrekende of niet-passende waarde, waarna de
+// aanroeper terugvalt op de default-view (AC5). Wordt alleen aangeroepen
+// binnen lazy `useState`-initializers, nooit via een effect — anders flitst
+// eerst de Vandaag-view voorbij.
+function readOAuthReturn() {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  return parseReturnTo(params.get('returnTo'));
+}
+
 export default function Ritmo() {
   const { t, language, languageSetting, setLanguage } = useTranslation();
-  const [view, setView] = useState('today');
+  const [view, setView] = useState(() => readOAuthReturn()?.view || 'today');
+  const [initialPlannerDateKey] = useState(() => readOAuthReturn()?.dateKey || null);
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [selectedCollectionId, setSelectedCollectionId] = useState(null);
   const [activeDate, setActiveDate] = useState(new Date());
@@ -2013,7 +2028,18 @@ export default function Ritmo() {
   // andere week bekijken mag dus nooit de actieve dag verzetten — alle
   // schrijfacties op zo'n dag lopen via `writeTasksForDay`, die het dagrecord
   // rechtstreeks wegschrijft zonder datumgrens.
-  const [weekOffset, setWeekOffset] = useState(0);
+  // S12a (deel A): als de app opstart via een returnTo naar een dag in een
+  // andere week, staat `weekOffset` meteen op die week — anders zou de knop
+  // in de Planner terugkomen op de juiste dag maar in de verkeerde week
+  // (AC2). `startOfWeek`/`addDays`/`parseDateKey` zijn de bestaande helpers
+  // uit utils/dates.js, geen nieuwe datum-rekenkunde.
+  const [weekOffset, setWeekOffset] = useState(() => {
+    if (!initialPlannerDateKey) return 0;
+    const targetWeekStart = startOfWeek(parseDateKey(initialPlannerDateKey));
+    const currentWeekStart = startOfWeek(new Date());
+    const diffDays = Math.round((targetWeekStart.getTime() - currentWeekStart.getTime()) / 86400000);
+    return Math.round(diffDays / 7);
+  });
 
   // Zichtbare week voor de WeekView: de 7 dagen (ma-zo) van de week die
   // `weekOffset` aanwijst. De actieve dag (altijd "vandaag" binnen de Planner,
@@ -2854,12 +2880,14 @@ export default function Ritmo() {
       if (typeof notify !== 'function') return;
       // Scope-upgrade krijgt een eigen toast met actie (zelfde vorm als de
       // undo-toast van handleShareDay hierboven): "Opnieuw koppelen" roept
-      // exact dezelfde functie aan als de Verbinden-knop in Instellingen.
+      // exact dezelfde functie aan als de Verbinden-knop in Instellingen,
+      // nu mét een returnTo (S12a, deel A) zodat je na de consent terugkomt
+      // op precies deze dag.
       if (err?.code === 'scope_upgrade_required') {
         notify({
           message: t('connections.errors.scopeUpgradeRequired'),
           actionLabel: t('planner.calendar.reconnect'),
-          onAction: startOutlookConnect,
+          onAction: () => startOutlookConnect(buildPlannerReturnTo(dateKey)),
         });
         return;
       }
@@ -3460,6 +3488,7 @@ export default function Ritmo() {
             weekOffset={weekOffset}
             onWeekOffsetChange={setWeekOffset}
             todayKey={todayKey}
+            initialDateKey={initialPlannerDateKey}
             agendaByDate={outlookEventsByDate}
             includedAgendaIds={agendaSelection}
             onToggleAgendaBlock={handleToggleAgendaBlock}

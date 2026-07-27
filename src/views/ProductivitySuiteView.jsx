@@ -32,6 +32,7 @@ export default function ProductivitySuiteView({
   weekOffset,
   onWeekOffsetChange,
   todayKey,
+  initialDateKey,
   agendaByDate,
   includedAgendaIds,
   onToggleAgendaBlock,
@@ -108,7 +109,11 @@ export default function ProductivitySuiteView({
   const { t } = useTranslation();
   const { showToast } = useToast();
   const [tab, setTab] = useState('dag');
-  const [selectedDateKey, setSelectedDateKey] = useState(todayKey);
+  // S12a (deel A): een terugkeer van "Opnieuw koppelen" (App.jsx's
+  // `initialDateKey`, via de returnTo-state) seedt de selectie meteen op de
+  // dag waarvoor werd weggeschreven — de vangrail hieronder blijft gewoon
+  // van toepassing zodra die dag buiten de getoonde week valt.
+  const [selectedDateKey, setSelectedDateKey] = useState(initialDateKey || todayKey);
 
   // App.jsx zelf zit niet onder ToastProvider (zie App.jsx), dus een mislukte
   // Outlook-fetch wordt hier gemeld zodra `agendaError` verandert — één toast
