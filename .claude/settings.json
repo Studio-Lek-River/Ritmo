@@ -1,7 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(npm ls -g --depth=0; Write-Output \"---ms-playwright---\"; if \\(Test-Path \"$env:LOCALAPPDATA\\\\ms-playwright\"\\) { Get-ChildItem \"$env:LOCALAPPDATA\\\\ms-playwright\" | Select-Object -ExpandProperty Name } else { \"geen browsers\" })",
       "Bash(node \"C:/Users/BAS~1.VAN/AppData/Local/Temp/claude/c--Ritmo/284c68c0-d70d-4bae-9f4f-9085b30bc08f/scratchpad/verify143e.mjs\")",
       "Bash(echo \"exit:$?\")",
       "Bash(node --input-type=module -e ' *)",
@@ -17,7 +16,6 @@
       "Bash(npx eslint *)",
       "Bash(node smoke147.mjs)",
       "Read(//d/Ritmo/node_modules/**)",
-      "Bash(ls \"C:/Users/bas.vanhees/AppData/Roaming/npm/node_modules\" 2>/dev/null; echo \"--- local ---\"; ls c:/Ritmo/node_modules | grep -i playwright; echo \"--- d drive ---\"; ls /d/ 2>/dev/null | head)",
       "Read(//c/Users/bas.vanhees/AppData/Roaming/npm/**)",
       "Read(//d//**)",
       "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:5179/)",
@@ -27,7 +25,9 @@
       "Bash(node \"C:/Users/BAS~1.VAN/AppData/Local/Temp/claude/c--Ritmo/b9d9b14f-e7be-4256-89d6-aede20584c35/scratchpad/verify114.mjs\")",
       "Bash(curl -s -o /dev/null -w \"app HTTP %{http_code}\\\\n\" http://localhost:5181/)",
       "Bash(curl -s -o /dev/null -w \"numberInput.js HTTP %{http_code}\\\\n\" http://localhost:5181/src/utils/numberInput.js)",
-      "Bash(curl -s -o /dev/null -w \"HouseholdView.jsx HTTP %{http_code}\\\\n\" http://localhost:5181/src/views/HouseholdView.jsx)"
+      "Bash(curl -s -o /dev/null -w \"HouseholdView.jsx HTTP %{http_code}\\\\n\" http://localhost:5181/src/views/HouseholdView.jsx)",
+      "Edit(/.claude/skills/verify/**)",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('C:/Ritmo/.claude/settings.json','utf8'\\)\\); console.log\\('JSON ok'\\)\")"
     ]
   }
 }
