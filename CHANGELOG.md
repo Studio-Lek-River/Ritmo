@@ -1,3 +1,16 @@
+# [0.94.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.93.0...v0.94.0) (2026-07-27)
+
+
+### Bug Fixes
+
+* **planner:** corrigeer het label van automatisch inplannen ([d33320c](https://github.com/Studio-Lek-River/Ritmo/commit/d33320cd834a66856136f0d412696516936f4b9f))
+* **planner:** neem routines uit de takenpool mee bij het indelen van de dag ([7c3e823](https://github.com/Studio-Lek-River/Ritmo/commit/7c3e823e78cce35baf15086ada70902b48223331))
+
+
+### Features
+
+* **planner:** meld wanneer er niets in te delen valt ([fd58073](https://github.com/Studio-Lek-River/Ritmo/commit/fd58073da43853d1b2cf0a64d123cf3577b9b619))
+
 # [0.93.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.92.0...v0.93.0) (2026-07-27)
 
 
