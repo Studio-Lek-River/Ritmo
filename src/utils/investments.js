@@ -6,20 +6,6 @@ export function sortedAsc(events) {
   return [...(events || [])].sort((a, b) => a.date.localeCompare(b.date));
 }
 
-// NL/locale-decimaal naar number. "1.234,56" of "1234,5" -> number, of null.
-// Eigen parser i.p.v. parseEuroInput: die geeft 0 terug op ongeldige invoer en
-// kan "leeg/ongeldig" niet onderscheiden van een echte 0. Hier is null nodig
-// zodat de UI weet wanneer een meting niet toegevoegd mag worden.
-export function parseAmount(str) {
-  if (typeof str === 'number') return Number.isFinite(str) ? str : null;
-  const cleaned = String(str || '')
-    .replace(/\./g, '')
-    .replace(',', '.')
-    .replace(/[^\d.-]/g, '');
-  const n = parseFloat(cleaned);
-  return Number.isFinite(n) ? n : null;
-}
-
 // Forward-fill som over alle aandelen. Geeft [{ date, value }] oplopend.
 // Op elke unieke datum: per aandeel de laatst bekende waarde tot en met die
 // datum, opgeteld.
@@ -69,16 +55,6 @@ export function seriesStats(points) {
 
 export function newId() {
   return Math.random().toString(36).slice(2, 10);
-}
-
-// Number -> bewerkbare draft-string in NL/locale-decimaalnotatie (comma).
-// Tegenhanger van parseAmount: een draft die hiermee geseed is, geeft
-// ongewijzigd teruggeparsed exact hetzelfde getal (1234.5 -> '1234,5' ->
-// 1234.5), i.p.v. String(n) die de punt laat staan en door parseAmount als
-// duizendtalscheiding wordt gelezen (1234.5 -> '1234.5' -> 12345).
-export function formatAmountInput(n) {
-  if (!Number.isFinite(n)) return '';
-  return String(n).replace('.', ',');
 }
 
 // ── Aantal x koers per meting (#115) ────────────────────────────────────────

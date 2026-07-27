@@ -20,6 +20,7 @@ import {
   UTILITY_TYPES,
 } from '../utils/household';
 import { activeSeries, seriesStats } from '../utils/investments';
+import { formatDecimalInput } from '../utils/numberInput';
 import { migrateHousehold } from '../utils/migrate';
 import { useTranslation, getLocale } from '../i18n/useTranslation';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -1163,7 +1164,7 @@ function RecurringItemEditor({ theme, kind, initial, expenses, monthsLong, onCan
   const isEdit = !!initial;
 
   const [name, setName] = useState(initial?.name || '');
-  const [amount, setAmount] = useState(initial ? String(initial.amount).replace('.', ',') : '');
+  const [amount, setAmount] = useState(initial ? formatDecimalInput(initial.amount) : '');
   const [paymentDay, setPaymentDay] = useState(initial?.paymentDay != null ? String(initial.paymentDay) : '');
   const [startMonth, setStartMonth] = useState(() => (initial?.startDate || defaultStartDate()).slice(0, 7));
   const [endEnabled, setEndEnabled] = useState(!!initial?.endDate);
@@ -1542,7 +1543,7 @@ function OneTimeEditor({ theme, initial, onCancel, onSave }) {
   const todayIso = new Date().toISOString().slice(0, 10);
 
   const [name, setName] = useState(initial?.name || '');
-  const [amount, setAmount] = useState(initial ? String(initial.amount).replace('.', ',') : '');
+  const [amount, setAmount] = useState(initial ? formatDecimalInput(initial.amount) : '');
   const [date, setDate] = useState(initial?.date || todayIso);
   const [icon, setIcon] = useState(initial?.icon || 'ShoppingCart');
 
@@ -1971,7 +1972,7 @@ function UtilityActualsMonthEditor({ theme, year, month, monthData, expenses, mo
   const [draft, setDraft] = useState(() => {
     const out = {};
     UTILITY_TYPES.forEach(k => {
-      out[k] = monthData?.[k] != null ? String(monthData[k]).replace('.', ',') : '';
+      out[k] = monthData?.[k] != null ? formatDecimalInput(monthData[k]) : '';
     });
     return out;
   });

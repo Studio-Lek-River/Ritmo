@@ -5,8 +5,9 @@ import { useUndoToast } from '../../../hooks/useUndoToast';
 import ConfirmDialog from '../../../components/ConfirmDialog';
 import { formatEuro } from '../../../utils/household';
 import { COLOR_OPTIONS } from '../../../utils/colors';
+import { parseDecimalInput } from '../../../utils/numberInput';
 import {
-  parseAmount, newId, holdingEntryMode, computeAmount, hasSharesAndPrice, lastEvent,
+  newId, holdingEntryMode, computeAmount, hasSharesAndPrice, lastEvent,
 } from '../../../utils/investments';
 import HoldingEventInput from './HoldingEventInput';
 import MeasurementList from './MeasurementList';
@@ -156,7 +157,7 @@ export default function HoldingsInput({ investments, setInvestments, theme }) {
   // Waarde inline bewerken (V11, #134): de waarde zetten volstaat, geen
   // herberekening elders. Ongeldige invoer wordt genegeerd.
   const editEventAmount = (hid, eid, valStr) => {
-    const val = parseAmount(valStr);
+    const val = parseDecimalInput(valStr);
     if (val === null) return;
     setInvestments(prev => ({
       ...prev,
@@ -170,7 +171,7 @@ export default function HoldingsInput({ investments, setInvestments, theme }) {
   // computeAmount zodat het de bron van waarde blijft. Negatieve invoer wordt
   // genegeerd (betekenisloos voor aantal/koers), net als ongeldige invoer.
   const editEventShares = (hid, eid, field, valStr) => {
-    const val = parseAmount(valStr);
+    const val = parseDecimalInput(valStr);
     if (val === null || val < 0) return;
     setInvestments(prev => ({
       ...prev,

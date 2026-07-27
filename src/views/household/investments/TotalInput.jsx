@@ -3,7 +3,8 @@ import { Plus } from 'lucide-react';
 import { useTranslation } from '../../../i18n/useTranslation';
 import { useUndoToast } from '../../../hooks/useUndoToast';
 import { todayKey } from '../../../utils/dates';
-import { parseAmount, newId } from '../../../utils/investments';
+import { parseDecimalInput } from '../../../utils/numberInput';
+import { newId } from '../../../utils/investments';
 import MeasurementList from './MeasurementList';
 
 // ── Totaal-modus ────────────────────────────────────────────────────────────
@@ -18,7 +19,7 @@ export default function TotalInput({ investments, setInvestments, theme }) {
   const sortedDesc = [...events].sort((a, b) => b.date.localeCompare(a.date));
 
   const add = () => {
-    const val = parseAmount(amount);
+    const val = parseDecimalInput(amount);
     if (val === null || !date) return;
     setInvestments(prev => ({
       ...prev,
@@ -53,7 +54,7 @@ export default function TotalInput({ investments, setInvestments, theme }) {
   // dus de waarde zetten volstaat — geen herberekening elders. Ongeldige
   // invoer wordt genegeerd, de oude waarde blijft staan.
   const editAmount = (id, valStr) => {
-    const val = parseAmount(valStr);
+    const val = parseDecimalInput(valStr);
     if (val === null) return;
     setInvestments(prev => ({
       ...prev,
@@ -88,7 +89,7 @@ export default function TotalInput({ investments, setInvestments, theme }) {
           />
           <button
             onClick={add}
-            disabled={parseAmount(amount) === null}
+            disabled={parseDecimalInput(amount) === null}
             aria-label={t('household.investments.addMeasurement')}
             className="px-3 py-2 rounded-lg bg-blue-500 text-white text-sm font-medium disabled:opacity-40 hover:bg-blue-600 transition"
           >

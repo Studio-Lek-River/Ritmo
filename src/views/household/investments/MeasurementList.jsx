@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import { Trash2 } from 'lucide-react';
 import { useTranslation } from '../../../i18n/useTranslation';
 import { formatEuro } from '../../../utils/household';
-import { formatAmountInput, hasSharesAndPrice } from '../../../utils/investments';
+import { formatDecimalInput } from '../../../utils/numberInput';
+import { hasSharesAndPrice } from '../../../utils/investments';
 import { fmtDate, formatShares } from './format';
 
 // Waarde inline bewerken (V11, #134; uitgebreid met aantal/koers in #115).
@@ -23,7 +24,7 @@ export default function MeasurementList({ events, onRemove, onEditValue, onEditS
     const key = `${id}:${field}`;
     justCancelledRef.current = false;
     editSessionRef.current = key;
-    setDraft(formatAmountInput(value));
+    setDraft(formatDecimalInput(value));
     setEditingKey(key);
   };
   const commitEdit = (id, field) => {

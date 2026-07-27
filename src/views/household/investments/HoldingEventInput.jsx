@@ -3,7 +3,8 @@ import { Plus } from 'lucide-react';
 import { useTranslation } from '../../../i18n/useTranslation';
 import { formatEuro } from '../../../utils/household';
 import { todayKey } from '../../../utils/dates';
-import { parseAmount, computeAmount } from '../../../utils/investments';
+import { parseDecimalInput } from '../../../utils/numberInput';
+import { computeAmount } from '../../../utils/investments';
 
 // Invoerregel voor een nieuwe meting. `entryMode` bepaalt de variant:
 // 'total' vraagt een enkel bedrag (bestaand gedrag); 'shares' vraagt aantal
@@ -17,14 +18,14 @@ export default function HoldingEventInput({ entryMode, onAdd, theme }) {
   const [price, setPrice] = useState('');
 
   const isShares = entryMode === 'shares';
-  const sharesNum = parseAmount(shares);
-  const priceNum = parseAmount(price);
+  const sharesNum = parseDecimalInput(shares);
+  const priceNum = parseDecimalInput(price);
   // Negatieve aantallen of koersen zijn betekenisloos (randgeval uit de spec).
   const sharesValid = sharesNum !== null && sharesNum >= 0;
   const priceValid = priceNum !== null && priceNum >= 0;
   const computed = isShares && sharesValid && priceValid ? computeAmount(sharesNum, priceNum) : null;
 
-  const canAdd = isShares ? computed !== null : parseAmount(amount) !== null;
+  const canAdd = isShares ? computed !== null : parseDecimalInput(amount) !== null;
 
   const add = () => {
     if (!date || !canAdd) return;
@@ -33,7 +34,7 @@ export default function HoldingEventInput({ entryMode, onAdd, theme }) {
       setShares('');
       setPrice('');
     } else {
-      onAdd(date, parseAmount(amount));
+      onAdd(date, parseDecimalInput(amount));
       setAmount('');
     }
   };
