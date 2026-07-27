@@ -121,6 +121,7 @@ Een lokale, offline versie van de planner die volledig op bestaande data draait,
 - **Doel:** kaarten uit meerdere Trello-borden en accounts als items.
 - **Oplevering:** Trello-koppeling voor meerdere accounts en borden, kaarten naar items, voortgang per bord of lijst.
 - **Afhankelijk van:** S02.
+- **Correctie:** de oplevering dekte bij het KLAAR-zetten van deze slice alleen meerdere borden, niet meerdere accounts (de S08-Poort-0-aanname "één Trello-account per gebruiker" stond nog in de code). #120 maakt "meerdere accounts" alsnog waar; zie dat issue voor de meervoudige Trello-koppeling.
 
 #### S09, GitHub lezen. #38
 - **Doel:** issues en hun voortgang als items.
