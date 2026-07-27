@@ -263,7 +263,11 @@ function AmountStep({ t, theme, selected, items, portions, mode, setMode, rawAmo
   const item = !isGrouped ? selected?.data : null;
   const groupEntity = isGrouped ? selected.data : null;
   const hasPortion = !!item?.portion;
-  const unitLabel = mode === 'portion' ? item.portion.label : t(`modules.units.${item?.unit}`);
+  // `item` is null zodra er een portie of maaltijd gekozen is; de
+  // portie-modus kan daar vandaag niet bij horen (de modetoggle rendert
+  // alleen voor een los product), maar optional chaining houdt die aanname
+  // uit het crashpad — een label is nooit een reden voor een TypeError.
+  const unitLabel = mode === 'portion' ? item?.portion?.label : t(`modules.units.${item?.unit}`);
   const missingIds = isPortion
     ? missingProductIds(groupEntity, items)
     : isMeal
