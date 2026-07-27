@@ -31,6 +31,7 @@ import HelpOverlay from './components/help/HelpOverlay';
 import InstallGuide from './components/help/InstallGuide';
 import NutritionGuide from './components/help/NutritionGuide';
 import BackupSection from './components/BackupSection';
+import CalendarCleanupSection from './components/CalendarCleanupSection';
 import AuthSection from './components/auth/AuthSection';
 import SyncStatusRow from './components/SyncStatusRow';
 import ConnectionsSection, { ERROR_KEYS } from './components/ConnectionsSection';
@@ -2189,6 +2190,17 @@ export default function Ritmo() {
     }
   }, [agendaShown, refetchOutlookAgenda]);
 
+  // Na de opruimknop in Instellingen (S12/#155, CalendarCleanupSection): het
+  // device-local "Agenda bijgewerkt om …"-log wist mee (zelfde reden als bij
+  // het verbreken van de koppeling hierboven — het gaat over blokken die er
+  // niet meer zijn) en de agendaweergave in de Planner ververst zich meteen,
+  // zodat verwijderde blokken niet nog even "extern" blijven staan (AC8).
+  const handleCalendarBlocksCleaned = useCallback(() => {
+    clearCalendarWriteLog();
+    setCalendarWriteLog({});
+    refetchOutlookAgenda();
+  }, [refetchOutlookAgenda]);
+
   // ---- Trello-borden (S08, meerdere accounts sinds #120) --------------------
   // Hergebruikt de bestaande useConnections-instantie hierboven (geen tweede,
   // zie de slice-spec) om alle verbonden Trello-rijen af te leiden — niet
@@ -3745,6 +3757,8 @@ export default function Ritmo() {
           switchToStandard={switchToStandard}
           calendarWritePrefs={calendarWritePrefs}
           setCalendarWritePrefs={setCalendarWritePrefs}
+          outlookConnected={!!outlookConnection}
+          onCalendarBlocksCleaned={handleCalendarBlocksCleaned}
           theme={theme}
           dayNames={dayNames}
           setEditingModule={setEditingModule}
@@ -4073,7 +4087,7 @@ function HiddenSourceItemsSection({ theme, items, onUnhide }) {
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, planMode, setPlanMode, plannerProvider, updatePlannerProvider, switchToStandard, calendarWritePrefs, setCalendarWritePrefs, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour, hiddenSourceItems, onUnhideSourceItem }) {
+function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, planMode, setPlanMode, plannerProvider, updatePlannerProvider, switchToStandard, calendarWritePrefs, setCalendarWritePrefs, outlookConnected, onCalendarBlocksCleaned, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour, hiddenSourceItems, onUnhideSourceItem }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
   // Mini-stack i.p.v. een enkel helpView-veld (#150): 'nutrition' is bereikbaar
@@ -4647,6 +4661,14 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
 
               <p className={`text-xs ${theme.textMuted}`}>{t('settings.calendarWritePrivacyHint')}</p>
             </div>
+
+            {/* S12/#155: vangnet los van de bestemmings-checkboxes hierboven —
+                verwijdert alle Ritmo-blokken ongeacht datum en ongeacht welke
+                bestemming aanstaat. Alleen zichtbaar met een verbonden
+                Outlook-koppeling (AC1). */}
+            {outlookConnected && (
+              <CalendarCleanupSection theme={theme} onCleaned={onCalendarBlocksCleaned} />
+            )}
 
             <div className={`mt-6 pt-6 border-t ${theme.border}`}>
               <h3 className={`font-semibold ${theme.textSecondary} mb-3`}>{t('settings.effects')}</h3>

@@ -123,6 +123,26 @@ export function legacyRitmoTagValue(dateKey) {
   return `v1|${dateKey}`;
 }
 
+// Guard vóór élke delete in cleanup.js (S12/#155, "opruimknop voor alle
+// Ritmo-blokken"): het enige criterium waarop een event daar mag worden
+// verwijderd is een geldige Ritmo-tagwaarde — het v2-formaat
+// (`v2|<dateKey>|<hash>`, zie ritmoTagValue hierboven) of het legacy
+// v1-formaat (`v1|<dateKey>`, legacyRitmoTagValue) — beide zijn ooit door
+// Ritmo geschreven en horen dus opgeruimd te worden. De Graph-`$filter` in
+// cleanup.js is alleen een versmalling op de prefix; deze functie is het
+// echte criterium, nooit de zichtbare categorie `RITMO_CATEGORY` (die kan een
+// gebruiker zelf op een eigen afspraak zetten — de harde S12-regel).
+export function isRitmoTagValue(value) {
+  if (typeof value !== 'string') return false;
+  return /^v2\|\d{4}-\d{2}-\d{2}\|[0-9a-f]{12}$/.test(value)
+    || /^v1\|\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+// Prefix waarmee de Graph-`startswith()`-filter in cleanup.js versmalt: beide
+// tagformaten (v1 en v2) beginnen met 'v'. Puur een server-side versmalling —
+// `isRitmoTagValue` hierboven blijft het enige echte criterium.
+export const RITMO_TAG_VALUE_PREFIX = 'v';
+
 // Harde bovengrens op het aantal blokken per write-aanvraag (validatie in
 // write.js, vóór elke Graph-call) — voorkomt dat één klik honderden events
 // aanmaakt.

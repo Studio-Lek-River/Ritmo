@@ -110,6 +110,20 @@ export async function writeOutlookDay(payload) {
   return callConnectionsApi('outlook/write', payload || {});
 }
 
+// Opruimknop voor alle Ritmo-blokken (S12/#155, zie
+// api/connections/outlook/cleanup.js) — los van writeOutlookDay hierboven,
+// die altijd per dag werkt. `scanOutlookRitmoBlocks` telt alleen (voor de
+// ConfirmDialog); `cleanupOutlookRitmoBlocks` verwijdert één batch
+// (`{ deleted, failed, more }`) — CalendarCleanupSection.jsx herhaalt de
+// aanroep zolang `more === true`.
+export async function scanOutlookRitmoBlocks() {
+  return callConnectionsApi('outlook/cleanup', { scan: true });
+}
+
+export async function cleanupOutlookRitmoBlocks() {
+  return callConnectionsApi('outlook/cleanup', {});
+}
+
 // Trello (S08, key+token-flow, geen OAuth — zie api/connections/trello/*.js).
 // Haalt de server-gebouwde authorize-URL op (TRELLO_API_KEY is server-only,
 // de frontend kan de link dus niet zelf samenstellen).
