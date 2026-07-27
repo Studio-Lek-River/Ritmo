@@ -1,3 +1,10 @@
+# [0.97.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.96.0...v0.97.0) (2026-07-27)
+
+
+### Features
+
+* **outlook:** ruim alle Ritmo-blokken in één actie op ([6d48e1d](https://github.com/Studio-Lek-River/Ritmo/commit/6d48e1d9c6df4981a7c014a62428d16fd3616095)), closes [#155](https://github.com/Studio-Lek-River/Ritmo/issues/155)
+
 # [0.96.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.95.0...v0.96.0) (2026-07-27)
 
 
