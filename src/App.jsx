@@ -1847,6 +1847,26 @@ export default function Ritmo() {
       return null;
     }
 
+    // Een module-item/-blok (S10c) is een dagelijks terugkerende routine, geen
+    // taak die van dag verhuist: alleen de doeldag krijgt een `plannedTime`.
+    // De brondag blijft ongemoeid — morgen valt het item vanzelf terug op zijn
+    // standaardtijd uit de moduleconfig (of ongepland), zie dayTimeline.js.
+    if (parsed.kind === 'moduleItem') {
+      writeModuleDataForDay(targetDateKey, parsed.moduleId, prev => {
+        const data = normalizeChecklistItemData(prev[parsed.itemId]);
+        return { ...prev, [parsed.itemId]: { ...data, plannedTime: time || undefined } };
+      });
+      return null;
+    }
+
+    if (parsed.kind === 'moduleBlock') {
+      writeModuleDataForDay(targetDateKey, parsed.moduleId, prev => ({
+        ...prev,
+        plannedTime: time || undefined,
+      }));
+      return null;
+    }
+
     if (parsed.kind !== 'task') return null;
     const taskId = parsed.taskId;
 
@@ -1890,7 +1910,7 @@ export default function Ritmo() {
       writeTasksForDay(sourceDateKey, tasks => tasks.filter(t => String(t.id) !== taskId));
     }
     return createdTaskId;
-  }, [readTasksForDay, writeTasksForDay, recurringTasks]);
+  }, [readTasksForDay, writeTasksForDay, recurringTasks, writeModuleDataForDay]);
 
   // Zet de duur van één pool-item, ongeacht soort. Zusje van moveItemToDay:
   // dezelfde item-key -> kind-dispatch, en dezelfde dag-bewuste schrijfweg.
@@ -2320,7 +2340,9 @@ export default function Ritmo() {
   // `meta` onthoudt per key de weergave-info (label/kleur/soort) voor de
   // pending-blokken; planDay zelf blijft puur en krijgt alleen platte data.
   const buildPlanInputs = useCallback((dateKey) => {
-    const dayTasks = weekDays.find(d => d.dateKey === dateKey)?.customTasks || [];
+    const day = weekDays.find(d => d.dateKey === dateKey);
+    const dayTasks = day?.customTasks || [];
+    const dayModuleData = day?.moduleData || {};
     const candidates = [];
     const fixed = [];
     const meta = {};
@@ -2361,8 +2383,41 @@ export default function Ritmo() {
       }
     });
 
+    // Module-items/-blokken (S10c): dezelfde opt-in-gate en dezelfde
+    // fixed/candidate-splitsing als hierboven — effectieve tijd (dagafwijking
+    // uit dayModuleData, anders de standaardtijd uit de moduleconfig) gezet
+    // betekent `fixed`, anders `autoPlan` betekent `candidates`.
+    modules.forEach(mod => {
+      if (!mod.enabled || !mod.planInDay) return;
+      if (!['checklist', 'choice', 'counter'].includes(mod.type)) return;
+
+      if (mod.type === 'checklist' && mod.planGranularity !== 'block') {
+        (mod.items || []).forEach(item => {
+          if (item.planInDay === false) return;
+          const key = moduleItemKey(mod.id, item.id);
+          meta[key] = { label: item.label, color: mod.color, kind: 'routine' };
+          const effectiveTime = dayModuleData[mod.id]?.[item.id]?.plannedTime ?? item.time;
+          if (effectiveTime) {
+            fixed.push({ time: effectiveTime, duration: item.duration });
+          } else if (item.autoPlan) {
+            candidates.push({ key, duration: item.duration, window: item.window || '', deepWork: false, order: order++ });
+          }
+        });
+        return;
+      }
+
+      const key = moduleBlockKey(mod.id);
+      meta[key] = { label: resolveModuleName(mod, t), color: mod.color, kind: 'routine' };
+      const effectiveTime = dayModuleData[mod.id]?.plannedTime ?? mod.time;
+      if (effectiveTime) {
+        fixed.push({ time: effectiveTime, duration: mod.duration });
+      } else if (mod.autoPlan) {
+        candidates.push({ key, duration: mod.duration, window: mod.window || '', deepWork: false, order: order++ });
+      }
+    });
+
     return { candidates, fixed, meta };
-  }, [weekDays, allModules, modules]);
+  }, [weekDays, allModules, modules, t]);
 
   // Past één plan-toewijzing toe via de bestaande cross-day-handler
   // (moveItemToDay dekt zowel losse taken, gematerialiseerde recurring als
@@ -2406,6 +2461,19 @@ export default function Ritmo() {
       };
     }
 
+    // Een module-item/-blok (S10c) heeft zijn dagafwijking in `moduleData` van
+    // díé dag, niet in `modules` zelf — de snapshot legt dus alleen
+    // `plannedTime` vast (undo zet die terug, nooit de configstandaard aan).
+    if (parsed.kind === 'moduleItem') {
+      const data = readModuleDataForDay(dateKey, parsed.moduleId);
+      return { kind: 'moduleItem', moduleId: parsed.moduleId, itemId: parsed.itemId, plannedTime: data[parsed.itemId]?.plannedTime };
+    }
+
+    if (parsed.kind === 'moduleBlock') {
+      const data = readModuleDataForDay(dateKey, parsed.moduleId);
+      return { kind: 'moduleBlock', moduleId: parsed.moduleId, plannedTime: data.plannedTime };
+    }
+
     if (parsed.kind !== 'task') return null;
     // Een virtuele instantie bestaat nog niet; die levert bij het toepassen een
     // 'createdTask'-entry op (zie applyAssignments), niet een 'task'-entry.
@@ -2413,7 +2481,7 @@ export default function Ritmo() {
     const task = readTasksForDay(dateKey).find(t => String(t.id) === parsed.taskId);
     if (!task) return null;
     return { kind: 'task', taskId: parsed.taskId, time: task.time };
-  }, [modules, sourceItemPrefs, readTasksForDay]);
+  }, [modules, sourceItemPrefs, readTasksForDay, readModuleDataForDay]);
 
   // Past een reeks toewijzingen toe en levert de undo-entries. Eén weg voor
   // zowel de direct-stand als "alles overnemen". De snapshots worden binnen
@@ -2438,6 +2506,8 @@ export default function Ritmo() {
     const sourceEntries = entries.filter(e => e.kind === 'sourceItem');
     const taskEntries = entries.filter(e => e.kind === 'task');
     const createdIds = entries.filter(e => e.kind === 'createdTask').map(e => e.taskId);
+    const moduleItemEntries = entries.filter(e => e.kind === 'moduleItem');
+    const moduleBlockEntries = entries.filter(e => e.kind === 'moduleBlock');
 
     // `withItemOverride` normaliseert mee, dus het terugdraaien van een
     // eerste-keer-tijd laat geen lege entry achter in de map.
@@ -2477,7 +2547,27 @@ export default function Ritmo() {
           return entry ? { ...t, time: entry.time } : t;
         }));
     }
-  }, [writeTasksForDay]);
+
+    // Module-items (S10c): per module één schrijfactie, ook als er meerdere
+    // items van dezelfde module zijn teruggedraaid — zelfde "één schrijfactie
+    // per bron"-principe als de subgoal-tak hierboven.
+    if (moduleItemEntries.length) {
+      const moduleIds = [...new Set(moduleItemEntries.map(e => e.moduleId))];
+      moduleIds.forEach(moduleId => {
+        const forModule = moduleItemEntries.filter(e => e.moduleId === moduleId);
+        writeModuleDataForDay(dateKey, moduleId, prev => forModule.reduce((acc, e) => {
+          const data = normalizeChecklistItemData(acc[e.itemId]);
+          return { ...acc, [e.itemId]: { ...data, plannedTime: e.plannedTime } };
+        }, prev));
+      });
+    }
+
+    if (moduleBlockEntries.length) {
+      moduleBlockEntries.forEach(e => {
+        writeModuleDataForDay(dateKey, e.moduleId, prev => ({ ...prev, plannedTime: e.plannedTime }));
+      });
+    }
+  }, [writeTasksForDay, writeModuleDataForDay]);
 
   // Snapshot van de laatste indeling. Ephemeer, net als pendingPlan: na een
   // herlaadbeurt is er niets meer terug te draaien. Eén tegelijk — een nieuwe
