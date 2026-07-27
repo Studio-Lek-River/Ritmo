@@ -19,7 +19,13 @@ const NUTRITION_UNIT_KEYS = NUTRITION_UNITS.map((u) => u.key);
 // Voedingswaarden per 100 eenheid, als map i.p.v. los `kcal`-veld: zo is een
 // macro later (eiwit, vet, koolhydraten) één extra entry hier en lopen alle
 // rekenpaden (itemRate, normalisatie) ongewijzigd mee.
-export const NUTRIENT_KEYS = ['kcal'];
+export const NUTRIENT_KEYS = ['kcal', 'protein', 'carbs', 'fat'];
+
+// De deelverzameling van NUTRIENT_KEYS die de UI in grammen toont (#148).
+// kcal blijft hier bewust buiten: die voedt de dagteller/dagring en heeft
+// zijn eigen weergave (formatValue met de teller-eenheid), terwijl de drie
+// macro's altijd in gram getoond worden, ongeacht de eenheid van het item.
+export const MACRO_KEYS = ['protein', 'carbs', 'fat'];
 
 export function isValidNutritionUnit(unit) {
   return NUTRITION_UNIT_KEYS.includes(unit);
@@ -52,13 +58,16 @@ function normalizeProductSize(raw) {
 
 // Bouwt een nieuw, volledig genormaliseerd voedingsmiddel. Input komt binnen
 // als platte formuliervelden (niet als de opgeslagen per100/portion-shape),
-// zodat het formulier die zelf niet hoeft samen te stellen. Wordt zowel voor
-// een nieuw item als (met een overschreven `id`) voor een bewerkt item
-// gebruikt, zodat beide paden dezelfde validatie/normalisatie doorlopen.
+// zodat het formulier die zelf niet hoeft samen te stellen. `per100` is één
+// map met (een deelverzameling van) NUTRIENT_KEYS i.p.v. losse
+// `xPer100`-parameters — zo groeit een volgende nutriënt hier mee zonder de
+// functiehandtekening te hoeven uitbreiden. Wordt zowel voor een nieuw item
+// als (met een overschreven `id`) voor een bewerkt item gebruikt, zodat beide
+// paden dezelfde validatie/normalisatie doorlopen.
 export function createFoodItem({
   name,
   unit = 'g',
-  kcalPer100 = 0,
+  per100 = {},
   portionLabel = '',
   portionAmount = null,
   countsAsDrink = false,
@@ -68,7 +77,7 @@ export function createFoodItem({
     id: genId('food'),
     name: (name || '').trim(),
     unit: safeUnit,
-    per100: normalizePer100({ kcal: kcalPer100 }),
+    per100: normalizePer100(per100),
     portion: normalizeProductSize({ label: portionLabel, amount: portionAmount }),
     // Alleen betekenisvol bij ml; bij g altijd false, ook als de aanroeper
     // het meegeeft (bv. een niet-opgeschoonde formulierwaarde na eenheidswissel).
@@ -389,11 +398,17 @@ export function buildNutritionLog(item, { quantity, mode = 'base' } = {}) {
   const usePortion = mode === 'portion';
   if (usePortion && !item.portion) return null;
 
-  const baseRate = itemRate(item, 'kcal');
   const perUnitQty = usePortion ? item.portion.amount : 1;
-  const kcalPerUnit = baseRate * perUnitQty;
+  const kcalPerUnit = itemRate(item, 'kcal') * perUnitQty;
   const mlPerUnit = (item.unit === 'ml' && item.countsAsDrink) ? perUnitQty : 0;
   const amount = Math.round(qty * kcalPerUnit);
+  // Alle NUTRIENT_KEYS bevriezen, niet alleen kcal: een macro-correctie in de
+  // bibliotheek mag een dag van weken geleden niet met terugwerkende kracht
+  // veranderen (zelfde reden als hierboven bij kcal/ml).
+  const perUnit = { ml: mlPerUnit };
+  for (const key of NUTRIENT_KEYS) {
+    perUnit[key] = itemRate(item, key) * perUnitQty;
+  }
 
   return {
     amount,
@@ -404,7 +419,7 @@ export function buildNutritionLog(item, { quantity, mode = 'base' } = {}) {
       quantity: qty,
       unit: usePortion ? 'serving' : item.unit,
       unitLabel: usePortion ? item.portion.label : null,
-      perUnit: { kcal: kcalPerUnit, ml: mlPerUnit },
+      perUnit,
     },
   };
 }
@@ -428,6 +443,12 @@ export function buildPortionLog(portion, items, { count } = {}) {
   const kcalPerPortion = portionRate(portion, items, 'kcal');
   const mlPerPortion = portionDrinkMl(portion, items);
   const amount = Math.round(c * kcalPerPortion);
+  // Zelfde bevriezing als buildNutritionLog, nu over alle NUTRIENT_KEYS i.p.v.
+  // alleen kcal.
+  const perUnit = { ml: mlPerPortion };
+  for (const key of NUTRIENT_KEYS) {
+    perUnit[key] = portionRate(portion, items, key);
+  }
 
   return {
     amount,
@@ -438,7 +459,7 @@ export function buildPortionLog(portion, items, { count } = {}) {
       quantity: c,
       unit: 'portion',
       unitLabel: null,
-      perUnit: { kcal: kcalPerPortion, ml: mlPerPortion },
+      perUnit,
     },
   };
 }
@@ -453,6 +474,12 @@ export function buildMealLog(meal, portions, items, { count } = {}) {
   const kcalPerMeal = mealRate(meal, portions, items, 'kcal');
   const mlPerMeal = mealDrinkMl(meal, portions, items);
   const amount = Math.round(c * kcalPerMeal);
+  // Zelfde bevriezing als buildNutritionLog/buildPortionLog, nu over alle
+  // NUTRIENT_KEYS i.p.v. alleen kcal.
+  const perUnit = { ml: mlPerMeal };
+  for (const key of NUTRIENT_KEYS) {
+    perUnit[key] = mealRate(meal, portions, items, key);
+  }
 
   return {
     amount,
@@ -463,7 +490,7 @@ export function buildMealLog(meal, portions, items, { count } = {}) {
       quantity: c,
       unit: 'meal',
       unitLabel: null,
-      perUnit: { kcal: kcalPerMeal, ml: mlPerMeal },
+      perUnit,
     },
   };
 }
