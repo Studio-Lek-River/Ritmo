@@ -1,3 +1,16 @@
+# [0.95.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.94.0...v0.95.0) (2026-07-27)
+
+
+### Bug Fixes
+
+* **planner:** stop het wegschrijven van de week bij een rate-limit ([c6914a5](https://github.com/Studio-Lek-River/Ritmo/commit/c6914a577394c36bb029abdde41b8dd9f6f3fdb7))
+
+
+### Features
+
+* **outlook:** kom na opnieuw koppelen terug in de planner ([6032962](https://github.com/Studio-Lek-River/Ritmo/commit/6032962cda18cee2817118d0c5c8902e6e4123b4))
+* **planner:** zet de hele week in één klik in de agenda ([deb614f](https://github.com/Studio-Lek-River/Ritmo/commit/deb614f668b637122639d56e38b125fa8dba2817)), closes [#153](https://github.com/Studio-Lek-River/Ritmo/issues/153)
+
 # [0.94.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.93.0...v0.94.0) (2026-07-27)
 
 
