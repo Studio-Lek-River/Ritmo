@@ -35,9 +35,13 @@ function normalizePer100(raw) {
   return per100;
 }
 
-// Een portie is alleen geldig met zowel een label als een positief bedrag;
-// anders is het geen portie (null), nooit een half-ingevuld object.
-function normalizePortion(raw) {
+// De productmaat ("1 product = X g/ml"), opgeslagen onder `item.portion`.
+// Hernoemd t.o.v. de vorige naam (normalizePortion) omdat #147 een eigen
+// Portie-entiteit introduceert; deze functie blijft over productmaten gaan,
+// niet over die nieuwe entiteit. De opgeslagen veldnaam (`item.portion`)
+// verandert niet. Alleen geldig met zowel een label als een positief bedrag;
+// anders is het geen maat (null), nooit een half-ingevuld object.
+function normalizeProductSize(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const label = typeof raw.label === 'string' ? raw.label.trim() : '';
   const amount = raw.amount;
@@ -65,7 +69,7 @@ export function createFoodItem({
     name: (name || '').trim(),
     unit: safeUnit,
     per100: normalizePer100({ kcal: kcalPer100 }),
-    portion: normalizePortion({ label: portionLabel, amount: portionAmount }),
+    portion: normalizeProductSize({ label: portionLabel, amount: portionAmount }),
     // Alleen betekenisvol bij ml; bij g altijd false, ook als de aanroeper
     // het meegeeft (bv. een niet-opgeschoonde formulierwaarde na eenheidswissel).
     countsAsDrink: safeUnit === 'ml' && !!countsAsDrink,
@@ -135,7 +139,7 @@ function normalizeFoodItem(raw) {
     name,
     unit,
     per100: normalizePer100(raw.per100),
-    portion: normalizePortion(raw.portion),
+    portion: normalizeProductSize(raw.portion),
     // Hard gekoppeld aan de eenheid bij het lezen: een g-item kan nooit als
     // drinken meetellen, ook niet als een corrupte/oude waarde dat beweert.
     countsAsDrink: unit === 'ml' && raw.countsAsDrink === true,
