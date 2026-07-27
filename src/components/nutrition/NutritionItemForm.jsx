@@ -9,6 +9,9 @@ const EMPTY_DRAFT = {
   name: '',
   unit: 'g',
   kcal: '',
+  protein: '',
+  carbs: '',
+  fat: '',
   portionLabel: '',
   portionAmount: '',
   countsAsDrink: false,
@@ -20,10 +23,24 @@ function draftFromItem(item) {
     name: item.name || '',
     unit: item.unit || 'g',
     kcal: typeof item.per100?.kcal === 'number' ? String(item.per100.kcal) : '',
+    protein: typeof item.per100?.protein === 'number' ? String(item.per100.protein) : '',
+    carbs: typeof item.per100?.carbs === 'number' ? String(item.per100.carbs) : '',
+    fat: typeof item.per100?.fat === 'number' ? String(item.per100.fat) : '',
     portionLabel: item.portion?.label || '',
     portionAmount: typeof item.portion?.amount === 'number' ? String(item.portion.amount) : '',
     countsAsDrink: !!item.countsAsDrink,
   };
+}
+
+// Eén macro (eiwit/koolhydraten/vet) is optioneel: leeg laten is geldig en
+// telt als 0 (AC1), maar een ingevulde onzin- of negatieve waarde is
+// ongeldig, zodat canSave uitblijft — zelfde regel als kcalValid hieronder,
+// alleen met "leeg mag" ervoor.
+function parseOptionalNutrient(raw) {
+  const trimmed = (raw || '').trim();
+  if (trimmed === '') return { value: 0, valid: true };
+  const parsed = parseMeasurementInput(trimmed);
+  return { value: parsed, valid: parsed !== null && parsed >= 0 };
 }
 
 // Add/edit-formulier voor één voedingsmiddel, als modal boven
@@ -55,6 +72,9 @@ export default function NutritionItemForm({ open, mode = 'add', item, onClose, o
 
   const parsedKcal = parseMeasurementInput(draft.kcal);
   const kcalValid = parsedKcal !== null && parsedKcal >= 0;
+  const protein = parseOptionalNutrient(draft.protein);
+  const carbs = parseOptionalNutrient(draft.carbs);
+  const fat = parseOptionalNutrient(draft.fat);
   const parsedPortionAmount = parseMeasurementInput(draft.portionAmount);
   // Poort-0-aanvulling (#147): "1 product = X g/ml" is verplicht om op te
   // slaan — zonder label én zonder een positief bedrag is er geen geldige
@@ -63,7 +83,8 @@ export default function NutritionItemForm({ open, mode = 'add', item, onClose, o
   // formuliervoorwaarde.
   const portionValid = draft.portionLabel.trim().length > 0
     && parsedPortionAmount !== null && parsedPortionAmount > 0;
-  const canSave = draft.name.trim().length > 0 && kcalValid && portionValid;
+  const canSave = draft.name.trim().length > 0 && kcalValid
+    && protein.valid && carbs.valid && fat.valid && portionValid;
   // Live preview van de kcal per product (AC1): hergebruikt kcalPerProduct
   // op een tijdelijk item-object uit de nog niet opgeslagen draft-waarden,
   // zodat de preview altijd exact dezelfde formule gebruikt als het echte
@@ -81,7 +102,7 @@ export default function NutritionItemForm({ open, mode = 'add', item, onClose, o
     const built = createFoodItem({
       name: draft.name,
       unit: draft.unit,
-      kcalPer100: parsedKcal,
+      per100: { kcal: parsedKcal, protein: protein.value, carbs: carbs.value, fat: fat.value },
       portionLabel: draft.portionLabel,
       portionAmount,
       countsAsDrink: draft.countsAsDrink,
@@ -165,6 +186,49 @@ export default function NutritionItemForm({ open, mode = 'add', item, onClose, o
             placeholder={t('nutrition.item.kcalPlaceholder')}
             className={`w-full px-3 py-2 rounded-lg text-sm ${theme.input} ${theme.textSecondary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
           />
+        </div>
+
+        {/* Drie optionele macro's (#148): leeg laten telt als 0 (AC1). */}
+        <div className="mb-4 grid grid-cols-3 gap-2">
+          <div>
+            <p className={`text-xs ${theme.textMuted} mb-1`}>
+              {t('nutrition.item.proteinLabel', { unit: unitLabel })}
+            </p>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={draft.protein}
+              onChange={(e) => setDraft((prev) => ({ ...prev, protein: e.target.value }))}
+              placeholder={t('nutrition.item.proteinPlaceholder')}
+              className={`w-full px-3 py-2 rounded-lg text-sm ${theme.input} ${theme.textSecondary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+            />
+          </div>
+          <div>
+            <p className={`text-xs ${theme.textMuted} mb-1`}>
+              {t('nutrition.item.carbsLabel', { unit: unitLabel })}
+            </p>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={draft.carbs}
+              onChange={(e) => setDraft((prev) => ({ ...prev, carbs: e.target.value }))}
+              placeholder={t('nutrition.item.carbsPlaceholder')}
+              className={`w-full px-3 py-2 rounded-lg text-sm ${theme.input} ${theme.textSecondary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+            />
+          </div>
+          <div>
+            <p className={`text-xs ${theme.textMuted} mb-1`}>
+              {t('nutrition.item.fatLabel', { unit: unitLabel })}
+            </p>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={draft.fat}
+              onChange={(e) => setDraft((prev) => ({ ...prev, fat: e.target.value }))}
+              placeholder={t('nutrition.item.fatPlaceholder')}
+              className={`w-full px-3 py-2 rounded-lg text-sm ${theme.input} ${theme.textSecondary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+            />
+          </div>
         </div>
 
         <div className="mb-4">

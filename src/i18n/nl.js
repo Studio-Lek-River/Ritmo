@@ -1208,6 +1208,16 @@ export default {
       deleteTitle: '{name} verwijderen?',
       deleteDescription: 'Deze maaltijd wordt uit de bibliotheek verwijderd. Al gelogde maaltijden blijven staan.',
     },
+    // Macro-regel (#148): gedeeld door MacroSummary, gebruikt onder het
+    // kcal-totaal in de portie-/maaltijdsamensteller en op de Inzicht-kaart.
+    // Eén summary-key i.p.v. los concatenerende JSX, zodat ook de
+    // scheidingstekens uit i18n komen i.p.v. hardcoded tekst.
+    macros: {
+      proteinLabel: 'Eiwit',
+      carbsLabel: 'Koolhydraten',
+      fatLabel: 'Vet',
+      summary: '{proteinLabel} {protein} · {carbsLabel} {carbs} · {fatLabel} {fat}',
+    },
     // servingUnit/servingUnitPlural blijven bestaan als fallback voor
     // gelogde regels van vóór #147 (kind: 'recipe', unit: 'serving') — die
     // regels blijven ongewijzigd zichtbaar (AC6), ook al bestaat het
@@ -1742,6 +1752,9 @@ export default {
       summary: 'Gemiddeld {avg}, doel gehaald op {hits} van {total} dagen',
       summaryNoGoal: 'Gemiddeld {avg} per dag',
       goalLabel: 'doel {value}',
+      // #148: alleen voor een calorieënmodule met voedingsbibliotheek
+      // (nutritionEnabled), en alleen als er macro-data is.
+      macrosLabel: 'Gemiddeld per dag: {macros}',
     },
     checklist: {
       summary: 'Gemiddeld {avg}% voltooid over {days} dagen',

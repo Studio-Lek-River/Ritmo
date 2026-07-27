@@ -1198,6 +1198,16 @@ export default {
       deleteTitle: 'Delete {name}?',
       deleteDescription: 'This meal will be removed from the library. Meals already logged stay as they are.',
     },
+    // Macro line (#148): shared by MacroSummary, used under the kcal total
+    // in the portion/meal composer and on the Insight card. One summary key
+    // instead of concatenating JSX, so the separators also come from i18n
+    // instead of hardcoded text.
+    macros: {
+      proteinLabel: 'Protein',
+      carbsLabel: 'Carbs',
+      fatLabel: 'Fat',
+      summary: '{proteinLabel} {protein} · {carbsLabel} {carbs} · {fatLabel} {fat}',
+    },
     // servingUnit/servingUnitPlural remain as a fallback for entries logged
     // before #147 (kind: 'recipe', unit: 'serving') — those entries stay
     // visible unchanged (AC6), even though the recipe form itself no longer
@@ -1730,6 +1740,9 @@ export default {
       summary: 'Average {avg}, goal reached on {hits} of {total} days',
       summaryNoGoal: 'Average {avg} per day',
       goalLabel: 'goal {value}',
+      // #148: only for a calorie module with a nutrition library
+      // (nutritionEnabled), and only when there is macro data.
+      macrosLabel: 'Average per day: {macros}',
     },
     checklist: {
       summary: 'Average {avg}% completed over {days} days',

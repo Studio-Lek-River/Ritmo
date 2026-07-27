@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { X, Trash2, Plus } from 'lucide-react';
 import ConfirmDialog from '../ConfirmDialog';
-import { createMeal, mealRate, portionRate, missingPortionIds } from '../../utils/nutrition';
+import MacroSummary from './MacroSummary';
+import { createMeal, mealRate, portionRate, missingPortionIds, MACRO_KEYS } from '../../utils/nutrition';
 import { parseMeasurementInput } from '../../utils/measurements';
 import { useTranslation } from '../../i18n/useTranslation';
 
@@ -70,6 +71,13 @@ export default function NutritionMealForm({ open, mode = 'add', meal, portions, 
     return { portionId: row.portionId, count: Number.isFinite(count) && count > 0 ? count : 0 };
   });
   const liveTotal = mealRate({ entries: liveEntries }, library, items, 'kcal');
+  // Zelfde liveEntries-previewdata als het kcal-totaal, nu over MACRO_KEYS
+  // (AC2) — geen nieuw rekenpad, alleen dezelfde mealRate met een andere
+  // nutriëntsleutel.
+  const liveMacros = MACRO_KEYS.reduce((acc, key) => {
+    acc[key] = mealRate({ entries: liveEntries }, library, items, key);
+    return acc;
+  }, {});
   const missingIds = missingPortionIds({ entries: draft.entries }, library);
 
   const save = () => {
@@ -197,9 +205,12 @@ export default function NutritionMealForm({ open, mode = 'add', meal, portions, 
           </p>
         )}
 
-        <p className={`text-sm font-medium ${theme.textSecondary} mb-4`}>
+        <p className={`text-sm font-medium ${theme.textSecondary} mb-1`}>
           {t('nutrition.meal.totalLabel', { kcal: Math.round(liveTotal) })}
         </p>
+        <div className="mb-4">
+          <MacroSummary macros={liveMacros} theme={theme} t={t} />
+        </div>
 
         <div className="flex items-center gap-2 mt-5">
           {mode === 'edit' && onDelete && (
