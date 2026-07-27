@@ -58,7 +58,7 @@ De open slices lopen als één doorlopende reeks in bouwvolgorde. De volgende te
 | S10 | #39 | Todo | Vandaag-feed |
 | S10b | #121 | Todo | Aggregatie-cache via een scheduled functie |
 | S10c | #122 | Todo | Checklist-items planbaar in de dag |
-| S11 | #40 | IN UITVOERING | Deel mijn dag in |
+| S11 | #40 | KLAAR | Deel mijn dag in |
 | S12 | #41 | Todo | Outlook wegschrijven |
 | S13 | #42 | Todo | Ritmo MCP-server (lezen) |
 | S14 | #43 | Todo | Uitvoer-context per bron |
@@ -146,7 +146,7 @@ Een lokale, offline versie van de planner die volledig op bestaande data draait,
 - **De crux:** `buildDayTimeline` leest alleen `tasks` en `projects`, en een checklist-item keert elke dag terug (status per dag in het `day:`-record) in plaats van één keer af te ronden.
 - **Afhankelijk van:** S10.
 
-#### S11, Deel mijn dag in. #40. IN UITVOERING
+#### S11, Deel mijn dag in. #40. KLAAR
 - **Doel:** de planner die je taken rond je Outlook-afspraken indeelt, met een provider-pluggable AI-laag boven de deterministische heuristiek.
 - **Oplevering:** een planner-provider-abstractie met één contract, met daarachter: (a) de heuristiek uit S05 als default en universele fallback; (b) een lokale AI (bv. Ollama), client-side, desktop-only, opt-in; (c) een gedefinieerde server-provider-seam (patroon van `api/connections/outlook/events.js`) die de latere Ritmo AI invult voor desktop én mobiel, met de betaalde Claude-API met eigen key hooguit als interim. Plus de provider-keuze als device-lokale instelling met een duidelijke fallback-melding, en de planner-UI (indeling, uitleg, gebruikte provider). Nog geen write-back.
 - **Feitelijke correctie:** een claude.ai-abonnement dekt de Anthropic-API niet, dus geen gratis-via-abonnement; daarom local-first met de heuristiek als kosteloze default, en Ritmo AI (server-side, desktop+mobiel) als einddoel.
