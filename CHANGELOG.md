@@ -1,3 +1,10 @@
+## [0.87.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.87.0...v0.87.1) (2026-07-27)
+
+
+### Bug Fixes
+
+* **household:** punt als decimaalteken bij het invoeren van bedragen ([3213845](https://github.com/Studio-Lek-River/Ritmo/commit/321384583a055d73779754d1a9cc7c57a4ff792f)), closes [#114](https://github.com/Studio-Lek-River/Ritmo/issues/114)
+
 # [0.87.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.86.0...v0.87.0) (2026-07-27)
 
 
