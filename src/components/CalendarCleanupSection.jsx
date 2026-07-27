@@ -10,17 +10,10 @@ import { useState } from 'react';
 import { Trash2, Loader2 } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { useToast } from '../hooks/useToast';
-import { scanOutlookRitmoBlocks, cleanupOutlookRitmoBlocks, startOutlookConnect } from '../sync/connections';
+import { scanOutlookRitmoBlocks, startOutlookConnect } from '../sync/connections';
+import { runCalendarCleanup } from '../utils/calendarCleanup';
 import { ERROR_KEYS } from './ConnectionsSection';
 import ConfirmDialog from './ConfirmDialog';
-
-// Client-cap op het aantal opruim-rondes per klik: één ronde ruimt maximaal
-// CLEANUP_DELETE_BATCH (server, cleanup.js) events op. 25 rondes is dus 5000
-// events per klik — ruim boven wat een reële mailbox aan Ritmo-blokken bevat
-// zonder dat de knop bij een onverwacht grote mailbox eindeloos doorloopt
-// (AC6): wordt de cap geraakt, dan meldt de toast dat opnieuw klikken de rest
-// opruimt, nooit stilzwijgend "klaar".
-const MAX_CLEANUP_ROUNDS = 25;
 
 export default function CalendarCleanupSection({ theme, onCleaned }) {
   const { t } = useTranslation();
@@ -67,37 +60,25 @@ export default function CalendarCleanupSection({ theme, onCleaned }) {
     setBusy(true);
     setDeletedSoFar(0);
 
-    let totalDeleted = 0;
-    let totalFailed = 0;
-    let more = true;
-    let capped = false;
-
+    let result;
     try {
-      for (let round = 0; round < MAX_CLEANUP_ROUNDS && more; round += 1) {
-        // eslint-disable-next-line no-await-in-loop
-        const result = await cleanupOutlookRitmoBlocks();
-        totalDeleted += result?.deleted || 0;
-        totalFailed += result?.failed || 0;
-        setDeletedSoFar(totalDeleted);
-        more = !!result?.more;
-      }
-      capped = more;
+      result = await runCalendarCleanup({ onProgress: ({ deleted }) => setDeletedSoFar(deleted) });
     } catch (err) {
       setBusy(false);
       reportError(err);
-      if (totalDeleted > 0) onCleaned?.();
+      if (err.deleted > 0) onCleaned?.();
       return;
     }
 
     setBusy(false);
-    if (totalFailed > 0) {
-      showToast({ message: t('settings.calendarCleanupPartial', { deleted: totalDeleted, failed: totalFailed }) });
-    } else if (capped) {
+    if (result.failed > 0) {
+      showToast({ message: t('settings.calendarCleanupPartial', { deleted: result.deleted, failed: result.failed }) });
+    } else if (result.capped) {
       showToast({ message: t('settings.calendarCleanupMore') });
     } else {
-      showToast({ message: t('settings.calendarCleanupDone', { deleted: totalDeleted }) });
+      showToast({ message: t('settings.calendarCleanupDone', { deleted: result.deleted }) });
     }
-    if (totalDeleted > 0) onCleaned?.();
+    if (result.deleted > 0) onCleaned?.();
   }
 
   const busyLabel = scanning
