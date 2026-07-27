@@ -23,6 +23,10 @@ export {
   ensureConnectionRow,
 } from '../_shared.js';
 
+// `node:crypto` — geen extra dependency — voor de v2-tagwaarde-hash
+// (`blockKeyHash` hieronder, S12/#154).
+import { createHash } from 'node:crypto';
+
 // Alle drie de endpoints hebben dezelfde server-config nodig (zie
 // Prerequisites in de slice-spec); één centrale lijst zodat de drie
 // handlers niet los van elkaar kunnen verschillen.
@@ -75,16 +79,47 @@ export function hasWriteScope(scope) {
 // Naam van de eigen Ritmo-agenda (S12, "aparte 'Ritmo'-agenda" uit de
 // slice-spec) en de extended-property-namespace waarmee een geschreven blok
 // wordt getagd. `RITMO_TAG_ID` is het enige criterium waarop write.js ooit
-// verwijdert (nooit `categories` of de titel, zie de slice-spec) — een
-// gebruiker kan deze waarde niet via de Outlook-UI zetten.
+// een event aanraakt — delete óf patch (nooit `categories` of de titel, zie
+// de slice-spec) — een gebruiker kan deze waarde niet via de Outlook-UI
+// zetten. De tagwáárde zelf kreeg in S12/#154 een tweede versie (v2, met
+// block-hash) zodat een diff een bestaand event kan terugvinden bij zijn
+// Ritmo-blok; zie hieronder.
 export const RITMO_CALENDAR_NAME = 'Ritmo';
 export const RITMO_TAG_GUID = '4280f699-c69a-4ad3-97c1-8520b2f6b18b';
 export const RITMO_TAG_ID = `String {${RITMO_TAG_GUID}} Name RitmoPlan`;
 export const RITMO_CATEGORY = 'Ritmo';
 
-// Bouwt de tagwaarde voor één dag: `v1|<dateKey>`. Zo verwijdert een write
-// voor dag X nooit een blok van een andere dag.
-export function ritmoTagValue(dateKey) {
+// Hash van een block-key voor in de v2-tagwaarde: sha256, eerste 12
+// hex-tekens (`node:crypto`, geen dependency). Zo belanden Ritmo's interne
+// item-ids (taak-, module-, subdoel-ids) nooit in de agenda-data bij
+// Microsoft, en blijft de tagwaarde altijd even kort — ook bij een
+// subdoel-key die drie ids draagt.
+export function blockKeyHash(blockKey) {
+  return createHash('sha256').update(blockKey).digest('hex').slice(0, 12);
+}
+
+// Bouwt de v2-tagwaarde voor één blok op één dag: `v2|<dateKey>|<hash>`. Zo
+// verwijdert/patcht een write voor dag X nooit een blok van een andere dag,
+// en kan write.js een bestaand Outlook-event bij zijn Ritmo-blok terugvinden
+// zonder dat de block-key zelf (en dus een intern id) in Outlook belandt.
+export function ritmoTagValue(dateKey, blockKey) {
+  return `v2|${dateKey}|${blockKeyHash(blockKey)}`;
+}
+
+// Prefix-filter voor het leespad: alles wat met `v2|<dateKey>|` begint hoort
+// bij dag X, ongeacht welk blok. Samen met `legacyRitmoTagValue` hieronder is
+// dit het enige criterium waarop write.js ooit een event selecteert om aan te
+// raken.
+export function ritmoTagPrefix(dateKey) {
+  return `v2|${dateKey}|`;
+}
+
+// Herkent een blok dat nog het oude (S12) tagformaat draagt: `v1|<dateKey>`,
+// zonder block-key. Wordt sinds S12/#154 nooit meer geschreven — uitsluitend
+// gebruikt om zulke blokken bij de eerste write te herkennen zodat ze
+// opgeruimd (verwijderd en met het v2-formaat opnieuw aangemaakt) kunnen
+// worden.
+export function legacyRitmoTagValue(dateKey) {
   return `v1|${dateKey}`;
 }
 

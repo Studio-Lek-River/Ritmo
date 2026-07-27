@@ -5,16 +5,26 @@
 // endpoints niet uit elkaar kunnen lopen.
 //
 // Algoritme per bestemming (`ritmo` en/of `primary`): agenda stateless
-// resolven -> getagde events van die dag ophalen -> batch-delete -> batch-
-// create. Delete-dan-create, geen diff/PATCH: een Ritmo-blok draagt geen
-// gebruikersstatus (geen deelnemers, geen antwoorden), dus er valt niets te
-// behouden — delete+create is per constructie idempotent, en delete eerst
-// zodat een halve mislukking iets *mist* in plaats van dubbelingen te maken.
+// resolven -> getagde events van die dag ophalen -> diff plannen -> batch-
+// delete -> batch-patch -> batch-create (S12/#154). Elk getagd event draagt
+// via de extended property een block-hash (`v2|<dateKey>|<hash>`, hash =
+// sha256 van `block.key`, zie _shared.js); `planDestinationDiff` matcht die
+// hash tegen de gewenste blokken uit de payload. Een onveranderd blok levert
+// zo geen enkele Graph-call op, een gewijzigd blok een PATCH (zelfde
+// event-id blijft bestaan), en alleen echt nieuwe/verdwenen blokken worden
+// aangemaakt/verwijderd. Volgorde blijft delete -> patch -> create, zodat een
+// halve mislukking iets *mist* in plaats van dubbelingen te maken (dezelfde
+// veilige faalmodus als vóór deze slice). Blokken die nog het oude
+// `v1|<dateKey>`-formaat dragen (zonder hash) worden altijd verwijderd en met
+// het v2-formaat opnieuw aangemaakt — eenmalig per dag, daarna geen churn
+// meer.
 //
-// Destructief pad: de delete-lijst komt uitsluitend uit events die, via
-// `$expand=singleValueExtendedProperties`, de exacte tagwaarde `v1|<dateKey>`
-// dragen (RITMO_TAG_ID in _shared.js) — nooit `categories` en nooit de
-// titel. Zie de slice-spec voor de volledige onderbouwing.
+// Destructief/patch-pad: zowel de delete- als de patch-lijst komen
+// uitsluitend uit events die, via `$expand=singleValueExtendedProperties`,
+// een v2-tagwaarde voor déze dag (`v2|<dateKey>|...`) of de legacy
+// `v1|<dateKey>`-tagwaarde dragen (RITMO_TAG_ID in _shared.js) — nooit
+// `categories` en nooit de titel. Zie de slice-spec voor de volledige
+// onderbouwing.
 import {
   getBearerToken,
   getServiceClient,
@@ -23,6 +33,9 @@ import {
   graphBatch,
   hasWriteScope,
   ritmoTagValue,
+  ritmoTagPrefix,
+  legacyRitmoTagValue,
+  blockKeyHash,
   GRAPH_BASE_URL,
   GRAPH_CALENDARS_URL,
   GRAPH_PRIMARY_CALENDAR_URL,
@@ -124,17 +137,24 @@ async function resolveRitmoCalendarId(accessToken) {
 // Ophalen via `$expand=singleValueExtendedProperties($filter=id eq '...')` op
 // de agenda-specifieke calendarView (NIET `$filter` rechtstreeks op
 // calendarView — dat geeft een 500, zie de slice-spec) en pas daarna in JS
-// filteren op de exacte tagwaarde. Dit is de enige plaats die bepaalt wat er
-// straks verwijderd mag worden.
+// filteren op de tagwaarde. Dit is de enige plaats die bepaalt welke events
+// straks aangeraakt mogen worden (delete óf patch, S12-regel).
+//
+// `subject`/`start`/`end` komen sinds S12/#154 mee naast `id`: een diff moet
+// weten wát er veranderd is. Nog steeds geen body, geen deelnemers en niets
+// uit andere events — alleen de velden die Ritmo zelf ooit schreef.
+//
+// Retourneert per getagd event `{ id, hash, subject, start, end }`. `hash` is
+// het stuk ná `v2|<dateKey>|` bij een v2-tag, of `null` bij een exacte
+// legacy-`v1|<dateKey>`-match. Alles wat geen van beide is (andere dag, geen
+// Ritmo-tag, eigen afspraak van de gebruiker) komt de lijst niet in.
 async function fetchTaggedEvents(accessToken, calendarId, dateKey, windowStart, windowEnd) {
-  const tagValue = ritmoTagValue(dateKey);
+  const prefix = ritmoTagPrefix(dateKey);
+  const legacyValue = legacyRitmoTagValue(dateKey);
   const params = new URLSearchParams({
     startDateTime: windowStart,
     endDateTime: windowEnd,
-    // Alleen het id: de titel is hier nergens voor nodig, en juist op het
-    // destructieve pad hoort er geen persoonsdata mee te komen die we niet
-    // gebruiken.
-    $select: 'id',
+    $select: 'id,subject,start,end',
     $expand: `singleValueExtendedProperties($filter=id eq '${RITMO_TAG_ID}')`,
     $top: '250',
   });
@@ -152,13 +172,90 @@ async function fetchTaggedEvents(accessToken, calendarId, dateKey, windowStart, 
     (data.value || []).forEach((event) => {
       const props = event.singleValueExtendedProperties || [];
       const match = props.find((p) => p.id === RITMO_TAG_ID);
-      // Guard vlak vóór de delete-lijst: uitsluitend een exacte
-      // tagwaarde-match komt in aanmerking.
-      if (match && match.value === tagValue) tagged.push({ id: event.id });
+      if (!match || typeof match.value !== 'string') return;
+      // Guard vlak vóór delete/patch: uitsluitend een v2-tag voor déze dag
+      // (met hash) of de exacte legacy-tag voor déze dag (zonder hash) komt
+      // in aanmerking.
+      if (match.value.startsWith(prefix)) {
+        tagged.push({
+          id: event.id,
+          hash: match.value.slice(prefix.length),
+          subject: event.subject,
+          start: event.start,
+          end: event.end,
+        });
+      } else if (match.value === legacyValue) {
+        tagged.push({ id: event.id, hash: null, subject: event.subject, start: event.start, end: event.end });
+      }
     });
     url = data['@odata.nextLink'] || null;
   }
   return tagged;
+}
+
+// Vergelijkt de Graph-tijd van een bestaand event met de gewenste tijd.
+// Alleen `timeZone === 'UTC'` (wat wij zelf altijd schrijven bij create/patch)
+// wordt geparsed; elke andere tijdzone — bv. omdat de gebruiker het blok zelf
+// naar een andere tijdzone versleepte — geeft `NaN`, en dus "veranderd": een
+// overbodige maar onschadelijke PATCH, nooit een gemiste wijziging.
+function graphInstantMs(graphTime) {
+  if (!graphTime || graphTime.timeZone !== 'UTC' || typeof graphTime.dateTime !== 'string') return NaN;
+  return Date.parse(`${graphTime.dateTime}Z`);
+}
+
+// Kern van de diff (S12/#154): vergelijkt de al getagde Outlook-events van
+// deze dag (`taggedEvents`, al door `fetchTaggedEvents` tot déze dag beperkt)
+// met de gewenste blokken uit de payload en bepaalt wat er moet gebeuren.
+//
+// Botsen twee blokken op dezelfde hash (twee verschillende block-keys met
+// toevallig dezelfde eerste 12 hex-tekens van hun sha256, of een dubbele key
+// in de payload), dan is een 1-op-1-mapping niet meer betrouwbaar. Veilige
+// uitweg: voor déze bestemming terugvallen op het oude pad — alles wat getagd
+// is verwijderen, de hele gewenste dag opnieuw aanmaken. `validateBody` hoeft
+// hier niets voor te weten of te controleren.
+function planDestinationDiff(taggedEvents, blocks) {
+  const desired = new Map();
+  let collision = false;
+  blocks.forEach((block) => {
+    const hash = blockKeyHash(block.key);
+    if (desired.has(hash)) collision = true;
+    desired.set(hash, block);
+  });
+
+  if (collision) {
+    return {
+      toDelete: taggedEvents.map((event) => ({ id: event.id })),
+      toPatch: [],
+      toCreate: blocks,
+    };
+  }
+
+  const matchedHashes = new Set();
+  const toDelete = [];
+  const toPatch = [];
+
+  taggedEvents.forEach((event) => {
+    // Legacy v1-event (geen hash), een hash die niet meer in de gewenste dag
+    // voorkomt, of een duplicaat (tweede event met een hash die al gematcht
+    // is) -> altijd verwijderen, nooit patchen.
+    if (event.hash === null || matchedHashes.has(event.hash) || !desired.has(event.hash)) {
+      toDelete.push({ id: event.id });
+      return;
+    }
+    matchedHashes.add(event.hash);
+    const block = desired.get(event.hash);
+    const changed = event.subject !== block.title
+      || graphInstantMs(event.start) !== Date.parse(block.start)
+      || graphInstantMs(event.end) !== Date.parse(block.end);
+    if (changed) toPatch.push({ id: event.id, block });
+  });
+
+  const toCreate = [];
+  desired.forEach((block, hash) => {
+    if (!matchedHashes.has(hash)) toCreate.push(block);
+  });
+
+  return { toDelete, toPatch, toCreate };
 }
 
 // `events` is `{ id }[]`. Retourneert het aantal mislukte deletes en of er
@@ -179,13 +276,44 @@ async function deleteEvents(accessToken, events) {
   return { failed, scopeIssue };
 }
 
+// `patches` is `{ id, block }[]` — `id` is het bestaande Outlook-event-id,
+// `block` de gewenste (nieuwe) inhoud. Uitsluitend `{ subject, start, end }`
+// gaat mee: `categories`, `isReminderOn` en `showAs` staan al goed op het
+// event, en wat de gebruiker zelf handmatig aan een blok veranderde (bv. een
+// extra categorie of kleur) blijft zo staan. Zelfde tellen/scope-signalering
+// als `deleteEvents`/`createEvents`.
+async function patchEvents(accessToken, patches) {
+  if (patches.length === 0) return { failed: 0, scopeIssue: false };
+  const requests = patches.map(({ id, block }, idx) => ({
+    id: String(idx),
+    method: 'PATCH',
+    url: `/me/events/${id}`,
+    headers: { 'Content-Type': 'application/json' },
+    body: {
+      subject: block.title,
+      start: { dateTime: block.start.replace(/Z$/, ''), timeZone: 'UTC' },
+      end: { dateTime: block.end.replace(/Z$/, ''), timeZone: 'UTC' },
+    },
+  }));
+  const responses = await graphBatch(accessToken, requests);
+  let failed = 0;
+  let scopeIssue = false;
+  responses.forEach((r) => {
+    if (!r || r.status >= 300 || r.status === 0) {
+      failed += 1;
+      if (r?.status === 403) scopeIssue = true;
+    }
+  });
+  return { failed, scopeIssue };
+}
+
 // `isReminderOn: false` (Ritmo zet nooit ongevraagd meldingen aan),
 // `showAs: 'busy'`, de zachte `categories`-tag voor het leespad en de harde
-// extended property voor het verwijderpad. Geen body-tekst, geen server-side
-// i18n nodig: het subject is het eigen label van de gebruiker.
+// extended property (v2-tagwaarde, met block-hash) voor het delete-/
+// patch-pad. Geen body-tekst, geen server-side i18n nodig: het subject is
+// het eigen label van de gebruiker.
 async function createEvents(accessToken, calendarId, blocks, dateKey) {
   if (blocks.length === 0) return { createdIds: [], failed: 0, scopeIssue: false };
-  const tagValue = ritmoTagValue(dateKey);
   const requests = blocks.map((block, idx) => ({
     id: String(idx),
     method: 'POST',
@@ -198,7 +326,7 @@ async function createEvents(accessToken, calendarId, blocks, dateKey) {
       categories: [RITMO_CATEGORY],
       start: { dateTime: block.start.replace(/Z$/, ''), timeZone: 'UTC' },
       end: { dateTime: block.end.replace(/Z$/, ''), timeZone: 'UTC' },
-      singleValueExtendedProperties: [{ id: RITMO_TAG_ID, value: tagValue }],
+      singleValueExtendedProperties: [{ id: RITMO_TAG_ID, value: ritmoTagValue(dateKey, block.key) }],
     },
   }));
   const responses = await graphBatch(accessToken, requests);
@@ -216,33 +344,43 @@ async function createEvents(accessToken, calendarId, blocks, dateKey) {
   return { createdIds, failed, scopeIssue };
 }
 
-// Eén bestemming: resolve -> ophalen -> delete -> create -> read-back-
-// verificatie. Gooit een 403-gemarkeerde error zodra een batch-item op scope
-// wijst, zodat de handler die (samen met een rechtstreekse Graph-403) via één
-// centrale classifier afhandelt.
+// Eén bestemming: resolve -> ophalen -> diff plannen -> delete -> patch ->
+// create -> read-back-verificatie. Gooit een 403-gemarkeerde error zodra een
+// batch-item op scope wijst, zodat de handler die (samen met een
+// rechtstreekse Graph-403) via één centrale classifier afhandelt. Volgorde
+// delete -> patch -> create blijft de veilige faalmodus uit S12: een halve
+// mislukking *mist* iets, maar maakt nooit dubbelingen.
 async function writeDestination({ accessToken, destination, dateKey, windowStart, windowEnd, blocks }) {
   const calendarId = destination === 'primary'
     ? await resolvePrimaryCalendarId(accessToken)
     : await resolveRitmoCalendarId(accessToken);
 
   const taggedEvents = await fetchTaggedEvents(accessToken, calendarId, dateKey, windowStart, windowEnd);
-  const del = await deleteEvents(accessToken, taggedEvents);
-  const create = await createEvents(accessToken, calendarId, blocks, dateKey);
+  const { toDelete, toPatch, toCreate } = planDestinationDiff(taggedEvents, blocks);
 
-  if (del.scopeIssue || create.scopeIssue) {
+  const del = await deleteEvents(accessToken, toDelete);
+  const patch = await patchEvents(accessToken, toPatch);
+  const create = await createEvents(accessToken, calendarId, toCreate, dateKey);
+
+  if (del.scopeIssue || patch.scopeIssue || create.scopeIssue) {
     const err = new Error('graph_write_forbidden');
     err.status = 403;
     throw err;
   }
 
-  let failed = del.failed + create.failed;
+  const failed = del.failed + patch.failed + create.failed;
 
-  // Read-back-verificatie: zijn er blokken geschreven maar komt er *nul*
-  // getagd terug, dan rollback van de zojuist aangemaakte ids (risico 1 uit
-  // de slice-spec: extended properties die stil gedropt worden).
-  if (blocks.length > 0 && create.createdIds.length > 0) {
+  // Read-back-verificatie: zijn er nieuwe events aangemaakt maar komt geen
+  // enkel zojuist aangemaakt id getagd terug, dan rollback van die ids
+  // (risico 1 uit de slice-spec: extended properties die stil gedropt
+  // worden). Scherper dan vóór deze slice: met een diff kan een bestaand,
+  // eerder al getagd event legitiem terugkomen, dus checkt dit specifiek op
+  // de zojuist aangemaakte ids in plaats van "komt er iets getagd terug".
+  if (create.createdIds.length > 0) {
     const persisted = await fetchTaggedEvents(accessToken, calendarId, dateKey, windowStart, windowEnd);
-    if (persisted.length === 0) {
+    const persistedIds = new Set(persisted.map((event) => event.id));
+    const anyCreatedPersisted = create.createdIds.some((id) => persistedIds.has(id));
+    if (!anyCreatedPersisted) {
       await deleteEvents(accessToken, create.createdIds.map((id) => ({ id })));
       return { failed: blocks.length, tagUnsupported: true };
     }
