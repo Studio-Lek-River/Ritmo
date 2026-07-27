@@ -14,7 +14,15 @@
       "Bash(node -e ' *)",
       "Bash(git log *)",
       "Bash(git mv *)",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "Bash(node smoke147.mjs)",
+      "Read(//d/Ritmo/node_modules/**)",
+      "Bash(ls \"C:/Users/bas.vanhees/AppData/Roaming/npm/node_modules\" 2>/dev/null; echo \"--- local ---\"; ls c:/Ritmo/node_modules | grep -i playwright; echo \"--- d drive ---\"; ls /d/ 2>/dev/null | head)",
+      "Read(//c/Users/bas.vanhees/AppData/Roaming/npm/**)",
+      "Read(//d//**)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:5179/)",
+      "Bash(curl -s -o /dev/null -w \"main.jsx HTTP %{http_code}\\\\n\" http://localhost:5179/src/main.jsx)",
+      "Bash(curl -s http://localhost:5179/src/components/nutrition/NutritionPortionForm.jsx)"
     ]
   }
 }
