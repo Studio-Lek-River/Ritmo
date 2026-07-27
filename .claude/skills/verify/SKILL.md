@@ -17,40 +17,32 @@ npm run build          # bewijst alleen dat het compileert, niet dat het werkt
 npm run check:i18n     # nl.js/en.js pariteit (draait ook als pre-commit hook)
 ```
 
-Playwright + Chromium zitten al in `node_modules` (geen `npm i` nodig). Vanuit
-een script buiten de repo resolvet `playwright` niet; gebruik:
-
-```js
-import { createRequire } from 'node:module';
-const require = createRequire('d:/Ritmo/');
-const { chromium } = require('playwright');
-```
+Er zit **geen browserautomatisering** in dit project: geen Playwright, geen
+Puppeteer, geen e2e-runner — niet in `package.json`, niet in `node_modules`, niet
+globaal. Probeer dat dus niet te importeren; verifiëren doe je met de dev-server
+plus je eigen ogen en de DevTools-console.
 
 ## Binnenkomen: geen login, wel onboarding
 
 Er is **geen auth-muur** — zonder Supabase-account werkt de app lokaal door
-(`useConnections` geeft dan gewoon een lege lijst). Elk verse browserprofiel
-begint wel bij de onboarding-wizard. Kortste weg naar binnen:
+(`useConnections` geeft dan gewoon een lege lijst). Elk vers browserprofiel
+(of incognitovenster) begint wel bij de onboarding-wizard. Kortste weg naar
+binnen:
 
-```js
-await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
-await page.waitForTimeout(2500);                       // splash
-if (await page.getByText('Welkom bij Ritmo').count() > 0) {
-  await page.getByText('Volledig Ritmo', { exact: false }).first().click();
-  await page.getByRole('button', { name: /Aan de slag/i }).click();
-  await page.getByRole('button', { name: 'Onboarding overslaan', exact: true }).click();
-  await page.getByRole('button', { name: /Start Ritmo/i }).click();
-}
-await page.getByText('Planner', { exact: true }).first().click();
-```
+1. Open `http://localhost:5173/` en wacht de splash uit (~2s).
+2. Kies **Volledig Ritmo**.
+3. Klik **Aan de slag**.
+4. Klik **Onboarding overslaan**.
+5. Klik **Start Ritmo**.
+6. Ga naar **Planner** in de navigatie.
 
 Gotchas:
-- De splash ("Jouw dag, jouw ritme.") staat er ~2s; zonder wachten time-out je op
-  een lege DOM.
-- Navigatie-items zijn geen `role=button` met exacte naam — `getByText('Planner',
-  { exact: true })` werkt, `getByRole('button', { name: 'Planner' })` niet.
-- "Overslaan" komt twee keer voor: de wizard-optie en `Onboarding overslaan`.
-  Gebruik `exact: true`.
+- De splash ("Jouw dag, jouw ritme.") staat er ~2s; daarvoor is het scherm leeg.
+  Niet concluderen dat de app stuk is.
+- "Overslaan" komt twee keer voor: als wizard-optie én als knop
+  `Onboarding overslaan`. Je wilt die laatste.
+- Wil je de onboarding opnieuw zien, gebruik een incognitovenster of leeg de
+  site-data — anders slaat de app hem over.
 
 ## Externe koppelingen (Outlook-agenda) stubben
 
@@ -66,7 +58,8 @@ tijdelijk `App.jsx` zodat `agendaByDate`/`includedAgendaIds` achter een
   source: { provider: 'outlook', connectionId: 'e2e' } }
 ```
 
-Zo draait heel `WeekView` echt (filters, blockStyle, all-day-rij, checkbox).
+Open daarna `http://localhost:5173/?e2e=1` en klik het rooster zelf na — filters,
+blockStyle, all-day-rij en checkbox draaien dan echt.
 **Revert de patch daarna** (`git checkout -- src/App.jsx`) — hij hoort nooit in
 een commit. Wat je zo NIET verifieert: `useOutlookEvents`, `agendaCache.js` en de
 Graph-fetch; die paden vragen een echte koppeling.
@@ -76,15 +69,13 @@ Graph-fetch; die paden vragen een echte koppeling.
 Uitlijning en positionering zijn betrouwbaarder te meten dan af te lezen. Het
 rooster is een flex-rij met een tijdbalk van 48px (`shrink-0 w-12`) en daarna
 kolommen (`flex-1 min-w-[140px]`); de dagknoppenrij deelt die opbouw. Drift
-tussen knop en kolom check je zo:
+tussen knop en kolom check je door dit in de **DevTools-console** te plakken:
 
 ```js
-await page.evaluate(() => {
-  const btns = [...document.querySelectorAll('button[aria-pressed]')]
-    .filter(b => /^(Ma|Di|Wo|Do|Vr|Za|Zo)\s\d+/.test(b.innerText.trim()));
-  const cols = [...document.querySelectorAll('div[class*="min-w-\\[140px\\]"]')];
-  // vergelijk getBoundingClientRect().left + width/2 per index
-});
+const btns = [...document.querySelectorAll('button[aria-pressed]')]
+  .filter(b => /^(Ma|Di|Wo|Do|Vr|Za|Zo)\s\d+/.test(b.innerText.trim()));
+const cols = [...document.querySelectorAll('div[class*="min-w-\\[140px\\]"]')];
+// vergelijk getBoundingClientRect().left + width/2 per index
 ```
 
 Agendablokken zijn `absolute` binnen een kolomcontainer van
