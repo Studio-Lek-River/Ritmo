@@ -1,12 +1,15 @@
 // Aggregatie-helper voor de Productivity Suite Dag-view. De Planner toont
-// uitsluitend échte taken (losse taken voor vandaag) en projecten (project-
-// subgoals met deadline vandaag) — geen routines, activiteiten of gezondheids-
-// modules. Neemt de bestaande Ritmo-bronnen (modules, customTasks) en bouwt
+// échte taken (losse taken voor vandaag), projecten (project-subgoals met
+// deadline vandaag) en, sinds S10c, module-items/-blokken die de module zelf
+// heeft opt-in gezet (`planInDay`) — bv. fysio-oefeningen of de avondroutine.
+// Neemt de bestaande Ritmo-bronnen (modules, customTasks, moduleData) en bouwt
 // daaruit een platte, genormaliseerde tijdlijn met per item: dagdeel, status en
 // een toggle-functie die de bestaande handlers hergebruikt. Voegt geen nieuw
-// "kind"-veld toe aan opgeslagen data — het type wordt hier afgeleid uit de bron.
+// veld toe aan opgeslagen data buiten wat de moduleconfig al draagt — het type
+// wordt hier afgeleid uit de bron.
 import { fmtDateKey } from './dates';
-import { subgoalKey, taskKey } from './itemKeys';
+import { subgoalKey, taskKey, moduleItemKey, moduleBlockKey } from './itemKeys';
+import { isChecklistItemComplete, moduleStatusForDay } from './dayProgress';
 
 // Vaste drempels (kloktijd, "HH:MM") voor de dagdeel-indeling. Geen UI-instelling
 // in deze slice; hier als constante zodat er geen verspreide magic numbers zijn.
@@ -78,6 +81,8 @@ function pushItem(items, entry) {
 export function buildDayTimeline({
   modules = [],
   customTasks = [],
+  moduleData = {},
+  resolveName = mod => mod.name || '',
   referenceDate = new Date(),
   handlers = {},
 } = {}) {
@@ -154,6 +159,72 @@ export function buildDayTimeline({
       priority: task.priority || DEFAULT_PRIORITY,
       url: task.url || null,
       toggle: handlers.onToggleTask ? () => handlers.onToggleTask(task.id) : undefined,
+    });
+  });
+
+  // Derde bron (S10c): module-items/-blokken die de module zelf opt-in heeft
+  // gezet (`planInDay`). Checklist levert los per item óf één blok, afhankelijk
+  // van `planGranularity`; choice en counter hebben geen items en zijn altijd
+  // één blok. Eén nieuw `kind: 'routine'` voor beide vormen — geen nieuw
+  // opgeslagen veld, alleen een nieuwe manier om bestaande moduleData te lezen.
+  modules.forEach(mod => {
+    if (!mod.enabled || !mod.planInDay) return;
+    if (!['checklist', 'choice', 'counter'].includes(mod.type)) return;
+
+    if (mod.type === 'checklist' && mod.planGranularity !== 'block') {
+      (mod.items || []).forEach(item => {
+        if (item.planInDay === false) return;
+        const raw = moduleData[mod.id]?.[item.id];
+        const time = raw?.plannedTime ?? item.time ?? '';
+        pushItem(items, {
+          key: moduleItemKey(mod.id, item.id),
+          kind: 'routine',
+          label: item.label,
+          time,
+          dagdeel: dagdeelForTime(time),
+          duration: item.duration,
+          window: item.window || '',
+          status: isChecklistItemComplete(item, raw),
+          color: mod.color,
+          projectName: resolveName(mod),
+          subjectName: '',
+          deepWork: false,
+          priority: DEFAULT_PRIORITY,
+          url: null,
+          source: null,
+          toggle: handlers.onToggleModuleItem
+            ? () => handlers.onToggleModuleItem(mod.id, item.id)
+            : undefined,
+        });
+      });
+      return;
+    }
+
+    // Checklist-blok, choice of counter: één kaart voor de hele module.
+    const blockData = moduleData[mod.id] || {};
+    const time = blockData.plannedTime ?? mod.time ?? '';
+    pushItem(items, {
+      key: moduleBlockKey(mod.id),
+      kind: 'routine',
+      label: resolveName(mod),
+      time,
+      dagdeel: dagdeelForTime(time),
+      duration: mod.duration,
+      window: mod.window || '',
+      status: moduleStatusForDay(mod, { moduleData }, referenceDate) === 'full',
+      color: mod.color,
+      projectName: '',
+      subjectName: '',
+      deepWork: false,
+      priority: DEFAULT_PRIORITY,
+      url: null,
+      source: null,
+      // Alleen een choice-blok is afvinkbaar; checklist-blok en counter zijn
+      // read-only kaarten, zelfde patroon als een bronitem/virtuele taak
+      // hierboven (`toggle: undefined`).
+      toggle: (mod.type === 'choice' && handlers.onToggleModuleBlock)
+        ? () => handlers.onToggleModuleBlock(mod.id)
+        : undefined,
     });
   });
 
