@@ -1986,6 +1986,7 @@ export default {
       alwaysListAria: 'Altijd-lijst voor {name}',
       alwaysListNone: 'Geen altijd-lijst',
       cardsLoading: 'Kaarten laden…',
+      accountHeading: 'Account: {name}',
     },
     github: {
       reposTitle: 'GitHub-repo\'s',
@@ -2065,6 +2066,7 @@ export default {
     intro: 'Verbind externe bronnen zodat hun items in Ritmo verschijnen.',
     connect: 'Verbinden',
     disconnect: 'Verbreken',
+    addAccount: 'Account toevoegen',
     providers: {
       outlook: 'Outlook',
       trello: 'Trello',

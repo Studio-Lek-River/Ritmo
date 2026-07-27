@@ -7,12 +7,18 @@
 // twee-staps dialoog (S08, TrelloConnectDialog, key+token-flow).
 // Alleen gerenderd door de aanroeper wanneer er een account is en sync aan
 // staat (opt-in, principe 2).
+//
+// #120: een provider uit `MULTI_ACCOUNT_PROVIDERS` (nu alleen Trello) toont
+// niet één rij maar één rij per verbonden account (label = de Trello-
+// gebruikersnaam) met elk hun eigen "Verbreken", plus een altijd zichtbare
+// "Account toevoegen"-knop — ook wanneer er al een account gekoppeld is. De
+// andere providers (Outlook, GitHub) renderen exact zoals vandaag.
 import { useState } from 'react';
 import { Check, CloudOff, AlertTriangle } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { useToast } from '../hooks/useToast';
 import useConnections from '../hooks/useConnections';
-import { CONNECTION_PROVIDERS, startOutlookConnect, startGithubConnect } from '../sync/connections';
+import { CONNECTION_PROVIDERS, MULTI_ACCOUNT_PROVIDERS, startOutlookConnect, startGithubConnect } from '../sync/connections';
 import TrelloConnectDialog from './TrelloConnectDialog';
 
 const STATUS_ICON = {
@@ -103,6 +109,47 @@ export default function ConnectionsSection({ theme, accountId }) {
 
       <div className="space-y-2">
         {CONNECTION_PROVIDERS.map((provider) => {
+          if (MULTI_ACCOUNT_PROVIDERS.includes(provider)) {
+            const providerConnections = connections.filter((c) => c.provider === provider && c.status === 'connected');
+            return (
+              <div key={provider} className="space-y-2">
+                {providerConnections.map((connection) => (
+                  <div
+                    key={connection.id}
+                    className={`${theme.cardSecondary} rounded-2xl p-3 flex items-center justify-between gap-3`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Check size={18} className="text-teal-500 shrink-0" />
+                      <div className="min-w-0">
+                        <p className={`text-sm font-medium ${theme.text} truncate`}>
+                          {connection.label || t(`connections.providers.${provider}`)}
+                        </p>
+                        <p className={`text-xs ${theme.textMuted} truncate`}>
+                          {t('connections.status.connected')}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => disconnect(connection.id)}
+                      disabled={busyId === connection.id}
+                      className="text-xs font-medium shrink-0 text-red-500 hover:underline disabled:opacity-50"
+                    >
+                      {t('connections.disconnect')}
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => handleConnect(provider)}
+                  className={`w-full ${theme.cardSecondary} rounded-2xl p-3 text-xs font-medium ${theme.textMuted} hover:underline`}
+                >
+                  {t('connections.addAccount')}
+                </button>
+              </div>
+            );
+          }
+
           const connection = connections.find((c) => c.provider === provider);
           const status = connection?.status || 'disconnected';
           const isConnected = status === 'connected';

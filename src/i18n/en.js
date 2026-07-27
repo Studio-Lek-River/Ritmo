@@ -1974,6 +1974,7 @@ export default {
       alwaysListAria: 'Always-list for {name}',
       alwaysListNone: 'No always-list',
       cardsLoading: 'Loading cards…',
+      accountHeading: 'Account: {name}',
     },
     github: {
       reposTitle: 'GitHub repositories',
@@ -2053,6 +2054,7 @@ export default {
     intro: 'Connect external sources so their items show up in Ritmo.',
     connect: 'Connect',
     disconnect: 'Disconnect',
+    addAccount: 'Add account',
     providers: {
       outlook: 'Outlook',
       trello: 'Trello',

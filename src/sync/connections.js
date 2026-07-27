@@ -7,6 +7,13 @@ import { supabase, isSyncEnabled } from './supabase';
 
 export const CONNECTION_PROVIDERS = ['outlook', 'trello', 'github'];
 
+// De ene plek waar staat welke provider meerdere accounts naast elkaar mag
+// hebben (#120, "generiek fundament" — Outlook en GitHub blijven één account
+// per provider, zie de slice-spec). `ConnectionsSection.jsx` leest dit om per
+// provider te kiezen tussen de bestaande enkelvoudige rij en een rij per
+// verbonden account plus een "Account toevoegen"-knop.
+export const MULTI_ACCOUNT_PROVIDERS = ['trello'];
+
 export async function listConnections(accountId) {
   if (!isSyncEnabled() || !accountId) return [];
 
@@ -99,9 +106,12 @@ export async function fetchTrelloBoards() {
   return callConnectionsApi('trello/boards', {});
 }
 
-// Haalt lijsten + kaarten op voor de aangevinkte Trello-borden.
-export async function fetchTrelloCards(boardIds) {
-  return callConnectionsApi('trello/cards', { boardIds: boardIds || [] });
+// Haalt lijsten + kaarten op voor de aangevinkte Trello-borden. `boardPairs`
+// is een array van `{ connectionId, boardId }` (#120, meerdere Trello-
+// accounts: het board-id alleen is niet meer genoeg om te weten met welk
+// account het opgehaald moet worden, zie utils/trelloBoardPrefs.js).
+export async function fetchTrelloCards(boardPairs) {
+  return callConnectionsApi('trello/cards', { boards: boardPairs || [] });
 }
 
 // GitHub (S09, OAuth App — zie api/connections/github/*.js). Start de echte

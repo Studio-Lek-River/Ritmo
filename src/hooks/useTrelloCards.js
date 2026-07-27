@@ -24,7 +24,14 @@ import { readTrelloCache, writeTrelloCache, mergeTrelloBoards } from '../utils/t
 // Een gedeelde `requestToken`-ref telt elke fetch-start; alleen de fetch met
 // de nieuwste token mag nog state zetten wanneer hij resolvet (zelfde
 // race-bescherming als useOutlookEvents.js).
-export default function useTrelloCards({ active, enabled, boardIds, connectionId }) {
+//
+// #120 (meerdere Trello-accounts): `boardIds` wordt `boardPairs`
+// (`{ connectionId, boardId }[]`, zie trelloBoardPrefs.js), en er komt een
+// nieuwe `connectionIds`-prop bij (alle momenteel verbonden Trello-rijen) die
+// naar `readTrelloCache` gaat om borden van een inmiddels verbroken account
+// te prunen. `mergeTrelloBoards` blijft ongewijzigd (puur, board-id-based) —
+// de request-key wordt hier de gesorteerde `connectionId:boardId`-lijst.
+export default function useTrelloCards({ active, enabled, boardPairs, connectionIds }) {
   const [boards, setBoards] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -34,7 +41,10 @@ export default function useTrelloCards({ active, enabled, boardIds, connectionId
   // geslaagde fetch kan mergen zonder de cache opnieuw van schijf te lezen.
   const cacheBoardsRef = useRef([]);
 
-  const boardIdsKey = (boardIds || []).slice().sort().join(',');
+  const pairs = boardPairs || [];
+  const boardIds = pairs.map((pair) => pair.boardId);
+  const pairsKey = pairs.map((pair) => `${pair.connectionId}:${pair.boardId}`).slice().sort().join(',');
+  const connectionIdsKey = Array.isArray(connectionIds) ? connectionIds.slice().sort().join(',') : '';
 
   useEffect(() => {
     if (!active) {
@@ -44,7 +54,7 @@ export default function useTrelloCards({ active, enabled, boardIds, connectionId
       return () => {};
     }
     let cancelled = false;
-    readTrelloCache(connectionId).then((cache) => {
+    readTrelloCache(connectionIds).then((cache) => {
       if (cancelled) return;
       const seeded = cache?.boards || [];
       cacheBoardsRef.current = seeded;
@@ -52,10 +62,11 @@ export default function useTrelloCards({ active, enabled, boardIds, connectionId
       setLastSyncedAt(cache?.fetchedAt || null);
     });
     return () => { cancelled = true; };
-  }, [active, connectionId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, connectionIdsKey]);
 
   const fetchBoards = useCallback(() => {
-    if (!enabled || !boardIds || boardIds.length === 0) {
+    if (!enabled || pairs.length === 0) {
       requestToken.current += 1;
       return () => {};
     }
@@ -64,7 +75,7 @@ export default function useTrelloCards({ active, enabled, boardIds, connectionId
     setLoading(true);
     setError(null);
 
-    fetchTrelloCards(boardIds)
+    fetchTrelloCards(pairs)
       .then((data) => {
         if (requestToken.current !== token) return;
         const merged = mergeTrelloBoards(
@@ -77,7 +88,7 @@ export default function useTrelloCards({ active, enabled, boardIds, connectionId
         const fetchedAt = new Date().toISOString();
         setBoards(merged);
         setLastSyncedAt(fetchedAt);
-        writeTrelloCache({ connectionId, fetchedAt, boards: merged });
+        writeTrelloCache({ fetchedAt, boards: merged });
       })
       .catch((err) => {
         console.warn('Ritmo trello cards fetch failed', err);
@@ -91,7 +102,7 @@ export default function useTrelloCards({ active, enabled, boardIds, connectionId
 
     return () => { requestToken.current += 1; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, boardIdsKey, connectionId]);
+  }, [enabled, pairsKey]);
 
   useEffect(() => fetchBoards(), [fetchBoards]);
 

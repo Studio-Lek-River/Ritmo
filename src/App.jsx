@@ -42,7 +42,7 @@ import useGithubIssues from './hooks/useGithubIssues';
 import { externalBlocksForDay } from './utils/outlookEvents';
 import { clearAgendaCache } from './utils/agendaCache';
 import { readAgendaSelection, writeAgendaSelection, clearAgendaSelection, pruneSelection } from './utils/agendaSelection';
-import { readTrelloBoardPrefs, writeTrelloBoardPrefs, clearTrelloBoardPrefs, includedBoardIds } from './utils/trelloBoardPrefs';
+import { readTrelloBoardPrefs, writeTrelloBoardPrefs, clearTrelloBoardPrefs, includedBoardPairs } from './utils/trelloBoardPrefs';
 import { clearTrelloCache } from './utils/trelloCache';
 import { buildTrelloModules, TRELLO_CARD_ID_PREFIX } from './utils/trelloModules';
 import { readGithubRepoPrefs, writeGithubRepoPrefs, clearGithubRepoPrefs, includedRepoIds } from './utils/githubRepoPrefs';
@@ -2096,40 +2096,58 @@ export default function Ritmo() {
     }
   }, [agendaShown, refetchOutlookAgenda]);
 
-  // ---- Trello-borden (S08) --------------------------------------------------
+  // ---- Trello-borden (S08, meerdere accounts sinds #120) --------------------
   // Hergebruikt de bestaande useConnections-instantie hierboven (geen tweede,
-  // zie de slice-spec) om ook de Trello-connectie af te leiden.
-  const trelloConnection = connectionState.connections.find(
-    c => c.provider === 'trello' && c.status === 'connected'
-  ) || null;
+  // zie de slice-spec) om alle verbonden Trello-rijen af te leiden — niet
+  // langer de ene rij van vóór #120 (de S08-Poort-0-aanname "één
+  // Trello-account per gebruiker" is vervallen).
+  const trelloConnections = useMemo(
+    () => connectionState.connections.filter(c => c.provider === 'trello' && c.status === 'connected'),
+    [connectionState.connections]
+  );
+  const trelloConnectionIds = useMemo(
+    () => trelloConnections.map(c => c.id),
+    [trelloConnections]
+  );
+  const trelloConnectionIdsKey = trelloConnectionIds.slice().sort().join(',');
+  // Voor ConnectionsSection/TrelloBoardPicker: naam + id per verbonden
+  // account, al bekend zonder op de lazy bord-fetch te wachten.
+  const trelloAccounts = useMemo(
+    () => trelloConnections.map(c => ({ connectionId: c.id, label: c.label || '' })),
+    [trelloConnections]
+  );
   const trelloVisible = getSourcePref(sourcePrefs, 'trello').visible;
 
   // Bordkeuze (welk bord telt mee, en welke lijst daarbinnen "altijd" is) is
   // device-local (zie utils/trelloBoardPrefs.js) en overleeft dus geen sync,
   // net als agendaSelection hierboven. Geseed uit opslag bij mount en telkens
-  // wanneer de connectie verandert (na opnieuw koppelen nooit andermans
-  // bordselectie hergebruiken, zie readTrelloBoardPrefs).
+  // wanneer de verbonden accounts veranderen. `connectionState.loading` telt
+  // als "nog onbekend" (readTrelloBoardPrefs slaat het prunen dan over) zodat
+  // de bordselectie niet even verdwijnt vóórdat de koppelingsstatus bekend is;
+  // ná het laden prunet elke wijziging in de accountlijst borden van een
+  // inmiddels verbroken account (AC4), zonder de héle selectie te wissen.
   const [trelloBoardPrefs, setTrelloBoardPrefsState] = useState({ boards: {} });
   useEffect(() => {
     let cancelled = false;
-    readTrelloBoardPrefs(trelloConnection?.id).then(prefs => {
+    readTrelloBoardPrefs(connectionState.loading ? null : trelloConnectionIds).then(prefs => {
       if (!cancelled) setTrelloBoardPrefsState(prefs);
     });
     return () => { cancelled = true; };
-  }, [trelloConnection?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trelloConnectionIdsKey, connectionState.loading]);
 
   // Setter die zowel de state als de opslag bijwerkt (zelfde vorm als
   // `setSourcePrefs`: accepteert een updater-functie of een waarde).
   const setTrelloBoardPrefs = useCallback((updater) => {
     setTrelloBoardPrefsState(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
-      writeTrelloBoardPrefs({ connectionId: trelloConnection?.id, boards: next.boards });
+      writeTrelloBoardPrefs({ boards: next.boards });
       return next;
     });
-  }, [trelloConnection?.id]);
+  }, []);
 
-  const trelloIncludedBoardIds = useMemo(
-    () => includedBoardIds(trelloBoardPrefs),
+  const trelloIncludedBoardPairs = useMemo(
+    () => includedBoardPairs(trelloBoardPrefs),
     [trelloBoardPrefs]
   );
 
@@ -2137,7 +2155,7 @@ export default function Ritmo() {
   // (zelfde reden als agendaActive hierboven: de cache-seed hoeft niet op het
   // netwerk te wachten). De oog-toggle op de Trello-rij is de aan/uit-
   // schakelaar voor heel Trello (zie de kernbeslissing in de slice-spec).
-  const trelloActive = trelloVisible && (connectionState.loading || !!trelloConnection);
+  const trelloActive = trelloVisible && (connectionState.loading || trelloConnections.length > 0);
   const {
     boards: trelloCacheBoards,
     loading: trelloCardsLoading,
@@ -2146,27 +2164,32 @@ export default function Ritmo() {
     refetch: refetchTrelloCards,
   } = useTrelloCards({
     active: trelloActive,
-    enabled: trelloActive && !!trelloConnection && trelloIncludedBoardIds.length > 0,
-    boardIds: trelloIncludedBoardIds,
-    connectionId: trelloConnection?.id,
+    enabled: trelloActive && trelloConnections.length > 0 && trelloIncludedBoardPairs.length > 0,
+    boardPairs: trelloIncludedBoardPairs,
+    connectionIds: connectionState.loading ? null : trelloConnectionIds,
   });
 
-  // Geen wees-projecten van een verbroken koppeling (AC15): zowel de
-  // kaarten-cache als de bordkeuze gaan mee weg zodra deze instantie leert
-  // dat Trello niet meer verbonden is terwijl dat eerder wel zo was.
-  const wasTrelloConnectedRef = useRef(false);
+  // Geen wees-projecten wanneer het láátste Trello-account wordt verbroken
+  // (AC5): zelfde gedrag als vandaag — cache, bordselectie en de eigen
+  // dag/tijd/duur per kaart (`sourceItemPrefs`) worden gewist zodra deze
+  // instantie leert dat er geen enkele Trello-connectie meer over is terwijl
+  // dat eerder wel zo was. Eén van meerdere accounts verbreken (AC4) hoeft
+  // hier geen actie: de effecten hierboven prunen de borden van dat account
+  // al uit prefs/cache zodra `trelloConnectionIds` krimpt, en de
+  // kaart-overrides van dat account blijven bewust staan (per-kaart-id,
+  // onschadelijk zolang de kaart niet meer bestaat, en her-koppelen van
+  // hetzelfde account zou anders onnodig duur worden).
+  const wasAnyTrelloConnectedRef = useRef(false);
   useEffect(() => {
     if (connectionState.loading) return;
-    if (wasTrelloConnectedRef.current && !trelloConnection) {
+    if (wasAnyTrelloConnectedRef.current && trelloConnections.length === 0) {
       clearTrelloCache();
       clearTrelloBoardPrefs();
       setTrelloBoardPrefsState({ boards: {} });
-      // Ook de eigen dag/tijd/duur per kaart: zonder de koppeling bestaan die
-      // kaarten niet meer, dus die overrides zouden wezen zijn.
       setSourceItemPrefs(prev => clearOverridesWithPrefix(prev, TRELLO_CARD_ID_PREFIX));
     }
-    wasTrelloConnectedRef.current = !!trelloConnection;
-  }, [trelloConnection, connectionState.loading]);
+    wasAnyTrelloConnectedRef.current = trelloConnections.length > 0;
+  }, [trelloConnections.length, connectionState.loading]);
 
   // Afgeleide Trello-projects-modules (de kernbeslissing in de slice-spec):
   // leven alleen in het geheugen, nooit in `modules`/settings, dus
@@ -2180,14 +2203,17 @@ export default function Ritmo() {
   // gebruiker zelf op een kaart zette wordt er hier read-time overheen
   // gemerged (sourceItemPrefs.js). Zo hoeft geen enkele consumer
   // (dayTimeline, TaskPoolPanel, de indeler) van het bestaan te weten.
+  // `buildTrelloModules` blijft ongewijzigd (#120): elk bord draagt zijn
+  // eigen `connectionId` al in de cache, dus de losse `connectionId`-optie
+  // hier is voor meerdere accounts niet meer eenduidig en wordt weggelaten.
   const trelloModules = useMemo(() => {
     if (!trelloVisible) return [];
     return applyItemOverrides(buildTrelloModules(
       { boards: trelloCacheBoards },
       trelloBoardPrefs,
-      { connectionId: trelloConnection?.id, color: getSourcePref(sourcePrefs, 'trello').color },
+      { color: getSourcePref(sourcePrefs, 'trello').color },
     ), sourceItemPrefs);
-  }, [trelloVisible, trelloCacheBoards, trelloBoardPrefs, trelloConnection, sourcePrefs, sourceItemPrefs]);
+  }, [trelloVisible, trelloCacheBoards, trelloBoardPrefs, sourcePrefs, sourceItemPrefs]);
 
   // ---- GitHub-repo's (S09) --------------------------------------------------
   // Hergebruikt dezelfde useConnections-instantie (connectionState) om ook de
@@ -2285,7 +2311,7 @@ export default function Ritmo() {
     const rawTrelloModules = buildTrelloModules(
       { boards: trelloCacheBoards },
       trelloBoardPrefs,
-      { connectionId: trelloConnection?.id, color: getSourcePref(sourcePrefs, 'trello').color },
+      { color: getSourcePref(sourcePrefs, 'trello').color },
     );
     const rawGithubModules = buildGithubModules(
       { repos: githubCacheRepos },
@@ -2293,7 +2319,7 @@ export default function Ritmo() {
       { connectionId: githubConnection?.id, color: getSourcePref(sourcePrefs, 'github').color },
     );
     return collectHiddenItems([...rawTrelloModules, ...rawGithubModules], sourceItemPrefs);
-  }, [sourceItemPrefs, trelloCacheBoards, trelloBoardPrefs, trelloConnection, githubCacheRepos, githubRepoPrefs, githubConnection, sourcePrefs]);
+  }, [sourceItemPrefs, trelloCacheBoards, trelloBoardPrefs, githubCacheRepos, githubRepoPrefs, githubConnection, sourcePrefs]);
 
   const allModules = useMemo(
     () => [...modules, ...trelloModules, ...githubModules],
@@ -3259,7 +3285,8 @@ export default function Ritmo() {
             agendaError={outlookAgendaError}
             agendaLastSyncedAt={outlookLastSyncedAt}
             onImportOrRefreshAgenda={handleImportOrRefreshAgenda}
-            trelloConnected={!!trelloConnection}
+            trelloConnected={trelloConnections.length > 0}
+            trelloAccounts={trelloAccounts}
             trelloBoardPrefs={trelloBoardPrefs}
             onChangeTrelloBoardPrefs={setTrelloBoardPrefs}
             trelloCacheBoards={trelloCacheBoards}

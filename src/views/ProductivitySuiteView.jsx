@@ -47,6 +47,7 @@ export default function ProductivitySuiteView({
   agendaLastSyncedAt,
   onImportOrRefreshAgenda,
   trelloConnected,
+  trelloAccounts,
   trelloBoardPrefs,
   onChangeTrelloBoardPrefs,
   trelloCacheBoards,
@@ -233,6 +234,7 @@ export default function ProductivitySuiteView({
         lastSyncedAt: trelloLastSyncedAt,
         panel: (
           <TrelloBoardPicker
+            accounts={trelloAccounts}
             boardPrefs={trelloBoardPrefs}
             onChangeBoardPrefs={onChangeTrelloBoardPrefs}
             cacheBoards={trelloCacheBoards}
@@ -258,7 +260,7 @@ export default function ProductivitySuiteView({
     } : {}),
   }), [
     outlookConnected, onImportOrRefreshAgenda, agendaLoading, agendaShown, agendaLastSyncedAt,
-    trelloConnected, onRefreshTrelloCards, trelloCardsLoading, trelloBoardsIncluded, trelloLastSyncedAt,
+    trelloConnected, trelloAccounts, onRefreshTrelloCards, trelloCardsLoading, trelloBoardsIncluded, trelloLastSyncedAt,
     trelloBoardPrefs, onChangeTrelloBoardPrefs, trelloCacheBoards, theme,
     githubConnected, onRefreshGithubIssues, githubIssuesLoading, githubReposIncluded, githubLastSyncedAt,
     githubRepoPrefs, onChangeGithubRepoPrefs,

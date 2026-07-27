@@ -7,17 +7,24 @@
 // kernbeslissing "afgeleide modules" in de slice-spec). `agendaCache.js` is
 // hiervoor de blauwdruk, niet `sourcePrefs.js` (waarvan de "nooit
 // gesynchroniseerd"-comment feitelijk onjuist is, zie Valkuil 1).
+//
+// #120 (meerdere Trello-accounts) verhoogt de version naar 2: elk bord draagt
+// nu zijn eigen `connectionId` in plaats van dat de hele cache er één had
+// (was er maar één account). Geen migratie nodig — dit is afgeleide data die
+// bij de eerstvolgende fetch vanzelf terugkomt, geen gebruikersinvoer zoals
+// de bordselectie in trelloBoardPrefs.js.
 const CACHE_KEY = 'trello:cards';
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 
 // Leest de cache. `null` bij een ontbrekende, onleesbare of andere-`version`
-// cache. Geeft ook `null` (en wist de cache) wanneer `connectionId` is
-// meegegeven en niet overeenkomt met de cache: na opnieuw koppelen nooit
-// andermans borden tonen. Een ontbrekende `connectionId` (nog onbekend, bv.
-// tijdens het laden) telt bewust NIET als mismatch, anders zou de cache al
-// verdwijnen vóór de koppelingsstatus zelfs maar bekend is (AC14: borden
-// staan er direct, vóór en zonder netwerk).
-export async function readTrelloCache(connectionId) {
+// cache (de oude v1-cache vervalt hiermee vanzelf bij het eerste lezen).
+// `connectionIds`: de connectie-ids die op dit moment verbonden zijn.
+// `null`/`undefined` betekent "nog onbekend" en slaat het prunen bewust over
+// (AC14: borden staan er direct, vóór en zonder netwerk, ook tijdens het
+// laden van de koppelingsstatus). Een echte array prunet borden waarvan de
+// connectie niet (meer) in die lijst voorkomt — het verbreken van één account
+// mag de borden van een ander account nooit raken (AC4).
+export async function readTrelloCache(connectionIds) {
   let cache;
   try {
     const result = await window.storage.get(CACHE_KEY);
@@ -28,18 +35,18 @@ export async function readTrelloCache(connectionId) {
   }
   if (!cache || cache.version !== CACHE_VERSION) return null;
 
-  if (connectionId && cache.connectionId && cache.connectionId !== connectionId) {
-    await clearTrelloCache();
-    return null;
+  let boards = cache.boards || [];
+  if (Array.isArray(connectionIds)) {
+    const allowed = new Set(connectionIds);
+    boards = boards.filter((board) => allowed.has(board?.connectionId ?? null));
   }
 
-  return cache;
+  return { ...cache, boards };
 }
 
-export async function writeTrelloCache({ connectionId, fetchedAt, boards }) {
+export async function writeTrelloCache({ fetchedAt, boards }) {
   const payload = {
     version: CACHE_VERSION,
-    connectionId: connectionId ?? null,
     fetchedAt: fetchedAt ?? null,
     boards: boards || [],
   };

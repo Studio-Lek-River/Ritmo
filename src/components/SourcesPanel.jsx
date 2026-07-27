@@ -49,7 +49,14 @@ export default function SourcesPanel({
           <SourceRow
             key={provider}
             provider={provider}
-            connection={connections.find(c => c.provider === provider)}
+            // Sinds #120 kan een provider (Trello) meer dan één rij hebben:
+            // een verbonden rij gaat altijd vóór, anders zou een tweede,
+            // nog niet verbonden rij deze regel onterecht als losgekoppeld
+            // tonen terwijl er al een werkende koppeling is.
+            connection={
+              connections.find(c => c.provider === provider && c.status === 'connected')
+              || connections.find(c => c.provider === provider)
+            }
             pref={getSourcePref(sourcePrefs, provider)}
             actions={sourceActions[provider]}
             onChange={(patch) => updatePref(provider, patch)}
