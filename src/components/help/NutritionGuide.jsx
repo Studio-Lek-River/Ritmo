@@ -124,6 +124,11 @@ export default function NutritionGuide({ theme }) {
               <ExampleRow
                 theme={theme}
                 label={t('nutrition.library.itemPer100', { kcal: item.per100.kcal, unit: t(`modules.units.${item.unit}`) })}
+                value={t('nutrition.guide.productSize', {
+                  label: item.portion.label,
+                  amount: item.portion.amount,
+                  unit: t(`modules.units.${item.unit}`),
+                })}
               />
             </div>
           ))}
