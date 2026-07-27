@@ -172,10 +172,22 @@ const PULL_THROTTLE_MS = 60_000;
 // Fouten die bij "Zet hele week in agenda" (S12a, deel B) de hele week
 // raken (Ontwerpbeslissing 5): zeven keer dezelfde fout produceren is
 // zinloos, en bij een scope-upgrade wil je meteen de reconnect-toast zien.
+// `ms_rate_limit` hoort hier expliciet bij: Graph rate-limit per mailbox, niet
+// per dag, dus doorgaan met de resterende dagen verergert alleen de backoff.
+// `unauthenticated` en `server_config` zijn om dezelfde reden weekbreed: die
+// hangen niet van de dag af en falen bij elke volgende poging opnieuw.
 // Alle andere codes (partial, tag_unsupported, ms_error, ...) zijn
 // dag-specifiek en stoppen de week niet — die worden aan het eind
 // geaggregeerd gemeld.
-const WEEK_WRITE_STOP_CODES = ['scope_upgrade_required', 'not_connected', 'token_refresh_failed', 'ms_auth'];
+const WEEK_WRITE_STOP_CODES = [
+  'scope_upgrade_required',
+  'not_connected',
+  'token_refresh_failed',
+  'ms_auth',
+  'ms_rate_limit',
+  'unauthenticated',
+  'server_config',
+];
 
 // Canonieke serialisatie van een dag-blob, gebruikt als basislijn om te
 // bepalen of de dag-opslag écht iets te schrijven heeft (issue #145). Dezelfde
