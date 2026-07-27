@@ -43,7 +43,7 @@ import { externalBlocksForDay } from './utils/outlookEvents';
 import { clearAgendaCache } from './utils/agendaCache';
 import { buildCalendarBlocks, buildWritePayload } from './utils/calendarWrite';
 import { DEFAULT_CALENDAR_WRITE_PREFS, activeCalendarDestinations, getCalendarWritePrefs } from './utils/calendarWritePrefs';
-import { readCalendarWriteLog, recordCalendarWrite, clearCalendarWriteLog } from './utils/calendarWriteLog';
+import { readCalendarWriteLog, recordCalendarWrite, recordCalendarWrites, clearCalendarWriteLog } from './utils/calendarWriteLog';
 import { writeOutlookDay, startOutlookConnect } from './sync/connections';
 import { buildPlannerReturnTo, parseReturnTo } from './utils/oauthReturn';
 import { readAgendaSelection, writeAgendaSelection, clearAgendaSelection, pruneSelection } from './utils/agendaSelection';
@@ -168,6 +168,14 @@ const PLAN_DAY_START_FALLBACK = '08:00';
 // (issue #145). Kort genoeg om na het wisselen van apparaat actueel te zijn,
 // lang genoeg om heen-en-weer klikken niet in verzoeken om te zetten.
 const PULL_THROTTLE_MS = 60_000;
+
+// Fouten die bij "Zet hele week in agenda" (S12a, deel B) de hele week
+// raken (Ontwerpbeslissing 5): zeven keer dezelfde fout produceren is
+// zinloos, en bij een scope-upgrade wil je meteen de reconnect-toast zien.
+// Alle andere codes (partial, tag_unsupported, ms_error, ...) zijn
+// dag-specifiek en stoppen de week niet — die worden aan het eind
+// geaggregeerd gemeld.
+const WEEK_WRITE_STOP_CODES = ['scope_upgrade_required', 'not_connected', 'token_refresh_failed', 'ms_auth'];
 
 // Canonieke serialisatie van een dag-blob, gebruikt als basislijn om te
 // bepalen of de dag-opslag écht iets te schrijven heeft (issue #145). Dezelfde
@@ -2850,19 +2858,41 @@ export default function Ritmo() {
     [calendarWritePrefs],
   );
 
-  // Hoofd-handler achter de knop: bouwt de blokken uit de dag-tijdlijn,
-  // schrijft ze deterministisch weg (geen LLM in dit pad, AC15) en ververst
-  // daarna de Outlook-agendaweergave zodat een net geschreven blok niet even
-  // als "extern" wordt getoond. `notify` is optioneel, zelfde constructie als
-  // `handleShareDay` hierboven (App.jsx zit zelf niet onder ToastProvider).
+  // Vooraanzicht voor de weekbevestiging (S12a, deel B, AC8): puur tellen,
+  // geen netwerk — dezelfde tijdlijn als de write zelf, dus het aantal
+  // blokken in de dialoog klopt met wat er straks weggeschreven wordt.
+  const buildWeekWriteSummary = useCallback((dateKeys) => {
+    const keys = dateKeys || [];
+    const blockCount = keys.reduce(
+      (total, dateKey) => total + buildCalendarBlocks(buildDayBlocks(dateKey), { dateKey }).length,
+      0,
+    );
+    return { dayCount: keys.length, blockCount };
+  }, [buildDayBlocks]);
+
+  // Gedeelde kern achter zowel de dag- als de weekknop (S12a, deel B): bouwt
+  // de blokken voor `dateKey` en schrijft ze weg. Geen toast/log/refetch hier
+  // — dat verschilt tussen de dag- en de weekvariant (de weekvariant logt en
+  // ververst pas één keer aan het eind, AC12) en blijft dus bij de
+  // aanroepers.
+  const writeDayToCalendar = useCallback(async (dateKey) => {
+    const blocks = buildCalendarBlocks(buildDayBlocks(dateKey), { dateKey });
+    const payload = buildWritePayload({ dateKey, blocks, destinations: calendarWriteDestinations });
+    const result = await writeOutlookDay(payload);
+    return { blocks, result };
+  }, [calendarWriteDestinations, buildDayBlocks]);
+
+  // Hoofd-handler achter de dagknop: schrijft via `writeDayToCalendar` en
+  // ververst daarna de Outlook-agendaweergave zodat een net geschreven blok
+  // niet even als "extern" wordt getoond. `notify` is optioneel, zelfde
+  // constructie als `handleShareDay` hierboven (App.jsx zit zelf niet onder
+  // ToastProvider). Functioneel ongewijzigd t.o.v. vóór S12a (AC13): één
+  // klik, geen bevestiging.
   const handleWriteDayToCalendar = useCallback(async (dateKey, notify) => {
     if (calendarWriteDestinations.length === 0) return;
 
-    const blocks = buildCalendarBlocks(buildDayBlocks(dateKey), { dateKey });
-    const payload = buildWritePayload({ dateKey, blocks, destinations: calendarWriteDestinations });
-
     try {
-      const result = await writeOutlookDay(payload);
+      const { blocks, result } = await writeDayToCalendar(dateKey);
       const log = await recordCalendarWrite(dateKey);
       setCalendarWriteLog(log);
       refetchOutlookAgenda();
@@ -2894,7 +2924,68 @@ export default function Ritmo() {
       const key = ERROR_KEYS[err?.code] || 'connections.errors.unexpected';
       notify({ message: `${t('planner.calendar.toast.failed')} ${t(key)}` });
     }
-  }, [calendarWriteDestinations, buildDayBlocks, refetchOutlookAgenda, t]);
+  }, [calendarWriteDestinations, writeDayToCalendar, refetchOutlookAgenda, t]);
+
+  // Weekvariant van "Zet in agenda": schrijft `dateKeys` sequentieel weg
+  // (Graph-rate-limits, zelfde afweging als `graphBatch` intern) en meldt het
+  // eindresultaat geaggregeerd. `onProgress(index, total)` geeft de
+  // aanroeper zichtbare voortgang (AC9); `refetchOutlookAgenda()` en de
+  // schrijf-log draaien één keer aan het eind, niet per dag (AC12).
+  const handleWriteWeekToCalendar = useCallback(async (dateKeys, notify, onProgress) => {
+    const keys = dateKeys || [];
+    if (calendarWriteDestinations.length === 0 || keys.length === 0) return;
+
+    const writtenDateKeys = [];
+    let failedDays = 0;
+    let stopError = null;
+    let stopDateKey = null;
+
+    for (let i = 0; i < keys.length; i += 1) {
+      const dateKey = keys[i];
+      if (typeof onProgress === 'function') onProgress(i, keys.length);
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const { result } = await writeDayToCalendar(dateKey);
+        writtenDateKeys.push(dateKey);
+        if (result?.partial) failedDays += 1;
+      } catch (err) {
+        if (WEEK_WRITE_STOP_CODES.includes(err?.code)) {
+          stopError = err;
+          stopDateKey = dateKey;
+          break;
+        }
+        failedDays += 1;
+      }
+    }
+
+    if (writtenDateKeys.length > 0) {
+      const log = await recordCalendarWrites(writtenDateKeys);
+      setCalendarWriteLog(log);
+    }
+    refetchOutlookAgenda();
+
+    if (typeof notify !== 'function') return;
+
+    if (stopError) {
+      if (stopError.code === 'scope_upgrade_required') {
+        notify({
+          message: t('connections.errors.scopeUpgradeRequired'),
+          actionLabel: t('planner.calendar.reconnect'),
+          onAction: () => startOutlookConnect(buildPlannerReturnTo(stopDateKey)),
+        });
+      } else {
+        const key = ERROR_KEYS[stopError.code] || 'connections.errors.unexpected';
+        notify({ message: `${t('planner.calendar.toast.failed')} ${t(key)}` });
+      }
+      return;
+    }
+
+    if (failedDays > 0) {
+      notify({ message: t('planner.calendar.toast.weekPartial', { failed: failedDays }) });
+    } else {
+      notify({ message: t('planner.calendar.toast.weekWritten') });
+    }
+  }, [calendarWriteDestinations, writeDayToCalendar, refetchOutlookAgenda, t]);
 
   // Eén voorstel-/concept-blok overnemen resp. vastzetten: schrijft via de
   // bestaande handler en haalt het item uit de ephemere pendingPlan-state.
@@ -3553,6 +3644,8 @@ export default function Ritmo() {
             calendarWriteDestinations={calendarWriteDestinations}
             calendarWriteLog={calendarWriteLog}
             onWriteDayToCalendar={handleWriteDayToCalendar}
+            onWriteWeekToCalendar={handleWriteWeekToCalendar}
+            onGetWeekWriteSummary={buildWeekWriteSummary}
             onAcceptPendingItem={acceptPendingItem}
             onDiscardPendingItem={discardPendingItem}
             onAcceptAllPending={acceptAllPending}

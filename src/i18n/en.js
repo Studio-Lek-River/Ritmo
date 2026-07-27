@@ -1931,6 +1931,8 @@ export default {
       confirm: 'Confirm',
       writeToCalendar: 'Add to calendar',
       writingToCalendar: 'Updating calendar…',
+      writeWeekToCalendar: 'Add whole week to calendar',
+      writingWeekToCalendar: 'Updating week… ({current}/{total})',
     },
     toast: {
       planned: 'Your day has been planned.',
@@ -2015,6 +2017,13 @@ export default {
         cleared: 'The calendar has been cleared.',
         partial: 'Not everything could be written ({failed} block(s) failed).',
         failed: 'Writing to the calendar failed.',
+        weekWritten: 'The whole week has been added to the calendar.',
+        weekPartial: 'The week was written, but {failed} day(s) did not fully succeed.',
+      },
+      confirmWeek: {
+        title: 'Add the whole week to the calendar?',
+        description: '{dayCount} days, {blockCount} block(s), to: {destinations}. Days without a plan will be cleared in the calendar.',
+        confirm: 'Add week to calendar',
       },
     },
     trello: {

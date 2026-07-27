@@ -21,14 +21,27 @@ export async function readCalendarWriteLog() {
   }
 }
 
-// Legt vast wanneer dag `dateKey` voor het laatst is weggeschreven en geeft
-// de bijgewerkte log terug, zodat de aanroeper zijn React-state in dezelfde
-// call kan bijwerken zonder opnieuw te hoeven lezen.
-export async function recordCalendarWrite(dateKey) {
+// Legt vast wanneer de gegeven dagen voor het laatst zijn weggeschreven
+// (S12a, deel B: de weekknop schrijft meerdere dagen in één keer weg) en
+// geeft de bijgewerkte log terug, zodat de aanroeper zijn React-state in
+// dezelfde call kan bijwerken zonder opnieuw te hoeven lezen. Eén
+// read-modify-write in plaats van één per dag.
+export async function recordCalendarWrites(dateKeys) {
   const log = await readCalendarWriteLog();
-  const next = { ...log, [dateKey]: new Date().toISOString() };
+  const now = new Date().toISOString();
+  const next = { ...log };
+  (dateKeys || []).forEach((dateKey) => {
+    next[dateKey] = now;
+  });
   await window.storage.set(LOG_KEY, JSON.stringify(next));
   return next;
+}
+
+// Legt vast wanneer dag `dateKey` voor het laatst is weggeschreven — de
+// dagknop-variant, leunt op `recordCalendarWrites` zodat er maar één
+// implementatie van de read-modify-write bestaat.
+export async function recordCalendarWrite(dateKey) {
+  return recordCalendarWrites([dateKey]);
 }
 
 export async function clearCalendarWriteLog() {

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarCheck, Loader2, RotateCcw, WandSparkles } from 'lucide-react';
+import { CalendarCheck, CalendarRange, Loader2, RotateCcw, WandSparkles } from 'lucide-react';
 import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 import { useToast } from '../hooks/useToast';
 import WeekView from './WeekView';
@@ -11,9 +11,18 @@ import SourcesPanel from '../components/SourcesPanel';
 import TrelloBoardPicker from '../components/TrelloBoardPicker';
 import GithubRepoPicker from '../components/GithubRepoPicker';
 import PlanPreferencesPanel from '../components/PlanPreferencesPanel';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { buildDayTimeline } from '../utils/dayTimeline';
 import { isVirtualTaskKey } from '../utils/itemKeys';
 import { shortWeekdayLabelsMondayFirst, formatClockTime } from '../utils/dates';
+
+// Bestemming -> label-key voor de weekbevestiging (S12a, deel B): hergebruikt
+// de bestaande instellingen-labels (SettingsModal in App.jsx) in plaats van
+// een tweede vertaling van dezelfde twee namen.
+const DESTINATION_LABEL_KEYS = {
+  ritmo: 'settings.calendarWriteRitmo',
+  primary: 'settings.calendarWritePrimary',
+};
 
 const TABS = ['dag', 'feed', 'kanban', 'voorkeuren'];
 
@@ -97,6 +106,8 @@ export default function ProductivitySuiteView({
   calendarWriteDestinations,
   calendarWriteLog,
   onWriteDayToCalendar,
+  onWriteWeekToCalendar,
+  onGetWeekWriteSummary,
   onAcceptPendingItem,
   onDiscardPendingItem,
   onAcceptAllPending,
@@ -211,6 +222,39 @@ export default function ProductivitySuiteView({
   }, [onWriteDayToCalendar, selectedDay, todayKey, showToast]);
 
   const canWriteToCalendar = outlookConnected && (calendarWriteDestinations || []).length > 0;
+
+  // S12a (deel B): "Zet hele week in agenda" — dezelfde conditie als de
+  // dagknop (`canWriteToCalendar`), maar altijd de zichtbare week, niet de
+  // geselecteerde dag. Klikken opent eerst een bevestiging (Ontwerpbeslissing
+  // 4: dit maakt dagen zonder planning leeg in Outlook); pas na bevestigen
+  // gaat de daadwerkelijke write van start.
+  const weekDateKeys = useMemo(() => (weekDays || []).map((d) => d.dateKey), [weekDays]);
+  const [weekConfirm, setWeekConfirm] = useState(null); // { dateKeys, dayCount, blockCount } | null
+  const [isWritingWeek, setIsWritingWeek] = useState(false);
+  const [weekWriteProgress, setWeekWriteProgress] = useState(null); // { index, total } | null
+
+  const handleClickWriteWeekToCalendar = useCallback(() => {
+    const summary = onGetWeekWriteSummary(weekDateKeys);
+    setWeekConfirm({ dateKeys: weekDateKeys, ...summary });
+  }, [onGetWeekWriteSummary, weekDateKeys]);
+
+  const handleConfirmWriteWeek = useCallback(async () => {
+    const dateKeys = weekConfirm?.dateKeys || [];
+    setWeekConfirm(null);
+    setIsWritingWeek(true);
+    setWeekWriteProgress({ index: 0, total: dateKeys.length });
+    try {
+      await onWriteWeekToCalendar(dateKeys, showToast, (index, total) => setWeekWriteProgress({ index, total }));
+    } finally {
+      setIsWritingWeek(false);
+      setWeekWriteProgress(null);
+    }
+  }, [weekConfirm, onWriteWeekToCalendar, showToast]);
+
+  const weekConfirmDestinations = useMemo(
+    () => (calendarWriteDestinations || []).map((d) => t(DESTINATION_LABEL_KEYS[d] || d)).join(', '),
+    [calendarWriteDestinations, t],
+  );
   const calendarLastWrittenAt = calendarWriteLog?.[selectedDay?.dateKey || todayKey] || null;
   const calendarLastWrittenTime = calendarLastWrittenAt ? formatClockTime(calendarLastWrittenAt) : null;
 
@@ -350,6 +394,31 @@ export default function ProductivitySuiteView({
               {t(isWritingDay ? 'planner.actions.writingToCalendar' : 'planner.actions.writeToCalendar')}
             </button>
           )}
+          {/* S12a (deel B): compacte icoon-knop naast "Zet in agenda" — de
+              week heeft al vier tabs plus de dagknop, dus bewust geen vierde
+              volle knop. Zelfde conditie als de dagknop; opent altijd eerst
+              een bevestiging (Ontwerpbeslissing 4, AC8). */}
+          {canWriteToCalendar && (
+            <button
+              type="button"
+              onClick={handleClickWriteWeekToCalendar}
+              disabled={isWritingWeek}
+              aria-busy={isWritingWeek}
+              aria-label={t('planner.actions.writeWeekToCalendar')}
+              title={t('planner.actions.writeWeekToCalendar')}
+              className={`flex items-center gap-1.5 px-3 py-2 ${theme.radiusControl} text-sm font-medium transition ${theme.cardSecondary} ${theme.textSecondary} ${theme.hover} disabled:opacity-70 disabled:cursor-wait`}
+            >
+              {isWritingWeek ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarRange className="w-4 h-4" />}
+              {isWritingWeek && weekWriteProgress && (
+                <span>
+                  {t('planner.actions.writingWeekToCalendar', {
+                    current: weekWriteProgress.index + 1,
+                    total: weekWriteProgress.total,
+                  })}
+                </span>
+              )}
+            </button>
+          )}
           <div className={`flex gap-1 p-1 ${theme.cardSecondary} ${theme.radiusControl}`}>
             {TABS.map(id => (
               <button
@@ -487,6 +556,20 @@ export default function ProductivitySuiteView({
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!weekConfirm}
+        title={t('planner.calendar.confirmWeek.title')}
+        description={weekConfirm ? t('planner.calendar.confirmWeek.description', {
+          dayCount: weekConfirm.dayCount,
+          blockCount: weekConfirm.blockCount,
+          destinations: weekConfirmDestinations,
+        }) : ''}
+        confirmLabel={t('planner.calendar.confirmWeek.confirm')}
+        onConfirm={handleConfirmWriteWeek}
+        onCancel={() => setWeekConfirm(null)}
+        theme={theme}
+      />
     </div>
   );
 }

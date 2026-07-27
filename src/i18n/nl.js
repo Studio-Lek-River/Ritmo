@@ -1943,6 +1943,8 @@ export default {
       confirm: 'Vastzetten',
       writeToCalendar: 'Zet in agenda',
       writingToCalendar: 'Agenda bijwerken…',
+      writeWeekToCalendar: 'Zet hele week in agenda',
+      writingWeekToCalendar: 'Week bijwerken… ({current}/{total})',
     },
     toast: {
       planned: 'Je dag is ingedeeld.',
@@ -2027,6 +2029,13 @@ export default {
         cleared: 'De agenda is leeggemaakt.',
         partial: 'Niet alles kon worden weggeschreven ({failed} blok(ken) mislukt).',
         failed: 'Wegschrijven naar de agenda is mislukt.',
+        weekWritten: 'De hele week is in de agenda gezet.',
+        weekPartial: 'De week is weggeschreven, maar {failed} dag(en) ging(en) niet helemaal goed.',
+      },
+      confirmWeek: {
+        title: 'Hele week in de agenda zetten?',
+        description: '{dayCount} dagen, {blockCount} blok(ken), naar: {destinations}. Dagen zonder planning worden in de agenda leeggemaakt.',
+        confirm: 'Zet week in agenda',
       },
     },
     trello: {
