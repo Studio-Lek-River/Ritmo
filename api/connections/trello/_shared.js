@@ -75,18 +75,30 @@ export function isTrelloRateLimited(bucket, key, { windowMs, max }) {
 // Bepaalt (#120) welke connections-rij bij dit Trello-account (member-id)
 // hoort, ná een geslaagde `members/me`-validatie in token.js:
 // 1. een rij met `external_account = memberId` bestaat al (opnieuw plakken
-//    voor een account dat al gekoppeld is) → die rij;
+//    voor een account dat al gekoppeld is) → die rij, ongewijzigd;
 // 2. anders een legacy-rij (`external_account IS NULL`, van vóór #120) die
 //    nog geen secret draagt, of waarvan het bestaande secret dezelfde
 //    `username` draagt → die rij claimen (external_account wordt de
 //    member-id, connection-id blijft gelijk, dus de bestaande bordselectie
 //    en cache blijven geldig). De username-check is essentieel: zonder die
 //    check zou het koppelen van een tweede account de eerste overschrijven;
-// 3. anders een nieuwe rij — `ensureConnectionRow` doet stap 1 en 3 in één
-//    call (find-by-external-account-or-create), stap 2 moet daarvóór gebeuren
-//    omdat die call anders altijd een nieuwe rij zou maken in plaats van de
-//    legacy-rij te hergebruiken.
+// 3. anders een nieuwe rij.
+// Stap 1 staat bewust vóór stap 2: zonder die volgorde zou een tweede keer
+// plakken voor een account dat al een eigen rij heeft, per ongeluk de
+// legacy-rij proberen te claimen — wat de UNIQUE-constraint op
+// (account_id, provider, external_account) zou schenden als beide rijen
+// toevallig naast elkaar bestaan.
 export async function resolveTrelloConnectionRow(supabase, accountId, { memberId, username }) {
+  const { data: byMember, error: byMemberError } = await supabase
+    .from('connections')
+    .select('id, status')
+    .eq('account_id', accountId)
+    .eq('provider', 'trello')
+    .eq('external_account', memberId)
+    .maybeSingle();
+  if (byMemberError) return { error: byMemberError };
+  if (byMember) return { connection: byMember };
+
   const { data: legacy, error: legacyError } = await supabase
     .from('connections')
     .select('id, status')
@@ -124,6 +136,10 @@ export async function resolveTrelloConnectionRow(supabase, accountId, { memberId
     }
   }
 
+  // Stap 3: geen bestaande rij voor dit account en geen claimbare legacy-rij
+  // — een nieuwe. `ensureConnectionRow` doet zelf ook nog een keer de
+  // find-by-external-account-check (goedkoop, en race-veilig als twee
+  // gelijktijdige aanvragen hier langskomen), en anders de insert.
   return ensureConnectionRow(supabase, accountId, 'trello', { externalAccount: memberId });
 }
 
