@@ -1,3 +1,17 @@
+# [0.87.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.86.0...v0.87.0) (2026-07-27)
+
+
+### Bug Fixes
+
+* **nutrition:** macro-velden in het productformulier uitlijnen ([7b94338](https://github.com/Studio-Lek-River/Ritmo/commit/7b94338c8ed1a88db3d56ac951fbad51b4ce49e0))
+
+
+### Features
+
+* **insight:** gemiddelde macro's per dag op de calorieënkaart ([8b628fa](https://github.com/Studio-Lek-River/Ritmo/commit/8b628fabc0bed1ff7a614b454a3788352fe5b97d)), closes [#148](https://github.com/Studio-Lek-River/Ritmo/issues/148)
+* **nutrition:** eiwitten, koolhydraten en vetten in het datamodel ([945fc1a](https://github.com/Studio-Lek-River/Ritmo/commit/945fc1a7c5e94c228e4f849ee3567ad5b75c6484))
+* **nutrition:** macro's invoeren en berekend zien in de samenstellers ([5831c7d](https://github.com/Studio-Lek-River/Ritmo/commit/5831c7dfa323328e89bb4d74ec4a08606a66eac4))
+
 # [0.86.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.85.0...v0.86.0) (2026-07-27)
 
 
