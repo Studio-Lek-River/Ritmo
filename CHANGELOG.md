@@ -1,3 +1,13 @@
+# [0.90.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.89.1...v0.90.0) (2026-07-27)
+
+
+### Features
+
+* **planner:** geef dagdata en toggle-handlers door voor module-routines ([c10423c](https://github.com/Studio-Lek-River/Ritmo/commit/c10423cae6d29723ed0f888b190df4a0707058ea))
+* **planner:** laat module-items en -blokken meedoen als derde bron in de dagtijdlijn ([b05d2de](https://github.com/Studio-Lek-River/Ritmo/commit/b05d2de068754724575b5d843d4a266524d5c908))
+* **planner:** laat module-routines meeslepen en meedoen aan "deel mijn dag in" ([84306c7](https://github.com/Studio-Lek-River/Ritmo/commit/84306c7fc6d95e15da7fdfbdcea77dd84682ad68))
+* **planner:** schakelaar "meenemen in de dagplanning" in de module-instellingen ([6316721](https://github.com/Studio-Lek-River/Ritmo/commit/63167212a45376a6ab645291f70a2c4e15d1b050)), closes [#122](https://github.com/Studio-Lek-River/Ritmo/issues/122)
+
 ## [0.89.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.89.0...v0.89.1) (2026-07-27)
 
 
