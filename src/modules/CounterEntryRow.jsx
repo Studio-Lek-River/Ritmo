@@ -44,6 +44,10 @@ export default function CounterEntryRow({
   onRemoveEntry,
   onSetAmount,
   onSetQuantity,
+  // #151: alleen aan op de kcal-kant van een samengevoegde kaart. Optioneel
+  // (standaard uit) zodat de standalone drinkkaart en niet-samengevoegde
+  // voedingskaarten ongewijzigd blijven renderen.
+  showDrinkSuffix = false,
   theme,
   darkMode,
 }) {
@@ -128,6 +132,18 @@ export default function CounterEntryRow({
       : t(`modules.units.${entry.source.unit}`))
     : null;
 
+  // #151: op een samengevoegde kaart telt de ml van een gelogd drankje al mee
+  // op de drinkbalk via zijn eigen (verborgen) ml-entry — deze suffix maakt
+  // dat zichtbaar op de kcal-regel zelf, zodat het geen verrassing is dat er
+  // ergens een tweede totaal meebeweegt. Herrekend uit de bevroren
+  // source-snapshot (dezelfde formule als App.jsx bij het loggen), geen
+  // lookup naar de drinkmodule. Alleen wanneer deze regel ook echt gepaard is
+  // gelogd (`source.drinkEntry`) — een ml-product zonder gekoppelde teller op
+  // het moment van loggen telt nergens dubbel, dus mag hier ook geen ml tonen.
+  const drinkMl = (showDrinkSuffix && hasSource && entry.source.drinkEntry)
+    ? Math.round(entry.source.quantity * (entry.source.perUnit?.ml ?? 0))
+    : 0;
+
   return (
     <div className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${theme.cardSecondary} text-sm`}>
       {linkedTo ? (
@@ -170,6 +186,11 @@ export default function CounterEntryRow({
           <span className={`font-medium ${theme.textSecondary}`}>
             {entry.amount} {t('modules.units.kcal')}
           </span>
+          {drinkMl > 0 && (
+            <span className={`text-xs ${theme.textMuted}`}>
+              {t('nutrition.entry.drinkSuffix', { ml: drinkMl })}
+            </span>
+          )}
         </>
       ) : (
         editing ? (

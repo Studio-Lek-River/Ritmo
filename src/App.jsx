@@ -93,7 +93,7 @@ import { instantiateMetric } from './utils/metricLibrary';
 import MetricLibraryModal from './components/MetricLibraryModal';
 import { NutritionLibraryProvider } from './context/NutritionLibraryContext';
 import NutritionLibraryPanel from './components/nutrition/NutritionLibraryPanel';
-import { nutritionEnabled, defaultModuleNutrition, drinkModuleCandidates, resolveDrinkModule } from './utils/nutrition';
+import { nutritionEnabled, defaultModuleNutrition, drinkModuleCandidates, resolveDrinkModule, mergedDrinkModuleIds } from './utils/nutrition';
 import { createEntry, addEntry, setEntryAmount, applyEntryWrites, applyEntryRemovals, applyEntryRestores, applyEntryUpdates } from './utils/counterEntries';
 import {
   fmtDateKey, parseDateKey, addDays, sameDay, startOfWeek,
@@ -2704,9 +2704,18 @@ export default function Ritmo() {
   const baseEnabledModules = allModules.filter(m => m.enabled && m.type !== 'collection' && m.type !== 'measurements' && m.type !== 'medication' && m.type !== 'bodymap' && m.type !== 'injectionSchedule');
   const enabledModules = appMode === 'health' ? baseEnabledModules.filter(isHealthModule) : baseEnabledModules;
 
-  const todayVisibleModules = editable
+  // #151: de losse drinkkaart verdwijnt uit de Vandaag-feed zolang een
+  // ingeschakelde voedingsmodule ernaar wijst — hij wordt dan al ín die
+  // voedingskaart gerenderd (zie renderTodayModule hieronder). Alleen hier
+  // filteren, niet in `enabledModules` (dagvoortgang/streaks/gouden rand
+  // tellen de drinkmodule nog gewoon mee) en niet in `renderTodayModule`
+  // (die blijft elke module ook standalone kunnen renderen, voor
+  // HealthView's `renderLogModule` en de gezondheids-rondleiding).
+  const mergedDrinkIds = mergedDrinkModuleIds(modules);
+  const todayVisibleModules = (editable
     ? enabledModules
-    : enabledModules.filter(m => moduleStatusForDay(m, { moduleData }, activeDate) !== 'none');
+    : enabledModules.filter(m => moduleStatusForDay(m, { moduleData }, activeDate) !== 'none')
+  ).filter(m => !mergedDrinkIds.has(m.id));
 
   const renderTodayModule = (mod) => {
     if (mod.type === 'projects') {
@@ -2733,11 +2742,29 @@ export default function Ritmo() {
       const drinkTarget = drinkModule
         ? { id: drinkModule.id, name: resolveModuleName(drinkModule, t) }
         : null;
+      // #151: dezelfde resolve voedt nu ook de samengevoegde kaart. `drink`
+      // is alleen gevuld als de koppeling staat (nutritionEnabled + een
+      // resolvende teller) — anders rendert CounterModule ongewijzigd
+      // (drink blijft null). Geen nieuwe schrijfpaden: de handlers hier zijn
+      // dezelfde addCounterEntry/removeCounterEntry/setCounterEntryAmount
+      // die de standalone drinkkaart ook gebruikt, nu vastgezet op
+      // drinkModule.id.
+      const drink = (nutritionEnabled(mod) && drinkModule)
+        ? {
+            module: drinkModule,
+            name: resolveModuleName(drinkModule, t),
+            data: moduleData[drinkModule.id] || {},
+            onAddEntry: (amount, category) => addCounterEntry(drinkModule.id, amount, category),
+            onRemoveEntry: (entryId) => removeCounterEntry(drinkModule.id, entryId),
+            onSetEntryAmount: (entryId, amount) => setCounterEntryAmount(drinkModule.id, entryId, amount),
+          }
+        : null;
       return (
         <CounterModule
           key={mod.id}
           module={mod}
           drinkTarget={drinkTarget}
+          drink={drink}
           Icon={ICON_OPTIONS[mod.icon] || Sparkles}
           data={moduleData[mod.id] || {}}
           weekDates={weekDates}

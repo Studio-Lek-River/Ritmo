@@ -5,6 +5,7 @@ import ReminderBanner from '../components/ReminderBanner';
 import CounterDisplay from '../components/CounterDisplay';
 import CounterEntryRow from './CounterEntryRow';
 import CounterNutritionPanel from './CounterNutritionPanel';
+import CounterDrinkSection from './CounterDrinkSection';
 import { getColorClasses } from '../utils/colors';
 import { nutritionEnabled } from '../utils/nutrition';
 import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
@@ -21,6 +22,13 @@ export default function CounterModule({
   // (#143). Bewust géén modulelijst: het paneel hoeft alleen te weten of en
   // waarheen de ml gaan.
   drinkTarget = null,
+  // Volledig bundel van de gekoppelde drinkteller (#151), of null zonder
+  // koppeling: { module, name, data, onAddEntry, onRemoveEntry,
+  // onSetEntryAmount }, al gebonden aan drinkModule.id door App.jsx. Anders
+  // dan drinkTarget (alleen id/naam, voor het loggen vanuit de bibliotheek)
+  // draagt dit bundel genoeg om de drinkteller ín deze kaart te renderen —
+  // zonder deze prop rendert CounterModule exact zoals voorheen.
+  drink = null,
   editable = true,
   onIncrementCounter,
   onResetCounter,
@@ -156,6 +164,7 @@ export default function CounterModule({
       data={data}
       today={today}
       drinkTarget={drinkTarget}
+      drink={drink}
       editable={editable}
       onIncrementCounter={onIncrementCounter}
       onAddEntry={onAddEntry}
@@ -186,6 +195,7 @@ function CounterUI({
   data,
   today,
   drinkTarget = null,
+  drink = null,
   editable = true,
   onIncrementCounter,
   onAddEntry,
@@ -204,6 +214,15 @@ function CounterUI({
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [manualAmount, setManualAmount] = useState('');
   const [manualCategory, setManualCategory] = useState(initialCategory);
+  // #151: eenheid van het handmatige invoerveld op een samengevoegde kaart
+  // (kcal/ml); standaard kcal, zoals de spec vraagt. Betekenisloos zonder
+  // `drink` (dan bestaat de select niet en blijft dit ongebruikt).
+  const [manualUnit, setManualUnit] = useState('kcal');
+  // Categoriekeuze van de gekoppelde drinkteller, apart van de categorieën
+  // van deze module zelf — stuurt zowel de presets in CounterDrinkSection als
+  // een handmatige ml-invoer hieronder.
+  const drinkCategories = drink?.module?.categoriesEnabled ? (drink.module.categories || []) : [];
+  const [drinkCategory, setDrinkCategory] = useState(drinkCategories.length ? drinkCategories[0] : null);
 
   const pct = dailyGoal > 0 ? Math.min(100, (total / dailyGoal) * 100) : 0;
   const reachedGoal = dailyGoal > 0 && total >= dailyGoal;
@@ -227,7 +246,15 @@ function CounterUI({
   const submitManual = () => {
     const parsed = parseFloat(manualAmount);
     if (!parsed || parsed <= 0) return;
-    handleAdd(parsed, manualCategory);
+    // #151: op een samengevoegde kaart bepaalt de eenheid-select welke
+    // teller de invoer ontvangt — ml gaat naar de drinkteller (dezelfde
+    // onAddEntry als de presets in CounterDrinkSection), kcal blijft het
+    // bestaande pad.
+    if (drink && manualUnit === 'ml') {
+      drink.onAddEntry(parsed, drinkCategory);
+    } else {
+      handleAdd(parsed, manualCategory);
+    }
     setManualAmount('');
   };
 
@@ -245,6 +272,31 @@ function CounterUI({
   } else {
     goalTextClass = darkMode ? `text-${mod.color}-300` : `text-${mod.color}-600`;
   }
+
+  // #151: zonder `drink` blijft dit exact de oude regel-lijst (entries van
+  // deze module, elk met de eigen handlers) — de bron van de "geen
+  // gedragswijziging zonder drink-prop"-garantie. Mét `drink` voegt een
+  // gesorteerde samenvoeging de ml-regels van de gekoppelde drinkteller toe.
+  // De ml-kant van een gekoppelde voedingsregel (`linkedTo.moduleId ===
+  // mod.id`) blijft buiten de lijst: die is al zichtbaar als suffix op zijn
+  // kcal-regel (CounterEntryRow, showDrinkSuffix) en zou anders dubbel tellen.
+  const ownRows = entries.map(entry => ({
+    entry, rowMod: mod, rowUnit: unit,
+    onRemoveEntry, onSetAmount: onSetEntryAmount, onSetQuantity,
+    showDrinkSuffix: !!drink,
+  }));
+  const drinkRows = drink
+    ? (drink.data?.entries || [])
+      .filter(entry => entry.linkedTo?.moduleId !== mod.id)
+      .map(entry => ({
+        entry, rowMod: drink.module, rowUnit: drink.module.unit || 'ml',
+        onRemoveEntry: drink.onRemoveEntry, onSetAmount: drink.onSetEntryAmount, onSetQuantity: undefined,
+        showDrinkSuffix: false,
+      }))
+    : [];
+  const rows = drink
+    ? [...ownRows, ...drinkRows].sort((a, b) => (a.entry.time || '').localeCompare(b.entry.time || ''))
+    : ownRows;
 
   return (
     <div className={`${theme.card} rounded-2xl p-5 shadow-sm mb-4`}>
@@ -292,6 +344,17 @@ function CounterUI({
           </div>
         )}
       </div>
+
+      {drink && (
+        <CounterDrinkSection
+          drink={drink}
+          activeCategory={drinkCategory}
+          onCategoryChange={setDrinkCategory}
+          editable={editable}
+          theme={theme}
+          darkMode={darkMode}
+        />
+      )}
 
       {showReminder && (
         <ReminderBanner
@@ -359,6 +422,17 @@ function CounterUI({
             placeholder={t('modules.counterAmountPlaceholder', { unit })}
             className={`flex-1 min-w-0 px-3 py-2 ${theme.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
           />
+          {drink && (
+            <select
+              value={manualUnit}
+              onChange={(e) => setManualUnit(e.target.value)}
+              aria-label={t('nutrition.drink.unitSelectAria')}
+              className={`px-2 py-2 ${theme.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
+            >
+              <option value="kcal">{t('modules.units.kcal')}</option>
+              <option value="ml">{t('modules.units.ml')}</option>
+            </select>
+          )}
           {categoriesEnabled && categories.length > 0 && (
             <select
               value={manualCategory ?? ''}
@@ -380,18 +454,19 @@ function CounterUI({
         </div>
       )}
 
-      {useEntries && entries.length > 0 && (
+      {useEntries && rows.length > 0 && (
         <div className={`pt-3 mt-2 border-t ${theme.border} space-y-1`}>
-          {[...entries].reverse().map(entry => (
+          {[...rows].reverse().map(row => (
             <CounterEntryRow
-              key={entry.id}
-              entry={entry}
-              unit={unit}
-              mod={mod}
+              key={row.entry.id}
+              entry={row.entry}
+              unit={row.rowUnit}
+              mod={row.rowMod}
               editable={editable}
-              onRemoveEntry={onRemoveEntry}
-              onSetAmount={onSetEntryAmount}
-              onSetQuantity={onSetEntryQuantity}
+              onRemoveEntry={row.onRemoveEntry}
+              onSetAmount={row.onSetAmount}
+              onSetQuantity={row.onSetQuantity}
+              showDrinkSuffix={row.showDrinkSuffix}
               theme={theme}
               darkMode={darkMode}
             />

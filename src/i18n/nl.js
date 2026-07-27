@@ -1247,6 +1247,9 @@ export default {
     },
     entry: {
       editQuantityAria: 'Hoeveelheid van invoer bewerken',
+      // #151: suffix op een kcal-regel die ook als drinken telt, bv.
+      // "122 kcal · 200 ml" — alleen op een samengevoegde kaart.
+      drinkSuffix: '· {ml} ml',
     },
     // Koppeling met een drinkteller (#143): drankjes uit de bibliotheek
     // tellen ook mee in het vochtdoel.
@@ -1256,6 +1259,10 @@ export default {
       noCandidatesHint: 'Maak eerst een teller met eenheid ml om drankjes te laten meetellen.',
       unavailableOption: 'Niet beschikbaar',
       unavailableWarning: 'De gekoppelde teller staat uit of bestaat niet meer. Drankjes tellen nu alleen als calorieën; zet de teller weer aan en de koppeling werkt weer.',
+      // #151: de ml-balk op de samengevoegde kaart, en het toegankelijke
+      // label van de kcal/ml-eenheid-select bij handmatige invoer.
+      mergedLabel: '{name} · {value}',
+      unitSelectAria: 'Eenheid van het bedrag',
     },
   },
 

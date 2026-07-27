@@ -1237,6 +1237,9 @@ export default {
     },
     entry: {
       editQuantityAria: 'Edit entry amount',
+      // #151: suffix on a kcal entry that also counts as a drink, e.g.
+      // "122 kcal · 200 ml" — only on a merged card.
+      drinkSuffix: '· {ml} ml',
     },
     // Link with a drink counter (#143): drinks from the library also count
     // towards the hydration goal.
@@ -1246,6 +1249,10 @@ export default {
       noCandidatesHint: 'Create a counter with unit ml first to let drinks count towards it.',
       unavailableOption: 'Unavailable',
       unavailableWarning: 'The linked counter is switched off or no longer exists. Drinks only count as calories right now; switch the counter back on and the link works again.',
+      // #151: the ml bar on the merged card, and the accessible label of the
+      // kcal/ml unit select on manual entry.
+      mergedLabel: '{name} · {value}',
+      unitSelectAria: 'Amount unit',
     },
   },
 

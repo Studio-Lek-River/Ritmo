@@ -379,6 +379,25 @@ export function resolveDrinkModule(modules, calorieModule) {
   return drinkModuleCandidates(modules).find((m) => m.id === id) || null;
 }
 
+// De drinkteller-id's die momenteel als drinkkant van een samengevoegde
+// voedingskaart fungeren (#151): voor elke ingeschakelde, nutrition-
+// ingeschakelde teller het resultaat van resolveDrinkModule hierboven. Puur
+// afgeleid uit `modules` — geen nieuw opgeslagen veld, dus geen migratie
+// nodig. App.jsx gebruikt dit alleen om de losse drinkkaart uit de
+// Vandaag-feed te filteren zolang de koppeling staat; `enabledModules` en
+// `renderTodayModule` blijven ongefilterd, zodat dagvoortgang, Gezondheid en
+// de rondleiding de drinkmodule gewoon standalone kunnen blijven tonen.
+export function mergedDrinkModuleIds(modules) {
+  const list = Array.isArray(modules) ? modules : [];
+  const ids = new Set();
+  for (const mod of list) {
+    if (!mod || !mod.enabled || mod.type !== 'counter' || !nutritionEnabled(mod)) continue;
+    const drinkModule = resolveDrinkModule(list, mod);
+    if (drinkModule) ids.add(drinkModule.id);
+  }
+  return ids;
+}
+
 // Bouwt een logbare { amount, source } uit een bibliotheek-item en een
 // hoeveelheid (slice B, #141). `null` is het enige ongeldig-signaal (geen
 // item, quantity niet-eindig of <= 0, of mode: 'portion' zonder geldige
