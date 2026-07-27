@@ -1,3 +1,10 @@
+# [0.96.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.95.0...v0.96.0) (2026-07-27)
+
+
+### Features
+
+* **outlook:** werk bestaande agendablokken bij in plaats van ze opnieuw aan te maken ([7e0867d](https://github.com/Studio-Lek-River/Ritmo/commit/7e0867dbeeec18091175f3c207a028b037107144))
+
 # [0.95.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.94.0...v0.95.0) (2026-07-27)
 
 
