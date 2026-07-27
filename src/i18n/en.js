@@ -871,6 +871,21 @@ export default {
       desc: 'Replace the checkbox with a counter (e.g. 0/3 sets).',
     },
 
+    // day planning (S10c)
+    optPlanInDay: {
+      title: 'Include in day planning',
+      desc: 'Show this module in the Planner, so you can schedule and tick items from your day.',
+    },
+    optPlanItem: {
+      title: 'Include in day planning',
+      desc: 'Turn off to keep just this item out of the Planner.',
+    },
+    planGranularity: {
+      label: 'Show in the Planner',
+      items: 'Separate per item',
+      block: 'As one block',
+    },
+
     checkAria: 'Tick',
     uncheckAria: 'Untick',
     showInstructionAria: 'Show instruction',
@@ -1886,6 +1901,7 @@ export default {
       losseTaak: 'Task',
       projecttaak: 'Project task',
       agenda: 'Agenda',
+      routine: 'Routine',
     },
   },
 
@@ -1919,6 +1935,7 @@ export default {
       groups: {
         losseTaak: 'Loose tasks',
         projecttaak: 'Project tasks',
+        routine: 'Routines',
       },
       openInSource: 'Open in {provider}',
       hideItem: 'Hide',

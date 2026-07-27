@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { RotateCcw, WandSparkles } from 'lucide-react';
-import { useTranslation } from '../i18n/useTranslation';
+import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 import { useToast } from '../hooks/useToast';
 import WeekView from './WeekView';
 import KanbanView from './KanbanView';
@@ -81,6 +81,8 @@ export default function ProductivitySuiteView({
   onRestoreSubgoal,
   onRenameSubgoal,
   onToggleTaskInDay,
+  onToggleModuleItemInDay,
+  onToggleModuleBlockInDay,
   onMoveItem,
   onSetItemDuration,
   onResetItem,
@@ -189,16 +191,20 @@ export default function ProductivitySuiteView({
     const items = buildDayTimeline({
       modules,
       customTasks: selectedDay.customTasks,
+      moduleData: selectedDay.moduleData,
+      resolveName: mod => resolveModuleName(mod, t),
       referenceDate: selectedDay.date,
       handlers: {
         onToggleTask: (id) => onToggleTaskInDay(selectedDay.dateKey, id),
         onToggleProjectSubgoal,
+        onToggleModuleItem: (moduleId, itemId) => onToggleModuleItemInDay(selectedDay.dateKey, moduleId, itemId),
+        onToggleModuleBlock: (moduleId) => onToggleModuleBlockInDay(selectedDay.dateKey, moduleId),
       },
     });
     return items
       .filter(item => !item.time)
       .map(item => (isVirtualTaskKey(item.key) ? { ...item, toggle: undefined } : item));
-  }, [selectedDay, modules, onToggleTaskInDay, onToggleProjectSubgoal]);
+  }, [selectedDay, modules, onToggleTaskInDay, onToggleProjectSubgoal, onToggleModuleItemInDay, onToggleModuleBlockInDay, t]);
 
   // Generieke provider -> actie-map voor SourcesPanel (S07d, uitgebreid in
   // S08/S09): alleen een provider met een echte actie krijgt een entry, dus
@@ -382,6 +388,8 @@ export default function ProductivitySuiteView({
               onSelectDate={setSelectedDateKey}
               onToggleTask={onToggleTaskInDay}
               onToggleProjectSubgoal={onToggleProjectSubgoal}
+              onToggleModuleItem={onToggleModuleItemInDay}
+              onToggleModuleBlock={onToggleModuleBlockInDay}
               onMoveItem={onMoveItem}
               pendingPlan={pendingPlan}
               onAcceptPendingItem={onAcceptPendingItem}

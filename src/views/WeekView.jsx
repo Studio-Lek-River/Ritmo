@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { useTranslation } from '../i18n/useTranslation';
+import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 import { COLOR_OPTIONS, getColorClasses, getColorHex } from '../utils/colors';
 import { SOURCE_ICONS, getSourcePref } from '../utils/sourcePrefs';
 import { buildDayTimeline, DEFAULT_BLOCK_MINUTES } from '../utils/dayTimeline';
@@ -118,6 +118,8 @@ export default function WeekView({
   onSelectDate,
   onToggleTask,
   onToggleProjectSubgoal,
+  onToggleModuleItem,
+  onToggleModuleBlock,
   onMoveItem,
   pendingPlan,
   onAcceptPendingItem,
@@ -148,10 +150,14 @@ export default function WeekView({
       const raw = buildDayTimeline({
         modules,
         customTasks: day.customTasks,
+        moduleData: day.moduleData,
+        resolveName: mod => resolveModuleName(mod, t),
         referenceDate: day.date,
         handlers: {
           onToggleTask: (id) => onToggleTask(day.dateKey, id),
           onToggleProjectSubgoal,
+          onToggleModuleItem: (moduleId, itemId) => onToggleModuleItem(day.dateKey, moduleId, itemId),
+          onToggleModuleBlock: (moduleId) => onToggleModuleBlock(day.dateKey, moduleId),
         },
       });
       // Een nog niet gematerialiseerde recurring-instantie mag je nog niet
@@ -161,7 +167,7 @@ export default function WeekView({
       ));
     });
     return map;
-  }, [weekDays, modules, onToggleTask, onToggleProjectSubgoal]);
+  }, [weekDays, modules, onToggleTask, onToggleProjectSubgoal, onToggleModuleItem, onToggleModuleBlock, t]);
 
   // Gememoiseerd omdat `agendaColumns` hieronder erop indexeert: de
   // Dag-stand filtert en levert dus elke render een nieuwe array-identiteit,

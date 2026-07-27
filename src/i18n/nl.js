@@ -873,6 +873,21 @@ export default {
       desc: 'Vervang het vinkje door een teller (bijv. 0/3 sets).',
     },
 
+    // dagplanning (S10c)
+    optPlanInDay: {
+      title: 'Meenemen in de dagplanning',
+      desc: 'Toon deze module in de Planner, zodat je items kunt inplannen en aanvinken vanuit je dag.',
+    },
+    optPlanItem: {
+      title: 'Meenemen in de dagplanning',
+      desc: 'Zet uit om alleen dit item buiten de Planner te houden.',
+    },
+    planGranularity: {
+      label: 'Weergave in de Planner',
+      items: 'Los per item',
+      block: 'Als één blok',
+    },
+
     // checklist runtime
     checkAria: 'Afvinken',
     uncheckAria: 'Uitvinken',
@@ -1898,6 +1913,7 @@ export default {
       losseTaak: 'Losse taak',
       projecttaak: 'Projecttaak',
       agenda: 'Agenda',
+      routine: 'Routine',
     },
   },
 
@@ -1931,6 +1947,7 @@ export default {
       groups: {
         losseTaak: 'Losse taken',
         projecttaak: 'Projecttaken',
+        routine: 'Routines',
       },
       openInSource: 'Openen in {provider}',
       hideItem: 'Verbergen',

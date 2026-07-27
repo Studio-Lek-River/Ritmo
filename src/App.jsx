@@ -104,7 +104,7 @@ import {
 import { goalsForNight, isOnTarget } from './utils/sleep';
 import { DEFAULT_BLOCK_MINUTES } from './utils/dayTimeline';
 import { planDay } from './utils/planDay';
-import { subgoalKey, taskKey, virtualTaskId, parseVirtualTaskId, parseItemKey } from './utils/itemKeys';
+import { subgoalKey, taskKey, virtualTaskId, parseVirtualTaskId, parseItemKey, moduleItemKey, moduleBlockKey } from './utils/itemKeys';
 import {
   buildDayCellBackground, moduleStatusForDay, isDayFullyComplete,
   normalizeChecklistItemData, isChecklistItemComplete,
@@ -1716,6 +1716,62 @@ export default function Ritmo() {
     });
   }, [activeDateKey]);
 
+  // Analoog aan writeTasksForDay hierboven, maar voor moduleData van een
+  // willekeurige dag (S10c): actieve dag via de bestaande setModuleData-state
+  // (het save-effect schrijft die al weg), elke andere dag rechtstreeks naar
+  // dat day:<date>-record. Dit is de enige nieuwe schrijfweg voor een module-
+  // item/-blok op een niet-actieve dag: zowel afvinken op een andere dag als
+  // "deel mijn dag in" en het slepen naar een andere dag bouwen hierop voort.
+  const writeModuleDataForDay = useCallback((dateKey, moduleId, updater) => {
+    if (dateKey === activeDateKey) {
+      setModuleData(prev => ({
+        ...prev,
+        [moduleId]: updater(prev[moduleId] || {}),
+      }));
+      return;
+    }
+    setHistory(prev => {
+      const day = prev[dateKey] || { moduleData: {}, customTasks: [] };
+      const nextModuleData = {
+        ...(day.moduleData || {}),
+        [moduleId]: updater(day.moduleData?.[moduleId] || {}),
+      };
+      const nextDay = { ...day, moduleData: nextModuleData };
+      window.storage.set(`day:${dateKey}`, JSON.stringify(nextDay)).catch(() => {});
+      return { ...prev, [dateKey]: nextDay };
+    });
+  }, [activeDateKey]);
+
+  // Leest de moduleData van één module op een willekeurige dag — het
+  // leesspiegelbeeld van writeModuleDataForDay, gebruikt om een snapshot te
+  // nemen vóór het indelen (snapshotItem hieronder).
+  const readModuleDataForDay = useCallback((dateKey, moduleId) => {
+    if (dateKey === activeDateKey) return moduleData[moduleId] || {};
+    return history[dateKey]?.moduleData?.[moduleId] || {};
+  }, [activeDateKey, moduleData, history]);
+
+  // Afvinken van een checklist-item op een willekeurige dag van de zichtbare
+  // week (S10c). Op de actieve dag hergebruikt dit de bestaande
+  // toggleChecklistItem (incl. geluid); op elke andere dag schrijft het
+  // rechtstreeks naar dat day:<date>-record. Zelfde patroon als
+  // toggleTaskInDay hierboven.
+  const toggleModuleItemForDay = useCallback((dateKey, moduleId, itemId) => {
+    if (dateKey === activeDateKey) { toggleChecklistItem(moduleId, itemId); return; }
+    writeModuleDataForDay(dateKey, moduleId, prev => {
+      const data = normalizeChecklistItemData(prev[itemId]);
+      return { ...prev, [itemId]: { ...data, checked: !data.checked } };
+    });
+  }, [activeDateKey, writeModuleDataForDay]);
+
+  // Afvinken van een choice-blok op een willekeurige dag (S10c) — de
+  // afvinkbare vorm van een module-blok (checklist-blok en counter zijn
+  // read-only, zie dayTimeline.js). Zelfde patroon als toggleModuleItemForDay
+  // hierboven.
+  const toggleChoiceForDay = useCallback((dateKey, moduleId) => {
+    if (dateKey === activeDateKey) { toggleChoice(moduleId); return; }
+    writeModuleDataForDay(dateKey, moduleId, prev => ({ ...prev, completed: !prev.completed }));
+  }, [activeDateKey, writeModuleDataForDay]);
+
   // Analoog aan writeTasksForDay hierboven, maar voor de skippedRecurring-
   // lijst van een willekeurige dag (V03). Nu alleen aangeroepen voor de
   // actieve dag (deleteTask hierboven); V04 hangt er de verwijderknop op
@@ -1951,9 +2007,14 @@ export default function Ritmo() {
         dayTasks = [...stored, ...missing];
       }
 
-      return { date, dateKey, customTasks: dayTasks };
+      // moduleData (S10c): dezelfde actieve-dag-vs-history-keuze als
+      // customTasks hierboven, zodat een module-item/-blok op elke dag van de
+      // zichtbare week zijn eigen afvink- en plan-status heeft.
+      const dayModuleData = dateKey === activeDateKey ? moduleData : (history[dateKey]?.moduleData || {});
+
+      return { date, dateKey, customTasks: dayTasks, moduleData: dayModuleData };
     });
-  }, [activeDateKey, customTasks, skippedRecurring, history, recurringTasks, todayKey, weekOffset]);
+  }, [activeDateKey, customTasks, skippedRecurring, history, recurringTasks, todayKey, weekOffset, moduleData]);
 
   // ---- Outlook-agenda (S07 / S07a, persistent sinds S07d) ------------------
   // Eigen useConnections-instantie (naast die van ConnectionsSection) puur om
@@ -3143,6 +3204,8 @@ export default function Ritmo() {
             onRestoreSubgoal={restoreSubgoal}
             onRenameSubgoal={renameSubgoal}
             onToggleTaskInDay={toggleTaskInDay}
+            onToggleModuleItemInDay={toggleModuleItemForDay}
+            onToggleModuleBlockInDay={toggleChoiceForDay}
             onMoveItem={moveItemToDay}
             onSetItemDuration={setItemDuration}
             onResetItem={resetSourceItem}
