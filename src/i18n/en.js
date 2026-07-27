@@ -1112,12 +1112,18 @@ export default {
       emptyDesc: 'Record how many kcal a food item has per 100 grams or millilitres, so you can log it quickly later.',
       addButton: 'Add food item',
       itemPer100: '{kcal} kcal / 100 {unit}',
-      tabItems: 'Food items',
-      tabRecipes: 'Meals',
-      recipeEmptyTitle: 'No meals yet',
-      recipeEmptyDesc: 'Combine several food items into a meal, so you can log it in one tap later.',
-      addRecipeButton: 'Add meal',
-      recipePerServing: '{kcal} kcal / serving',
+      // #147: Product → Portion → Meal. The recipe tab (tabRecipes etc.) is
+      // replaced by tabPortions/tabMeals; recipes still stay in the stored
+      // data (see normalizeNutritionLibrary), just not in this UI anymore.
+      tabProducts: 'Products',
+      tabPortions: 'Portions',
+      tabMeals: 'Meals',
+      portionEmptyTitle: 'No portions yet',
+      portionEmptyDesc: 'Combine several products into a portion, so you can use it in a meal later.',
+      addPortionButton: 'Add portion',
+      mealEmptyTitle: 'No meals yet',
+      mealEmptyDesc: 'Combine several portions into a meal, so you can log it in one tap later.',
+      addMealButton: 'Add meal',
     },
     item: {
       addTitle: 'Add food item',
@@ -1127,36 +1133,75 @@ export default {
       unitLabel: 'Unit',
       kcalLabel: 'Kcal per 100 {unit}',
       kcalPlaceholder: 'e.g. 370',
-      portionSectionLabel: 'Portion (optional)',
+      // Poort-0 addition (#147): the size is required, so no more
+      // "(optional)" — without a valid "1 product = ..." the save button
+      // stays disabled (AC11).
+      portionSectionLabel: '1 product = ...',
       portionNamePlaceholder: 'e.g. slice',
       portionAmountPlaceholder: '{unit}',
+      perProductLabel: '1 product = {kcal} kcal',
+      perProductRequiredHint: 'Enter a name and an amount to calculate the kcal per product',
       countsAsDrinkLabel: 'Also counts as a drink',
       deleteTitle: 'Delete {name}?',
       deleteDescription: 'This food item will be removed from the library. Meals already logged stay as they are.',
     },
-    recipe: {
+    // Portion (#147): a number of products together, between product and
+    // meal. Same form pattern as the (former) recipe form, but with a count
+    // of products instead of ingredients in grams.
+    portion: {
+      addTitle: 'Add portion',
+      editTitle: 'Edit portion',
+      nameLabel: 'Name',
+      namePlaceholder: 'e.g. Sandwich with cold cuts',
+      entriesLabel: 'Products',
+      entryProductAria: 'Product',
+      missingProductOption: '(missing product)',
+      countPlaceholder: 'Count',
+      noProductSizeHint: 'no size set',
+      addEntryButton: '+ Add product',
+      removeEntryAria: 'Remove product',
+      totalLabel: 'Total: {kcal} kcal per portion',
+      unit: 'portion',
+      unitPlural: 'portions',
+      missingHint: '{count} product no longer exists — not counted',
+      missingHintPlural: '{count} products no longer exist — not counted',
+      deleteTitle: 'Delete {name}?',
+      deleteDescription: 'This portion will be removed from the library. Meals already logged stay as they are.',
+    },
+    // Meal (#147): a number of portions together — one layer above a
+    // portion, same form pattern.
+    meal: {
       addTitle: 'Add meal',
       editTitle: 'Edit meal',
       nameLabel: 'Name',
       namePlaceholder: 'e.g. Breakfast',
-      ingredientsLabel: 'Ingredients',
-      ingredientItemAria: 'Ingredient',
-      missingIngredientOption: '(missing food item)',
-      amountPlaceholder: 'Amount',
-      addIngredientButton: '+ Add ingredient',
-      removeIngredientAria: 'Remove ingredient',
-      totalLabel: 'Total: {kcal} kcal per serving',
-      servingUnit: 'serving',
-      servingUnitPlural: 'servings',
+      entriesLabel: 'Portions',
+      entryPortionAria: 'Portion',
+      missingPortionOption: '(missing portion)',
+      countPlaceholder: 'Count',
+      addEntryButton: '+ Add portion',
+      removeEntryAria: 'Remove portion',
+      totalLabel: 'Total: {kcal} kcal per meal',
+      unit: 'meal',
+      unitPlural: 'meals',
       chipLabel: '{name} · {kcal} kcal',
-      missingHint: '{count} ingredient no longer exists — not counted',
-      missingHintPlural: '{count} ingredients no longer exist — not counted',
+      missingHint: '{count} portion no longer exists — not counted',
+      missingHintPlural: '{count} portions no longer exist — not counted',
       deleteTitle: 'Delete {name}?',
       deleteDescription: 'This meal will be removed from the library. Meals already logged stay as they are.',
     },
+    // servingUnit/servingUnitPlural remain as a fallback for entries logged
+    // before #147 (kind: 'recipe', unit: 'serving') — those entries stay
+    // visible unchanged (AC6), even though the recipe form itself no longer
+    // exists.
+    recipe: {
+      servingUnit: 'serving',
+      servingUnitPlural: 'servings',
+    },
     toast: {
       itemDeleted: 'Food item deleted',
-      recipeDeleted: 'Meal deleted',
+      portionDeleted: 'Portion deleted',
+      mealDeleted: 'Meal deleted',
       pairDeleted: '{name} deleted — {kcal} kcal and {ml} ml',
     },
     log: {
@@ -1164,7 +1209,8 @@ export default {
       searchPlaceholder: 'Search a food item...',
       addNew: '+ New food item',
       amountLabel: 'Amount ({unit})',
-      recipeAmountLabel: 'Number of servings',
+      portionAmountLabel: 'Number of portions',
+      mealAmountLabel: 'Number of meals',
       preview: '≈ {kcal} kcal',
       previewInvalid: 'Enter a valid amount',
       drinkPreview: '+ {ml} ml to {name}',

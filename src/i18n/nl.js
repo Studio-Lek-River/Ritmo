@@ -1121,12 +1121,19 @@ export default {
       emptyDesc: 'Leg vast hoeveel kcal een voedingsmiddel per 100 gram of milliliter bevat, zodat je het straks snel kunt loggen.',
       addButton: 'Voedingsmiddel toevoegen',
       itemPer100: '{kcal} kcal / 100 {unit}',
-      tabItems: 'Voedingsmiddelen',
-      tabRecipes: 'Maaltijden',
-      recipeEmptyTitle: 'Nog geen maaltijden',
-      recipeEmptyDesc: 'Stel een maaltijd samen uit meerdere voedingsmiddelen, zodat je hem straks in één klik kunt loggen.',
-      addRecipeButton: 'Maaltijd toevoegen',
-      recipePerServing: '{kcal} kcal / portie',
+      // #147: Product → Portie → Maaltijd. De receptentab (tabRecipes e.a.)
+      // is vervangen door tabPortions/tabMeals; recepten blijven wel in de
+      // opgeslagen data staan (zie normalizeNutritionLibrary), alleen niet
+      // meer in deze UI.
+      tabProducts: 'Producten',
+      tabPortions: 'Porties',
+      tabMeals: 'Maaltijden',
+      portionEmptyTitle: 'Nog geen porties',
+      portionEmptyDesc: 'Stel een portie samen uit meerdere producten, zodat je hem straks kunt gebruiken in een maaltijd.',
+      addPortionButton: 'Portie toevoegen',
+      mealEmptyTitle: 'Nog geen maaltijden',
+      mealEmptyDesc: 'Stel een maaltijd samen uit meerdere porties, zodat je hem straks in één klik kunt loggen.',
+      addMealButton: 'Maaltijd toevoegen',
     },
     item: {
       addTitle: 'Voedingsmiddel toevoegen',
@@ -1136,36 +1143,75 @@ export default {
       unitLabel: 'Eenheid',
       kcalLabel: 'Kcal per 100 {unit}',
       kcalPlaceholder: 'bijv. 370',
-      portionSectionLabel: 'Portie (optioneel)',
+      // Poort-0-aanvulling (#147): de maat is verplicht, dus geen
+      // "(optioneel)" meer — zonder een geldige "1 product = ..." blijft de
+      // opslaan-knop uit (AC11).
+      portionSectionLabel: '1 product = ...',
       portionNamePlaceholder: 'bijv. snee',
       portionAmountPlaceholder: '{unit}',
+      perProductLabel: '1 product = {kcal} kcal',
+      perProductRequiredHint: 'Vul een naam en een hoeveelheid in om de kcal per product te berekenen',
       countsAsDrinkLabel: 'Telt ook mee als drinken',
       deleteTitle: '{name} verwijderen?',
       deleteDescription: 'Dit voedingsmiddel wordt uit de bibliotheek verwijderd. Al gelogde maaltijden blijven staan.',
     },
-    recipe: {
+    // Portie (#147): een aantal producten samen, tussen product en maaltijd
+    // in. Zelfde formulierpatroon als het (voormalige) receptformulier, maar
+    // met een aantal producten i.p.v. ingrediënten in grammen.
+    portion: {
+      addTitle: 'Portie toevoegen',
+      editTitle: 'Portie bewerken',
+      nameLabel: 'Naam',
+      namePlaceholder: 'bijv. Broodje boterhamworst',
+      entriesLabel: 'Producten',
+      entryProductAria: 'Product',
+      missingProductOption: '(ontbrekend product)',
+      countPlaceholder: 'Aantal',
+      noProductSizeHint: 'geen maat',
+      addEntryButton: '+ Product toevoegen',
+      removeEntryAria: 'Product verwijderen',
+      totalLabel: 'Totaal: {kcal} kcal per portie',
+      unit: 'portie',
+      unitPlural: 'porties',
+      missingHint: '{count} product bestaat niet meer — niet meegeteld',
+      missingHintPlural: '{count} producten bestaan niet meer — niet meegeteld',
+      deleteTitle: '{name} verwijderen?',
+      deleteDescription: 'Deze portie wordt uit de bibliotheek verwijderd. Al gelogde maaltijden blijven staan.',
+    },
+    // Maaltijd (#147): een aantal porties samen — één laag hoger dan een
+    // portie, zelfde formulierpatroon.
+    meal: {
       addTitle: 'Maaltijd toevoegen',
       editTitle: 'Maaltijd bewerken',
       nameLabel: 'Naam',
       namePlaceholder: 'bijv. Ontbijt',
-      ingredientsLabel: 'Ingrediënten',
-      ingredientItemAria: 'Ingrediënt',
-      missingIngredientOption: '(ontbrekend voedingsmiddel)',
-      amountPlaceholder: 'Hoeveelheid',
-      addIngredientButton: '+ Ingrediënt toevoegen',
-      removeIngredientAria: 'Ingrediënt verwijderen',
-      totalLabel: 'Totaal: {kcal} kcal per portie',
-      servingUnit: 'portie',
-      servingUnitPlural: 'porties',
+      entriesLabel: 'Porties',
+      entryPortionAria: 'Portie',
+      missingPortionOption: '(ontbrekende portie)',
+      countPlaceholder: 'Aantal',
+      addEntryButton: '+ Portie toevoegen',
+      removeEntryAria: 'Portie verwijderen',
+      totalLabel: 'Totaal: {kcal} kcal per maaltijd',
+      unit: 'maaltijd',
+      unitPlural: 'maaltijden',
       chipLabel: '{name} · {kcal} kcal',
-      missingHint: '{count} ingrediënt bestaat niet meer — niet meegeteld',
-      missingHintPlural: '{count} ingrediënten bestaan niet meer — niet meegeteld',
+      missingHint: '{count} portie bestaat niet meer — niet meegeteld',
+      missingHintPlural: '{count} porties bestaan niet meer — niet meegeteld',
       deleteTitle: '{name} verwijderen?',
       deleteDescription: 'Deze maaltijd wordt uit de bibliotheek verwijderd. Al gelogde maaltijden blijven staan.',
     },
+    // servingUnit/servingUnitPlural blijven bestaan als fallback voor
+    // gelogde regels van vóór #147 (kind: 'recipe', unit: 'serving') — die
+    // regels blijven ongewijzigd zichtbaar (AC6), ook al bestaat het
+    // receptformulier zelf niet meer.
+    recipe: {
+      servingUnit: 'portie',
+      servingUnitPlural: 'porties',
+    },
     toast: {
       itemDeleted: 'Voedingsmiddel verwijderd',
-      recipeDeleted: 'Maaltijd verwijderd',
+      portionDeleted: 'Portie verwijderd',
+      mealDeleted: 'Maaltijd verwijderd',
       pairDeleted: '{name} verwijderd — {kcal} kcal en {ml} ml',
     },
     log: {
@@ -1173,7 +1219,8 @@ export default {
       searchPlaceholder: 'Zoek een voedingsmiddel...',
       addNew: '+ Nieuw voedingsmiddel',
       amountLabel: 'Hoeveelheid ({unit})',
-      recipeAmountLabel: 'Aantal porties',
+      portionAmountLabel: 'Aantal porties',
+      mealAmountLabel: 'Aantal maaltijden',
       preview: '≈ {kcal} kcal',
       previewInvalid: 'Vul een geldige hoeveelheid in',
       drinkPreview: '+ {ml} ml naar {name}',

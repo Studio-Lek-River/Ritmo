@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Trash2 } from 'lucide-react';
 import ConfirmDialog from '../ConfirmDialog';
-import { NUTRITION_UNITS, createFoodItem } from '../../utils/nutrition';
+import { NUTRITION_UNITS, createFoodItem, kcalPerProduct } from '../../utils/nutrition';
 import { parseMeasurementInput } from '../../utils/measurements';
 import { useTranslation } from '../../i18n/useTranslation';
 
@@ -55,7 +55,25 @@ export default function NutritionItemForm({ open, mode = 'add', item, onClose, o
 
   const parsedKcal = parseMeasurementInput(draft.kcal);
   const kcalValid = parsedKcal !== null && parsedKcal >= 0;
-  const canSave = draft.name.trim().length > 0 && kcalValid;
+  const parsedPortionAmount = parseMeasurementInput(draft.portionAmount);
+  // Poort-0-aanvulling (#147): "1 product = X g/ml" is verplicht om op te
+  // slaan — zonder label én zonder een positief bedrag is er geen geldige
+  // maat, en dus geen kcal-per-product uit te rekenen (AC11). Het lezen van
+  // bestaande data blijft lenient (normalizeProductSize); dit is puur een
+  // formuliervoorwaarde.
+  const portionValid = draft.portionLabel.trim().length > 0
+    && parsedPortionAmount !== null && parsedPortionAmount > 0;
+  const canSave = draft.name.trim().length > 0 && kcalValid && portionValid;
+  // Live preview van de kcal per product (AC1): hergebruikt kcalPerProduct
+  // op een tijdelijk item-object uit de nog niet opgeslagen draft-waarden,
+  // zodat de preview altijd exact dezelfde formule gebruikt als het echte
+  // opgeslagen item straks.
+  const previewKcalPerProduct = kcalValid && portionValid
+    ? Math.round(kcalPerProduct({
+      per100: { kcal: parsedKcal },
+      portion: { label: draft.portionLabel, amount: parsedPortionAmount },
+    }))
+    : null;
 
   const save = () => {
     if (!canSave) return;
@@ -168,6 +186,15 @@ export default function NutritionItemForm({ open, mode = 'add', item, onClose, o
               className={`w-28 px-3 py-2 rounded-lg text-sm ${theme.input} ${theme.textSecondary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
             />
           </div>
+          {/* Live kcal per product (AC1): alleen zichtbaar bij een geldige
+              kcal én een geldige maat — dezelfde twee voorwaarden als
+              canSave (AC11), dus de preview verschijnt precies op het moment
+              dat opslaan ook mogelijk wordt. */}
+          <p className={`text-xs ${theme.textMuted} mt-1.5`}>
+            {previewKcalPerProduct !== null
+              ? t('nutrition.item.perProductLabel', { kcal: previewKcalPerProduct })
+              : t('nutrition.item.perProductRequiredHint')}
+          </p>
         </div>
 
         {draft.unit === 'ml' && (

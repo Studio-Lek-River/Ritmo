@@ -1017,9 +1017,10 @@ export default function Ritmo() {
     });
   };
 
-  // Logt één voedingsregel (item of recept, #141/#142): de kcal (log.amount)
-  // en de bevroren source-snapshot komen kant-en-klaar uit buildNutritionLog.
-  // Krijgt de actieve categorie mee, net als de presetknoppen.
+  // Logt één voedingsregel (product, portie of maaltijd — #141/#142/#147):
+  // de kcal (log.amount) en de bevroren source-snapshot komen kant-en-klaar
+  // uit buildNutritionLog/buildPortionLog/buildMealLog. Krijgt de actieve
+  // categorie mee, net als de presetknoppen.
   //
   // #143: is er een gekoppelde drinkteller én bevat de regel drinkbare ml,
   // dan gaat er in dezelfde handeling een tweede entry naar die teller. De

@@ -5,6 +5,18 @@ import { parseMeasurementInput } from '../utils/measurements';
 import { useTranslation, getLocale } from '../i18n/useTranslation';
 import { useUndoToast } from '../hooks/useUndoToast';
 
+// Systeemfallback voor het unit-label van een gelogde voedingsregel zonder
+// zelfgekozen unitLabel (#147, AC6): lookup op `source.unit`, nooit op
+// `source.kind` — zo blijven `kind: 'recipe'`-regels van vóór deze slice
+// (unit: 'serving') ongewijzigd renderen naast de nieuwe waarden
+// 'portion'/'meal'. Op module-niveau i.p.v. per render, want de map is
+// statisch.
+const FALLBACK_UNIT_KEYS = {
+  serving: ['nutrition.recipe.servingUnit', 'nutrition.recipe.servingUnitPlural'],
+  portion: ['nutrition.portion.unit', 'nutrition.portion.unitPlural'],
+  meal: ['nutrition.meal.unit', 'nutrition.meal.unitPlural'],
+};
+
 // Eén gelogde teller-regel, geëxtraheerd uit CounterModule.jsx (V10, #133) —
 // nul gedragswijziging bij de extractie zelf (#141). Per-rij state (i.p.v.
 // gedeeld op CounterUI-niveau) is hier correcter: er kan door focus toch
@@ -94,21 +106,25 @@ export default function CounterEntryRow({
     showUndoToast(message, () => result?.undo?.());
   };
 
-  // Een receptregel (#142) heeft geen door de gebruiker gekozen portie-label
-  // (source.unitLabel is bewust null, zie buildRecipeLog): zonder fallback
-  // zou de regel een leeg label renderen. De fallback is een live vertaling
-  // i.p.v. "portie" te bevriezen in de bron — een bevroren systeemwoord zou
-  // na een taalwissel stale Nederlandse tekst tonen op oude regels. Een
-  // item-regel in portie-modus heeft altijd al wél een unitLabel, dus die
-  // verandert hier niets.
+  // Een portie-, maaltijd- of (oude) receptregel heeft geen door de gebruiker
+  // gekozen unit-label (source.unitLabel is bewust null, zie
+  // buildPortionLog/buildMealLog en het vervallen buildRecipeLog): zonder
+  // fallback zou de regel een leeg label renderen. De fallback is een live
+  // vertaling i.p.v. het woord te bevriezen in de bron — een bevroren
+  // systeemwoord zou na een taalwissel stale Nederlandse tekst tonen op oude
+  // regels. Bewust géén schakeling op `source.kind` (AC6, #147): de lookup
+  // gaat op `source.unit`, zodat regels van vóór deze slice (kind: 'recipe',
+  // unit: 'serving') ongewijzigd blijven renderen naast de nieuwe
+  // unit-waarden 'portion'/'meal'. Een item-regel in portie-modus heeft
+  // altijd al wél een unitLabel, dus die verandert hier niets.
   //
   // Alleen de systeemfallback buigt mee met het aantal ("2 porties"); een
   // zelfgekozen portie-label blijft staan zoals de gebruiker het typte —
   // diens woord vervoegen we niet.
+  const fallbackKeys = hasSource ? FALLBACK_UNIT_KEYS[entry.source.unit] : null;
   const unitLabelText = hasSource
-    ? (entry.source.unit === 'serving'
-      ? (entry.source.unitLabel
-        || t(entry.source.quantity === 1 ? 'nutrition.recipe.servingUnit' : 'nutrition.recipe.servingUnitPlural'))
+    ? (fallbackKeys
+      ? (entry.source.unitLabel || t(entry.source.quantity === 1 ? fallbackKeys[0] : fallbackKeys[1]))
       : t(`modules.units.${entry.source.unit}`))
     : null;
 

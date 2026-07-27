@@ -1,9 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { X, Plus, Search, Utensils, UtensilsCrossed } from 'lucide-react';
+import { X, Plus, Search, Utensils, Layers, UtensilsCrossed } from 'lucide-react';
 import EmptyState from '../EmptyState';
 import NutritionItemForm from './NutritionItemForm';
 import { useNutritionLibrary } from '../../context/NutritionLibraryContext';
-import { buildNutritionLog, buildRecipeLog, recipeRate, missingIngredientIds } from '../../utils/nutrition';
+import {
+  buildNutritionLog, buildPortionLog, buildMealLog,
+  portionRate, mealRate, missingProductIds, missingPortionIds,
+} from '../../utils/nutrition';
 import { parseMeasurementInput } from '../../utils/measurements';
 import { useTranslation } from '../../i18n/useTranslation';
 
@@ -11,11 +14,12 @@ import { useTranslation } from '../../i18n/useTranslation';
 // een nieuw item vastleggen) en Hoeveelheid (live kcal-preview, bevestigen
 // pas mogelijk bij een geldige hoeveelheid). Modal-skelet identiek aan het
 // voormalige NutritionLibraryModal (sinds #146 het NutritionLibraryPanel in
-// Instellingen → Voeding); niet in modules/ want #142 hergebruikt hem voor
-// recepten en hij is niet counter-specifiek.
+// Instellingen → Voeding); niet in modules/ want #147 hergebruikt hem voor
+// porties/maaltijden en hij is niet counter-specifiek.
 //
-// #142: recepten staan naast items in de keuzelijst. De geselecteerde keuze
-// is daarom { kind: 'item' | 'recipe', data } i.p.v. een kaal item — zelfde
+// #147: producten, porties en maaltijden staan naast elkaar in de
+// keuzelijst. De geselecteerde keuze is daarom
+// { kind: 'item' | 'portion' | 'meal', data } i.p.v. een kaal item — zelfde
 // reden als bij selectedItem hierboven: `library` komt uit useStoredState en
 // loopt een render achter, dus een object i.p.v. een id-lookup.
 // `drinkTarget` is de al opgeloste drinkteller ({ id, name }) of null (#143).
@@ -32,17 +36,23 @@ export default function NutritionLogModal({ onSubmit, onClose, drinkTarget = nul
   const [rawAmount, setRawAmount] = useState('');
 
   const items = library?.items || [];
-  const recipes = library?.recipes || [];
+  const portions = library?.portions || [];
+  const meals = library?.meals || [];
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return items;
     return items.filter((it) => it.name.toLowerCase().includes(q));
   }, [items, query]);
-  const filteredRecipes = useMemo(() => {
+  const filteredPortions = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return recipes;
-    return recipes.filter((r) => r.name.toLowerCase().includes(q));
-  }, [recipes, query]);
+    if (!q) return portions;
+    return portions.filter((p) => p.name.toLowerCase().includes(q));
+  }, [portions, query]);
+  const filteredMeals = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return meals;
+    return meals.filter((m) => m.name.toLowerCase().includes(q));
+  }, [meals, query]);
 
   // Default-mode is altijd 'base' (g/ml): bij een portie is 100 geen zinnig
   // voorstel, dus wordt het gewicht van één portie voorgevuld. Pas als de
@@ -56,11 +66,18 @@ export default function NutritionLogModal({ onSubmit, onClose, drinkTarget = nul
     setStep('amount');
   };
 
-  // Bij een recept is de hoeveelheid altijd een aantal porties, voorgevuld
-  // met 1 (Poort-0: recepten aanmaken kan alleen in de beheermodal, hier dus
-  // geen g/ml-modetoggle nodig).
-  const selectRecipe = (recipe) => {
-    setSelected({ kind: 'recipe', data: recipe });
+  // Bij een portie of maaltijd is de hoeveelheid altijd een aantal,
+  // voorgevuld met 1 (Poort-0: porties/maaltijden aanmaken kan alleen in de
+  // beheermodal, hier dus geen g/ml-modetoggle nodig).
+  const selectPortion = (portion) => {
+    setSelected({ kind: 'portion', data: portion });
+    setMode('base');
+    setRawAmount('1');
+    setStep('amount');
+  };
+
+  const selectMeal = (meal) => {
+    setSelected({ kind: 'meal', data: meal });
     setMode('base');
     setRawAmount('1');
     setStep('amount');
@@ -75,11 +92,14 @@ export default function NutritionLogModal({ onSubmit, onClose, drinkTarget = nul
   const quantity = parseMeasurementInput(rawAmount);
   const log = useMemo(() => {
     if (!selected || quantity === null) return null;
-    if (selected.kind === 'recipe') {
-      return buildRecipeLog(selected.data, items, { servings: quantity });
+    if (selected.kind === 'portion') {
+      return buildPortionLog(selected.data, items, { count: quantity });
+    }
+    if (selected.kind === 'meal') {
+      return buildMealLog(selected.data, portions, items, { count: quantity });
     }
     return buildNutritionLog(selected.data, { quantity, mode });
-  }, [selected, quantity, mode, items]);
+  }, [selected, quantity, mode, items, portions]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40">
@@ -104,11 +124,14 @@ export default function NutritionLogModal({ onSubmit, onClose, drinkTarget = nul
               query={query}
               setQuery={setQuery}
               items={filteredItems}
-              recipes={filteredRecipes}
+              portions={filteredPortions}
+              meals={filteredMeals}
               allItems={items}
-              hasLibraryEntries={items.length > 0 || recipes.length > 0}
+              allPortions={portions}
+              hasLibraryEntries={items.length > 0 || portions.length > 0 || meals.length > 0}
               onSelectItem={selectItem}
-              onSelectRecipe={selectRecipe}
+              onSelectPortion={selectPortion}
+              onSelectMeal={selectMeal}
               onAddNew={() => setFormOpen(true)}
             />
           ) : (
@@ -117,6 +140,7 @@ export default function NutritionLogModal({ onSubmit, onClose, drinkTarget = nul
               theme={theme}
               selected={selected}
               items={items}
+              portions={portions}
               mode={mode}
               setMode={setMode}
               rawAmount={rawAmount}
@@ -142,11 +166,11 @@ export default function NutritionLogModal({ onSubmit, onClose, drinkTarget = nul
   );
 }
 
-// Recepten en items in één lijst (#142): de gebruiker kiest wat hij wil
-// loggen zonder eerst tussen twee categorieën te moeten schakelen. Items
-// staan eerst, recepten daarna — beide blijven zichtbaar onder dezelfde
-// zoekfilter.
-function PickStep({ t, theme, query, setQuery, items, recipes, allItems, hasLibraryEntries, onSelectItem, onSelectRecipe, onAddNew }) {
+// Producten, porties en maaltijden in één lijst (#142, uitgebreid in #147):
+// de gebruiker kiest wat hij wil loggen zonder eerst tussen categorieën te
+// moeten schakelen. Producten staan eerst, dan porties, dan maaltijden — alle
+// drie blijven zichtbaar onder dezelfde zoekfilter.
+function PickStep({ t, theme, query, setQuery, items, portions, meals, allItems, allPortions, hasLibraryEntries, onSelectItem, onSelectPortion, onSelectMeal, onAddNew }) {
   return (
     <>
       <div className="relative mb-3">
@@ -187,17 +211,32 @@ function PickStep({ t, theme, query, setQuery, items, recipes, allItems, hasLibr
                 </button>
               </li>
             ))}
-            {recipes.map((recipe) => (
-              <li key={`recipe-${recipe.id}`}>
+            {portions.map((portion) => (
+              <li key={`portion-${portion.id}`}>
                 <button
                   type="button"
-                  onClick={() => onSelectRecipe(recipe)}
+                  onClick={() => onSelectPortion(portion)}
+                  className={`w-full flex items-center gap-2 px-3 py-2.5 ${theme.cardSecondary} ${theme.hover} rounded-xl text-left transition`}
+                >
+                  <Layers className={`w-4 h-4 flex-shrink-0 ${theme.textMuted}`} />
+                  <span className={`flex-1 min-w-0 text-sm font-medium ${theme.textSecondary} truncate`}>{portion.name}</span>
+                  <span className={`text-[11px] ${theme.textMuted} flex-shrink-0`}>
+                    {t('nutrition.portion.totalLabel', { kcal: Math.round(portionRate(portion, allItems, 'kcal')) })}
+                  </span>
+                </button>
+              </li>
+            ))}
+            {meals.map((meal) => (
+              <li key={`meal-${meal.id}`}>
+                <button
+                  type="button"
+                  onClick={() => onSelectMeal(meal)}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 ${theme.cardSecondary} ${theme.hover} rounded-xl text-left transition`}
                 >
                   <UtensilsCrossed className={`w-4 h-4 flex-shrink-0 ${theme.textMuted}`} />
-                  <span className={`flex-1 min-w-0 text-sm font-medium ${theme.textSecondary} truncate`}>{recipe.name}</span>
+                  <span className={`flex-1 min-w-0 text-sm font-medium ${theme.textSecondary} truncate`}>{meal.name}</span>
                   <span className={`text-[11px] ${theme.textMuted} flex-shrink-0`}>
-                    {t('nutrition.library.recipePerServing', { kcal: Math.round(recipeRate(recipe, allItems, 'kcal')) })}
+                    {t('nutrition.meal.totalLabel', { kcal: Math.round(mealRate(meal, allPortions, allItems, 'kcal')) })}
                   </span>
                 </button>
               </li>
@@ -217,13 +256,19 @@ function PickStep({ t, theme, query, setQuery, items, recipes, allItems, hasLibr
   );
 }
 
-function AmountStep({ t, theme, selected, items, mode, setMode, rawAmount, setRawAmount, log, drinkTarget, onBack, onConfirm }) {
-  const isRecipe = selected?.kind === 'recipe';
-  const item = !isRecipe ? selected?.data : null;
-  const recipe = isRecipe ? selected?.data : null;
+function AmountStep({ t, theme, selected, items, portions, mode, setMode, rawAmount, setRawAmount, log, drinkTarget, onBack, onConfirm }) {
+  const isPortion = selected?.kind === 'portion';
+  const isMeal = selected?.kind === 'meal';
+  const isGrouped = isPortion || isMeal;
+  const item = !isGrouped ? selected?.data : null;
+  const groupEntity = isGrouped ? selected.data : null;
   const hasPortion = !!item?.portion;
   const unitLabel = mode === 'portion' ? item.portion.label : t(`modules.units.${item?.unit}`);
-  const missingIds = isRecipe ? missingIngredientIds(recipe, items) : [];
+  const missingIds = isPortion
+    ? missingProductIds(groupEntity, items)
+    : isMeal
+      ? missingPortionIds(groupEntity, portions)
+      : [];
 
   // Exact dezelfde formule als addNutritionEntry in App.jsx gebruikt, uit
   // dezelfde bevroren perUnit — de preview kan dus niet afwijken van wat er
@@ -239,9 +284,9 @@ function AmountStep({ t, theme, selected, items, mode, setMode, rawAmount, setRa
 
   return (
     <div>
-      <p className={`text-sm font-medium ${theme.textSecondary} mb-3`}>{isRecipe ? recipe.name : item.name}</p>
+      <p className={`text-sm font-medium ${theme.textSecondary} mb-3`}>{isGrouped ? groupEntity.name : item.name}</p>
 
-      {!isRecipe && hasPortion && (
+      {!isGrouped && hasPortion && (
         <div className="flex gap-2 mb-3">
           <button
             type="button"
@@ -264,7 +309,11 @@ function AmountStep({ t, theme, selected, items, mode, setMode, rawAmount, setRa
 
       <div className="mb-3">
         <p className={`text-xs ${theme.textMuted} mb-1`}>
-          {isRecipe ? t('nutrition.log.recipeAmountLabel') : t('nutrition.log.amountLabel', { unit: unitLabel })}
+          {isPortion
+            ? t('nutrition.log.portionAmountLabel')
+            : isMeal
+              ? t('nutrition.log.mealAmountLabel')
+              : t('nutrition.log.amountLabel', { unit: unitLabel })}
         </p>
         <input
           type="text"
@@ -276,11 +325,18 @@ function AmountStep({ t, theme, selected, items, mode, setMode, rawAmount, setRa
         />
       </div>
 
-      {isRecipe && missingIds.length > 0 && (
+      {isPortion && missingIds.length > 0 && (
         <p className="text-xs text-amber-600 dark:text-amber-400 mb-3">
           {missingIds.length === 1
-            ? t('nutrition.recipe.missingHint', { count: missingIds.length })
-            : t('nutrition.recipe.missingHintPlural', { count: missingIds.length })}
+            ? t('nutrition.portion.missingHint', { count: missingIds.length })
+            : t('nutrition.portion.missingHintPlural', { count: missingIds.length })}
+        </p>
+      )}
+      {isMeal && missingIds.length > 0 && (
+        <p className="text-xs text-amber-600 dark:text-amber-400 mb-3">
+          {missingIds.length === 1
+            ? t('nutrition.meal.missingHint', { count: missingIds.length })
+            : t('nutrition.meal.missingHintPlural', { count: missingIds.length })}
         </p>
       )}
 
