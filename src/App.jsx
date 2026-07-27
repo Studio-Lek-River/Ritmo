@@ -4609,6 +4609,77 @@ function CollectionTagGroupsEditor({ tagGroups, items, onUpdateGroups, theme }) 
   );
 }
 
+// Herbruikbare "meenemen in de dagplanning"-kaarttoggle (S10c) voor choice en
+// counter: dezelfde optie als het vierde item in de checklist-opties-array
+// hierboven, maar los omdat choice/counter geen opties-array hebben.
+function PlanInDayToggle({ editing, update, theme, t }) {
+  const isOn = !!editing.planInDay;
+  return (
+    <button
+      type="button"
+      onClick={() => update('planInDay', !isOn)}
+      className={`w-full flex items-start gap-3 p-3 rounded-lg text-left transition ${theme.cardSecondary} ${theme.hover}`}
+    >
+      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition flex-shrink-0 mt-0.5 ${
+        isOn ? `bg-${editing.color}-500 border-${editing.color}-500` : 'border-slate-300'
+      }`}>
+        {isOn && <Check className="w-3 h-3 text-white" />}
+      </div>
+      <div className="flex-1">
+        <div className={`text-sm font-medium ${theme.textSecondary}`}>{t('modules.optPlanInDay.title')}</div>
+        <div className={`text-xs ${theme.textMuted} mt-0.5`}>{t('modules.optPlanInDay.desc')}</div>
+      </div>
+    </button>
+  );
+}
+
+// Herbruikbare blok-configuratie (S10c): tijd, duur, dagdeel-voorkeur en
+// autoPlan voor één module-blok — checklist in blok-modus, of een choice-/
+// counter-module (die altijd één blok zijn, geen losse items). Hergebruikt
+// dezelfde componenten als customTasks/subgoals (TimeInput/DurationInput/
+// DagdeelSelect), nu voor het eerst op moduleconfig-niveau.
+function ModulePlanBlockConfig({ editing, update, theme, t }) {
+  return (
+    <div className={`${theme.cardSecondary} rounded-lg p-3 space-y-3`}>
+      <div>
+        <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('productivity.time')}</label>
+        <TimeInput
+          value={editing.time}
+          onChange={(v) => update('time', v || undefined)}
+          theme={theme}
+          className="w-full"
+        />
+      </div>
+      <div>
+        <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('planner.duration.label')}</label>
+        <DurationInput
+          value={editing.duration}
+          onChange={(v) => update('duration', v)}
+          theme={theme}
+          className="w-full"
+        />
+      </div>
+      <div>
+        <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('planner.window.label')}</label>
+        <DagdeelSelect
+          value={editing.window}
+          onChange={(v) => update('window', v || undefined)}
+          theme={theme}
+          className="w-full"
+        />
+      </div>
+      <label className={`flex items-center gap-2 text-sm ${theme.textSecondary}`}>
+        <input
+          type="checkbox"
+          checked={!!editing.autoPlan}
+          onChange={(e) => update('autoPlan', e.target.checked)}
+        />
+        {t('planner.autoPlan.label')}
+      </label>
+    </div>
+  );
+}
+
 function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRestoreModule, theme }) {
   const { t } = useTranslation();
   const showUndoToast = useUndoToast();
@@ -4896,16 +4967,20 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
             </div>
           </div>
 
+          {/* Meenemen in de dagplanning (S10c): choice en counter zijn altijd
+              één blok (geen items), dus dezelfde toggle + tijd/duur/dagdeel/
+              autoPlan-configuratie als checklist in blok-modus hieronder. Het
+              bestaande tijdveld (voorheen altijd zichtbaar maar dood — nergens
+              gelezen) verhuist mee onder de toggle: het krijgt nu pas een
+              echt effect (de Planner leest het), dus hoort ook pas te tonen
+              zodra de gebruiker dat effect heeft aangezet. */}
           {(editing.type === 'choice' || editing.type === 'counter') && (
-            <div>
-              <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('productivity.time')}</label>
-              <TimeInput
-                value={editing.time}
-                onChange={(v) => update('time', v || undefined)}
-                theme={theme}
-                className="w-full"
-              />
-            </div>
+            <>
+              <PlanInDayToggle editing={editing} update={update} theme={theme} t={t} />
+              {!!editing.planInDay && (
+                <ModulePlanBlockConfig editing={editing} update={update} theme={theme} t={t} />
+              )}
+            </>
           )}
 
           {editing.type === 'checklist' && (
@@ -4917,6 +4992,7 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
                     { key: 'allowNotes', title: t('modules.optDailyNotes.title'), desc: t('modules.optDailyNotes.desc') },
                     { key: 'allowDescriptions', title: t('modules.optInstructions.title'), desc: t('modules.optInstructions.desc') },
                     { key: 'allowTargets', title: t('modules.optSetsPerItem.title'), desc: t('modules.optSetsPerItem.desc') },
+                    { key: 'planInDay', title: t('modules.optPlanInDay.title'), desc: t('modules.optPlanInDay.desc') },
                   ].map(opt => {
                     const isOn = !!editing[opt.key];
                     return (
@@ -4939,6 +5015,41 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
                   })}
                 </div>
               </div>
+
+              {/* Alleen zichtbaar met de toggle hierboven aan (S10c): los per
+                  item of als één blok in de Planner. Blok-modus toont daarna
+                  hetzelfde tijd/duur/dagdeel/autoPlan-groepje als choice/counter
+                  hieronder — één module is dan één plan-item, geen losse items. */}
+              {!!editing.planInDay && (
+                <div>
+                  <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                    {t('modules.planGranularity.label')}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { id: 'items', label: t('modules.planGranularity.items') },
+                      { id: 'block', label: t('modules.planGranularity.block') },
+                    ].map(opt => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => update('planGranularity', opt.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                          (editing.planGranularity || 'items') === opt.id
+                            ? `bg-${editing.color}-500 text-white`
+                            : `${theme.cardSecondary} ${theme.textMuted}`
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!!editing.planInDay && editing.planGranularity === 'block' && (
+                <ModulePlanBlockConfig editing={editing} update={update} theme={theme} t={t} />
+              )}
 
               <label className={`flex items-center gap-2 text-sm ${theme.textSecondary}`}>
                 <input
@@ -5012,14 +5123,55 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
                                 />
                               </div>
                             )}
-                            <div>
-                              <label className={`text-xs font-medium ${theme.textMuted} mb-1 block`}>{t('productivity.time')}</label>
-                              <TimeInput
-                                value={item.time}
-                                onChange={(v) => updateItem(item.id, { time: v || undefined })}
-                                theme={theme}
-                              />
-                            </div>
+                            {/* Alleen tonen als de module "meenemen in de
+                                dagplanning" aan heeft (S10c) — anders wordt de
+                                editor voller voor wie dit niet gebruikt. Het
+                                tijdveld bestond al (nergens gelezen); vanaf nu
+                                is dat de standaardtijd voor de Planner. */}
+                            {!!editing.planInDay && (
+                              <>
+                                <div>
+                                  <label className={`text-xs font-medium ${theme.textMuted} mb-1 block`}>{t('productivity.time')}</label>
+                                  <TimeInput
+                                    value={item.time}
+                                    onChange={(v) => updateItem(item.id, { time: v || undefined })}
+                                    theme={theme}
+                                  />
+                                </div>
+                                <div>
+                                  <label className={`text-xs font-medium ${theme.textMuted} mb-1 block`}>{t('planner.duration.label')}</label>
+                                  <DurationInput
+                                    value={item.duration}
+                                    onChange={(v) => updateItem(item.id, { duration: v })}
+                                    theme={theme}
+                                  />
+                                </div>
+                                <div>
+                                  <label className={`text-xs font-medium ${theme.textMuted} mb-1 block`}>{t('planner.window.label')}</label>
+                                  <DagdeelSelect
+                                    value={item.window}
+                                    onChange={(v) => updateItem(item.id, { window: v || undefined })}
+                                    theme={theme}
+                                  />
+                                </div>
+                                <label className={`flex items-center gap-2 text-xs ${theme.textMuted}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={!!item.autoPlan}
+                                    onChange={(e) => updateItem(item.id, { autoPlan: e.target.checked })}
+                                  />
+                                  {t('planner.autoPlan.label')}
+                                </label>
+                                <label className={`flex items-center gap-2 text-xs ${theme.textMuted}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={item.planInDay !== false}
+                                    onChange={(e) => updateItem(item.id, { planInDay: e.target.checked ? undefined : false })}
+                                  />
+                                  {t('modules.optPlanItem.title')}
+                                </label>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>
