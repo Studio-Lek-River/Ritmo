@@ -1389,6 +1389,14 @@ export default {
     planModePropose: 'Suggest only',
     planModeConcept: 'Draft',
     planModeDirect: 'Schedule directly',
+    planProvider: 'AI provider',
+    planProviderHint: 'Who determines the order for "Plan my day": the free heuristic (default), a local AI on this device, or the server provider for the future Ritmo AI. If it fails, Ritmo always falls back to the heuristic.',
+    planProviderHeuristic: 'Heuristic (default)',
+    planProviderLocal: 'Local AI (Ollama)',
+    planProviderServer: 'Ritmo AI (server)',
+    planProviderLocalBaseUrl: 'Server URL',
+    planProviderLocalModel: 'Model',
+    planProviderLocalHint: 'Runs on this device via Ollama (ollama serve). An https page calling http://localhost requires Ollama to allow that origin (OLLAMA_ORIGINS); if that fails, Ritmo falls back to the heuristic.',
     effects: 'Effects',
     goldenBorder: 'Golden border on completed days',
     goldenBorderHint: 'Animation around days where everything is ticked off.',
@@ -1908,6 +1916,7 @@ export default {
   planner: {
     actions: {
       shareDay: 'Plan my day',
+      sharingDay: 'Planning your day…',
       undoPlan: 'Undo layout',
       acceptAll: 'Accept all',
       accept: 'Accept',
@@ -1917,6 +1926,24 @@ export default {
     toast: {
       planned: 'Your day has been planned.',
       planUndone: 'The layout has been undone.',
+    },
+    provider: {
+      names: {
+        heuristic: 'the heuristic',
+        local: 'the local AI',
+        server: 'Ritmo AI',
+      },
+      reasons: {
+        not_configured: 'not configured yet',
+        network: 'no connection',
+        timeout: 'no response in time',
+        invalid_response: 'invalid response',
+        desktop_only: 'only available on desktop',
+        unknown: 'unknown error',
+      },
+      usedNotice: 'Planned with {provider}.',
+      fallbackNotice: 'Fell back to the heuristic: {provider} was unavailable ({reason}).',
+      explanation: 'Explanation: {explanation}',
     },
     week: {
       viewDag: 'Day',

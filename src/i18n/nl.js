@@ -1399,6 +1399,14 @@ export default {
     planModePropose: 'Alleen voorstellen',
     planModeConcept: 'Concept',
     planModeDirect: 'Direct inplannen',
+    planProvider: 'AI-provider',
+    planProviderHint: 'Wie "Deel mijn dag in" de volgorde laat bepalen: de gratis heuristiek (standaard), een lokale AI op dit apparaat, of de server-provider voor de latere Ritmo AI. Lukt het niet, dan valt Ritmo altijd terug op de heuristiek.',
+    planProviderHeuristic: 'Heuristiek (standaard)',
+    planProviderLocal: 'Lokale AI (Ollama)',
+    planProviderServer: 'Ritmo AI (server)',
+    planProviderLocalBaseUrl: 'Server-URL',
+    planProviderLocalModel: 'Model',
+    planProviderLocalHint: 'Draait op dit apparaat via Ollama (ollama serve). Een https-pagina die naar http://localhost verwijst vereist dat Ollama die origin toestaat (OLLAMA_ORIGINS); lukt dat niet, dan valt Ritmo terug op de heuristiek.',
     effects: 'Effecten',
     goldenBorder: 'Gouden rand bij voltooide dagen',
     goldenBorderHint: 'Animatie rond dagen waarop alles afgevinkt is.',
@@ -1920,6 +1928,7 @@ export default {
   planner: {
     actions: {
       shareDay: 'Deel mijn dag in',
+      sharingDay: 'Dag indelen…',
       undoPlan: 'Indeling terugdraaien',
       acceptAll: 'Alles overnemen',
       accept: 'Overnemen',
@@ -1929,6 +1938,24 @@ export default {
     toast: {
       planned: 'Je dag is ingedeeld.',
       planUndone: 'De indeling is teruggedraaid.',
+    },
+    provider: {
+      names: {
+        heuristic: 'de heuristiek',
+        local: 'de lokale AI',
+        server: 'Ritmo AI',
+      },
+      reasons: {
+        not_configured: 'nog niet geconfigureerd',
+        network: 'geen verbinding',
+        timeout: 'geen antwoord binnen de tijd',
+        invalid_response: 'ongeldig antwoord',
+        desktop_only: 'alleen beschikbaar op desktop',
+        unknown: 'onbekende fout',
+      },
+      usedNotice: 'Ingedeeld met {provider}.',
+      fallbackNotice: 'Teruggevallen op de heuristiek: {provider} was niet beschikbaar ({reason}).',
+      explanation: 'Toelichting: {explanation}',
     },
     week: {
       viewDag: 'Dag',

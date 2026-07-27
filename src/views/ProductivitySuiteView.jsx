@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { RotateCcw, WandSparkles } from 'lucide-react';
+import { Loader2, RotateCcw, WandSparkles } from 'lucide-react';
 import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 import { useToast } from '../hooks/useToast';
 import WeekView from './WeekView';
@@ -174,6 +174,19 @@ export default function ProductivitySuiteView({
   // Zo blijft showToast buiten WeekView.
   const acceptAllPendingWithToast = useCallback(() => onAcceptAllPending(showToast), [onAcceptAllPending, showToast]);
 
+  // S11: `onShareDay` is async (een AI-provider kan een netwerkcall zijn) —
+  // deze lokale laadstand is puur UI, geen persistente state, en voorkomt
+  // dubbele klikken tijdens een lopende call.
+  const [isSharingDay, setIsSharingDay] = useState(false);
+  const handleClickShareDay = useCallback(async () => {
+    setIsSharingDay(true);
+    try {
+      await onShareDay(selectedDay?.dateKey || todayKey, showToast);
+    } finally {
+      setIsSharingDay(false);
+    }
+  }, [onShareDay, selectedDay, todayKey, showToast]);
+
   // De knop rendert alleen als er echt iets terug te draaien is, dus deze
   // bevestiging liegt nooit.
   const handleUndoPlan = useCallback(() => {
@@ -273,11 +286,13 @@ export default function ProductivitySuiteView({
         <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
-            onClick={() => onShareDay(selectedDay?.dateKey || todayKey, showToast)}
-            className={`flex items-center gap-1.5 px-3 py-2 ${theme.radiusControl} text-sm font-medium transition ${theme.accentBg} shadow`}
+            onClick={handleClickShareDay}
+            disabled={isSharingDay}
+            aria-busy={isSharingDay}
+            className={`flex items-center gap-1.5 px-3 py-2 ${theme.radiusControl} text-sm font-medium transition ${theme.accentBg} shadow ${isSharingDay ? 'opacity-70 cursor-wait' : ''}`}
           >
-            <WandSparkles className="w-4 h-4" />
-            {t('planner.actions.shareDay')}
+            {isSharingDay ? <Loader2 className="w-4 h-4 animate-spin" /> : <WandSparkles className="w-4 h-4" />}
+            {t(isSharingDay ? 'planner.actions.sharingDay' : 'planner.actions.shareDay')}
           </button>
           {/* Alleen zichtbaar zolang de laatste indeling van de getoonde dag
               is: bij het bladeren naar een andere dag verdwijnt hij en bij

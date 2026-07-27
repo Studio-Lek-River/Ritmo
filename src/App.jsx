@@ -103,7 +103,9 @@ import {
 } from './utils/dates';
 import { goalsForNight, isOnTarget } from './utils/sleep';
 import { DEFAULT_BLOCK_MINUTES } from './utils/dayTimeline';
-import { planDay } from './utils/planDay';
+import { planWithProvider, PLANNER_PROVIDERS } from './utils/planProviders';
+import { readPlannerProvider, writePlannerProvider, DEFAULT_PLANNER_PROVIDER } from './utils/plannerProvider';
+import { isDesktopPlatform } from './utils/platform';
 import { subgoalKey, taskKey, virtualTaskId, parseVirtualTaskId, parseItemKey, moduleItemKey, moduleBlockKey } from './utils/itemKeys';
 import {
   buildDayCellBackground, moduleStatusForDay, isDayFullyComplete,
@@ -125,6 +127,21 @@ const PLAN_MODE_OPTIONS = [
   { id: 'concept', labelKey: 'settings.planModeConcept' },
   { id: 'direct', labelKey: 'settings.planModeDirect' },
 ];
+
+// Vertaalsleutel per provider-id, gekoppeld aan de bron van waarheid
+// PLANNER_PROVIDERS (planProviders/index.js) zodat `desktopOnly` maar op één
+// plek staat: 'local' (Ollama) is alleen zichtbaar en kiesbaar op desktop
+// (AC3), SettingsModal filtert daar zelf op.
+const PLANNER_PROVIDER_LABEL_KEYS = {
+  heuristic: 'settings.planProviderHeuristic',
+  local: 'settings.planProviderLocal',
+  server: 'settings.planProviderServer',
+};
+const PLANNER_PROVIDER_OPTIONS = PLANNER_PROVIDERS.map((p) => ({
+  id: p.id,
+  labelKey: PLANNER_PROVIDER_LABEL_KEYS[p.id] || p.id,
+  desktopOnly: !!p.desktopOnly,
+}));
 
 // Neutrale S06-default voor de dag-indeler-voorkeuren: energie per dagdeel
 // 'neutral', geen diepwerk-vensters, geen rustbuffer — identiek aan S05-
@@ -2338,6 +2355,26 @@ export default function Ritmo() {
     return () => { cancelled = true; };
   }, []);
 
+  // Welke planner-provider "deel mijn dag in" gebruikt (S11). Device-lokaal
+  // (zie utils/plannerProvider.js) om dezelfde reden als agendaSelection
+  // hierboven: eigen state, niet in `settings`.
+  const [plannerProvider, setPlannerProviderState] = useState(DEFAULT_PLANNER_PROVIDER);
+  useEffect(() => {
+    let cancelled = false;
+    readPlannerProvider().then(value => {
+      if (!cancelled) setPlannerProviderState(value);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const updatePlannerProvider = useCallback((partial) => {
+    setPlannerProviderState(prev => {
+      const next = { ...prev, ...partial };
+      writePlannerProvider(next);
+      return next;
+    });
+  }, []);
+
   const handleToggleAgendaBlock = useCallback((blockId) => {
     const next = agendaSelection.includes(blockId)
       ? agendaSelection.filter(id => id !== blockId)
@@ -2441,6 +2478,12 @@ export default function Ritmo() {
         candidates.push({ key, duration: mod.duration, window: mod.window || '', deepWork: false, order: order++ });
       }
     });
+
+    // S11: elke candidate draagt zijn eigen label (uit `meta`) mee, zodat een
+    // AI-provider (local.js/server.js) een leesbare prompt kan bouwen zonder
+    // dat `meta` zelf de grens van deze functie hoeft over te steken. `planDay`
+    // negeert het onbekende veld gewoon.
+    candidates.forEach(c => { c.label = meta[c.key]?.label || ''; });
 
     return { candidates, fixed, meta };
   }, [weekDays, allModules, modules, t]);
@@ -2618,13 +2661,33 @@ export default function Ritmo() {
     restorePlanSnapshot(snapshot);
   }, [restorePlanSnapshot]);
 
+  // Bouwt de gebruiksvriendelijke melding over welke provider de indeling
+  // maakte (S11): niets bij de stille default (`heuristic`, geen fallback —
+  // AC2 wil hier expliciet geen extra ruis), anders óf "ingedeeld met <ai>"
+  // óf de fallback-uitleg. Gebruikt door zowel de direct-stand-toast
+  // hieronder als `pendingPlan` (gerenderd door WeekView's PendingPlanBar).
+  const describePlanProvider = useCallback(({ providerUsed, fallbackFrom, fallbackReason }) => {
+    if (fallbackFrom) {
+      return t('planner.provider.fallbackNotice', {
+        provider: t(`planner.provider.names.${fallbackFrom}`),
+        reason: t(`planner.provider.reasons.${fallbackReason}`),
+      });
+    }
+    if (providerUsed && providerUsed !== 'heuristic') {
+      return t('planner.provider.usedNotice', { provider: t(`planner.provider.names.${providerUsed}`) });
+    }
+    return null;
+  }, [t]);
+
   // Hoofd-handler: verzamelt candidates/fixed voor `dateKey`, leidt dayStart
   // af uit een actieve slaap-module (of de nette fallback) en vertakt op
   // planMode. `notify` is optioneel en alleen nodig voor de ongedaan-maken-
   // toast van de direct-stand; App.jsx zelf zit niet onder ToastProvider, dus
   // de aanroeper (ProductivitySuiteView, wél een ToastProvider-kind) geeft
-  // zijn eigen `showToast` mee.
-  const handleShareDay = useCallback((dateKey, notify) => {
+  // zijn eigen `showToast` mee. Async sinds S11: `planWithProvider` kan een
+  // netwerkcall zijn (local/server-provider), met altijd een fallback naar de
+  // synchrone heuristiek als die faalt (AC4).
+  const handleShareDay = useCallback(async (dateKey, notify) => {
     const { candidates, fixed, meta } = buildPlanInputs(dateKey);
     if (candidates.length === 0) return;
 
@@ -2643,7 +2706,8 @@ export default function Ritmo() {
         && agendaSelection.includes(b.id)
     );
 
-    const { assignments } = planDay({
+    const { assignments, explanation, providerUsed, fallbackFrom, fallbackReason } = await planWithProvider({
+      providerId: plannerProvider.providerId,
       candidates,
       fixed,
       external: externalBlocksForDay(visibleAgendaBlocks, dateKey),
@@ -2651,15 +2715,21 @@ export default function Ritmo() {
       dayEnd: PLAN_DAY_END,
       slotStep: DEFAULT_BLOCK_MINUTES,
       prefs: planPrefs,
+      // Alleen de 'local'-provider heeft dit nodig (baseUrl/model voor
+      // Ollama); 'server' leest niets uit `config` (die praat via de
+      // JWT-fetch-laag, geen device-lokale settings).
+      config: plannerProvider.local,
     });
     if (assignments.length === 0) return;
+
+    const providerNotice = describePlanProvider({ providerUsed, fallbackFrom, fallbackReason });
 
     if (planMode === 'direct') {
       const entries = applyAssignments(dateKey, assignments);
       if (entries.length) rememberPlanUndo({ dateKey, entries });
       if (typeof notify === 'function') {
         notify({
-          message: t('planner.toast.planned'),
+          message: providerNotice ? `${t('planner.toast.planned')} ${providerNotice}` : t('planner.toast.planned'),
           actionLabel: t('common.undo'),
           onAction: undoLastPlan,
         });
@@ -2670,6 +2740,10 @@ export default function Ritmo() {
     setPendingPlan({
       dateKey,
       mode: planMode,
+      explanation: explanation || null,
+      providerUsed,
+      fallbackFrom,
+      fallbackReason,
       items: assignments.map(a => ({
         ...a,
         label: meta[a.key]?.label || '',
@@ -2677,7 +2751,7 @@ export default function Ritmo() {
         kind: meta[a.key]?.kind,
       })),
     });
-  }, [buildPlanInputs, modules, planMode, planPrefs, sourcePrefs, agendaSelection, applyAssignments, rememberPlanUndo, undoLastPlan, t, outlookEventsByDate]);
+  }, [buildPlanInputs, modules, planMode, planPrefs, sourcePrefs, agendaSelection, applyAssignments, rememberPlanUndo, undoLastPlan, t, outlookEventsByDate, plannerProvider, describePlanProvider]);
 
   // Eén voorstel-/concept-blok overnemen resp. vastzetten: schrijft via de
   // bestaande handler en haalt het item uit de ephemere pendingPlan-state.
@@ -3414,6 +3488,8 @@ export default function Ritmo() {
           setAppMode={setAppMode}
           planMode={planMode}
           setPlanMode={setPlanMode}
+          plannerProvider={plannerProvider}
+          updatePlannerProvider={updatePlannerProvider}
           switchToStandard={switchToStandard}
           theme={theme}
           dayNames={dayNames}
@@ -3743,7 +3819,7 @@ function HiddenSourceItemsSection({ theme, items, onUnhide }) {
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, planMode, setPlanMode, switchToStandard, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour, hiddenSourceItems, onUnhideSourceItem }) {
+function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, planMode, setPlanMode, plannerProvider, updatePlannerProvider, switchToStandard, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour, hiddenSourceItems, onUnhideSourceItem }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
   // Mini-stack i.p.v. een enkel helpView-veld (#150): 'nutrition' is bereikbaar
@@ -4225,6 +4301,61 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* S11: naast planMode hierboven, want beide sturen "deel mijn dag
+                in" — planMode bepaalt hoe de indeling wordt toegepast, dit
+                bepaalt wíé de indeling maakt. 'local' (Ollama) is alleen
+                zichtbaar op desktop (AC3): PLANNER_PROVIDER_OPTIONS is al op
+                `desktopOnly` gefilterd zonder tussenlaag. */}
+            <div className={`mt-6 pt-6 border-t ${theme.border}`}>
+              <h3 className={`font-semibold ${theme.textSecondary} mb-1`}>{t('settings.planProvider')}</h3>
+              <p className={`text-xs ${theme.textMuted} mb-3`}>{t('settings.planProviderHint')}</p>
+              <div className="flex gap-2">
+                {PLANNER_PROVIDER_OPTIONS
+                  .filter(({ desktopOnly }) => !desktopOnly || isDesktopPlatform())
+                  .map(({ id, labelKey }) => (
+                    <button
+                      key={id}
+                      onClick={() => updatePlannerProvider({ providerId: id })}
+                      className={`flex-1 py-3 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 ${
+                        plannerProvider.providerId === id ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
+                      }`}
+                    >
+                      {t(labelKey)}
+                    </button>
+                  ))}
+              </div>
+
+              {plannerProvider.providerId === 'local' && (
+                <div className="mt-3 space-y-2">
+                  <div>
+                    <label className={`block text-xs font-medium ${theme.textMuted} mb-1`}>
+                      {t('settings.planProviderLocalBaseUrl')}
+                    </label>
+                    <input
+                      type="text"
+                      value={plannerProvider.local.baseUrl}
+                      onChange={(e) => updatePlannerProvider({ local: { ...plannerProvider.local, baseUrl: e.target.value } })}
+                      placeholder="http://localhost:11434"
+                      className={`w-full px-3 py-2 ${theme.radiusControl} text-sm ${theme.cardSecondary} ${theme.text} border ${theme.border}`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-xs font-medium ${theme.textMuted} mb-1`}>
+                      {t('settings.planProviderLocalModel')}
+                    </label>
+                    <input
+                      type="text"
+                      value={plannerProvider.local.model}
+                      onChange={(e) => updatePlannerProvider({ local: { ...plannerProvider.local, model: e.target.value } })}
+                      placeholder="llama3.1"
+                      className={`w-full px-3 py-2 ${theme.radiusControl} text-sm ${theme.cardSecondary} ${theme.text} border ${theme.border}`}
+                    />
+                  </div>
+                  <p className={`text-xs ${theme.textMuted}`}>{t('settings.planProviderLocalHint')}</p>
+                </div>
+              )}
             </div>
 
             <div className={`mt-6 pt-6 border-t ${theme.border}`}>
