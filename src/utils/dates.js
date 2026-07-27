@@ -158,6 +158,17 @@ export function formatMonthTitle(date) {
   return `${capitalize(monthNameLong(date))} ${date.getFullYear()}`;
 }
 
+// "HH:MM" in de huidige locale — voor elke "bijgewerkt om"-regel (S07d:
+// SourcesPanel's bronnen-sync; S12: de Outlook-agenda-write). Voorheen
+// alleen lokaal in SourcesPanel.jsx; hier gehoist zodra een tweede consument
+// hem nodig had (geen tweede kopie, uitgangspunt 3). `null` bij een
+// onleesbare ISO-string.
+export function formatClockTime(isoString) {
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' });
+}
+
 // Lange weekdag-naam — gebruikt door SleepModule's ModuleEditor.
 export function weekdayLabelLong(weekdayKey) {
   const idx = WEEKDAY_KEYS.indexOf(weekdayKey);

@@ -46,6 +46,9 @@ export const ERROR_KEYS = {
   ms_error: 'connections.errors.msError',
   token_refresh_failed: 'connections.errors.tokenRefreshFailed',
   not_connected: 'connections.errors.notConnected',
+  // S12: "Zet in agenda" (api/connections/outlook/write.js).
+  scope_upgrade_required: 'connections.errors.scopeUpgradeRequired',
+  tag_unsupported: 'connections.errors.tagUnsupported',
   // S08: Trello key+token-flow-codes van api/connections/trello/*.js.
   trello_auth: 'connections.errors.trelloAuth',
   trello_rate_limit: 'connections.errors.trelloRateLimit',

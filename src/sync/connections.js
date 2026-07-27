@@ -97,6 +97,16 @@ export async function fetchOutlookEvents(range) {
   return callConnectionsApi('outlook/events', range || {});
 }
 
+// Schrijft de dagplanning van Ritmo deterministisch naar Outlook (S12, zie
+// api/connections/outlook/write.js). `payload` = { dateKey, windowStart,
+// windowEnd, destinations, blocks } (zie utils/calendarWrite.js voor hoe die
+// wordt opgebouwd uit de dag-tijdlijn). Gooit bij een fout een Error met
+// `.code` (bv. `scope_upgrade_required`, `tag_unsupported`) — de aanroeper
+// (App.jsx's `handleWriteDayToCalendar`) mapt die code naar een toast.
+export async function writeOutlookDay(payload) {
+  return callConnectionsApi('outlook/write', payload || {});
+}
+
 // Trello (S08, key+token-flow, geen OAuth — zie api/connections/trello/*.js).
 // Haalt de server-gebouwde authorize-URL op (TRELLO_API_KEY is server-only,
 // de frontend kan de link dus niet zelf samenstellen).

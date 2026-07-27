@@ -33,7 +33,7 @@ import NutritionGuide from './components/help/NutritionGuide';
 import BackupSection from './components/BackupSection';
 import AuthSection from './components/auth/AuthSection';
 import SyncStatusRow from './components/SyncStatusRow';
-import ConnectionsSection from './components/ConnectionsSection';
+import ConnectionsSection, { ERROR_KEYS } from './components/ConnectionsSection';
 import OAuthReturn from './components/OAuthReturn';
 import useConnections from './hooks/useConnections';
 import useOutlookEvents from './hooks/useOutlookEvents';
@@ -41,6 +41,10 @@ import useTrelloCards from './hooks/useTrelloCards';
 import useGithubIssues from './hooks/useGithubIssues';
 import { externalBlocksForDay } from './utils/outlookEvents';
 import { clearAgendaCache } from './utils/agendaCache';
+import { buildCalendarBlocks, buildWritePayload } from './utils/calendarWrite';
+import { DEFAULT_CALENDAR_WRITE_PREFS, activeCalendarDestinations, getCalendarWritePrefs } from './utils/calendarWritePrefs';
+import { readCalendarWriteLog, recordCalendarWrite, clearCalendarWriteLog } from './utils/calendarWriteLog';
+import { writeOutlookDay, startOutlookConnect } from './sync/connections';
 import { readAgendaSelection, writeAgendaSelection, clearAgendaSelection, pruneSelection } from './utils/agendaSelection';
 import { readTrelloBoardPrefs, writeTrelloBoardPrefs, clearTrelloBoardPrefs, includedBoardPairs } from './utils/trelloBoardPrefs';
 import { clearTrelloCache } from './utils/trelloCache';
@@ -102,7 +106,7 @@ import {
   WEEKDAY_KEYS, shortWeekdayLabelsMondayFirst, weekdayLabelLong,
 } from './utils/dates';
 import { goalsForNight, isOnTarget } from './utils/sleep';
-import { DEFAULT_BLOCK_MINUTES } from './utils/dayTimeline';
+import { DEFAULT_BLOCK_MINUTES, buildDayTimeline } from './utils/dayTimeline';
 import { planWithProvider, PLANNER_PROVIDERS } from './utils/planProviders';
 import { readPlannerProvider, writePlannerProvider, DEFAULT_PLANNER_PROVIDER } from './utils/plannerProvider';
 import { isDesktopPlatform } from './utils/platform';
@@ -225,6 +229,11 @@ export default function Ritmo() {
   const [planMode, setPlanMode] = useState('propose');
   const [planPrefs, setPlanPrefs] = useState(DEFAULT_PLAN_PREFS);
   const [sourcePrefs, setSourcePrefs] = useState(DEFAULT_SOURCE_PREFS);
+  // Bestemming voor "Zet in agenda" (S12): welke Outlook-agenda('s) de write
+  // vult. Gesynct via settings, zelfde plek/patroon als sourcePrefs
+  // hierboven — zie utils/calendarWritePrefs.js voor de default en de
+  // read-time-merge.
+  const [calendarWritePrefs, setCalendarWritePrefs] = useState(DEFAULT_CALENDAR_WRITE_PREFS);
   // Prioriteit-chipkleuren (S03b): eigen settings-key naast `sourcePrefs`,
   // zelfde read-time-merge-patroon (zie utils/priorityPrefs.js) — een lege
   // `{}` is een geldige startwaarde, `getPriorityColor` vult ontbrekende
@@ -314,6 +323,7 @@ export default function Ritmo() {
         if (settings.planMode !== undefined) setPlanMode(settings.planMode);
         if (settings.planPrefs !== undefined) setPlanPrefs(settings.planPrefs);
         if (settings.sourcePrefs !== undefined) setSourcePrefs(settings.sourcePrefs);
+        if (settings.calendarWritePrefs !== undefined) setCalendarWritePrefs(settings.calendarWritePrefs);
         if (settings.priorityPrefs !== undefined) setPriorityPrefs(settings.priorityPrefs);
         if (settings.sourceItemPrefs !== undefined) setSourceItemPrefs(settings.sourceItemPrefs);
         if (settings.agendaShown !== undefined) setAgendaShown(settings.agendaShown);
@@ -509,6 +519,7 @@ export default function Ritmo() {
           planMode,
           planPrefs,
           sourcePrefs,
+          calendarWritePrefs,
           priorityPrefs,
           sourceItemPrefs,
           agendaShown,
@@ -523,7 +534,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, planPrefs, sourcePrefs, priorityPrefs, sourceItemPrefs, agendaShown, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading, syncReady]);
+  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, planPrefs, sourcePrefs, calendarWritePrefs, priorityPrefs, sourceItemPrefs, agendaShown, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading, syncReady]);
 
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
@@ -2092,6 +2103,20 @@ export default function Ritmo() {
   // nog-onbekende status (netwerk nog bezig, offline) telt bewust niet als
   // "verbroken" — anders zou een tijdelijke laad-hik al de cache wissen.
   const wasOutlookConnectedRef = useRef(false);
+
+  // Device-local "laatst weggeschreven om"-log voor "Zet in agenda" (S12,
+  // src/utils/calendarWriteLog.js) — per dateKey de ISO-tijd van de laatste
+  // geslaagde write. Geladen bij mount zodat de regel een herlaad overleeft
+  // (AC11); leeft verder alleen in state (geen sync, zie de module zelf).
+  const [calendarWriteLog, setCalendarWriteLog] = useState({});
+  useEffect(() => {
+    let cancelled = false;
+    readCalendarWriteLog().then((log) => {
+      if (!cancelled) setCalendarWriteLog(log);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     if (connectionState.loading) return;
     if (wasOutlookConnectedRef.current && !outlookConnection) {
@@ -2101,6 +2126,11 @@ export default function Ritmo() {
       clearAgendaSelection();
       setAgendaSelection([]);
       setAgendaShown(false);
+      // Idem voor het write-log (S12): een verbroken koppeling laat geen
+      // "bijgewerkt om"-regel achter voor een agenda die niemand meer kan
+      // bijwerken.
+      clearCalendarWriteLog();
+      setCalendarWriteLog({});
     }
     wasOutlookConnectedRef.current = !!outlookConnection;
   }, [outlookConnection, connectionState.loading]);
@@ -2752,6 +2782,78 @@ export default function Ritmo() {
       })),
     });
   }, [buildPlanInputs, modules, planMode, planPrefs, sourcePrefs, agendaSelection, applyAssignments, rememberPlanUndo, undoLastPlan, t, outlookEventsByDate, plannerProvider, describePlanProvider]);
+
+  // ---- "Zet in agenda" (S12) ----------------------------------------------
+  // Bouwt de dag-tijdlijn voor `dateKey` zonder `handlers` — puur lezen, geen
+  // toggle-functies nodig (dit voedt alleen de write, geen interactieve
+  // weergave). Zelfde bron (`allModules`) en dezelfde tijdlijn als WeekView/de
+  // takenpool: wat er in het rooster staat is wat er wordt weggeschreven
+  // (AC5/AC10). `buildPlanInputs` hierboven is hiervoor bewust niet
+  // hergebruikt: die levert alleen `{time, duration}` zonder key of label en
+  // beantwoordt "wat mag de indeler plaatsen", niet "wat staat er gepland".
+  const buildDayBlocks = useCallback((dateKey) => {
+    const day = weekDays.find(d => d.dateKey === dateKey);
+    if (!day) return [];
+    return buildDayTimeline({
+      modules: allModules,
+      customTasks: day.customTasks,
+      moduleData: day.moduleData,
+      resolveName: mod => resolveModuleName(mod, t),
+      referenceDate: day.date,
+    });
+  }, [weekDays, allModules, t]);
+
+  // Bestemmingen die op dit moment aanstaan; leeg = geen knop en geen write
+  // (AC12/AC18) — de aanroeper (ProductivitySuiteView) verbergt de knop zodra
+  // dit leeg is of Outlook niet verbonden is.
+  const calendarWriteDestinations = useMemo(
+    () => activeCalendarDestinations(calendarWritePrefs),
+    [calendarWritePrefs],
+  );
+
+  // Hoofd-handler achter de knop: bouwt de blokken uit de dag-tijdlijn,
+  // schrijft ze deterministisch weg (geen LLM in dit pad, AC15) en ververst
+  // daarna de Outlook-agendaweergave zodat een net geschreven blok niet even
+  // als "extern" wordt getoond. `notify` is optioneel, zelfde constructie als
+  // `handleShareDay` hierboven (App.jsx zit zelf niet onder ToastProvider).
+  const handleWriteDayToCalendar = useCallback(async (dateKey, notify) => {
+    if (calendarWriteDestinations.length === 0) return;
+
+    const blocks = buildCalendarBlocks(buildDayBlocks(dateKey), { dateKey });
+    const payload = buildWritePayload({ dateKey, blocks, destinations: calendarWriteDestinations });
+
+    try {
+      const result = await writeOutlookDay(payload);
+      const log = await recordCalendarWrite(dateKey);
+      setCalendarWriteLog(log);
+      refetchOutlookAgenda();
+
+      if (typeof notify === 'function') {
+        if (result?.partial) {
+          notify({ message: t('planner.calendar.toast.partial', { failed: result.failed || 0 }) });
+        } else if (blocks.length === 0) {
+          notify({ message: t('planner.calendar.toast.cleared') });
+        } else {
+          notify({ message: t('planner.calendar.toast.written') });
+        }
+      }
+    } catch (err) {
+      if (typeof notify !== 'function') return;
+      // Scope-upgrade krijgt een eigen toast met actie (zelfde vorm als de
+      // undo-toast van handleShareDay hierboven): "Opnieuw koppelen" roept
+      // exact dezelfde functie aan als de Verbinden-knop in Instellingen.
+      if (err?.code === 'scope_upgrade_required') {
+        notify({
+          message: t('connections.errors.scopeUpgradeRequired'),
+          actionLabel: t('planner.calendar.reconnect'),
+          onAction: startOutlookConnect,
+        });
+        return;
+      }
+      const key = ERROR_KEYS[err?.code] || 'connections.errors.unexpected';
+      notify({ message: `${t('planner.calendar.toast.failed')} ${t(key)}` });
+    }
+  }, [calendarWriteDestinations, buildDayBlocks, refetchOutlookAgenda, t]);
 
   // Eén voorstel-/concept-blok overnemen resp. vastzetten: schrijft via de
   // bestaande handler en haalt het item uit de ephemere pendingPlan-state.
@@ -3406,6 +3508,9 @@ export default function Ritmo() {
             onShareDay={handleShareDay}
             planUndoDateKey={planUndo?.dateKey || null}
             onUndoPlan={undoLastPlan}
+            calendarWriteDestinations={calendarWriteDestinations}
+            calendarWriteLog={calendarWriteLog}
+            onWriteDayToCalendar={handleWriteDayToCalendar}
             onAcceptPendingItem={acceptPendingItem}
             onDiscardPendingItem={discardPendingItem}
             onAcceptAllPending={acceptAllPending}
@@ -3491,6 +3596,8 @@ export default function Ritmo() {
           plannerProvider={plannerProvider}
           updatePlannerProvider={updatePlannerProvider}
           switchToStandard={switchToStandard}
+          calendarWritePrefs={calendarWritePrefs}
+          setCalendarWritePrefs={setCalendarWritePrefs}
           theme={theme}
           dayNames={dayNames}
           setEditingModule={setEditingModule}
@@ -3819,7 +3926,7 @@ function HiddenSourceItemsSection({ theme, items, onUnhide }) {
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, planMode, setPlanMode, plannerProvider, updatePlannerProvider, switchToStandard, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour, hiddenSourceItems, onUnhideSourceItem }) {
+function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, planMode, setPlanMode, plannerProvider, updatePlannerProvider, switchToStandard, calendarWritePrefs, setCalendarWritePrefs, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour, hiddenSourceItems, onUnhideSourceItem }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
   // Mini-stack i.p.v. een enkel helpView-veld (#150): 'nutrition' is bereikbaar
@@ -4356,6 +4463,42 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
                   <p className={`text-xs ${theme.textMuted}`}>{t('settings.planProviderLocalHint')}</p>
                 </div>
               )}
+            </div>
+
+            {/* S12: bestemming voor "Zet in agenda" — twee onafhankelijke
+                checkboxes, geen radio: beide aan (of uit) is een geldige,
+                gebruikersgekozen stand (AC13/AC18). */}
+            <div className={`mt-6 pt-6 border-t ${theme.border}`}>
+              <h3 className={`font-semibold ${theme.textSecondary} mb-1`}>{t('settings.calendarWrite')}</h3>
+              <p className={`text-xs ${theme.textMuted} mb-3`}>{t('settings.calendarWriteHint')}</p>
+
+              <label className={`flex items-center justify-between gap-3 p-3 ${theme.cardSecondary} rounded-lg mb-2`}>
+                <div className="min-w-0">
+                  <span className={`text-sm font-medium ${theme.textSecondary}`}>{t('settings.calendarWriteRitmo')}</span>
+                  <p className={`text-xs ${theme.textMuted} mt-0.5`}>{t('settings.calendarWriteRitmoHint')}</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={getCalendarWritePrefs(calendarWritePrefs).ritmo}
+                  onChange={(e) => setCalendarWritePrefs(prev => ({ ...getCalendarWritePrefs(prev), ritmo: e.target.checked }))}
+                  className="w-4 h-4 cursor-pointer flex-shrink-0"
+                />
+              </label>
+
+              <label className={`flex items-center justify-between gap-3 p-3 ${theme.cardSecondary} rounded-lg mb-2`}>
+                <div className="min-w-0">
+                  <span className={`text-sm font-medium ${theme.textSecondary}`}>{t('settings.calendarWritePrimary')}</span>
+                  <p className={`text-xs ${theme.textMuted} mt-0.5`}>{t('settings.calendarWritePrimaryHint')}</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={getCalendarWritePrefs(calendarWritePrefs).primary}
+                  onChange={(e) => setCalendarWritePrefs(prev => ({ ...getCalendarWritePrefs(prev), primary: e.target.checked }))}
+                  className="w-4 h-4 cursor-pointer flex-shrink-0"
+                />
+              </label>
+
+              <p className={`text-xs ${theme.textMuted}`}>{t('settings.calendarWritePrivacyHint')}</p>
             </div>
 
             <div className={`mt-6 pt-6 border-t ${theme.border}`}>

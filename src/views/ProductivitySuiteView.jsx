@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, RotateCcw, WandSparkles } from 'lucide-react';
+import { CalendarCheck, Loader2, RotateCcw, WandSparkles } from 'lucide-react';
 import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 import { useToast } from '../hooks/useToast';
 import WeekView from './WeekView';
@@ -13,7 +13,7 @@ import GithubRepoPicker from '../components/GithubRepoPicker';
 import PlanPreferencesPanel from '../components/PlanPreferencesPanel';
 import { buildDayTimeline } from '../utils/dayTimeline';
 import { isVirtualTaskKey } from '../utils/itemKeys';
-import { shortWeekdayLabelsMondayFirst } from '../utils/dates';
+import { shortWeekdayLabelsMondayFirst, formatClockTime } from '../utils/dates';
 
 const TABS = ['dag', 'feed', 'kanban', 'voorkeuren'];
 
@@ -93,6 +93,9 @@ export default function ProductivitySuiteView({
   onShareDay,
   planUndoDateKey,
   onUndoPlan,
+  calendarWriteDestinations,
+  calendarWriteLog,
+  onWriteDayToCalendar,
   onAcceptPendingItem,
   onDiscardPendingItem,
   onAcceptAllPending,
@@ -186,6 +189,25 @@ export default function ProductivitySuiteView({
       setIsSharingDay(false);
     }
   }, [onShareDay, selectedDay, todayKey, showToast]);
+
+  // S12: "Zet in agenda" — exact de vorm van handleClickShareDay hierboven
+  // (lokale laadstand, geen persistente state, voorkomt dubbele klikken
+  // tijdens de lopende call). Alleen zichtbaar als Outlook gekoppeld is én
+  // minstens één bestemming aanstaat (`calendarWriteDestinations`, S12
+  // AC12/AC18); een dag zonder gekozen bestemming toont dus geen knop.
+  const [isWritingDay, setIsWritingDay] = useState(false);
+  const handleClickWriteDayToCalendar = useCallback(async () => {
+    setIsWritingDay(true);
+    try {
+      await onWriteDayToCalendar(selectedDay?.dateKey || todayKey, showToast);
+    } finally {
+      setIsWritingDay(false);
+    }
+  }, [onWriteDayToCalendar, selectedDay, todayKey, showToast]);
+
+  const canWriteToCalendar = outlookConnected && (calendarWriteDestinations || []).length > 0;
+  const calendarLastWrittenAt = calendarWriteLog?.[selectedDay?.dateKey || todayKey] || null;
+  const calendarLastWrittenTime = calendarLastWrittenAt ? formatClockTime(calendarLastWrittenAt) : null;
 
   // De knop rendert alleen als er echt iets terug te draaien is, dus deze
   // bevestiging liegt nooit.
@@ -308,6 +330,21 @@ export default function ProductivitySuiteView({
               {t('planner.actions.undoPlan')}
             </button>
           )}
+          {/* S12: alleen zichtbaar als Outlook gekoppeld is én minstens één
+              bestemming aanstaat (settings.calendarWrite*) — nooit ongevraagd
+              zichtbaar of actief (AC12/AC18). */}
+          {canWriteToCalendar && (
+            <button
+              type="button"
+              onClick={handleClickWriteDayToCalendar}
+              disabled={isWritingDay}
+              aria-busy={isWritingDay}
+              className={`flex items-center gap-1.5 px-3 py-2 ${theme.radiusControl} text-sm font-medium transition ${theme.cardSecondary} ${theme.textSecondary} ${theme.hover} disabled:opacity-70 disabled:cursor-wait`}
+            >
+              {isWritingDay ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarCheck className="w-4 h-4" />}
+              {t(isWritingDay ? 'planner.actions.writingToCalendar' : 'planner.actions.writeToCalendar')}
+            </button>
+          )}
           <div className={`flex gap-1 p-1 ${theme.cardSecondary} ${theme.radiusControl}`}>
             {TABS.map(id => (
               <button
@@ -325,6 +362,16 @@ export default function ProductivitySuiteView({
           </div>
         </div>
       </div>
+
+      {/* S12: alleen zichtbaar samen met de knop erboven, dus nooit een
+          "bijgewerkt om"-regel voor een agenda die niemand kan schrijven. */}
+      {canWriteToCalendar && (
+        <p className={`text-xs ${theme.textMuted} -mt-3`}>
+          {calendarLastWrittenTime
+            ? t('planner.calendar.lastWritten', { time: calendarLastWrittenTime })
+            : t('planner.calendar.neverWritten')}
+        </p>
+      )}
 
       {tab === 'voorkeuren' ? (
         <PlanPreferencesPanel
