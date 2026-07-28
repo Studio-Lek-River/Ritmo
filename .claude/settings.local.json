@@ -31,7 +31,10 @@
       "Bash(gh issue list *)",
       "Bash(gh pr create *)",
       "Read(//dev/**)",
-      "Bash(git rebase *)"
+      "Bash(git rebase *)",
+      "PowerShell(npm run build)",
+      "PowerShell(npm run dev)",
+      "PowerShell(git push origin main)"
     ],
     "additionalDirectories": [
       "c:\\Ritmo"
