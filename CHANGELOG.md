@@ -1,3 +1,11 @@
+## [0.98.2](https://github.com/Studio-Lek-River/Ritmo/compare/v0.98.1...v0.98.2) (2026-07-28)
+
+
+### Bug Fixes
+
+* **pwa:** haal een nieuwe versie al binnen tijdens het opstarten ([9d719d6](https://github.com/Studio-Lek-River/Ritmo/commit/9d719d63a79b2785c31028edad911af55b5d715d))
+* **splash:** voorkom stapelende timers op het openingsscherm ([68bf0ab](https://github.com/Studio-Lek-River/Ritmo/commit/68bf0ab6f255f4f7c99b014880d9eb4bee7f0bdf))
+
 ## [0.98.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.98.0...v0.98.1) (2026-07-28)
 
 
