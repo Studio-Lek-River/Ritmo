@@ -282,7 +282,7 @@ function CounterUI({
   // kcal-regel (CounterEntryRow, showDrinkSuffix) en zou anders dubbel tellen.
   const ownRows = entries.map(entry => ({
     entry, rowMod: mod, rowUnit: unit,
-    onRemoveEntry, onSetAmount: onSetEntryAmount, onSetQuantity,
+    onRemoveEntry, onSetAmount: onSetEntryAmount, onSetQuantity: onSetEntryQuantity,
     showDrinkSuffix: !!drink,
   }));
   const drinkRows = drink
