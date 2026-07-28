@@ -1818,6 +1818,7 @@ export default {
   splash: {
     loading: 'Een momentje...',
     tagline: 'Jouw dag, jouw ritme.',
+    updating: 'Nieuwe versie wordt geïnstalleerd…',
     version: 'v{version}',
   },
 

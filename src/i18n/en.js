@@ -1806,6 +1806,7 @@ export default {
   splash: {
     loading: 'One moment...',
     tagline: 'Your day, your rhythm.',
+    updating: 'Installing new version…',
     version: 'v{version}',
   },
 

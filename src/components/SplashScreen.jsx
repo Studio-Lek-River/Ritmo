@@ -16,6 +16,9 @@ import { APP_VERSION } from '../utils/appVersion';
  *                  Default 1800ms = ongeveer één rotatie van de stip.
  *   onDone       - callback die wordt aangeroepen wanneer de splash mag verdwijnen
  *   darkMode     - boolean voor dark-mode-aware styling
+ *   updating     - boolean, true terwijl er een nieuwe versie geïnstalleerd wordt.
+ *                  De stip blijft dan doorlopend draaien en de tagline maakt plaats
+ *                  voor een melding; direct daarna herlaadt de app zichzelf.
  *
  * Gebruik (in App.jsx):
  *   const [appReady, setAppReady] = useState(false);
@@ -36,6 +39,7 @@ export default function SplashScreen({
   minDuration = 1800,
   onDone,
   darkMode = false,
+  updating = false,
 }) {
   const { t } = useTranslation();
   const [fading, setFading] = useState(false);
@@ -75,7 +79,7 @@ export default function SplashScreen({
       <RitmoLogo
         size={140}
         variant={darkMode ? 'light' : 'dark'}
-        animated="splash"
+        animated={updating ? 'spin' : 'splash'}
       />
       <p
         className={`text-sm tracking-wide ${
@@ -83,10 +87,14 @@ export default function SplashScreen({
         }`}
         style={{
           opacity: 0,
-          animation: 'ritmo-tagline-fade 0.8s ease-out 1.2s forwards',
+          // De update-melding komt direct in beeld; de tagline houdt zijn rustige
+          // vertraging zodat het openen zonder update onveranderd aanvoelt.
+          animation: updating
+            ? 'ritmo-tagline-fade 0.4s ease-out forwards'
+            : 'ritmo-tagline-fade 0.8s ease-out 1.2s forwards',
         }}
       >
-        {t('splash.tagline')}
+        {updating ? t('splash.updating') : t('splash.tagline')}
       </p>
       {APP_VERSION && (
         <p

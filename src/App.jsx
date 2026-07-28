@@ -53,6 +53,7 @@ import { clearTrelloCache } from './utils/trelloCache';
 import { buildTrelloModules, TRELLO_CARD_ID_PREFIX } from './utils/trelloModules';
 import { readGithubRepoPrefs, writeGithubRepoPrefs, clearGithubRepoPrefs, includedRepoIds } from './utils/githubRepoPrefs';
 import { clearGithubCache } from './utils/githubCache';
+import { updateCheckDone, subscribeUpdateStatus, markStartupDone } from './utils/swUpdate';
 import { buildGithubModules, GITHUB_ISSUE_ID_PREFIX } from './utils/githubModules';
 import { DEFAULT_SOURCE_PREFS, getSourcePref } from './utils/sourcePrefs';
 import { applyItemOverrides, clearOverridesWithPrefix, collectHiddenItems, getSourceItemPref, isSourceItemId, withItemOverride } from './utils/sourceItemPrefs';
@@ -238,6 +239,10 @@ export default function Ritmo() {
   const skipNextSettingsSaveRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [splashDone, setSplashDone] = useState(false);
+  // De splash blijft staan tot de versiecheck klaar is, zodat een nieuwe versie
+  // nog binnen de openingsanimatie geïnstalleerd kan worden (zie utils/swUpdate).
+  const [updateChecked, setUpdateChecked] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [uiStyle, setUiStyle] = useState('strak');
   const [showSettings, setShowSettings] = useState(false);
@@ -327,6 +332,12 @@ export default function Ritmo() {
     root.setAttribute('data-theme', darkMode ? 'dark' : 'light');
     root.setAttribute('data-style', 'monday');
   }, [darkMode]);
+
+  // Versiecheck tijdens de openingsanimatie
+  useEffect(() => {
+    updateCheckDone.then(() => setUpdateChecked(true));
+    return subscribeUpdateStatus(() => setUpdating(true));
+  }, []);
 
   // Auth state
   useEffect(() => {
@@ -3189,8 +3200,9 @@ export default function Ritmo() {
   if (!splashDone) {
     return (
       <SplashScreen
-        ready={!loading}
-        onDone={() => setSplashDone(true)}
+        ready={!loading && updateChecked}
+        updating={updating}
+        onDone={() => { markStartupDone(); setSplashDone(true); }}
         darkMode={darkMode}
       />
     );
