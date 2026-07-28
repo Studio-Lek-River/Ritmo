@@ -34,10 +34,15 @@
       "Bash(git rebase *)",
       "PowerShell(npm run build)",
       "PowerShell(npm run dev)",
-      "PowerShell(git push origin main)"
+      "PowerShell(git push origin main)",
+      "PowerShell(Start-Process -FilePath \"npm\" -ArgumentList \"run\",\"dev\" -NoNewWindow -RedirectStandardOutput \"$env:TEMP\\\\ritmo-dev.log\" -RedirectStandardError \"$env:TEMP\\\\ritmo-dev.err\"; Start-Sleep -Seconds 8; Get-Content \"$env:TEMP\\\\ritmo-dev.log\" -Tail 10)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' http://localhost:5173/)",
+      "Bash(npm pkg *)",
+      "Bash(curl -s -o /dev/null -w 'HTTP %{http_code} type=%{content_type}\\\\n' http://localhost:4173/sw.js)"
     ],
     "additionalDirectories": [
-      "c:\\Ritmo"
+      "c:\\Ritmo",
+      "\\tmp"
     ]
   }
 }
