@@ -46,25 +46,25 @@ export default function SplashScreen({
   const [shouldRender, setShouldRender] = useState(true);
 
   useEffect(() => {
-    const startTime = Date.now();
+    if (!ready) return undefined;
 
-    const checkAndFade = () => {
-      const elapsed = Date.now() - startTime;
-      const remaining = Math.max(0, minDuration - elapsed);
+    let fadeTimer = null;
 
-      setTimeout(() => {
-        setFading(true);
-        // Wacht op fade-out animatie voor we de component unmounten
-        setTimeout(() => {
-          setShouldRender(false);
-          onDone?.();
-        }, 400);
-      }, remaining);
+    const minTimer = setTimeout(() => {
+      setFading(true);
+      // Wacht op fade-out animatie voor we de component unmounten
+      fadeTimer = setTimeout(() => {
+        setShouldRender(false);
+        onDone?.();
+      }, 400);
+    }, minDuration);
+
+    // Zonder opruimen start elke re-render een nieuwe klok en wordt onDone
+    // meerdere keren aangeroepen.
+    return () => {
+      clearTimeout(minTimer);
+      clearTimeout(fadeTimer);
     };
-
-    if (ready) {
-      checkAndFade();
-    }
   }, [ready, minDuration, onDone]);
 
   if (!shouldRender) return null;

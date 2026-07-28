@@ -333,6 +333,13 @@ export default function Ritmo() {
     root.setAttribute('data-style', 'monday');
   }, [darkMode]);
 
+  // Stabiele referentie: het openingsscherm gebruikt onDone als dependency van
+  // zijn timer, dus een nieuwe functie per render zou die telkens herstarten.
+  const handleSplashDone = useCallback(() => {
+    markStartupDone();
+    setSplashDone(true);
+  }, []);
+
   // Versiecheck tijdens de openingsanimatie
   useEffect(() => {
     updateCheckDone.then(() => setUpdateChecked(true));
@@ -3202,7 +3209,7 @@ export default function Ritmo() {
       <SplashScreen
         ready={!loading && updateChecked}
         updating={updating}
-        onDone={() => { markStartupDone(); setSplashDone(true); }}
+        onDone={handleSplashDone}
         darkMode={darkMode}
       />
     );
