@@ -1,3 +1,10 @@
+## [0.98.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.98.0...v0.98.1) (2026-07-28)
+
+
+### Bug Fixes
+
+* **modules:** herstel het aanpassen van hoeveelheden op de drink- en calorieënkaart ([6d147d7](https://github.com/Studio-Lek-River/Ritmo/commit/6d147d7a0db44394e87178a185a3fc01e72e72f9))
+
 # [0.98.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.97.0...v0.98.0) (2026-07-27)
 
 
