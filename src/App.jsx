@@ -6,6 +6,7 @@ import './storage';
 import { isSyncEnabled } from './sync/supabase';
 import { onAuthChange, getCurrentUser } from './sync/auth';
 import { pullUserData } from './sync/userDataStorage';
+import { useSyncReady } from './hooks/useSyncReady';
 import SyncConflictDialog from './components/SyncConflictDialog';
 import ProjectsModule from './modules/ProjectsModule';
 import CounterModule from './modules/CounterModule';
@@ -28,10 +29,12 @@ import useIsDesktop from './hooks/useIsDesktop';
 import ErrorBoundary from './components/ErrorBoundary';
 import HelpOverlay from './components/help/HelpOverlay';
 import InstallGuide from './components/help/InstallGuide';
+import NutritionGuide from './components/help/NutritionGuide';
 import BackupSection from './components/BackupSection';
+import CalendarCleanupSection from './components/CalendarCleanupSection';
 import AuthSection from './components/auth/AuthSection';
 import SyncStatusRow from './components/SyncStatusRow';
-import ConnectionsSection from './components/ConnectionsSection';
+import ConnectionsSection, { ERROR_KEYS } from './components/ConnectionsSection';
 import OAuthReturn from './components/OAuthReturn';
 import useConnections from './hooks/useConnections';
 import useOutlookEvents from './hooks/useOutlookEvents';
@@ -39,12 +42,18 @@ import useTrelloCards from './hooks/useTrelloCards';
 import useGithubIssues from './hooks/useGithubIssues';
 import { externalBlocksForDay } from './utils/outlookEvents';
 import { clearAgendaCache } from './utils/agendaCache';
+import { buildCalendarBlocks, buildWritePayload } from './utils/calendarWrite';
+import { DEFAULT_CALENDAR_WRITE_PREFS, activeCalendarDestinations, getCalendarWritePrefs } from './utils/calendarWritePrefs';
+import { readCalendarWriteLog, recordCalendarWrite, recordCalendarWrites, clearCalendarWriteLog } from './utils/calendarWriteLog';
+import { writeOutlookDay, startOutlookConnect } from './sync/connections';
+import { buildPlannerReturnTo, parseReturnTo } from './utils/oauthReturn';
 import { readAgendaSelection, writeAgendaSelection, clearAgendaSelection, pruneSelection } from './utils/agendaSelection';
-import { readTrelloBoardPrefs, writeTrelloBoardPrefs, clearTrelloBoardPrefs, includedBoardIds } from './utils/trelloBoardPrefs';
+import { readTrelloBoardPrefs, writeTrelloBoardPrefs, clearTrelloBoardPrefs, includedBoardPairs } from './utils/trelloBoardPrefs';
 import { clearTrelloCache } from './utils/trelloCache';
 import { buildTrelloModules, TRELLO_CARD_ID_PREFIX } from './utils/trelloModules';
 import { readGithubRepoPrefs, writeGithubRepoPrefs, clearGithubRepoPrefs, includedRepoIds } from './utils/githubRepoPrefs';
 import { clearGithubCache } from './utils/githubCache';
+import { updateCheckDone, subscribeUpdateStatus, markStartupDone } from './utils/swUpdate';
 import { buildGithubModules, GITHUB_ISSUE_ID_PREFIX } from './utils/githubModules';
 import { DEFAULT_SOURCE_PREFS, getSourcePref } from './utils/sourcePrefs';
 import { applyItemOverrides, clearOverridesWithPrefix, collectHiddenItems, getSourceItemPref, isSourceItemId, withItemOverride } from './utils/sourceItemPrefs';
@@ -91,15 +100,21 @@ import { ICON_OPTIONS } from './utils/icons';
 import { isHealthModule } from './utils/healthModules';
 import { instantiateMetric } from './utils/metricLibrary';
 import MetricLibraryModal from './components/MetricLibraryModal';
+import { NutritionLibraryProvider } from './context/NutritionLibraryContext';
+import NutritionLibraryPanel from './components/nutrition/NutritionLibraryPanel';
+import { nutritionEnabled, defaultModuleNutrition, drinkModuleCandidates, resolveDrinkModule, mergedDrinkModuleIds } from './utils/nutrition';
+import { createEntry, addEntry, setEntryAmount, applyEntryWrites, applyEntryRemovals, applyEntryRestores, applyEntryUpdates } from './utils/counterEntries';
 import {
   fmtDateKey, parseDateKey, addDays, sameDay, startOfWeek,
   isEditable, isFuture, isToday as isTodayDate,
   WEEKDAY_KEYS, shortWeekdayLabelsMondayFirst, weekdayLabelLong,
 } from './utils/dates';
 import { goalsForNight, isOnTarget } from './utils/sleep';
-import { DEFAULT_BLOCK_MINUTES } from './utils/dayTimeline';
-import { planDay } from './utils/planDay';
-import { subgoalKey, taskKey, virtualTaskId, parseVirtualTaskId, parseItemKey } from './utils/itemKeys';
+import { DEFAULT_BLOCK_MINUTES, buildDayTimeline } from './utils/dayTimeline';
+import { planWithProvider, PLANNER_PROVIDERS } from './utils/planProviders';
+import { readPlannerProvider, writePlannerProvider, DEFAULT_PLANNER_PROVIDER } from './utils/plannerProvider';
+import { isDesktopPlatform } from './utils/platform';
+import { subgoalKey, taskKey, virtualTaskId, parseVirtualTaskId, parseItemKey, moduleItemKey, moduleBlockKey } from './utils/itemKeys';
 import {
   buildDayCellBackground, moduleStatusForDay, isDayFullyComplete,
   normalizeChecklistItemData, isChecklistItemComplete,
@@ -121,6 +136,21 @@ const PLAN_MODE_OPTIONS = [
   { id: 'direct', labelKey: 'settings.planModeDirect' },
 ];
 
+// Vertaalsleutel per provider-id, gekoppeld aan de bron van waarheid
+// PLANNER_PROVIDERS (planProviders/index.js) zodat `desktopOnly` maar op één
+// plek staat: 'local' (Ollama) is alleen zichtbaar en kiesbaar op desktop
+// (AC3), SettingsModal filtert daar zelf op.
+const PLANNER_PROVIDER_LABEL_KEYS = {
+  heuristic: 'settings.planProviderHeuristic',
+  local: 'settings.planProviderLocal',
+  server: 'settings.planProviderServer',
+};
+const PLANNER_PROVIDER_OPTIONS = PLANNER_PROVIDERS.map((p) => ({
+  id: p.id,
+  labelKey: PLANNER_PROVIDER_LABEL_KEYS[p.id] || p.id,
+  desktopOnly: !!p.desktopOnly,
+}));
+
 // Neutrale S06-default voor de dag-indeler-voorkeuren: energie per dagdeel
 // 'neutral', geen diepwerk-vensters, geen rustbuffer — identiek aan S05-
 // gedrag (principe 2: geen opgelegde verandering zonder actie van de
@@ -137,9 +167,60 @@ const DEFAULT_PLAN_PREFS = {
 const PLAN_DAY_END = '22:00';
 const PLAN_DAY_START_FALLBACK = '08:00';
 
+// Minimale tijd tussen twee ophalingen bij terugkeer naar het tabblad
+// (issue #145). Kort genoeg om na het wisselen van apparaat actueel te zijn,
+// lang genoeg om heen-en-weer klikken niet in verzoeken om te zetten.
+const PULL_THROTTLE_MS = 60_000;
+
+// Fouten die bij "Zet hele week in agenda" (S12a, deel B) de hele week
+// raken (Ontwerpbeslissing 5): zeven keer dezelfde fout produceren is
+// zinloos, en bij een scope-upgrade wil je meteen de reconnect-toast zien.
+// `ms_rate_limit` hoort hier expliciet bij: Graph rate-limit per mailbox, niet
+// per dag, dus doorgaan met de resterende dagen verergert alleen de backoff.
+// `unauthenticated` en `server_config` zijn om dezelfde reden weekbreed: die
+// hangen niet van de dag af en falen bij elke volgende poging opnieuw.
+// Alle andere codes (partial, tag_unsupported, ms_error, ...) zijn
+// dag-specifiek en stoppen de week niet — die worden aan het eind
+// geaggregeerd gemeld.
+const WEEK_WRITE_STOP_CODES = [
+  'scope_upgrade_required',
+  'not_connected',
+  'token_refresh_failed',
+  'ms_auth',
+  'ms_rate_limit',
+  'unauthenticated',
+  'server_config',
+];
+
+// Canonieke serialisatie van een dag-blob, gebruikt als basislijn om te
+// bepalen of de dag-opslag écht iets te schrijven heeft (issue #145). Dezelfde
+// vorm als wat naar `day:<datum>` gaat, dus een ongewijzigde dag serialiseert
+// exact gelijk aan wat net is geladen — inclusief de lege dag (geen record).
+function serializeDayBaseline(data) {
+  return JSON.stringify({
+    moduleData: data?.moduleData || {},
+    customTasks: data?.customTasks || [],
+    skippedRecurring: data?.skippedRecurring || [],
+  });
+}
+
+// Leest en parseert de `returnTo`-parameter van een Outlook-OAuth-terugkeer
+// (S12a, deel A) vóór de eerste render. Puur behalve de `window.location`-
+// lezing zelf; de parsing (`parseReturnTo`, utils/oauthReturn.js) is puur en
+// levert `null` op bij een ontbrekende of niet-passende waarde, waarna de
+// aanroeper terugvalt op de default-view (AC5). Wordt alleen aangeroepen
+// binnen lazy `useState`-initializers, nooit via een effect — anders flitst
+// eerst de Vandaag-view voorbij.
+function readOAuthReturn() {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  return parseReturnTo(params.get('returnTo'));
+}
+
 export default function Ritmo() {
   const { t, language, languageSetting, setLanguage } = useTranslation();
-  const [view, setView] = useState('today');
+  const [view, setView] = useState(() => readOAuthReturn()?.view || 'today');
+  const [initialPlannerDateKey] = useState(() => readOAuthReturn()?.dateKey || null);
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [selectedCollectionId, setSelectedCollectionId] = useState(null);
   const [activeDate, setActiveDate] = useState(new Date());
@@ -148,8 +229,21 @@ export default function Ritmo() {
   const today = todayKey;
   const editable = isEditable(activeDate);
   const skipNextSaveRef = useRef(false);
+  // Laatst opgeslagen (of geladen) serialisatie van de dagblob. Het
+  // save-effect vergelijkt hiermee vóórdat het schrijft, zodat een ongewijzigd
+  // geladen dag — inclusief een dag zonder record — geen schrijfactie
+  // veroorzaakt (issue #145, AC3).
+  const dayBaselineRef = useRef(null);
+  // Zelfde patroon als skipNextSaveRef, maar voor de instellingen-opslag:
+  // voorkomt dat het inladen van settings ze meteen weer met een verse
+  // sync-stempel terugschrijft (zie issue #145).
+  const skipNextSettingsSaveRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [splashDone, setSplashDone] = useState(false);
+  // De splash blijft staan tot de versiecheck klaar is, zodat een nieuwe versie
+  // nog binnen de openingsanimatie geïnstalleerd kan worden (zie utils/swUpdate).
+  const [updateChecked, setUpdateChecked] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [uiStyle, setUiStyle] = useState('strak');
   const [showSettings, setShowSettings] = useState(false);
@@ -177,6 +271,11 @@ export default function Ritmo() {
   const [planMode, setPlanMode] = useState('propose');
   const [planPrefs, setPlanPrefs] = useState(DEFAULT_PLAN_PREFS);
   const [sourcePrefs, setSourcePrefs] = useState(DEFAULT_SOURCE_PREFS);
+  // Bestemming voor "Zet in agenda" (S12): welke Outlook-agenda('s) de write
+  // vult. Gesynct via settings, zelfde plek/patroon als sourcePrefs
+  // hierboven — zie utils/calendarWritePrefs.js voor de default en de
+  // read-time-merge.
+  const [calendarWritePrefs, setCalendarWritePrefs] = useState(DEFAULT_CALENDAR_WRITE_PREFS);
   // Prioriteit-chipkleuren (S03b): eigen settings-key naast `sourcePrefs`,
   // zelfde read-time-merge-patroon (zie utils/priorityPrefs.js) — een lege
   // `{}` is een geldige startwaarde, `getPriorityColor` vult ontbrekende
@@ -212,6 +311,10 @@ export default function Ritmo() {
   const [celebrationOverlay, setCelebrationOverlay] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [pendingConflicts, setPendingConflicts] = useState(null);
+  // Ophaal-poort (issue #145): true totdat de eerste cloud-ophaal is geweest
+  // (of de timeout viel), zodat de dag- en instellingen-opslag niet vóór die
+  // tijd een verse lokale stempel zetten die de cloudrij zou overschrijven.
+  const { ready: syncReady } = useSyncReady();
   const conflictResolverRef = useRef(null);
 
   const previousCompletionRef = useRef(null);
@@ -230,6 +333,19 @@ export default function Ritmo() {
     root.setAttribute('data-theme', darkMode ? 'dark' : 'light');
     root.setAttribute('data-style', 'monday');
   }, [darkMode]);
+
+  // Stabiele referentie: het openingsscherm gebruikt onDone als dependency van
+  // zijn timer, dus een nieuwe functie per render zou die telkens herstarten.
+  const handleSplashDone = useCallback(() => {
+    markStartupDone();
+    setSplashDone(true);
+  }, []);
+
+  // Versiecheck tijdens de openingsanimatie
+  useEffect(() => {
+    updateCheckDone.then(() => setUpdateChecked(true));
+    return subscribeUpdateStatus(() => setUpdating(true));
+  }, []);
 
   // Auth state
   useEffect(() => {
@@ -262,6 +378,7 @@ export default function Ritmo() {
         if (settings.planMode !== undefined) setPlanMode(settings.planMode);
         if (settings.planPrefs !== undefined) setPlanPrefs(settings.planPrefs);
         if (settings.sourcePrefs !== undefined) setSourcePrefs(settings.sourcePrefs);
+        if (settings.calendarWritePrefs !== undefined) setCalendarWritePrefs(settings.calendarWritePrefs);
         if (settings.priorityPrefs !== undefined) setPriorityPrefs(settings.priorityPrefs);
         if (settings.sourceItemPrefs !== undefined) setSourceItemPrefs(settings.sourceItemPrefs);
         if (settings.agendaShown !== undefined) setAgendaShown(settings.agendaShown);
@@ -271,6 +388,9 @@ export default function Ritmo() {
         if (settings.hasSeenHealthTour !== undefined) setHasSeenHealthTour(settings.hasSeenHealthTour);
         if (loadedModules) setModules(loadedModules);
         if (settings.hasOnboarded !== undefined) setHasOnboarded(settings.hasOnboarded);
+        // Er is echt een settings-record geladen: de eerstvolgende
+        // save-effect-run is een echo van dit laden, geen gebruikerswijziging.
+        skipNextSettingsSaveRef.current = true;
       } else {
         setHasOnboarded(false);
       }
@@ -296,6 +416,12 @@ export default function Ritmo() {
         setCustomTasks(data.customTasks || []);
         setSkippedRecurring(data.skippedRecurring || []);
         skipNextSaveRef.current = true;
+        dayBaselineRef.current = serializeDayBaseline(data);
+      } else {
+        // Geen record voor vandaag (bv. vers apparaat): de basislijn is de
+        // lege dag, zodat er pas geschreven wordt zodra de gebruiker echt
+        // iets toevoegt — niet doordat de ophaal nog moet komen (AC3).
+        dayBaselineRef.current = serializeDayBaseline({});
       }
     } catch (e) {}
 
@@ -324,24 +450,53 @@ export default function Ritmo() {
   }, [loadFromStorage]);
 
   const userId = currentUser?.id;
-  useEffect(() => {
+  const pullingRef = useRef(false);
+  const lastPullAtRef = useRef(0);
+
+  // Haalt de cloudgegevens op en laadt de app opnieuw als er daadwerkelijk iets
+  // is binnengekomen. Draait bij het openen én bij terugkeer naar het tabblad
+  // (zie het effect hieronder), vandaar de eigen callback in plaats van code in
+  // het effect zelf.
+  const runPull = useCallback(async () => {
     if (!isSyncEnabled() || !userId) return;
-    let cancelled = false;
-    (async () => {
+    if (pullingRef.current) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+    pullingRef.current = true;
+    try {
       const result = await pullUserData(userId, (conflicts) =>
         new Promise((resolve) => {
           conflictResolverRef.current = resolve;
           setPendingConflicts(conflicts);
         }),
       );
-      if (cancelled) return;
+      lastPullAtRef.current = Date.now();
       if (result.pulled > 0 || result.conflicts > 0) {
         skipNextSaveRef.current = true;
         await loadFromStorage();
       }
-    })();
-    return () => { cancelled = true; };
+    } finally {
+      pullingRef.current = false;
+    }
   }, [userId, loadFromStorage]);
+
+  useEffect(() => {
+    runPull();
+  }, [runPull]);
+
+  // Een tabblad dat de hele dag openstaat haalde nooit meer op, dus wat je
+  // intussen op je telefoon logde bleef onzichtbaar (issue #145). Terugkeren
+  // naar het tabblad haalt opnieuw op, hooguit eens per minuut zodat wisselen
+  // tussen tabbladen geen stroom aan verzoeken wordt.
+  useEffect(() => {
+    if (!isSyncEnabled() || !userId) return;
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastPullAtRef.current < PULL_THROTTLE_MS) return;
+      runPull();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [userId, runPull]);
 
   const handleResolveConflict = useCallback((choice) => {
     const resolver = conflictResolverRef.current;
@@ -360,6 +515,7 @@ export default function Ritmo() {
     setModuleData(data.moduleData || {});
     setCustomTasks(data.customTasks || []);
     setSkippedRecurring(data.skippedRecurring || []);
+    dayBaselineRef.current = serializeDayBaseline(data);
     prevModuleStatusRef.current = {};
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeDateKey, loading]);
@@ -368,29 +524,42 @@ export default function Ritmo() {
   useEffect(() => {
     if (loading) return;
     if (!editable) return;
+    // Wacht op de eerste cloud-ophaal (issue #145) vóórdat skipNextSaveRef
+    // wordt geconsumeerd — anders is de skip hieronder al "opgesoupeerd"
+    // terwijl de poort nog dicht zit, en schrijft de volgende render alsnog.
+    if (!syncReady) return;
     if (skipNextSaveRef.current) {
       skipNextSaveRef.current = false;
       return;
     }
+    const dayData = { moduleData, customTasks, skippedRecurring };
+    const serialized = serializeDayBaseline(dayData);
+    // Geen wijziging t.o.v. de basislijn: niets te schrijven. Voorkomt dat het
+    // openen van de app op een apparaat zonder lokale data van vandaag een
+    // léég dag-record naar de cloud stuurt en zo gelogde taken van een ander
+    // apparaat overschrijft (issue #145, AC3).
+    if (serialized === dayBaselineRef.current) return;
     const saveData = async () => {
       try {
-        const dayData = {
-          moduleData,
-          customTasks,
-          skippedRecurring,
-        };
-        await window.storage.set(`day:${activeDateKey}`, JSON.stringify(dayData));
+        await window.storage.set(`day:${activeDateKey}`, serialized);
+        dayBaselineRef.current = serialized;
         setHistory(prev => ({ ...prev, [activeDateKey]: dayData }));
       } catch (e) {
         console.error('Save failed', e);
       }
     };
     saveData();
-  }, [moduleData, customTasks, skippedRecurring, loading, activeDateKey, editable]);
+  }, [moduleData, customTasks, skippedRecurring, loading, activeDateKey, editable, syncReady]);
 
   // Save settings
   useEffect(() => {
     if (loading) return;
+    // Zelfde poort als de dag-opslag hierboven.
+    if (!syncReady) return;
+    if (skipNextSettingsSaveRef.current) {
+      skipNextSettingsSaveRef.current = false;
+      return;
+    }
     const saveSettings = async () => {
       try {
         await window.storage.set('settings', JSON.stringify({
@@ -405,6 +574,7 @@ export default function Ritmo() {
           planMode,
           planPrefs,
           sourcePrefs,
+          calendarWritePrefs,
           priorityPrefs,
           sourceItemPrefs,
           agendaShown,
@@ -419,7 +589,7 @@ export default function Ritmo() {
       } catch {}
     };
     saveSettings();
-  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, planPrefs, sourcePrefs, priorityPrefs, sourceItemPrefs, agendaShown, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading]);
+  }, [darkMode, uiStyle, recurringTasks, streakSettings, soundEnabled, soundVolume, goldenBorderEnabled, appMode, planMode, planPrefs, sourcePrefs, calendarWritePrefs, priorityPrefs, sourceItemPrefs, agendaShown, onboardingProfile, hasUsedSwipe, hasDismissedInstallBanner, hasSeenHealthTour, modules, hasOnboarded, languageSetting, loading, syncReady]);
 
   // Health-modus toont alleen een deel van de tabs; als de gebruiker naar
   // Health wisselt terwijl een verborgen tab actief is, val terug op Vandaag.
@@ -826,26 +996,13 @@ export default function Ritmo() {
     if (!amount || amount <= 0) return;
     const mod = modules.find(m => m.id === moduleId);
     const goal = mod?.dailyGoal ?? 0;
-    const now = new Date();
-    const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const entry = {
-      id: `e_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      amount,
-      category: category ?? null,
-      time,
-    };
+    const entry = createEntry({ amount, category: category ?? null });
 
     let crossedGoal = false;
     updateModuleData(moduleId, prev => {
-      const prevTotal = prev.total ?? prev.minutes ?? 0;
-      const newTotal = prevTotal + amount;
-      if (goal > 0 && prevTotal < goal && newTotal >= goal) crossedGoal = true;
-      return {
-        ...prev,
-        total: newTotal,
-        minutes: newTotal,
-        entries: [...(prev.entries || []), entry],
-      };
+      const { next, crossed } = addEntry(prev, entry, goal);
+      crossedGoal = crossed;
+      return next;
     });
 
     sfx('tick');
@@ -858,36 +1015,54 @@ export default function Ritmo() {
   // V10 (#133): retourneert een { entry, undo } paar zodat CounterModule een
   // undo-toast kan tonen. undo zet de invoer terug (analoog aan
   // removeMedIntake hierboven) en telt het bedrag weer bij total/minutes op.
+  //
+  // #143: symmetrisch voor een gekoppelde voedingsregel. Verwijderen aan de
+  // calorieënkant (`source.drinkEntry`) haalt ook de ml weg, en verwijderen
+  // aan de drinkkant (`linkedTo`) haalt ook de kcal weg — beide in één
+  // setModuleData-call, en één undo herstelt beide totalen. Bestaat de
+  // tegenhanger niet meer, dan verdwijnt gewoon de gevonden kant (`pair`
+  // blijft null en de rij toont de gewone toast).
   const removeCounterEntry = (moduleId, entryId) => {
-    let removedEntry = null;
-    updateModuleData(moduleId, prev => {
-      const entries = prev.entries || [];
-      const entry = entries.find(e => e.id === entryId);
-      if (!entry) return prev;
-      removedEntry = entry;
-      const newTotal = Math.max(0, (prev.total ?? prev.minutes ?? 0) - entry.amount);
-      return {
-        ...prev,
-        total: newTotal,
-        minutes: newTotal,
-        entries: entries.filter(e => e.id !== entryId),
-      };
+    // De rij die de gebruiker aantikte is per definitie de rij die net
+    // gerenderd is, dus `moduleData` uit de render-closure is hier de juiste
+    // bron — en anders dan de state-updater is hij synchroon beschikbaar,
+    // wat nodig is omdat de toast van `pair` afhangt.
+    const removedEntry = (moduleData[moduleId]?.entries || []).find(e => e.id === entryId) ?? null;
+    const counterpart = removedEntry?.source?.drinkEntry || removedEntry?.linkedTo || null;
+    const partnerEntry = counterpart?.moduleId && counterpart?.entryId
+      ? (moduleData[counterpart.moduleId]?.entries || []).find(e => e.id === counterpart.entryId) ?? null
+      : null;
+
+    const targets = [{ moduleId, entryId }];
+    if (counterpart?.moduleId && counterpart?.entryId) {
+      targets.push({ moduleId: counterpart.moduleId, entryId: counterpart.entryId });
+    }
+
+    let removedRows = [];
+    setModuleData(prev => {
+      const { next, removed } = applyEntryRemovals(prev, targets);
+      removedRows = removed;
+      return next;
     });
     const undo = () => {
-      if (!removedEntry) return;
-      updateModuleData(moduleId, prev => {
-        const entries = prev.entries || [];
-        if (entries.some(e => e.id === removedEntry.id)) return prev;
-        const newTotal = (prev.total ?? prev.minutes ?? 0) + removedEntry.amount;
-        return {
-          ...prev,
-          total: newTotal,
-          minutes: newTotal,
-          entries: [...entries, removedEntry],
-        };
-      });
+      if (!removedRows.length) return;
+      setModuleData(prev => applyEntryRestores(prev, removedRows));
     };
-    return { entry: removedEntry, undo };
+
+    // De toast noemt beide bedragen alleen als er ook echt twee regels weg
+    // zijn; welke kant de kcal draagt en welke de ml volgt uit het veld op de
+    // entry, niet uit de kant waar de gebruiker klikte.
+    let pair = null;
+    if (removedEntry && partnerEntry) {
+      const kcalEntry = removedEntry.source ? removedEntry : partnerEntry;
+      const mlEntry = removedEntry.linkedTo ? removedEntry : partnerEntry;
+      pair = {
+        name: kcalEntry.source?.name || mlEntry.linkedTo?.name || '',
+        kcal: kcalEntry.amount,
+        ml: mlEntry.amount,
+      };
+    }
+    return { entry: removedEntry, undo, pair };
   };
 
   // V10 (#133): wijzigt het bedrag van een bestaande teller-invoer en stelt
@@ -897,19 +1072,106 @@ export default function Ritmo() {
     const parsed = Number(amount);
     if (!parsed || parsed <= 0) return;
     updateModuleData(moduleId, prev => {
-      const entries = prev.entries || [];
-      const idx = entries.findIndex(e => e.id === entryId);
-      if (idx === -1) return prev;
-      const delta = parsed - entries[idx].amount;
-      const newTotal = Math.max(0, (prev.total ?? prev.minutes ?? 0) + delta);
-      const nextEntries = [...entries];
-      nextEntries[idx] = { ...entries[idx], amount: parsed };
-      return {
-        ...prev,
-        total: newTotal,
-        minutes: newTotal,
-        entries: nextEntries,
+      const { next } = setEntryAmount(prev, entryId, parsed);
+      return next;
+    });
+  };
+
+  // Schrijft entries over (mogelijk) meerdere modules in één setModuleData-
+  // call — nodig omdat het save-effect (r. 369-391) anders twee keer vuurt
+  // voor wat conceptueel één actie is. `writes` is [{ moduleId, entry }].
+  // Na de write viert elke module in `crossed` zijn dagdoel-viering, net als
+  // addCounterEntry doet. Dit is de consument die applyEntryWrites (#141)
+  // een echte aanroeper geeft.
+  const applyCounterEntryWrites = (writes) => {
+    const goals = {};
+    writes.forEach(({ moduleId }) => {
+      const mod = modules.find(m => m.id === moduleId);
+      goals[moduleId] = mod?.dailyGoal ?? 0;
+    });
+    let crossedModuleIds = [];
+    setModuleData(prev => {
+      const { next, crossed } = applyEntryWrites(prev, writes, goals);
+      crossedModuleIds = crossed;
+      return next;
+    });
+    crossedModuleIds.forEach(moduleId => {
+      const mod = modules.find(m => m.id === moduleId);
+      if (mod) tryCounterCelebration(mod, t('today.goalReached', { name: resolveModuleName(mod, t) }));
+    });
+  };
+
+  // Logt één voedingsregel (product, portie of maaltijd — #141/#142/#147):
+  // de kcal (log.amount) en de bevroren source-snapshot komen kant-en-klaar
+  // uit buildNutritionLog/buildPortionLog/buildMealLog. Krijgt de actieve
+  // categorie mee, net als de presetknoppen.
+  //
+  // #143: is er een gekoppelde drinkteller én bevat de regel drinkbare ml,
+  // dan gaat er in dezelfde handeling een tweede entry naar die teller. De
+  // twee entries wijzen kruislings naar elkaar zodat verwijderen en bewerken
+  // het paar terugvinden. De ml-entry krijgt bewust géén categorie: de
+  // categorie van de calorieënteller hoort niet in de drink-categorieën te
+  // lekken. Zonder koppeling of zonder ml is dit exact het oude pad.
+  const addNutritionEntry = (moduleId, log, category) => {
+    const mod = modules.find(m => m.id === moduleId);
+    const drinkModule = resolveDrinkModule(modules, mod);
+    const ml = Math.round((log.source?.quantity ?? 0) * (log.source?.perUnit?.ml ?? 0));
+    // Eén tijdstempel voor het hele paar: twee losse new Date()-aanroepen
+    // kunnen precies op een minuutgrens uiteenlopen, en dan tonen de twee
+    // kaarten een verschillende tijd voor wat één handeling was.
+    const at = new Date();
+    const entry = createEntry({ amount: log.amount, category: category ?? null, source: log.source, at });
+
+    if (drinkModule && ml > 0) {
+      const drinkEntry = createEntry({
+        amount: ml,
+        linkedTo: { moduleId, entryId: entry.id, name: log.source?.name || '' },
+        at,
+      });
+      const linkedEntry = {
+        ...entry,
+        source: { ...log.source, drinkEntry: { moduleId: drinkModule.id, entryId: drinkEntry.id } },
       };
+      applyCounterEntryWrites([
+        { moduleId, entry: linkedEntry },
+        { moduleId: drinkModule.id, entry: drinkEntry },
+      ]);
+    } else {
+      applyCounterEntryWrites([{ moduleId, entry }]);
+    }
+    sfx('tick');
+  };
+
+  // Herrekent amount uit de bevroren perUnit-rate (nooit uit de oude amount,
+  // anders driftt het dagtotaal) en stelt total bij met precies het verschil.
+  // perUnit blijft onafgerond zodat opeenvolgende wijzigingen niet cumulatief
+  // afronden.
+  //
+  // #143: bij een gekoppelde regel schuift de ml-entry in dezelfde call mee,
+  // uit dezelfde bevroren perUnit.ml. Geen dagdoel-viering hier — dat is het
+  // bestaande gedrag van dit pad en blijft zo; alleen loggen viert.
+  const setNutritionEntryQuantity = (moduleId, entryId, quantity) => {
+    setModuleData(prev => {
+      const entry = (prev[moduleId]?.entries || []).find(e => e.id === entryId);
+      const updates = [{
+        moduleId,
+        entryId,
+        patchFn: (e) => ({
+          amount: Math.round(quantity * (e.source?.perUnit?.kcal ?? 0)),
+          source: { ...e.source, quantity },
+        }),
+      }];
+      const link = entry?.source?.drinkEntry;
+      if (link?.moduleId && link?.entryId) {
+        const perUnitMl = entry.source?.perUnit?.ml ?? 0;
+        updates.push({
+          moduleId: link.moduleId,
+          entryId: link.entryId,
+          patchFn: () => ({ amount: Math.round(quantity * perUnitMl) }),
+        });
+      }
+      const { next } = applyEntryUpdates(prev, updates);
+      return next;
     });
   };
 
@@ -1537,6 +1799,62 @@ export default function Ritmo() {
     });
   }, [activeDateKey]);
 
+  // Analoog aan writeTasksForDay hierboven, maar voor moduleData van een
+  // willekeurige dag (S10c): actieve dag via de bestaande setModuleData-state
+  // (het save-effect schrijft die al weg), elke andere dag rechtstreeks naar
+  // dat day:<date>-record. Dit is de enige nieuwe schrijfweg voor een module-
+  // item/-blok op een niet-actieve dag: zowel afvinken op een andere dag als
+  // "deel mijn dag in" en het slepen naar een andere dag bouwen hierop voort.
+  const writeModuleDataForDay = useCallback((dateKey, moduleId, updater) => {
+    if (dateKey === activeDateKey) {
+      setModuleData(prev => ({
+        ...prev,
+        [moduleId]: updater(prev[moduleId] || {}),
+      }));
+      return;
+    }
+    setHistory(prev => {
+      const day = prev[dateKey] || { moduleData: {}, customTasks: [] };
+      const nextModuleData = {
+        ...(day.moduleData || {}),
+        [moduleId]: updater(day.moduleData?.[moduleId] || {}),
+      };
+      const nextDay = { ...day, moduleData: nextModuleData };
+      window.storage.set(`day:${dateKey}`, JSON.stringify(nextDay)).catch(() => {});
+      return { ...prev, [dateKey]: nextDay };
+    });
+  }, [activeDateKey]);
+
+  // Leest de moduleData van één module op een willekeurige dag — het
+  // leesspiegelbeeld van writeModuleDataForDay, gebruikt om een snapshot te
+  // nemen vóór het indelen (snapshotItem hieronder).
+  const readModuleDataForDay = useCallback((dateKey, moduleId) => {
+    if (dateKey === activeDateKey) return moduleData[moduleId] || {};
+    return history[dateKey]?.moduleData?.[moduleId] || {};
+  }, [activeDateKey, moduleData, history]);
+
+  // Afvinken van een checklist-item op een willekeurige dag van de zichtbare
+  // week (S10c). Op de actieve dag hergebruikt dit de bestaande
+  // toggleChecklistItem (incl. geluid); op elke andere dag schrijft het
+  // rechtstreeks naar dat day:<date>-record. Zelfde patroon als
+  // toggleTaskInDay hierboven.
+  const toggleModuleItemForDay = useCallback((dateKey, moduleId, itemId) => {
+    if (dateKey === activeDateKey) { toggleChecklistItem(moduleId, itemId); return; }
+    writeModuleDataForDay(dateKey, moduleId, prev => {
+      const data = normalizeChecklistItemData(prev[itemId]);
+      return { ...prev, [itemId]: { ...data, checked: !data.checked } };
+    });
+  }, [activeDateKey, writeModuleDataForDay]);
+
+  // Afvinken van een choice-blok op een willekeurige dag (S10c) — de
+  // afvinkbare vorm van een module-blok (checklist-blok en counter zijn
+  // read-only, zie dayTimeline.js). Zelfde patroon als toggleModuleItemForDay
+  // hierboven.
+  const toggleChoiceForDay = useCallback((dateKey, moduleId) => {
+    if (dateKey === activeDateKey) { toggleChoice(moduleId); return; }
+    writeModuleDataForDay(dateKey, moduleId, prev => ({ ...prev, completed: !prev.completed }));
+  }, [activeDateKey, writeModuleDataForDay]);
+
   // Analoog aan writeTasksForDay hierboven, maar voor de skippedRecurring-
   // lijst van een willekeurige dag (V03). Nu alleen aangeroepen voor de
   // actieve dag (deleteTask hierboven); V04 hangt er de verwijderknop op
@@ -1612,6 +1930,26 @@ export default function Ritmo() {
       return null;
     }
 
+    // Een module-item/-blok (S10c) is een dagelijks terugkerende routine, geen
+    // taak die van dag verhuist: alleen de doeldag krijgt een `plannedTime`.
+    // De brondag blijft ongemoeid — morgen valt het item vanzelf terug op zijn
+    // standaardtijd uit de moduleconfig (of ongepland), zie dayTimeline.js.
+    if (parsed.kind === 'moduleItem') {
+      writeModuleDataForDay(targetDateKey, parsed.moduleId, prev => {
+        const data = normalizeChecklistItemData(prev[parsed.itemId]);
+        return { ...prev, [parsed.itemId]: { ...data, plannedTime: time || undefined } };
+      });
+      return null;
+    }
+
+    if (parsed.kind === 'moduleBlock') {
+      writeModuleDataForDay(targetDateKey, parsed.moduleId, prev => ({
+        ...prev,
+        plannedTime: time || undefined,
+      }));
+      return null;
+    }
+
     if (parsed.kind !== 'task') return null;
     const taskId = parsed.taskId;
 
@@ -1655,7 +1993,7 @@ export default function Ritmo() {
       writeTasksForDay(sourceDateKey, tasks => tasks.filter(t => String(t.id) !== taskId));
     }
     return createdTaskId;
-  }, [readTasksForDay, writeTasksForDay, recurringTasks]);
+  }, [readTasksForDay, writeTasksForDay, recurringTasks, writeModuleDataForDay]);
 
   // Zet de duur van één pool-item, ongeacht soort. Zusje van moveItemToDay:
   // dezelfde item-key -> kind-dispatch, en dezelfde dag-bewuste schrijfweg.
@@ -1730,7 +2068,18 @@ export default function Ritmo() {
   // andere week bekijken mag dus nooit de actieve dag verzetten — alle
   // schrijfacties op zo'n dag lopen via `writeTasksForDay`, die het dagrecord
   // rechtstreeks wegschrijft zonder datumgrens.
-  const [weekOffset, setWeekOffset] = useState(0);
+  // S12a (deel A): als de app opstart via een returnTo naar een dag in een
+  // andere week, staat `weekOffset` meteen op die week — anders zou de knop
+  // in de Planner terugkomen op de juiste dag maar in de verkeerde week
+  // (AC2). `startOfWeek`/`addDays`/`parseDateKey` zijn de bestaande helpers
+  // uit utils/dates.js, geen nieuwe datum-rekenkunde.
+  const [weekOffset, setWeekOffset] = useState(() => {
+    if (!initialPlannerDateKey) return 0;
+    const targetWeekStart = startOfWeek(parseDateKey(initialPlannerDateKey));
+    const currentWeekStart = startOfWeek(new Date());
+    const diffDays = Math.round((targetWeekStart.getTime() - currentWeekStart.getTime()) / 86400000);
+    return Math.round(diffDays / 7);
+  });
 
   // Zichtbare week voor de WeekView: de 7 dagen (ma-zo) van de week die
   // `weekOffset` aanwijst. De actieve dag (altijd "vandaag" binnen de Planner,
@@ -1772,9 +2121,14 @@ export default function Ritmo() {
         dayTasks = [...stored, ...missing];
       }
 
-      return { date, dateKey, customTasks: dayTasks };
+      // moduleData (S10c): dezelfde actieve-dag-vs-history-keuze als
+      // customTasks hierboven, zodat een module-item/-blok op elke dag van de
+      // zichtbare week zijn eigen afvink- en plan-status heeft.
+      const dayModuleData = dateKey === activeDateKey ? moduleData : (history[dateKey]?.moduleData || {});
+
+      return { date, dateKey, customTasks: dayTasks, moduleData: dayModuleData };
     });
-  }, [activeDateKey, customTasks, skippedRecurring, history, recurringTasks, todayKey, weekOffset]);
+  }, [activeDateKey, customTasks, skippedRecurring, history, recurringTasks, todayKey, weekOffset, moduleData]);
 
   // ---- Outlook-agenda (S07 / S07a, persistent sinds S07d) ------------------
   // Eigen useConnections-instantie (naast die van ConnectionsSection) puur om
@@ -1815,6 +2169,20 @@ export default function Ritmo() {
   // nog-onbekende status (netwerk nog bezig, offline) telt bewust niet als
   // "verbroken" — anders zou een tijdelijke laad-hik al de cache wissen.
   const wasOutlookConnectedRef = useRef(false);
+
+  // Device-local "laatst weggeschreven om"-log voor "Zet in agenda" (S12,
+  // src/utils/calendarWriteLog.js) — per dateKey de ISO-tijd van de laatste
+  // geslaagde write. Geladen bij mount zodat de regel een herlaad overleeft
+  // (AC11); leeft verder alleen in state (geen sync, zie de module zelf).
+  const [calendarWriteLog, setCalendarWriteLog] = useState({});
+  useEffect(() => {
+    let cancelled = false;
+    readCalendarWriteLog().then((log) => {
+      if (!cancelled) setCalendarWriteLog(log);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     if (connectionState.loading) return;
     if (wasOutlookConnectedRef.current && !outlookConnection) {
@@ -1824,6 +2192,11 @@ export default function Ritmo() {
       clearAgendaSelection();
       setAgendaSelection([]);
       setAgendaShown(false);
+      // Idem voor het write-log (S12): een verbroken koppeling laat geen
+      // "bijgewerkt om"-regel achter voor een agenda die niemand meer kan
+      // bijwerken.
+      clearCalendarWriteLog();
+      setCalendarWriteLog({});
     }
     wasOutlookConnectedRef.current = !!outlookConnection;
   }, [outlookConnection, connectionState.loading]);
@@ -1836,40 +2209,69 @@ export default function Ritmo() {
     }
   }, [agendaShown, refetchOutlookAgenda]);
 
-  // ---- Trello-borden (S08) --------------------------------------------------
+  // Na de opruimknop in Instellingen (S12/#155, CalendarCleanupSection): het
+  // device-local "Agenda bijgewerkt om …"-log wist mee (zelfde reden als bij
+  // het verbreken van de koppeling hierboven — het gaat over blokken die er
+  // niet meer zijn) en de agendaweergave in de Planner ververst zich meteen,
+  // zodat verwijderde blokken niet nog even "extern" blijven staan (AC8).
+  const handleCalendarBlocksCleaned = useCallback(() => {
+    clearCalendarWriteLog();
+    setCalendarWriteLog({});
+    refetchOutlookAgenda();
+  }, [refetchOutlookAgenda]);
+
+  // ---- Trello-borden (S08, meerdere accounts sinds #120) --------------------
   // Hergebruikt de bestaande useConnections-instantie hierboven (geen tweede,
-  // zie de slice-spec) om ook de Trello-connectie af te leiden.
-  const trelloConnection = connectionState.connections.find(
-    c => c.provider === 'trello' && c.status === 'connected'
-  ) || null;
+  // zie de slice-spec) om alle verbonden Trello-rijen af te leiden — niet
+  // langer de ene rij van vóór #120 (de S08-Poort-0-aanname "één
+  // Trello-account per gebruiker" is vervallen).
+  const trelloConnections = useMemo(
+    () => connectionState.connections.filter(c => c.provider === 'trello' && c.status === 'connected'),
+    [connectionState.connections]
+  );
+  const trelloConnectionIds = useMemo(
+    () => trelloConnections.map(c => c.id),
+    [trelloConnections]
+  );
+  const trelloConnectionIdsKey = trelloConnectionIds.slice().sort().join(',');
+  // Voor ConnectionsSection/TrelloBoardPicker: naam + id per verbonden
+  // account, al bekend zonder op de lazy bord-fetch te wachten.
+  const trelloAccounts = useMemo(
+    () => trelloConnections.map(c => ({ connectionId: c.id, label: c.label || '' })),
+    [trelloConnections]
+  );
   const trelloVisible = getSourcePref(sourcePrefs, 'trello').visible;
 
   // Bordkeuze (welk bord telt mee, en welke lijst daarbinnen "altijd" is) is
   // device-local (zie utils/trelloBoardPrefs.js) en overleeft dus geen sync,
   // net als agendaSelection hierboven. Geseed uit opslag bij mount en telkens
-  // wanneer de connectie verandert (na opnieuw koppelen nooit andermans
-  // bordselectie hergebruiken, zie readTrelloBoardPrefs).
+  // wanneer de verbonden accounts veranderen. `connectionState.loading` telt
+  // als "nog onbekend" (readTrelloBoardPrefs slaat het prunen dan over) zodat
+  // de bordselectie niet even verdwijnt vóórdat de koppelingsstatus bekend is;
+  // ná het laden prunet elke wijziging in de accountlijst borden van een
+  // inmiddels verbroken account (AC4), zonder de héle selectie te wissen.
   const [trelloBoardPrefs, setTrelloBoardPrefsState] = useState({ boards: {} });
   useEffect(() => {
     let cancelled = false;
-    readTrelloBoardPrefs(trelloConnection?.id).then(prefs => {
+    readTrelloBoardPrefs(connectionState.loading ? null : trelloConnectionIds).then(prefs => {
       if (!cancelled) setTrelloBoardPrefsState(prefs);
     });
     return () => { cancelled = true; };
-  }, [trelloConnection?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trelloConnectionIdsKey, connectionState.loading]);
 
   // Setter die zowel de state als de opslag bijwerkt (zelfde vorm als
   // `setSourcePrefs`: accepteert een updater-functie of een waarde).
   const setTrelloBoardPrefs = useCallback((updater) => {
     setTrelloBoardPrefsState(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
-      writeTrelloBoardPrefs({ connectionId: trelloConnection?.id, boards: next.boards });
+      writeTrelloBoardPrefs({ boards: next.boards });
       return next;
     });
-  }, [trelloConnection?.id]);
+  }, []);
 
-  const trelloIncludedBoardIds = useMemo(
-    () => includedBoardIds(trelloBoardPrefs),
+  const trelloIncludedBoardPairs = useMemo(
+    () => includedBoardPairs(trelloBoardPrefs),
     [trelloBoardPrefs]
   );
 
@@ -1877,7 +2279,7 @@ export default function Ritmo() {
   // (zelfde reden als agendaActive hierboven: de cache-seed hoeft niet op het
   // netwerk te wachten). De oog-toggle op de Trello-rij is de aan/uit-
   // schakelaar voor heel Trello (zie de kernbeslissing in de slice-spec).
-  const trelloActive = trelloVisible && (connectionState.loading || !!trelloConnection);
+  const trelloActive = trelloVisible && (connectionState.loading || trelloConnections.length > 0);
   const {
     boards: trelloCacheBoards,
     loading: trelloCardsLoading,
@@ -1886,27 +2288,32 @@ export default function Ritmo() {
     refetch: refetchTrelloCards,
   } = useTrelloCards({
     active: trelloActive,
-    enabled: trelloActive && !!trelloConnection && trelloIncludedBoardIds.length > 0,
-    boardIds: trelloIncludedBoardIds,
-    connectionId: trelloConnection?.id,
+    enabled: trelloActive && trelloConnections.length > 0 && trelloIncludedBoardPairs.length > 0,
+    boardPairs: trelloIncludedBoardPairs,
+    connectionIds: connectionState.loading ? null : trelloConnectionIds,
   });
 
-  // Geen wees-projecten van een verbroken koppeling (AC15): zowel de
-  // kaarten-cache als de bordkeuze gaan mee weg zodra deze instantie leert
-  // dat Trello niet meer verbonden is terwijl dat eerder wel zo was.
-  const wasTrelloConnectedRef = useRef(false);
+  // Geen wees-projecten wanneer het láátste Trello-account wordt verbroken
+  // (AC5): zelfde gedrag als vandaag — cache, bordselectie en de eigen
+  // dag/tijd/duur per kaart (`sourceItemPrefs`) worden gewist zodra deze
+  // instantie leert dat er geen enkele Trello-connectie meer over is terwijl
+  // dat eerder wel zo was. Eén van meerdere accounts verbreken (AC4) hoeft
+  // hier geen actie: de effecten hierboven prunen de borden van dat account
+  // al uit prefs/cache zodra `trelloConnectionIds` krimpt, en de
+  // kaart-overrides van dat account blijven bewust staan (per-kaart-id,
+  // onschadelijk zolang de kaart niet meer bestaat, en her-koppelen van
+  // hetzelfde account zou anders onnodig duur worden).
+  const wasAnyTrelloConnectedRef = useRef(false);
   useEffect(() => {
     if (connectionState.loading) return;
-    if (wasTrelloConnectedRef.current && !trelloConnection) {
+    if (wasAnyTrelloConnectedRef.current && trelloConnections.length === 0) {
       clearTrelloCache();
       clearTrelloBoardPrefs();
       setTrelloBoardPrefsState({ boards: {} });
-      // Ook de eigen dag/tijd/duur per kaart: zonder de koppeling bestaan die
-      // kaarten niet meer, dus die overrides zouden wezen zijn.
       setSourceItemPrefs(prev => clearOverridesWithPrefix(prev, TRELLO_CARD_ID_PREFIX));
     }
-    wasTrelloConnectedRef.current = !!trelloConnection;
-  }, [trelloConnection, connectionState.loading]);
+    wasAnyTrelloConnectedRef.current = trelloConnections.length > 0;
+  }, [trelloConnections.length, connectionState.loading]);
 
   // Afgeleide Trello-projects-modules (de kernbeslissing in de slice-spec):
   // leven alleen in het geheugen, nooit in `modules`/settings, dus
@@ -1920,14 +2327,17 @@ export default function Ritmo() {
   // gebruiker zelf op een kaart zette wordt er hier read-time overheen
   // gemerged (sourceItemPrefs.js). Zo hoeft geen enkele consumer
   // (dayTimeline, TaskPoolPanel, de indeler) van het bestaan te weten.
+  // `buildTrelloModules` blijft ongewijzigd (#120): elk bord draagt zijn
+  // eigen `connectionId` al in de cache, dus de losse `connectionId`-optie
+  // hier is voor meerdere accounts niet meer eenduidig en wordt weggelaten.
   const trelloModules = useMemo(() => {
     if (!trelloVisible) return [];
     return applyItemOverrides(buildTrelloModules(
       { boards: trelloCacheBoards },
       trelloBoardPrefs,
-      { connectionId: trelloConnection?.id, color: getSourcePref(sourcePrefs, 'trello').color },
+      { color: getSourcePref(sourcePrefs, 'trello').color },
     ), sourceItemPrefs);
-  }, [trelloVisible, trelloCacheBoards, trelloBoardPrefs, trelloConnection, sourcePrefs, sourceItemPrefs]);
+  }, [trelloVisible, trelloCacheBoards, trelloBoardPrefs, sourcePrefs, sourceItemPrefs]);
 
   // ---- GitHub-repo's (S09) --------------------------------------------------
   // Hergebruikt dezelfde useConnections-instantie (connectionState) om ook de
@@ -2025,7 +2435,7 @@ export default function Ritmo() {
     const rawTrelloModules = buildTrelloModules(
       { boards: trelloCacheBoards },
       trelloBoardPrefs,
-      { connectionId: trelloConnection?.id, color: getSourcePref(sourcePrefs, 'trello').color },
+      { color: getSourcePref(sourcePrefs, 'trello').color },
     );
     const rawGithubModules = buildGithubModules(
       { repos: githubCacheRepos },
@@ -2033,7 +2443,7 @@ export default function Ritmo() {
       { connectionId: githubConnection?.id, color: getSourcePref(sourcePrefs, 'github').color },
     );
     return collectHiddenItems([...rawTrelloModules, ...rawGithubModules], sourceItemPrefs);
-  }, [sourceItemPrefs, trelloCacheBoards, trelloBoardPrefs, trelloConnection, githubCacheRepos, githubRepoPrefs, githubConnection, sourcePrefs]);
+  }, [sourceItemPrefs, trelloCacheBoards, trelloBoardPrefs, githubCacheRepos, githubRepoPrefs, githubConnection, sourcePrefs]);
 
   const allModules = useMemo(
     () => [...modules, ...trelloModules, ...githubModules],
@@ -2050,6 +2460,26 @@ export default function Ritmo() {
       if (!cancelled) setAgendaSelection(ids);
     });
     return () => { cancelled = true; };
+  }, []);
+
+  // Welke planner-provider "deel mijn dag in" gebruikt (S11). Device-lokaal
+  // (zie utils/plannerProvider.js) om dezelfde reden als agendaSelection
+  // hierboven: eigen state, niet in `settings`.
+  const [plannerProvider, setPlannerProviderState] = useState(DEFAULT_PLANNER_PROVIDER);
+  useEffect(() => {
+    let cancelled = false;
+    readPlannerProvider().then(value => {
+      if (!cancelled) setPlannerProviderState(value);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const updatePlannerProvider = useCallback((partial) => {
+    setPlannerProviderState(prev => {
+      const next = { ...prev, ...partial };
+      writePlannerProvider(next);
+      return next;
+    });
   }, []);
 
   const handleToggleAgendaBlock = useCallback((blockId) => {
@@ -2073,14 +2503,16 @@ export default function Ritmo() {
 
   // ---- "Deel mijn dag in" (S05) -------------------------------------------
   // Bouwt de input voor de pure planDay-motor voor één dag: candidates zijn
-  // pool-items (autoPlan === true, zonder tijd), fixed zijn items die al een
-  // tijd hebben. Spiegelt dayTimeline.js' bronnen (project-subgoals +
-  // customTasks, incl. gematerialiseerde recurring via weekDays) maar geeft
-  // ook `autoPlan` door — dat veld heeft de Dag-tijdlijn zelf niet nodig.
+  // pool-items zonder tijd, fixed zijn items die al een tijd hebben.
+  // Spiegelt dayTimeline.js' bronnen (project-subgoals + customTasks, incl.
+  // gematerialiseerde recurring via weekDays, plus de module-items) maar leest
+  // daar bovenop `autoPlan` — dat veld heeft de Dag-tijdlijn zelf niet nodig.
   // `meta` onthoudt per key de weergave-info (label/kleur/soort) voor de
   // pending-blokken; planDay zelf blijft puur en krijgt alleen platte data.
   const buildPlanInputs = useCallback((dateKey) => {
-    const dayTasks = weekDays.find(d => d.dateKey === dateKey)?.customTasks || [];
+    const day = weekDays.find(d => d.dateKey === dateKey);
+    const dayTasks = day?.customTasks || [];
+    const dayModuleData = day?.moduleData || {};
     const candidates = [];
     const fixed = [];
     const meta = {};
@@ -2121,8 +2553,51 @@ export default function Ritmo() {
       }
     });
 
+    // Module-items/-blokken (S10c): effectieve tijd (dagafwijking uit
+    // dayModuleData, anders de standaardtijd uit de moduleconfig) gezet
+    // betekent `fixed`, anders `candidates`. Routines kennen bewust één
+    // opt-in — `planInDay`, dezelfde poort die `buildDayTimeline` gebruikt om
+    // ze in de takenpool te zetten — zodat wat in de pool staat ook echt
+    // meedoet met "deel mijn dag in". Losse taken en projecttaken hierboven
+    // houden hun eigen `autoPlan`-vinkje; die staan altijd in de pool en
+    // hebben dus wél een tweede keuze nodig.
+    modules.forEach(mod => {
+      if (!mod.enabled || !mod.planInDay) return;
+      if (!['checklist', 'choice', 'counter'].includes(mod.type)) return;
+
+      if (mod.type === 'checklist' && mod.planGranularity !== 'block') {
+        (mod.items || []).forEach(item => {
+          if (item.planInDay === false) return;
+          const key = moduleItemKey(mod.id, item.id);
+          meta[key] = { label: item.label, color: mod.color, kind: 'routine' };
+          const effectiveTime = dayModuleData[mod.id]?.[item.id]?.plannedTime ?? item.time;
+          if (effectiveTime) {
+            fixed.push({ time: effectiveTime, duration: item.duration });
+          } else {
+            candidates.push({ key, duration: item.duration, window: item.window || '', deepWork: false, order: order++ });
+          }
+        });
+        return;
+      }
+
+      const key = moduleBlockKey(mod.id);
+      meta[key] = { label: resolveModuleName(mod, t), color: mod.color, kind: 'routine' };
+      const effectiveTime = dayModuleData[mod.id]?.plannedTime ?? mod.time;
+      if (effectiveTime) {
+        fixed.push({ time: effectiveTime, duration: mod.duration });
+      } else {
+        candidates.push({ key, duration: mod.duration, window: mod.window || '', deepWork: false, order: order++ });
+      }
+    });
+
+    // S11: elke candidate draagt zijn eigen label (uit `meta`) mee, zodat een
+    // AI-provider (local.js/server.js) een leesbare prompt kan bouwen zonder
+    // dat `meta` zelf de grens van deze functie hoeft over te steken. `planDay`
+    // negeert het onbekende veld gewoon.
+    candidates.forEach(c => { c.label = meta[c.key]?.label || ''; });
+
     return { candidates, fixed, meta };
-  }, [weekDays, allModules, modules]);
+  }, [weekDays, allModules, modules, t]);
 
   // Past één plan-toewijzing toe via de bestaande cross-day-handler
   // (moveItemToDay dekt zowel losse taken, gematerialiseerde recurring als
@@ -2166,6 +2641,19 @@ export default function Ritmo() {
       };
     }
 
+    // Een module-item/-blok (S10c) heeft zijn dagafwijking in `moduleData` van
+    // díé dag, niet in `modules` zelf — de snapshot legt dus alleen
+    // `plannedTime` vast (undo zet die terug, nooit de configstandaard aan).
+    if (parsed.kind === 'moduleItem') {
+      const data = readModuleDataForDay(dateKey, parsed.moduleId);
+      return { kind: 'moduleItem', moduleId: parsed.moduleId, itemId: parsed.itemId, plannedTime: data[parsed.itemId]?.plannedTime };
+    }
+
+    if (parsed.kind === 'moduleBlock') {
+      const data = readModuleDataForDay(dateKey, parsed.moduleId);
+      return { kind: 'moduleBlock', moduleId: parsed.moduleId, plannedTime: data.plannedTime };
+    }
+
     if (parsed.kind !== 'task') return null;
     // Een virtuele instantie bestaat nog niet; die levert bij het toepassen een
     // 'createdTask'-entry op (zie applyAssignments), niet een 'task'-entry.
@@ -2173,7 +2661,7 @@ export default function Ritmo() {
     const task = readTasksForDay(dateKey).find(t => String(t.id) === parsed.taskId);
     if (!task) return null;
     return { kind: 'task', taskId: parsed.taskId, time: task.time };
-  }, [modules, sourceItemPrefs, readTasksForDay]);
+  }, [modules, sourceItemPrefs, readTasksForDay, readModuleDataForDay]);
 
   // Past een reeks toewijzingen toe en levert de undo-entries. Eén weg voor
   // zowel de direct-stand als "alles overnemen". De snapshots worden binnen
@@ -2198,6 +2686,8 @@ export default function Ritmo() {
     const sourceEntries = entries.filter(e => e.kind === 'sourceItem');
     const taskEntries = entries.filter(e => e.kind === 'task');
     const createdIds = entries.filter(e => e.kind === 'createdTask').map(e => e.taskId);
+    const moduleItemEntries = entries.filter(e => e.kind === 'moduleItem');
+    const moduleBlockEntries = entries.filter(e => e.kind === 'moduleBlock');
 
     // `withItemOverride` normaliseert mee, dus het terugdraaien van een
     // eerste-keer-tijd laat geen lege entry achter in de map.
@@ -2237,7 +2727,27 @@ export default function Ritmo() {
           return entry ? { ...t, time: entry.time } : t;
         }));
     }
-  }, [writeTasksForDay]);
+
+    // Module-items (S10c): per module één schrijfactie, ook als er meerdere
+    // items van dezelfde module zijn teruggedraaid — zelfde "één schrijfactie
+    // per bron"-principe als de subgoal-tak hierboven.
+    if (moduleItemEntries.length) {
+      const moduleIds = [...new Set(moduleItemEntries.map(e => e.moduleId))];
+      moduleIds.forEach(moduleId => {
+        const forModule = moduleItemEntries.filter(e => e.moduleId === moduleId);
+        writeModuleDataForDay(dateKey, moduleId, prev => forModule.reduce((acc, e) => {
+          const data = normalizeChecklistItemData(acc[e.itemId]);
+          return { ...acc, [e.itemId]: { ...data, plannedTime: e.plannedTime } };
+        }, prev));
+      });
+    }
+
+    if (moduleBlockEntries.length) {
+      moduleBlockEntries.forEach(e => {
+        writeModuleDataForDay(dateKey, e.moduleId, prev => ({ ...prev, plannedTime: e.plannedTime }));
+      });
+    }
+  }, [writeTasksForDay, writeModuleDataForDay]);
 
   // Snapshot van de laatste indeling. Ephemeer, net als pendingPlan: na een
   // herlaadbeurt is er niets meer terug te draaien. Eén tegelijk — een nieuwe
@@ -2262,15 +2772,41 @@ export default function Ritmo() {
     restorePlanSnapshot(snapshot);
   }, [restorePlanSnapshot]);
 
+  // Bouwt de gebruiksvriendelijke melding over welke provider de indeling
+  // maakte (S11): niets bij de stille default (`heuristic`, geen fallback —
+  // AC2 wil hier expliciet geen extra ruis), anders óf "ingedeeld met <ai>"
+  // óf de fallback-uitleg. Gebruikt door zowel de direct-stand-toast
+  // hieronder als `pendingPlan` (gerenderd door WeekView's PendingPlanBar).
+  const describePlanProvider = useCallback(({ providerUsed, fallbackFrom, fallbackReason }) => {
+    if (fallbackFrom) {
+      return t('planner.provider.fallbackNotice', {
+        provider: t(`planner.provider.names.${fallbackFrom}`),
+        reason: t(`planner.provider.reasons.${fallbackReason}`),
+      });
+    }
+    if (providerUsed && providerUsed !== 'heuristic') {
+      return t('planner.provider.usedNotice', { provider: t(`planner.provider.names.${providerUsed}`) });
+    }
+    return null;
+  }, [t]);
+
   // Hoofd-handler: verzamelt candidates/fixed voor `dateKey`, leidt dayStart
   // af uit een actieve slaap-module (of de nette fallback) en vertakt op
   // planMode. `notify` is optioneel en alleen nodig voor de ongedaan-maken-
   // toast van de direct-stand; App.jsx zelf zit niet onder ToastProvider, dus
   // de aanroeper (ProductivitySuiteView, wél een ToastProvider-kind) geeft
-  // zijn eigen `showToast` mee.
-  const handleShareDay = useCallback((dateKey, notify) => {
+  // zijn eigen `showToast` mee. Async sinds S11: `planWithProvider` kan een
+  // netwerkcall zijn (local/server-provider), met altijd een fallback naar de
+  // synchrone heuristiek als die faalt (AC4).
+  const handleShareDay = useCallback(async (dateKey, notify) => {
     const { candidates, fixed, meta } = buildPlanInputs(dateKey);
-    if (candidates.length === 0) return;
+    // Twee lege uitkomsten die er van buitenaf identiek uitzien maar een
+    // andere oorzaak hebben: hier stond er niets zonder tijd klaar, verderop
+    // vond de indeler geen vrije ruimte. Zonder melding lijkt de knop stuk.
+    if (candidates.length === 0) {
+      if (typeof notify === 'function') notify({ message: t('planner.toast.nothingToPlan') });
+      return;
+    }
 
     const sleepModule = modules.find(m => m.enabled && m.type === 'sleep');
     const wake = sleepModule ? goalsForNight(sleepModule.goals, parseDateKey(dateKey)).wake : null;
@@ -2287,7 +2823,8 @@ export default function Ritmo() {
         && agendaSelection.includes(b.id)
     );
 
-    const { assignments } = planDay({
+    const { assignments, explanation, providerUsed, fallbackFrom, fallbackReason } = await planWithProvider({
+      providerId: plannerProvider.providerId,
       candidates,
       fixed,
       external: externalBlocksForDay(visibleAgendaBlocks, dateKey),
@@ -2295,15 +2832,24 @@ export default function Ritmo() {
       dayEnd: PLAN_DAY_END,
       slotStep: DEFAULT_BLOCK_MINUTES,
       prefs: planPrefs,
+      // Alleen de 'local'-provider heeft dit nodig (baseUrl/model voor
+      // Ollama); 'server' leest niets uit `config` (die praat via de
+      // JWT-fetch-laag, geen device-lokale settings).
+      config: plannerProvider.local,
     });
-    if (assignments.length === 0) return;
+    if (assignments.length === 0) {
+      if (typeof notify === 'function') notify({ message: t('planner.toast.noRoom') });
+      return;
+    }
+
+    const providerNotice = describePlanProvider({ providerUsed, fallbackFrom, fallbackReason });
 
     if (planMode === 'direct') {
       const entries = applyAssignments(dateKey, assignments);
       if (entries.length) rememberPlanUndo({ dateKey, entries });
       if (typeof notify === 'function') {
         notify({
-          message: t('planner.toast.planned'),
+          message: providerNotice ? `${t('planner.toast.planned')} ${providerNotice}` : t('planner.toast.planned'),
           actionLabel: t('common.undo'),
           onAction: undoLastPlan,
         });
@@ -2314,6 +2860,10 @@ export default function Ritmo() {
     setPendingPlan({
       dateKey,
       mode: planMode,
+      explanation: explanation || null,
+      providerUsed,
+      fallbackFrom,
+      fallbackReason,
       items: assignments.map(a => ({
         ...a,
         label: meta[a.key]?.label || '',
@@ -2321,7 +2871,164 @@ export default function Ritmo() {
         kind: meta[a.key]?.kind,
       })),
     });
-  }, [buildPlanInputs, modules, planMode, planPrefs, sourcePrefs, agendaSelection, applyAssignments, rememberPlanUndo, undoLastPlan, t, outlookEventsByDate]);
+  }, [buildPlanInputs, modules, planMode, planPrefs, sourcePrefs, agendaSelection, applyAssignments, rememberPlanUndo, undoLastPlan, t, outlookEventsByDate, plannerProvider, describePlanProvider]);
+
+  // ---- "Zet in agenda" (S12) ----------------------------------------------
+  // Bouwt de dag-tijdlijn voor `dateKey` zonder `handlers` — puur lezen, geen
+  // toggle-functies nodig (dit voedt alleen de write, geen interactieve
+  // weergave). Zelfde bron (`allModules`) en dezelfde tijdlijn als WeekView/de
+  // takenpool: wat er in het rooster staat is wat er wordt weggeschreven
+  // (AC5/AC10). `buildPlanInputs` hierboven is hiervoor bewust niet
+  // hergebruikt: die levert alleen `{time, duration}` zonder key of label en
+  // beantwoordt "wat mag de indeler plaatsen", niet "wat staat er gepland".
+  const buildDayBlocks = useCallback((dateKey) => {
+    const day = weekDays.find(d => d.dateKey === dateKey);
+    if (!day) return [];
+    return buildDayTimeline({
+      modules: allModules,
+      customTasks: day.customTasks,
+      moduleData: day.moduleData,
+      resolveName: mod => resolveModuleName(mod, t),
+      referenceDate: day.date,
+    });
+  }, [weekDays, allModules, t]);
+
+  // Bestemmingen die op dit moment aanstaan; leeg = geen knop en geen write
+  // (AC12/AC18) — de aanroeper (ProductivitySuiteView) verbergt de knop zodra
+  // dit leeg is of Outlook niet verbonden is.
+  const calendarWriteDestinations = useMemo(
+    () => activeCalendarDestinations(calendarWritePrefs),
+    [calendarWritePrefs],
+  );
+
+  // Vooraanzicht voor de weekbevestiging (S12a, deel B, AC8): puur tellen,
+  // geen netwerk — dezelfde tijdlijn als de write zelf, dus het aantal
+  // blokken in de dialoog klopt met wat er straks weggeschreven wordt.
+  const buildWeekWriteSummary = useCallback((dateKeys) => {
+    const keys = dateKeys || [];
+    const blockCount = keys.reduce(
+      (total, dateKey) => total + buildCalendarBlocks(buildDayBlocks(dateKey), { dateKey }).length,
+      0,
+    );
+    return { dayCount: keys.length, blockCount };
+  }, [buildDayBlocks]);
+
+  // Gedeelde kern achter zowel de dag- als de weekknop (S12a, deel B): bouwt
+  // de blokken voor `dateKey` en schrijft ze weg. Geen toast/log/refetch hier
+  // — dat verschilt tussen de dag- en de weekvariant (de weekvariant logt en
+  // ververst pas één keer aan het eind, AC12) en blijft dus bij de
+  // aanroepers.
+  const writeDayToCalendar = useCallback(async (dateKey) => {
+    const blocks = buildCalendarBlocks(buildDayBlocks(dateKey), { dateKey });
+    const payload = buildWritePayload({ dateKey, blocks, destinations: calendarWriteDestinations });
+    const result = await writeOutlookDay(payload);
+    return { blocks, result };
+  }, [calendarWriteDestinations, buildDayBlocks]);
+
+  // Hoofd-handler achter de dagknop: schrijft via `writeDayToCalendar` en
+  // ververst daarna de Outlook-agendaweergave zodat een net geschreven blok
+  // niet even als "extern" wordt getoond. `notify` is optioneel, zelfde
+  // constructie als `handleShareDay` hierboven (App.jsx zit zelf niet onder
+  // ToastProvider). Functioneel ongewijzigd t.o.v. vóór S12a (AC13): één
+  // klik, geen bevestiging.
+  const handleWriteDayToCalendar = useCallback(async (dateKey, notify) => {
+    if (calendarWriteDestinations.length === 0) return;
+
+    try {
+      const { blocks, result } = await writeDayToCalendar(dateKey);
+      const log = await recordCalendarWrite(dateKey);
+      setCalendarWriteLog(log);
+      refetchOutlookAgenda();
+
+      if (typeof notify === 'function') {
+        if (result?.partial) {
+          notify({ message: t('planner.calendar.toast.partial', { failed: result.failed || 0 }) });
+        } else if (blocks.length === 0) {
+          notify({ message: t('planner.calendar.toast.cleared') });
+        } else {
+          notify({ message: t('planner.calendar.toast.written') });
+        }
+      }
+    } catch (err) {
+      if (typeof notify !== 'function') return;
+      // Scope-upgrade krijgt een eigen toast met actie (zelfde vorm als de
+      // undo-toast van handleShareDay hierboven): "Opnieuw koppelen" roept
+      // exact dezelfde functie aan als de Verbinden-knop in Instellingen,
+      // nu mét een returnTo (S12a, deel A) zodat je na de consent terugkomt
+      // op precies deze dag.
+      if (err?.code === 'scope_upgrade_required') {
+        notify({
+          message: t('connections.errors.scopeUpgradeRequired'),
+          actionLabel: t('planner.calendar.reconnect'),
+          onAction: () => startOutlookConnect(buildPlannerReturnTo(dateKey)),
+        });
+        return;
+      }
+      const key = ERROR_KEYS[err?.code] || 'connections.errors.unexpected';
+      notify({ message: `${t('planner.calendar.toast.failed')} ${t(key)}` });
+    }
+  }, [calendarWriteDestinations, writeDayToCalendar, refetchOutlookAgenda, t]);
+
+  // Weekvariant van "Zet in agenda": schrijft `dateKeys` sequentieel weg
+  // (Graph-rate-limits, zelfde afweging als `graphBatch` intern) en meldt het
+  // eindresultaat geaggregeerd. `onProgress(index, total)` geeft de
+  // aanroeper zichtbare voortgang (AC9); `refetchOutlookAgenda()` en de
+  // schrijf-log draaien één keer aan het eind, niet per dag (AC12).
+  const handleWriteWeekToCalendar = useCallback(async (dateKeys, notify, onProgress) => {
+    const keys = dateKeys || [];
+    if (calendarWriteDestinations.length === 0 || keys.length === 0) return;
+
+    const writtenDateKeys = [];
+    let failedDays = 0;
+    let stopError = null;
+    let stopDateKey = null;
+
+    for (let i = 0; i < keys.length; i += 1) {
+      const dateKey = keys[i];
+      if (typeof onProgress === 'function') onProgress(i, keys.length);
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const { result } = await writeDayToCalendar(dateKey);
+        writtenDateKeys.push(dateKey);
+        if (result?.partial) failedDays += 1;
+      } catch (err) {
+        if (WEEK_WRITE_STOP_CODES.includes(err?.code)) {
+          stopError = err;
+          stopDateKey = dateKey;
+          break;
+        }
+        failedDays += 1;
+      }
+    }
+
+    if (writtenDateKeys.length > 0) {
+      const log = await recordCalendarWrites(writtenDateKeys);
+      setCalendarWriteLog(log);
+    }
+    refetchOutlookAgenda();
+
+    if (typeof notify !== 'function') return;
+
+    if (stopError) {
+      if (stopError.code === 'scope_upgrade_required') {
+        notify({
+          message: t('connections.errors.scopeUpgradeRequired'),
+          actionLabel: t('planner.calendar.reconnect'),
+          onAction: () => startOutlookConnect(buildPlannerReturnTo(stopDateKey)),
+        });
+      } else {
+        const key = ERROR_KEYS[stopError.code] || 'connections.errors.unexpected';
+        notify({ message: `${t('planner.calendar.toast.failed')} ${t(key)}` });
+      }
+      return;
+    }
+
+    if (failedDays > 0) {
+      notify({ message: t('planner.calendar.toast.weekPartial', { failed: failedDays }) });
+    } else {
+      notify({ message: t('planner.calendar.toast.weekWritten') });
+    }
+  }, [calendarWriteDestinations, writeDayToCalendar, refetchOutlookAgenda, t]);
 
   // Eén voorstel-/concept-blok overnemen resp. vastzetten: schrijft via de
   // bestaande handler en haalt het item uit de ephemere pendingPlan-state.
@@ -2501,8 +3208,9 @@ export default function Ritmo() {
   if (!splashDone) {
     return (
       <SplashScreen
-        ready={!loading}
-        onDone={() => setSplashDone(true)}
+        ready={!loading && updateChecked}
+        updating={updating}
+        onDone={handleSplashDone}
         darkMode={darkMode}
       />
     );
@@ -2526,9 +3234,18 @@ export default function Ritmo() {
   const baseEnabledModules = allModules.filter(m => m.enabled && m.type !== 'collection' && m.type !== 'measurements' && m.type !== 'medication' && m.type !== 'bodymap' && m.type !== 'injectionSchedule');
   const enabledModules = appMode === 'health' ? baseEnabledModules.filter(isHealthModule) : baseEnabledModules;
 
-  const todayVisibleModules = editable
+  // #151: de losse drinkkaart verdwijnt uit de Vandaag-feed zolang een
+  // ingeschakelde voedingsmodule ernaar wijst — hij wordt dan al ín die
+  // voedingskaart gerenderd (zie renderTodayModule hieronder). Alleen hier
+  // filteren, niet in `enabledModules` (dagvoortgang/streaks/gouden rand
+  // tellen de drinkmodule nog gewoon mee) en niet in `renderTodayModule`
+  // (die blijft elke module ook standalone kunnen renderen, voor
+  // HealthView's `renderLogModule` en de gezondheids-rondleiding).
+  const mergedDrinkIds = mergedDrinkModuleIds(modules);
+  const todayVisibleModules = (editable
     ? enabledModules
-    : enabledModules.filter(m => moduleStatusForDay(m, { moduleData }, activeDate) !== 'none');
+    : enabledModules.filter(m => moduleStatusForDay(m, { moduleData }, activeDate) !== 'none')
+  ).filter(m => !mergedDrinkIds.has(m.id));
 
   const renderTodayModule = (mod) => {
     if (mod.type === 'projects') {
@@ -2548,10 +3265,36 @@ export default function Ritmo() {
       );
     }
     if (mod.type === 'counter') {
+      // De resolve en de naamvertaling blijven hier: componenten krijgen geen
+      // modulelijst mee, alleen het al opgeloste doel (of null als de
+      // koppeling stil uit staat).
+      const drinkModule = resolveDrinkModule(modules, mod);
+      const drinkTarget = drinkModule
+        ? { id: drinkModule.id, name: resolveModuleName(drinkModule, t) }
+        : null;
+      // #151: dezelfde resolve voedt nu ook de samengevoegde kaart. `drink`
+      // is alleen gevuld als de koppeling staat (nutritionEnabled + een
+      // resolvende teller) — anders rendert CounterModule ongewijzigd
+      // (drink blijft null). Geen nieuwe schrijfpaden: de handlers hier zijn
+      // dezelfde addCounterEntry/removeCounterEntry/setCounterEntryAmount
+      // die de standalone drinkkaart ook gebruikt, nu vastgezet op
+      // drinkModule.id.
+      const drink = (nutritionEnabled(mod) && drinkModule)
+        ? {
+            module: drinkModule,
+            name: resolveModuleName(drinkModule, t),
+            data: moduleData[drinkModule.id] || {},
+            onAddEntry: (amount, category) => addCounterEntry(drinkModule.id, amount, category),
+            onRemoveEntry: (entryId) => removeCounterEntry(drinkModule.id, entryId),
+            onSetEntryAmount: (entryId, amount) => setCounterEntryAmount(drinkModule.id, entryId, amount),
+          }
+        : null;
       return (
         <CounterModule
           key={mod.id}
           module={mod}
+          drinkTarget={drinkTarget}
+          drink={drink}
           Icon={ICON_OPTIONS[mod.icon] || Sparkles}
           data={moduleData[mod.id] || {}}
           weekDates={weekDates}
@@ -2563,6 +3306,8 @@ export default function Ritmo() {
           onAddEntry={(amount, category) => addCounterEntry(mod.id, amount, category)}
           onRemoveEntry={(entryId) => removeCounterEntry(mod.id, entryId)}
           onSetEntryAmount={(entryId, amount) => setCounterEntryAmount(mod.id, entryId, amount)}
+          onLogNutrition={(log, category) => addNutritionEntry(mod.id, log, category)}
+          onSetEntryQuantity={(entryId, quantity) => setNutritionEntryQuantity(mod.id, entryId, quantity)}
           onDismissReminder={() => dismissCounterReminder(mod.id)}
           onEdit={() => setEditingModule(mod)}
           theme={theme}
@@ -2678,6 +3423,7 @@ export default function Ritmo() {
 
   return (
     <ToastProvider>
+    <NutritionLibraryProvider>
     <div className={`min-h-screen ${theme.bg} p-4 transition-colors duration-300 relative overflow-hidden`}>
       <Toast theme={theme} />
       <OAuthReturn onConnected={connectionState.refresh} />
@@ -2877,6 +3623,7 @@ export default function Ritmo() {
             weekOffset={weekOffset}
             onWeekOffsetChange={setWeekOffset}
             todayKey={todayKey}
+            initialDateKey={initialPlannerDateKey}
             agendaByDate={outlookEventsByDate}
             includedAgendaIds={agendaSelection}
             onToggleAgendaBlock={handleToggleAgendaBlock}
@@ -2891,7 +3638,8 @@ export default function Ritmo() {
             agendaError={outlookAgendaError}
             agendaLastSyncedAt={outlookLastSyncedAt}
             onImportOrRefreshAgenda={handleImportOrRefreshAgenda}
-            trelloConnected={!!trelloConnection}
+            trelloConnected={trelloConnections.length > 0}
+            trelloAccounts={trelloAccounts}
             trelloBoardPrefs={trelloBoardPrefs}
             onChangeTrelloBoardPrefs={setTrelloBoardPrefs}
             trelloCacheBoards={trelloCacheBoards}
@@ -2926,6 +3674,8 @@ export default function Ritmo() {
             onRestoreSubgoal={restoreSubgoal}
             onRenameSubgoal={renameSubgoal}
             onToggleTaskInDay={toggleTaskInDay}
+            onToggleModuleItemInDay={toggleModuleItemForDay}
+            onToggleModuleBlockInDay={toggleChoiceForDay}
             onMoveItem={moveItemToDay}
             onSetItemDuration={setItemDuration}
             onResetItem={resetSourceItem}
@@ -2935,6 +3685,11 @@ export default function Ritmo() {
             onShareDay={handleShareDay}
             planUndoDateKey={planUndo?.dateKey || null}
             onUndoPlan={undoLastPlan}
+            calendarWriteDestinations={calendarWriteDestinations}
+            calendarWriteLog={calendarWriteLog}
+            onWriteDayToCalendar={handleWriteDayToCalendar}
+            onWriteWeekToCalendar={handleWriteWeekToCalendar}
+            onGetWeekWriteSummary={buildWeekWriteSummary}
             onAcceptPendingItem={acceptPendingItem}
             onDiscardPendingItem={discardPendingItem}
             onAcceptAllPending={acceptAllPending}
@@ -3017,11 +3772,17 @@ export default function Ritmo() {
           setAppMode={setAppMode}
           planMode={planMode}
           setPlanMode={setPlanMode}
+          plannerProvider={plannerProvider}
+          updatePlannerProvider={updatePlannerProvider}
           switchToStandard={switchToStandard}
+          calendarWritePrefs={calendarWritePrefs}
+          setCalendarWritePrefs={setCalendarWritePrefs}
+          outlookConnected={!!outlookConnection}
+          onCalendarBlocksCleaned={handleCalendarBlocksCleaned}
           theme={theme}
           dayNames={dayNames}
           setEditingModule={setEditingModule}
-          onStartTour={() => { setShowSettings(false); setSettingsInitialTab(null); startHealthTour(); }}
+          onStartTour={() => { setShowSettings(false); setSettingsInitialTab(null); setOpenSettingsToHelp(false); startHealthTour(); }}
           hiddenSourceItems={hiddenSourceItems}
           onUnhideSourceItem={unhideSourceItem}
         />
@@ -3049,6 +3810,7 @@ export default function Ritmo() {
         />
       )}
     </div>
+    </NutritionLibraryProvider>
     </ToastProvider>
   );
 }
@@ -3345,10 +4107,16 @@ function HiddenSourceItemsSection({ theme, items, onUnhide }) {
 // =============================================
 // SETTINGS MODAL
 // =============================================
-function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, planMode, setPlanMode, switchToStandard, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour, hiddenSourceItems, onUnhideSourceItem }) {
+function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurringTasks, streakSettings, setStreakSettings, darkMode, setDarkMode, uiStyle, setUiStyle, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume, goldenBorderEnabled, setGoldenBorderEnabled, appMode, setAppMode, planMode, setPlanMode, plannerProvider, updatePlannerProvider, switchToStandard, calendarWritePrefs, setCalendarWritePrefs, outlookConnected, onCalendarBlocksCleaned, theme, dayNames, setEditingModule, initialTab, initialHelp, currentUser, onStartTour, hiddenSourceItems, onUnhideSourceItem }) {
   const { t, languageSetting, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialTab || 'modules');
-  const [helpView, setHelpView] = useState(initialHelp ? 'list' : null); // null | 'list' | 'install' | 'feedback'
+  // Mini-stack i.p.v. een enkel helpView-veld (#150): 'nutrition' is bereikbaar
+  // vanaf zowel de help-lijst als de Voeding-tab, dus de juiste terugweg is
+  // niet meer af te leiden uit alleen de huidige view. helpView blijft bestaan
+  // als afgeleide van de stack, zodat de rest van deze modal ongewijzigd blijft.
+  const [helpStack, setHelpStack] = useState(initialHelp ? ['list'] : []);
+  const helpView = helpStack[helpStack.length - 1] ?? null; // null | 'list' | 'install' | 'feedback' | 'nutrition'
+  const openHelp = (id) => setHelpStack((prev) => [...prev, id]);
   const [reorderMode, setReorderMode] = useState(false);
   const [androidPromptable, setAndroidPromptable] = useState(false);
   useEffect(() => {
@@ -3381,15 +4149,10 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
     list: t('help.title'),
     install: t('help.install'),
     feedback: t('help.feedback'),
+    nutrition: t('help.nutrition'),
   };
 
-  const handleBack = () => {
-    if (helpView === 'install' || helpView === 'feedback') {
-      setHelpView('list');
-    } else {
-      setHelpView(null);
-    }
-  };
+  const handleBack = () => setHelpStack((prev) => prev.slice(0, -1));
 
   return (
     <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4 overflow-y-auto">
@@ -3412,7 +4175,7 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
           <div className="flex items-center gap-1 flex-shrink-0">
             {helpView === null && (
               <button
-                onClick={() => setHelpView('list')}
+                onClick={() => openHelp('list')}
                 className={`p-2 ${theme.hover} rounded-lg`}
                 aria-label={t('settings.helpAria')}
               >
@@ -3429,7 +4192,7 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
           <HelpOverlay
             theme={theme}
             showTour={appMode === 'health' && modules.some((m) => m.enabled && isHealthModule(m))}
-            onSelect={(id) => { if (id === 'tour') { onStartTour?.(); } else { setHelpView(id); } }}
+            onSelect={(id) => { if (id === 'tour') { onStartTour?.(); } else { openHelp(id); } }}
           />
         )}
 
@@ -3437,8 +4200,12 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
           <InstallGuide theme={theme} />
         )}
 
+        {helpView === 'nutrition' && (
+          <NutritionGuide theme={theme} />
+        )}
+
         {helpView === 'feedback' && (
-          <FeedbackForm theme={theme} onBack={() => setHelpView('list')} />
+          <FeedbackForm theme={theme} onBack={handleBack} />
         )}
 
         {helpView === null && (
@@ -3452,6 +4219,7 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
               { id: 'theme', label: t('settings.tabTheme') },
             ],
             [
+              { id: 'nutrition', label: t('settings.tabNutrition') },
               { id: 'language', label: t('settings.tabLanguage') },
               { id: 'install', label: t('install.settingsHeader') },
               { id: 'account', label: t('settings.tabAccount') },
@@ -3823,6 +4591,105 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
               </div>
             </div>
 
+            {/* S11: naast planMode hierboven, want beide sturen "deel mijn dag
+                in" — planMode bepaalt hoe de indeling wordt toegepast, dit
+                bepaalt wíé de indeling maakt. 'local' (Ollama) is alleen
+                zichtbaar op desktop (AC3): PLANNER_PROVIDER_OPTIONS is al op
+                `desktopOnly` gefilterd zonder tussenlaag. */}
+            <div className={`mt-6 pt-6 border-t ${theme.border}`}>
+              <h3 className={`font-semibold ${theme.textSecondary} mb-1`}>{t('settings.planProvider')}</h3>
+              <p className={`text-xs ${theme.textMuted} mb-3`}>{t('settings.planProviderHint')}</p>
+              <div className="flex gap-2">
+                {PLANNER_PROVIDER_OPTIONS
+                  .filter(({ desktopOnly }) => !desktopOnly || isDesktopPlatform())
+                  .map(({ id, labelKey }) => (
+                    <button
+                      key={id}
+                      onClick={() => updatePlannerProvider({ providerId: id })}
+                      className={`flex-1 py-3 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 ${
+                        plannerProvider.providerId === id ? 'bg-blue-500 text-white' : `${theme.cardSecondary} ${theme.textMuted}`
+                      }`}
+                    >
+                      {t(labelKey)}
+                    </button>
+                  ))}
+              </div>
+
+              {plannerProvider.providerId === 'local' && (
+                <div className="mt-3 space-y-2">
+                  <div>
+                    <label className={`block text-xs font-medium ${theme.textMuted} mb-1`}>
+                      {t('settings.planProviderLocalBaseUrl')}
+                    </label>
+                    <input
+                      type="text"
+                      value={plannerProvider.local.baseUrl}
+                      onChange={(e) => updatePlannerProvider({ local: { ...plannerProvider.local, baseUrl: e.target.value } })}
+                      placeholder="http://localhost:11434"
+                      className={`w-full px-3 py-2 ${theme.radiusControl} text-sm ${theme.cardSecondary} ${theme.text} border ${theme.border}`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-xs font-medium ${theme.textMuted} mb-1`}>
+                      {t('settings.planProviderLocalModel')}
+                    </label>
+                    <input
+                      type="text"
+                      value={plannerProvider.local.model}
+                      onChange={(e) => updatePlannerProvider({ local: { ...plannerProvider.local, model: e.target.value } })}
+                      placeholder="llama3.1"
+                      className={`w-full px-3 py-2 ${theme.radiusControl} text-sm ${theme.cardSecondary} ${theme.text} border ${theme.border}`}
+                    />
+                  </div>
+                  <p className={`text-xs ${theme.textMuted}`}>{t('settings.planProviderLocalHint')}</p>
+                </div>
+              )}
+            </div>
+
+            {/* S12: bestemming voor "Zet in agenda" — twee onafhankelijke
+                checkboxes, geen radio: beide aan (of uit) is een geldige,
+                gebruikersgekozen stand (AC13/AC18). */}
+            <div className={`mt-6 pt-6 border-t ${theme.border}`}>
+              <h3 className={`font-semibold ${theme.textSecondary} mb-1`}>{t('settings.calendarWrite')}</h3>
+              <p className={`text-xs ${theme.textMuted} mb-3`}>{t('settings.calendarWriteHint')}</p>
+
+              <label className={`flex items-center justify-between gap-3 p-3 ${theme.cardSecondary} rounded-lg mb-2`}>
+                <div className="min-w-0">
+                  <span className={`text-sm font-medium ${theme.textSecondary}`}>{t('settings.calendarWriteRitmo')}</span>
+                  <p className={`text-xs ${theme.textMuted} mt-0.5`}>{t('settings.calendarWriteRitmoHint')}</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={getCalendarWritePrefs(calendarWritePrefs).ritmo}
+                  onChange={(e) => setCalendarWritePrefs(prev => ({ ...getCalendarWritePrefs(prev), ritmo: e.target.checked }))}
+                  className="w-4 h-4 cursor-pointer flex-shrink-0"
+                />
+              </label>
+
+              <label className={`flex items-center justify-between gap-3 p-3 ${theme.cardSecondary} rounded-lg mb-2`}>
+                <div className="min-w-0">
+                  <span className={`text-sm font-medium ${theme.textSecondary}`}>{t('settings.calendarWritePrimary')}</span>
+                  <p className={`text-xs ${theme.textMuted} mt-0.5`}>{t('settings.calendarWritePrimaryHint')}</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={getCalendarWritePrefs(calendarWritePrefs).primary}
+                  onChange={(e) => setCalendarWritePrefs(prev => ({ ...getCalendarWritePrefs(prev), primary: e.target.checked }))}
+                  className="w-4 h-4 cursor-pointer flex-shrink-0"
+                />
+              </label>
+
+              <p className={`text-xs ${theme.textMuted}`}>{t('settings.calendarWritePrivacyHint')}</p>
+            </div>
+
+            {/* S12/#155: vangnet los van de bestemmings-checkboxes hierboven —
+                verwijdert alle Ritmo-blokken ongeacht datum en ongeacht welke
+                bestemming aanstaat. Alleen zichtbaar met een verbonden
+                Outlook-koppeling (AC1). */}
+            {outlookConnected && (
+              <CalendarCleanupSection theme={theme} onCleaned={onCalendarBlocksCleaned} />
+            )}
+
             <div className={`mt-6 pt-6 border-t ${theme.border}`}>
               <h3 className={`font-semibold ${theme.textSecondary} mb-3`}>{t('settings.effects')}</h3>
 
@@ -3892,6 +4759,22 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
                 {t('settings.soundsHint')}
               </p>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'nutrition' && (
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <h3 className={`font-semibold ${theme.textSecondary}`}>{t('nutrition.library.title')}</h3>
+              <button
+                onClick={() => openHelp('nutrition')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition border ${theme.border} ${theme.textSecondary} ${theme.hover}`}
+              >
+                <HelpCircle className="w-3.5 h-3.5" />
+                {t('nutrition.guide.openButton')}
+              </button>
+            </div>
+            <NutritionLibraryPanel theme={theme} />
           </div>
         )}
 
@@ -3967,7 +4850,7 @@ function SettingsModal({ onClose, modules, setModules, recurringTasks, setRecurr
             )}
             <SyncStatusRow theme={theme} signedIn={!!currentUser} userId={currentUser?.id} />
             {isSyncEnabled() && currentUser && (
-              <ConnectionsSection theme={theme} accountId={currentUser.id} />
+              <ConnectionsSection theme={theme} accountId={currentUser.id} onCalendarCleaned={onCalendarBlocksCleaned} />
             )}
             <HiddenSourceItemsSection
               theme={theme}
@@ -4196,6 +5079,69 @@ function CollectionTagGroupsEditor({ tagGroups, items, onUpdateGroups, theme }) 
         onCancel={() => setConfirmPending(null)}
         theme={theme}
       />
+    </div>
+  );
+}
+
+// Herbruikbare "meenemen in de dagplanning"-kaarttoggle (S10c) voor choice en
+// counter: dezelfde optie als het vierde item in de checklist-opties-array
+// hierboven, maar los omdat choice/counter geen opties-array hebben.
+function PlanInDayToggle({ editing, update, theme, t }) {
+  const isOn = !!editing.planInDay;
+  return (
+    <button
+      type="button"
+      onClick={() => update('planInDay', !isOn)}
+      className={`w-full flex items-start gap-3 p-3 rounded-lg text-left transition ${theme.cardSecondary} ${theme.hover}`}
+    >
+      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition flex-shrink-0 mt-0.5 ${
+        isOn ? `bg-${editing.color}-500 border-${editing.color}-500` : 'border-slate-300'
+      }`}>
+        {isOn && <Check className="w-3 h-3 text-white" />}
+      </div>
+      <div className="flex-1">
+        <div className={`text-sm font-medium ${theme.textSecondary}`}>{t('modules.optPlanInDay.title')}</div>
+        <div className={`text-xs ${theme.textMuted} mt-0.5`}>{t('modules.optPlanInDay.desc')}</div>
+      </div>
+    </button>
+  );
+}
+
+// Herbruikbare blok-configuratie (S10c): tijd, duur en dagdeel-voorkeur voor
+// één module-blok — checklist in blok-modus, of een choice-/
+// counter-module (die altijd één blok zijn, geen losse items). Hergebruikt
+// dezelfde componenten als customTasks/subgoals (TimeInput/DurationInput/
+// DagdeelSelect), nu voor het eerst op moduleconfig-niveau.
+function ModulePlanBlockConfig({ editing, update, theme, t }) {
+  return (
+    <div className={`${theme.cardSecondary} rounded-lg p-3 space-y-3`}>
+      <div>
+        <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('productivity.time')}</label>
+        <TimeInput
+          value={editing.time}
+          onChange={(v) => update('time', v || undefined)}
+          theme={theme}
+          className="w-full"
+        />
+      </div>
+      <div>
+        <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('planner.duration.label')}</label>
+        <DurationInput
+          value={editing.duration}
+          onChange={(v) => update('duration', v)}
+          theme={theme}
+          className="w-full"
+        />
+      </div>
+      <div>
+        <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('planner.window.label')}</label>
+        <DagdeelSelect
+          value={editing.window}
+          onChange={(v) => update('window', v || undefined)}
+          theme={theme}
+          className="w-full"
+        />
+      </div>
     </div>
   );
 }
@@ -4487,16 +5433,20 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
             </div>
           </div>
 
+          {/* Meenemen in de dagplanning (S10c): choice en counter zijn altijd
+              één blok (geen items), dus dezelfde toggle + tijd/duur/dagdeel-
+              configuratie als checklist in blok-modus hieronder. Het
+              bestaande tijdveld (voorheen altijd zichtbaar maar dood — nergens
+              gelezen) verhuist mee onder de toggle: het krijgt nu pas een
+              echt effect (de Planner leest het), dus hoort ook pas te tonen
+              zodra de gebruiker dat effect heeft aangezet. */}
           {(editing.type === 'choice' || editing.type === 'counter') && (
-            <div>
-              <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>{t('productivity.time')}</label>
-              <TimeInput
-                value={editing.time}
-                onChange={(v) => update('time', v || undefined)}
-                theme={theme}
-                className="w-full"
-              />
-            </div>
+            <>
+              <PlanInDayToggle editing={editing} update={update} theme={theme} t={t} />
+              {!!editing.planInDay && (
+                <ModulePlanBlockConfig editing={editing} update={update} theme={theme} t={t} />
+              )}
+            </>
           )}
 
           {editing.type === 'checklist' && (
@@ -4508,6 +5458,7 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
                     { key: 'allowNotes', title: t('modules.optDailyNotes.title'), desc: t('modules.optDailyNotes.desc') },
                     { key: 'allowDescriptions', title: t('modules.optInstructions.title'), desc: t('modules.optInstructions.desc') },
                     { key: 'allowTargets', title: t('modules.optSetsPerItem.title'), desc: t('modules.optSetsPerItem.desc') },
+                    { key: 'planInDay', title: t('modules.optPlanInDay.title'), desc: t('modules.optPlanInDay.desc') },
                   ].map(opt => {
                     const isOn = !!editing[opt.key];
                     return (
@@ -4530,6 +5481,41 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
                   })}
                 </div>
               </div>
+
+              {/* Alleen zichtbaar met de toggle hierboven aan (S10c): los per
+                  item of als één blok in de Planner. Blok-modus toont daarna
+                  hetzelfde tijd/duur/dagdeel-groepje als choice/counter
+                  hieronder — één module is dan één plan-item, geen losse items. */}
+              {!!editing.planInDay && (
+                <div>
+                  <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                    {t('modules.planGranularity.label')}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { id: 'items', label: t('modules.planGranularity.items') },
+                      { id: 'block', label: t('modules.planGranularity.block') },
+                    ].map(opt => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => update('planGranularity', opt.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                          (editing.planGranularity || 'items') === opt.id
+                            ? `bg-${editing.color}-500 text-white`
+                            : `${theme.cardSecondary} ${theme.textMuted}`
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!!editing.planInDay && editing.planGranularity === 'block' && (
+                <ModulePlanBlockConfig editing={editing} update={update} theme={theme} t={t} />
+              )}
 
               <label className={`flex items-center gap-2 text-sm ${theme.textSecondary}`}>
                 <input
@@ -4603,14 +5589,47 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
                                 />
                               </div>
                             )}
-                            <div>
-                              <label className={`text-xs font-medium ${theme.textMuted} mb-1 block`}>{t('productivity.time')}</label>
-                              <TimeInput
-                                value={item.time}
-                                onChange={(v) => updateItem(item.id, { time: v || undefined })}
-                                theme={theme}
-                              />
-                            </div>
+                            {/* Alleen tonen als de module "meenemen in de
+                                dagplanning" aan heeft (S10c) — anders wordt de
+                                editor voller voor wie dit niet gebruikt. Het
+                                tijdveld bestond al (nergens gelezen); vanaf nu
+                                is dat de standaardtijd voor de Planner. */}
+                            {!!editing.planInDay && (
+                              <>
+                                <div>
+                                  <label className={`text-xs font-medium ${theme.textMuted} mb-1 block`}>{t('productivity.time')}</label>
+                                  <TimeInput
+                                    value={item.time}
+                                    onChange={(v) => updateItem(item.id, { time: v || undefined })}
+                                    theme={theme}
+                                  />
+                                </div>
+                                <div>
+                                  <label className={`text-xs font-medium ${theme.textMuted} mb-1 block`}>{t('planner.duration.label')}</label>
+                                  <DurationInput
+                                    value={item.duration}
+                                    onChange={(v) => updateItem(item.id, { duration: v })}
+                                    theme={theme}
+                                  />
+                                </div>
+                                <div>
+                                  <label className={`text-xs font-medium ${theme.textMuted} mb-1 block`}>{t('planner.window.label')}</label>
+                                  <DagdeelSelect
+                                    value={item.window}
+                                    onChange={(v) => updateItem(item.id, { window: v || undefined })}
+                                    theme={theme}
+                                  />
+                                </div>
+                                <label className={`flex items-center gap-2 text-xs ${theme.textMuted}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={item.planInDay !== false}
+                                    onChange={(e) => updateItem(item.id, { planInDay: e.target.checked ? undefined : false })}
+                                  />
+                                  {t('modules.optPlanItem.title')}
+                                </label>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>
@@ -4899,6 +5918,66 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
                               <option key={a.id} value={a.id}>{t(a.labelKey)}</option>
                             ))}
                           </select>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {unit === 'kcal' && (() => {
+                  const nutrition = editing.nutrition || defaultModuleNutrition();
+                  // Alleen andere modules zijn kandidaat: een teller die naar
+                  // zichzelf wijst zou zijn eigen kcal-regel verdubbelen.
+                  const drinkCandidates = drinkModuleCandidates(modules).filter(m => m.id !== editing.id);
+                  const savedDrinkId = nutrition.drinkModuleId || '';
+                  // Opgeslagen id dat niet (meer) resolvet: de module is uit,
+                  // verwijderd of van eenheid veranderd. De waarde blijft
+                  // staan — de select toont hem als eigen, uitgeschakelde
+                  // optie zodat hij niet stil "Geen" lijkt te zijn.
+                  const drinkDangling = !!savedDrinkId && !resolveDrinkModule(modules, editing);
+                  return (
+                    <div className={`${theme.cardSecondary} rounded-lg p-3 space-y-3`}>
+                      <label className={`flex items-center gap-2 text-sm ${theme.textSecondary}`}>
+                        <input
+                          type="checkbox"
+                          checked={nutritionEnabled(editing)}
+                          onChange={(e) => update('nutrition', { ...nutrition, enabled: e.target.checked })}
+                        />
+                        {t('nutrition.library.enabledLabel')}
+                      </label>
+                      {nutritionEnabled(editing) && (
+                        <p className={`text-xs ${theme.textSecondary} opacity-70`}>
+                          {t('nutrition.library.settingsHint')}
+                        </p>
+                      )}
+                      {nutritionEnabled(editing) && (
+                        <div>
+                          <label className={`text-sm font-medium ${theme.textSecondary} mb-2 block`}>
+                            {t('nutrition.drink.label')}
+                          </label>
+                          <select
+                            value={savedDrinkId}
+                            onChange={(e) => update('nutrition', { ...nutrition, drinkModuleId: e.target.value || null })}
+                            className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm`}
+                          >
+                            <option value="">{t('nutrition.drink.none')}</option>
+                            {drinkCandidates.map(m => (
+                              <option key={m.id} value={m.id}>{resolveModuleName(m, t)}</option>
+                            ))}
+                            {drinkDangling && (
+                              <option value={savedDrinkId} disabled>{t('nutrition.drink.unavailableOption')}</option>
+                            )}
+                          </select>
+                          {drinkDangling && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                              {t('nutrition.drink.unavailableWarning')}
+                            </p>
+                          )}
+                          {!drinkDangling && drinkCandidates.length === 0 && (
+                            <p className={`text-xs ${theme.textSecondary} opacity-70 mt-2`}>
+                              {t('nutrition.drink.noCandidatesHint')}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>

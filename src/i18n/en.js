@@ -173,6 +173,27 @@ export default {
       editMeasurementAria: 'Edit entry value',
       deleteHoldingTitle: 'Delete "{name}"?',
       deleteHoldingDesc: 'This deletes the holding and its {count} entries.',
+      entryLabel: 'How do you enter entries?',
+      entryTotal: 'Total amount',
+      entryShares: 'Shares × price',
+      fieldShares: 'Shares',
+      fieldPrice: 'Price',
+      computedValue: 'Value: {value}',
+      sharesTimesPrice: '{shares} × {price}',
+      editSharesAria: 'Edit shares',
+      editPriceAria: 'Edit price',
+      chartViewLabel: 'Chart view',
+      chartTotal: 'Total value',
+      chartPrice: 'Price per share',
+      priceScaleAbs: 'Euro',
+      priceScaleIndexed: 'Index 100',
+      priceScaleHint: 'Index 100: every line starts at 100, regardless of the actual price.',
+      priceIndexSkipped: '{n} skipped due to an unusable starting price',
+      splitHeading: 'Of which:',
+      splitPriceLabel: 'price {value}',
+      splitContributionLabel: 'contributions {value}',
+      splitUnknownLabel: 'unattributed {value}',
+      splitHint: 'The price part comes from price changes, the contribution part from buying or selling.',
     },
     chores: {
       title: 'Chores',
@@ -362,6 +383,7 @@ export default {
       keepLocal: 'Keep local',
       itemSettings: 'Settings',
       itemDay: 'Day of {date}',
+      itemNutrition: 'Nutrition library',
     },
     error: {
       pullFailed: 'Could not fetch cloud data',
@@ -849,6 +871,21 @@ export default {
       desc: 'Replace the checkbox with a counter (e.g. 0/3 sets).',
     },
 
+    // day planning (S10c)
+    optPlanInDay: {
+      title: 'Include in day planning',
+      desc: 'Show this module in the Planner, so you can schedule and tick items from your day.',
+    },
+    optPlanItem: {
+      title: 'Include in day planning',
+      desc: 'Turn off to keep just this item out of the Planner.',
+    },
+    planGranularity: {
+      label: 'Show in the Planner',
+      items: 'Separate per item',
+      block: 'As one block',
+    },
+
     checkAria: 'Tick',
     uncheckAria: 'Untick',
     showInstructionAria: 'Show instruction',
@@ -860,6 +897,7 @@ export default {
     units: {
       minutes: 'minutes',
       ml: 'ml',
+      g: 'g',
       l: 'l',
       glas: 'glass',
       pages: 'pages',
@@ -1078,6 +1116,215 @@ export default {
     addTaskPlaceholder: 'Add a task...',
   },
 
+  // Nutrition library (slice A): recording food items. Logging (amount ->
+  // kcal in the daily total) follows in slice B.
+  nutrition: {
+    library: {
+      enabledLabel: 'Use nutrition library',
+      settingsHint: 'Manage your foods and meals in Settings → Nutrition.',
+      title: 'Nutrition library',
+      emptyTitle: 'No food items yet',
+      emptyDesc: 'Record how many kcal a food item has per 100 grams or millilitres, so you can log it quickly later.',
+      addButton: 'Add food item',
+      itemPer100: '{kcal} kcal / 100 {unit}',
+      // #147: Product → Portion → Meal. The recipe tab (tabRecipes etc.) is
+      // replaced by tabPortions/tabMeals; recipes still stay in the stored
+      // data (see normalizeNutritionLibrary), just not in this UI anymore.
+      tabProducts: 'Products',
+      tabPortions: 'Portions',
+      tabMeals: 'Meals',
+      portionEmptyTitle: 'No portions yet',
+      portionEmptyDesc: 'Combine several products into a portion, so you can use it in a meal later.',
+      addPortionButton: 'Add portion',
+      mealEmptyTitle: 'No meals yet',
+      mealEmptyDesc: 'Combine several portions into a meal, so you can log it in one tap later.',
+      addMealButton: 'Add meal',
+    },
+    item: {
+      addTitle: 'Add food item',
+      editTitle: 'Edit food item',
+      nameLabel: 'Name',
+      namePlaceholder: 'e.g. Oatmeal',
+      unitLabel: 'Unit',
+      kcalLabel: 'Kcal per 100 {unit}',
+      kcalPlaceholder: 'e.g. 370',
+      // #148: three optional macros next to kcal. "Optional" appears once in
+      // the section label instead of three times per field: with the long
+      // per-field variant each label wrapped differently and the three inputs
+      // fell out of line. The field names come from nutrition.macros.* — the
+      // same three labels the calculated macro line uses.
+      macrosSectionLabel: 'Macros per 100 {unit} (optional, in grams)',
+      proteinPlaceholder: 'e.g. 8',
+      carbsPlaceholder: 'e.g. 60',
+      fatPlaceholder: 'e.g. 6',
+      // Poort-0 addition (#147): the size is required, so no more
+      // "(optional)" — without a valid "1 product = ..." the save button
+      // stays disabled (AC11).
+      portionSectionLabel: '1 product = ...',
+      portionNamePlaceholder: 'e.g. slice',
+      portionAmountPlaceholder: '{unit}',
+      perProductLabel: '1 product = {kcal} kcal',
+      perProductRequiredHint: 'Enter a name and an amount to calculate the kcal per product',
+      countsAsDrinkLabel: 'Also counts as a drink',
+      deleteTitle: 'Delete {name}?',
+      deleteDescription: 'This food item will be removed from the library. Meals already logged stay as they are.',
+    },
+    // Portion (#147): a number of products together, between product and
+    // meal. Same form pattern as the (former) recipe form, but with a count
+    // of products instead of ingredients in grams.
+    portion: {
+      addTitle: 'Add portion',
+      editTitle: 'Edit portion',
+      nameLabel: 'Name',
+      namePlaceholder: 'e.g. Sandwich with cold cuts',
+      entriesLabel: 'Products',
+      entryProductAria: 'Product',
+      missingProductOption: '(missing product)',
+      countPlaceholder: 'Count',
+      noProductSizeHint: 'no size set',
+      addEntryButton: '+ Add product',
+      removeEntryAria: 'Remove product',
+      totalLabel: 'Total: {kcal} kcal per portion',
+      unit: 'portion',
+      unitPlural: 'portions',
+      missingHint: '{count} product no longer exists — not counted',
+      missingHintPlural: '{count} products no longer exist — not counted',
+      deleteTitle: 'Delete {name}?',
+      deleteDescription: 'This portion will be removed from the library. Meals already logged stay as they are.',
+    },
+    // Meal (#147): a number of portions together — one layer above a
+    // portion, same form pattern.
+    meal: {
+      addTitle: 'Add meal',
+      editTitle: 'Edit meal',
+      nameLabel: 'Name',
+      namePlaceholder: 'e.g. Breakfast',
+      entriesLabel: 'Portions',
+      entryPortionAria: 'Portion',
+      missingPortionOption: '(missing portion)',
+      countPlaceholder: 'Count',
+      addEntryButton: '+ Add portion',
+      removeEntryAria: 'Remove portion',
+      totalLabel: 'Total: {kcal} kcal per meal',
+      unit: 'meal',
+      unitPlural: 'meals',
+      chipLabel: '{name} · {kcal} kcal',
+      missingHint: '{count} portion no longer exists — not counted',
+      missingHintPlural: '{count} portions no longer exist — not counted',
+      deleteTitle: 'Delete {name}?',
+      deleteDescription: 'This meal will be removed from the library. Meals already logged stay as they are.',
+    },
+    // Macro line (#148): shared by MacroSummary, used under the kcal total
+    // in the portion/meal composer and on the Insight card. One summary key
+    // instead of concatenating JSX, so the separators also come from i18n
+    // instead of hardcoded text.
+    macros: {
+      proteinLabel: 'Protein',
+      carbsLabel: 'Carbs',
+      fatLabel: 'Fat',
+      summary: '{proteinLabel} {protein} · {carbsLabel} {carbs} · {fatLabel} {fat}',
+    },
+    // "From product to meal" guide (#150): no numbers in here at all — every
+    // kcal/ml amount comes in calculated from src/utils/nutritionExample.js
+    // via t() interpolation. setupSteps and logSteps are arrays;
+    // scripts/check-i18n.mjs treats arrays as a leaf, so the length is kept
+    // equal to nl.js by hand here.
+    guide: {
+      openButton: 'How does this work?',
+      intro: 'Nutrition in Ritmo works in three layers: a product, a portion and a meal. Below you can see how they fit together, with a worked example you can add with one tap.',
+      setupTitle: 'Turn it on first',
+      setupSteps: [
+        'In Settings → Modules, open a counter with unit kcal and tap edit.',
+        'Turn on "Use nutrition library" — this option only appears on a kcal counter.',
+        'Optionally link it to an ml counter, so drinks automatically count towards your hydration goal.',
+      ],
+      productTitle: '1. Product',
+      productBody: 'A product is the base: how many kcal (and optionally protein, carbs and fat) it has per 100 grams or 100 millilitres, plus how much one piece is.',
+      productSize: '1 {label} = {amount} {unit}',
+      portionTitle: '2. Portion',
+      portionBody: 'A portion combines one or more products with a count, for example two scoops of oatmeal plus a glass of milk. A portion can also consist of exactly one product.',
+      mealTitle: '3. Meal',
+      mealBody: 'A meal combines one or more portions into what you log in one go, for example a bowl of oatmeal plus a piece of fruit.',
+      entryLine: '{count}× {name} · {kcal} kcal',
+      exampleNote: 'This example is just an illustration — your library only changes once you tap the button below.',
+      addButton: 'Add this example to my library',
+      addedButton: 'Example is in your library',
+      addedToast: 'Example added to your library',
+      addHint: 'Your library stays empty until you add something yourself. Once added, you can simply edit or delete the example, just like any other item.',
+      logTitle: 'Logging',
+      logSteps: [
+        'Open the kcal counter on your day card and tap log.',
+        'Search for the product, portion or meal and choose how much you take.',
+        'Confirm — the amount is added to your day total immediately.',
+      ],
+      editTitle: 'Correcting an amount',
+      editBody: 'Logged too much or too little? Tap the entry in your day log to change the amount or remove it — the day total updates automatically.',
+      drinkTitle: 'Drinks count too',
+      drinkBody: 'Turn on "Also counts as a drink" on an ml product and link the kcal counter to an ml counter. Logging then adds both the kcal and the ml.',
+      drinkExample: '{name} in "{portion}" counts for {ml} ml — across the whole meal "{meal}" that adds up to {mealMl} ml.',
+      macrosTitle: 'Macros',
+      macrosBody: 'Optionally fill in protein, carbs and fat per 100 grams or millilitres on a product. Ritmo adds them up automatically to portion and meal level and shows them under the total.',
+      insightTitle: 'Looking back',
+      insightBody: "Your kcal counter's insight card shows what you ate that day, including the macros — so you can see how your day went at a glance.",
+      example: {
+        oatmealName: 'Oatmeal',
+        milkName: 'Semi-skimmed milk',
+        bananaName: 'Banana',
+        scoopLabel: 'scoop',
+        glassLabel: 'glass',
+        bananaLabel: 'banana',
+        bowlName: 'Bowl of oatmeal',
+        fruitName: 'Piece of fruit',
+        breakfastName: 'Breakfast',
+      },
+    },
+    // servingUnit/servingUnitPlural remain as a fallback for entries logged
+    // before #147 (kind: 'recipe', unit: 'serving') — those entries stay
+    // visible unchanged (AC6), even though the recipe form itself no longer
+    // exists.
+    recipe: {
+      servingUnit: 'serving',
+      servingUnitPlural: 'servings',
+    },
+    toast: {
+      itemDeleted: 'Food item deleted',
+      portionDeleted: 'Portion deleted',
+      mealDeleted: 'Meal deleted',
+      pairDeleted: '{name} deleted — {kcal} kcal and {ml} ml',
+    },
+    log: {
+      title: 'Log food',
+      searchPlaceholder: 'Search a food item...',
+      addNew: '+ New food item',
+      amountLabel: 'Amount ({unit})',
+      portionAmountLabel: 'Number of portions',
+      mealAmountLabel: 'Number of meals',
+      preview: '≈ {kcal} kcal',
+      previewInvalid: 'Enter a valid amount',
+      drinkPreview: '+ {ml} ml to {name}',
+      confirm: 'Log',
+    },
+    entry: {
+      editQuantityAria: 'Edit entry amount',
+      // #151: suffix on a kcal entry that also counts as a drink, e.g.
+      // "122 kcal · 200 ml" — only on a merged card.
+      drinkSuffix: '· {ml} ml',
+    },
+    // Link with a drink counter (#143): drinks from the library also count
+    // towards the hydration goal.
+    drink: {
+      label: 'Count drinks towards',
+      none: 'None',
+      noCandidatesHint: 'Create a counter with unit ml first to let drinks count towards it.',
+      unavailableOption: 'Unavailable',
+      unavailableWarning: 'The linked counter is switched off or no longer exists. Drinks only count as calories right now; switch the counter back on and the link works again.',
+      // #151: the ml bar on the merged card, and the accessible label of the
+      // kcal/ml unit select on manual entry.
+      mergedLabel: '{name} · {value}',
+      unitSelectAria: 'Amount unit',
+    },
+  },
+
   tasks: {
     title: 'Tasks',
     add: 'Add task',
@@ -1091,6 +1338,7 @@ export default {
     tabStreaks: 'Streaks',
     tabRecurring: 'Recurring',
     tabTheme: 'Theme',
+    tabNutrition: 'Nutrition',
     tabLanguage: 'Language',
     tabAccount: 'Account',
     manageModules: 'Manage modules',
@@ -1141,6 +1389,35 @@ export default {
     planModePropose: 'Suggest only',
     planModeConcept: 'Draft',
     planModeDirect: 'Schedule directly',
+    planProvider: 'AI provider',
+    planProviderHint: 'Who determines the order for "Plan my day": the free heuristic (default), a local AI on this device, or the server provider for the future Ritmo AI. If it fails, Ritmo always falls back to the heuristic.',
+    planProviderHeuristic: 'Heuristic (default)',
+    planProviderLocal: 'Local AI (Ollama)',
+    planProviderServer: 'Ritmo AI (server)',
+    planProviderLocalBaseUrl: 'Server URL',
+    planProviderLocalModel: 'Model',
+    planProviderLocalHint: 'Runs on this device via Ollama (ollama serve). An https page calling http://localhost requires Ollama to allow that origin (OLLAMA_ORIGINS); if that fails, Ritmo falls back to the heuristic.',
+    calendarWrite: 'Calendar destination',
+    calendarWriteHint: 'Where "Add to calendar" writes your day plan to. Clicking again replaces previously written blocks.',
+    calendarWriteRitmo: 'Separate "Ritmo" calendar',
+    calendarWriteRitmoHint: 'Creates (or reuses) a calendar named "Ritmo" in Outlook; your own calendar stays untouched.',
+    calendarWritePrimary: 'Your main calendar',
+    calendarWritePrimaryHint: 'Also writes to your regular Outlook calendar. Ritmo blocks are tagged and safe to regenerate without touching your own appointments.',
+    calendarWritePrivacyHint: 'Your task titles are sent to Microsoft for this.',
+    calendarCleanup: 'Clean up all Ritmo blocks',
+    calendarCleanupHint: 'Removes all Ritmo blocks from your Outlook calendars in one go, regardless of date and regardless of which destination is enabled above. Your own appointments stay untouched; the "Ritmo" calendar itself also keeps existing.',
+    calendarCleanupButton: 'Clean up Ritmo blocks',
+    calendarCleanupScanning: 'Counting blocks…',
+    calendarCleanupBusy: '{deleted} removed…',
+    calendarCleanupConfirmTitle: 'Remove all Ritmo blocks?',
+    calendarCleanupConfirmBody: 'This removes {count} Ritmo block(s) from your Outlook calendars. This cannot be undone. Your own appointments stay untouched.',
+    calendarCleanupConfirmBodyAtLeast: 'This removes at least {count} Ritmo block(s) from your Outlook calendars (possibly more). This cannot be undone. Your own appointments stay untouched.',
+    calendarCleanupConfirm: 'Remove',
+    calendarCleanupNone: 'No Ritmo blocks found.',
+    calendarCleanupDone: '{deleted} Ritmo block(s) removed.',
+    calendarCleanupPartial: '{deleted} removed, {failed} failed. Please try again later.',
+    calendarCleanupMore: 'There are still more Ritmo blocks left. Click again to clean up the rest.',
+    calendarCleanupFailed: 'Cleanup failed.',
     effects: 'Effects',
     goldenBorder: 'Golden border on completed days',
     goldenBorderHint: 'Animation around days where everything is ticked off.',
@@ -1339,6 +1616,9 @@ export default {
     tourDesc: 'Set up the basics of health mode step by step',
     install: 'Add app to home screen',
     installDesc: 'Open Ritmo faster, from your home screen',
+    // #150: help list item for the "From product to meal" guide.
+    nutrition: 'From product to meal',
+    nutritionDesc: 'See how nutrition works in three layers, with an example',
     feedback: 'Give feedback',
     feedbackDesc: 'Report a problem or share an idea',
     version: 'Ritmo v{version}',
@@ -1526,6 +1806,7 @@ export default {
   splash: {
     loading: 'One moment...',
     tagline: 'Your day, your rhythm.',
+    updating: 'Installing new version…',
     version: 'v{version}',
   },
 
@@ -1543,6 +1824,7 @@ export default {
     importCancel: 'Cancel',
     importSuccess: 'Backup restored.',
     importDays: '{count} days restored.',
+    importNutrition: '{count} food items restored.',
     importErrorParse: 'This file is not valid JSON.',
     importErrorNotRitmo: 'This does not look like a Ritmo backup.',
     importErrorVersion: 'This backup is from a newer version of Ritmo.',
@@ -1568,6 +1850,9 @@ export default {
       summary: 'Average {avg}, goal reached on {hits} of {total} days',
       summaryNoGoal: 'Average {avg} per day',
       goalLabel: 'goal {value}',
+      // #148: only for a calorie module with a nutrition library
+      // (nutritionEnabled), and only when there is macro data.
+      macrosLabel: 'Average per day: {macros}',
     },
     checklist: {
       summary: 'Average {avg}% completed over {days} days',
@@ -1646,21 +1931,49 @@ export default {
       losseTaak: 'Task',
       projecttaak: 'Project task',
       agenda: 'Agenda',
+      routine: 'Routine',
     },
   },
 
   planner: {
     actions: {
       shareDay: 'Plan my day',
+      sharingDay: 'Planning your day…',
       undoPlan: 'Undo layout',
       acceptAll: 'Accept all',
       accept: 'Accept',
       discard: 'Discard',
       confirm: 'Confirm',
+      writeToCalendar: 'Add to calendar',
+      writingToCalendar: 'Updating calendar…',
+      writeWeekToCalendar: 'Add whole week to calendar',
+      writingWeekToCalendar: 'Updating week… ({current}/{total})',
     },
     toast: {
       planned: 'Your day has been planned.',
       planUndone: 'The layout has been undone.',
+      nothingToPlan: 'Nothing was waiting to be planned — everything already has a time.',
+      noRoom: 'No free space found to plan anything.',
+    },
+    provider: {
+      names: {
+        heuristic: 'the heuristic',
+        local: 'the local AI',
+        server: 'Ritmo AI',
+      },
+      reasons: {
+        not_configured: 'not configured yet',
+        network: 'no connection',
+        timeout: 'no response in time',
+        invalid_response: 'invalid response',
+        desktop_only: 'only available on desktop',
+        unauthenticated: 'not logged in or session expired',
+        server_config: 'server not configured',
+        unknown: 'unknown error',
+      },
+      usedNotice: 'Planned with {provider}.',
+      fallbackNotice: 'Fell back to the heuristic: {provider} was unavailable ({reason}).',
+      explanation: 'Explanation: {explanation}',
     },
     week: {
       viewDag: 'Day',
@@ -1679,6 +1992,7 @@ export default {
       groups: {
         losseTaak: 'Loose tasks',
         projecttaak: 'Project tasks',
+        routine: 'Routines',
       },
       openInSource: 'Open in {provider}',
       hideItem: 'Hide',
@@ -1709,6 +2023,24 @@ export default {
       loading: 'Loading {provider}…',
       fetchFailed: 'Failed to fetch {provider}.',
     },
+    calendar: {
+      lastWritten: 'Calendar updated at {time}',
+      neverWritten: 'Calendar not updated yet',
+      reconnect: 'Reconnect',
+      toast: {
+        written: 'The calendar has been updated.',
+        cleared: 'The calendar has been cleared.',
+        partial: 'Not everything could be written ({failed} block(s) failed).',
+        failed: 'Writing to the calendar failed.',
+        weekWritten: 'The whole week has been added to the calendar.',
+        weekPartial: 'The week was written, but {failed} day(s) did not fully succeed.',
+      },
+      confirmWeek: {
+        title: 'Add the whole week to the calendar?',
+        description: '{dayCount} days, {blockCount} block(s), to: {destinations}. Days without a plan will be cleared in the calendar.',
+        confirm: 'Add week to calendar',
+      },
+    },
     trello: {
       boardsTitle: 'Trello boards',
       loadingBoards: 'Loading boards…',
@@ -1717,6 +2049,7 @@ export default {
       alwaysListAria: 'Always-list for {name}',
       alwaysListNone: 'No always-list',
       cardsLoading: 'Loading cards…',
+      accountHeading: 'Account: {name}',
     },
     github: {
       reposTitle: 'GitHub repositories',
@@ -1733,7 +2066,7 @@ export default {
       none: 'No preference',
     },
     autoPlan: {
-      label: 'Auto-plan (available later)',
+      label: 'Auto-plan',
       short: 'Auto',
     },
     deepWork: {
@@ -1796,6 +2129,7 @@ export default {
     intro: 'Connect external sources so their items show up in Ritmo.',
     connect: 'Connect',
     disconnect: 'Disconnect',
+    addAccount: 'Add account',
     providers: {
       outlook: 'Outlook',
       trello: 'Trello',
@@ -1819,6 +2153,8 @@ export default {
       msError: 'Microsoft returned an unexpected error. Please try again later.',
       tokenRefreshFailed: 'Renewing the Outlook connection failed. Please reconnect.',
       notConnected: 'This connection is no longer active. Please reconnect.',
+      scopeUpgradeRequired: 'Outlook needs to be reconnected to write to your calendar. Reconnect and grant write access.',
+      tagUnsupported: 'Outlook does not support marking Ritmo blocks on this account. Please contact support.',
       trelloAuth: 'Trello declined or revoked this token. Please reconnect.',
       trelloRateLimit: 'Trello is currently rate-limiting requests. Please try again shortly.',
       trelloError: 'Trello returned an unexpected error. Please try again later.',
@@ -1833,6 +2169,17 @@ export default {
       outlookConnected: 'Outlook is connected.',
       trelloConnected: 'Trello is connected as {username}.',
       githubConnected: 'GitHub is connected as {login}.',
+      outlookDisconnectedCleaned: 'Outlook is disconnected and the Ritmo blocks have been cleaned up.',
+    },
+    disconnectCleanup: {
+      title: 'Clean up Ritmo blocks before disconnecting?',
+      body: 'Ritmo found {count} Ritmo block(s) in your Outlook calendar. Clean them up first, or disconnect right away — then the blocks stay forever, because without a connection Ritmo can no longer remove them.',
+      bodyAtLeast: 'Ritmo found at least {count} Ritmo block(s) in your Outlook calendar (possibly more). Clean them up first, or disconnect right away — then the blocks stay forever, because without a connection Ritmo can no longer remove them.',
+      bodyUnknown: 'Ritmo could not check whether there are still Ritmo blocks in your Outlook calendar. You can disconnect anyway, but any remaining blocks can no longer be cleaned up afterwards.',
+      confirmCleanup: 'Clean up and disconnect',
+      confirmOnly: 'Disconnect only',
+      confirmAnyway: 'Disconnect anyway',
+      scanning: 'Counting blocks…',
     },
     trello: {
       title: 'Connect Trello',

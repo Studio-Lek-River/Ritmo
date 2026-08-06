@@ -7,6 +7,13 @@ import { supabase, isSyncEnabled } from './supabase';
 
 export const CONNECTION_PROVIDERS = ['outlook', 'trello', 'github'];
 
+// De ene plek waar staat welke provider meerdere accounts naast elkaar mag
+// hebben (#120, "generiek fundament" — Outlook en GitHub blijven één account
+// per provider, zie de slice-spec). `ConnectionsSection.jsx` leest dit om per
+// provider te kiezen tussen de bestaande enkelvoudige rij en een rij per
+// verbonden account plus een "Account toevoegen"-knop.
+export const MULTI_ACCOUNT_PROVIDERS = ['trello'];
+
 export async function listConnections(accountId) {
   if (!isSyncEnabled() || !accountId) return [];
 
@@ -24,7 +31,12 @@ export async function listConnections(accountId) {
   return data || [];
 }
 
-async function callConnectionsApi(path, body) {
+// Gedeelde JWT-plus-fetch-kern voor élk `api/`-endpoint dat een ingelogde
+// gebruiker nodig heeft, niet alleen `api/connections/**` — S11 trekt hem
+// hierheen zodat `fetchServerPlan` (die naar `api/plan.js` post) geen tweede
+// kopie van deze logica hoeft te onderhouden. `path` is het volledige
+// `/api/...`-pad.
+async function callApi(path, body) {
   if (!isSyncEnabled()) {
     const err = new Error('sync_not_configured');
     err.code = 'server_config';
@@ -39,7 +51,7 @@ async function callConnectionsApi(path, body) {
     throw err;
   }
 
-  const response = await fetch(`/api/connections/${path}`, {
+  const response = await fetch(path, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -51,12 +63,16 @@ async function callConnectionsApi(path, body) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    const err = new Error(data.error || 'connections_api_failed');
+    const err = new Error(data.error || 'api_request_failed');
     err.code = data.code || 'unexpected';
     throw err;
   }
 
   return data;
+}
+
+async function callConnectionsApi(path, body) {
+  return callApi(`/api/connections/${path}`, body);
 }
 
 export async function disconnectConnection(connectionId) {
@@ -66,8 +82,11 @@ export async function disconnectConnection(connectionId) {
 // Start de echte Outlook-OAuth-redirect (S07): haalt de authorize-URL op
 // (server-side state, zie api/connections/outlook/start.js) en navigeert de
 // hele pagina naar Microsoft (Poort-0-keuze: volledige redirect, geen popup).
-export async function startOutlookConnect() {
-  const data = await callConnectionsApi('outlook/start', {});
+// `returnTo` is optioneel (S12a, deel A — zie utils/oauthReturn.js): zonder
+// argument exact het gedrag van vóór deze slice, dus de Verbinden-knop in
+// ConnectionsSection.jsx blijft ongewijzigd aanroepen.
+export async function startOutlookConnect(returnTo) {
+  const data = await callConnectionsApi('outlook/start', returnTo ? { returnTo } : {});
   if (data?.authorizeUrl) {
     window.location.assign(data.authorizeUrl);
   }
@@ -79,6 +98,30 @@ export async function startOutlookConnect() {
 // (ISO-strings + optionele IANA-tijdzone voor de Prefer-header server-side).
 export async function fetchOutlookEvents(range) {
   return callConnectionsApi('outlook/events', range || {});
+}
+
+// Schrijft de dagplanning van Ritmo deterministisch naar Outlook (S12, zie
+// api/connections/outlook/write.js). `payload` = { dateKey, windowStart,
+// windowEnd, destinations, blocks } (zie utils/calendarWrite.js voor hoe die
+// wordt opgebouwd uit de dag-tijdlijn). Gooit bij een fout een Error met
+// `.code` (bv. `scope_upgrade_required`, `tag_unsupported`) — de aanroeper
+// (App.jsx's `handleWriteDayToCalendar`) mapt die code naar een toast.
+export async function writeOutlookDay(payload) {
+  return callConnectionsApi('outlook/write', payload || {});
+}
+
+// Opruimknop voor alle Ritmo-blokken (S12/#155, zie
+// api/connections/outlook/cleanup.js) — los van writeOutlookDay hierboven,
+// die altijd per dag werkt. `scanOutlookRitmoBlocks` telt alleen (voor de
+// ConfirmDialog); `cleanupOutlookRitmoBlocks` verwijdert één batch
+// (`{ deleted, failed, more }`) — CalendarCleanupSection.jsx herhaalt de
+// aanroep zolang `more === true`.
+export async function scanOutlookRitmoBlocks() {
+  return callConnectionsApi('outlook/cleanup', { scan: true });
+}
+
+export async function cleanupOutlookRitmoBlocks() {
+  return callConnectionsApi('outlook/cleanup', {});
 }
 
 // Trello (S08, key+token-flow, geen OAuth — zie api/connections/trello/*.js).
@@ -99,9 +142,12 @@ export async function fetchTrelloBoards() {
   return callConnectionsApi('trello/boards', {});
 }
 
-// Haalt lijsten + kaarten op voor de aangevinkte Trello-borden.
-export async function fetchTrelloCards(boardIds) {
-  return callConnectionsApi('trello/cards', { boardIds: boardIds || [] });
+// Haalt lijsten + kaarten op voor de aangevinkte Trello-borden. `boardPairs`
+// is een array van `{ connectionId, boardId }` (#120, meerdere Trello-
+// accounts: het board-id alleen is niet meer genoeg om te weten met welk
+// account het opgehaald moet worden, zie utils/trelloBoardPrefs.js).
+export async function fetchTrelloCards(boardPairs) {
+  return callConnectionsApi('trello/cards', { boards: boardPairs || [] });
 }
 
 // GitHub (S09, OAuth App — zie api/connections/github/*.js). Start de echte
@@ -127,4 +173,14 @@ export async function fetchGithubRepos() {
 // `repoIds` is een array van `{ id, fullName }` (zie utils/githubRepoPrefs.js).
 export async function fetchGithubIssues(repoIds) {
   return callConnectionsApi('github/issues', { repoIds: repoIds || [] });
+}
+
+// Server-provider-seam voor de planner-AI (S11, `api/plan.js`). Geen
+// `/api/connections`-pad — dit endpoint hoort niet bij de koppelingen-laag —
+// dus rechtstreeks via `callApi`. Zolang de AI-env op de server ontbreekt
+// geeft dat endpoint `501 { code: 'not_configured' }` terug; de aanroeper
+// (`src/utils/planProviders/server.js`) vertaalt dat naar de fallback op de
+// heuristiek.
+export async function fetchServerPlan(payload) {
+  return callApi('/api/plan', payload || {});
 }

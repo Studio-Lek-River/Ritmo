@@ -18,7 +18,12 @@ export default function Toast({ theme }) {
             key={toast.id}
             className={`${theme.card} rounded-xl shadow-lg border ${theme.border} px-4 py-3 flex items-center justify-between gap-3 pointer-events-auto slide-in`}
           >
-            <span className={`text-sm ${theme.textSecondary} flex-1 truncate`}>{toast.message}</span>
+            {/* Geen `truncate`: een toast die zijn eigen boodschap afkapt is
+                geen toast. "Melk verwijderd — 66 kcal en 100 ml" past niet op
+                één regel naast de actieknop, en juist de staart draagt de
+                informatie. Twee regels is de bovengrens, zodat een lange
+                zelfgekozen naam de toast niet laat uitgroeien. */}
+            <span className={`text-sm ${theme.textSecondary} flex-1 min-w-0 break-words line-clamp-2`}>{toast.message}</span>
             {toast.actionLabel && toast.onAction && (
               <button
                 type="button"

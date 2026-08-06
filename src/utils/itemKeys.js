@@ -12,6 +12,8 @@
 const SUBGOAL_KIND = 'subgoal';
 const TASK_KIND = 'task';
 const VIRTUAL_TASK_PREFIX = 'virtual';
+const MODULE_ITEM_KIND = 'moduleItem';
+const MODULE_BLOCK_KIND = 'moduleBlock';
 
 function enc(id) {
   return encodeURIComponent(String(id));
@@ -43,6 +45,21 @@ export function subgoalKey(moduleId, subjectId, goalId) {
 // dus nooit dubbelzinnig te splitsen.
 export function taskKey(taskId) {
   return `${TASK_KIND}:${enc(taskId)}`;
+}
+
+// Samenstellen van een module-item-key (S10c): een checklist-item dat als
+// los item meeplant in de dag (`planGranularity !== 'block'`). Zelfde
+// encode-discipline als hierboven — een module- of item-id mag zelf een `:`
+// bevatten.
+export function moduleItemKey(moduleId, itemId) {
+  return [MODULE_ITEM_KIND, enc(moduleId), enc(itemId)].join(':');
+}
+
+// Samenstellen van een module-blok-key (S10c): een hele module (checklist in
+// blok-modus, of een choice-/counter-module) die als één blok meeplant in de
+// dag.
+export function moduleBlockKey(moduleId) {
+  return [MODULE_BLOCK_KIND, enc(moduleId)].join(':');
 }
 
 // Taak-id voor een nog niet gematerialiseerde recurring-instantie (zie
@@ -94,6 +111,21 @@ export function parseItemKey(key) {
   if (key.startsWith(`${TASK_KIND}:`)) {
     const taskId = dec(key.slice(TASK_KIND.length + 1));
     return taskId === undefined ? { kind: 'unknown' } : { kind: TASK_KIND, taskId };
+  }
+
+  if (key.startsWith(`${MODULE_ITEM_KIND}:`)) {
+    const parts = key.split(':');
+    if (parts.length !== 3) return { kind: 'unknown' };
+    const [, moduleIdRaw, itemIdRaw] = parts;
+    const moduleId = dec(moduleIdRaw);
+    const itemId = dec(itemIdRaw);
+    if (moduleId === undefined || itemId === undefined) return { kind: 'unknown' };
+    return { kind: MODULE_ITEM_KIND, moduleId, itemId };
+  }
+
+  if (key.startsWith(`${MODULE_BLOCK_KIND}:`)) {
+    const moduleId = dec(key.slice(MODULE_BLOCK_KIND.length + 1));
+    return moduleId === undefined ? { kind: 'unknown' } : { kind: MODULE_BLOCK_KIND, moduleId };
   }
 
   return { kind: 'unknown' };

@@ -109,6 +109,7 @@ if (typeof window !== 'undefined') {
 export const STORAGE_KEYS = {
   HOUSEHOLD_CHORES: 'household:chores',
   HOUSEHOLD_GROCERIES: 'household:groceries',
+  NUTRITION_LIBRARY: 'nutrition:library',
 };
 
 export default storage;

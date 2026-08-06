@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import { fetchTrelloBoards } from '../sync/connections';
@@ -13,10 +13,27 @@ import { ERROR_KEYS } from './ConnectionsSection';
 // lijsten/kaarten per bord komen niet van hier maar van `cacheBoards`
 // (useTrelloCards, elders al gefetcht zodra een bord is aangevinkt), dus dit
 // component doet zelf maar één soort netwerkcall.
-export default function TrelloBoardPicker({ boardPrefs, onChangeBoardPrefs, cacheBoards = [], theme }) {
+//
+// #120 (meerdere Trello-accounts): `accounts` (nieuw, van App.jsx via
+// ProductivitySuiteView's `trelloAccounts`) is de lijst verbonden Trello-
+// accounts (`{ connectionId, label }`) — al bekend zonder de lazy
+// boards-fetch, dus de kop/groepering hoeft niet op die fetch te wachten.
+// `fetchTrelloBoards()` levert de borden zelf, elk met een `connectionId`
+// (server-side gededupeerd op board-id, AC7). Bij meer dan één account krijgt
+// elke groep een kop met de accountnaam; bij precies één account blijft de
+// weergave visueel ongewijzigd (platte lijst, geen kop).
+//
+// AC8-fix: `boards.js` geeft ook `failedConnectionIds` terug (een account met
+// bv. een ingetrokken token, terwijl de andere accounts wél lukken). Die
+// werden hier eerder stilzwijgend genegeerd — een falend account toonde dan
+// gewoon geen borden, zonder uitleg. Elk account uit die lijst krijgt nu een
+// eigen foutregel (hergebruikt `planner.trello.fetchError`) in plaats van een
+// lege of ontbrekende sectie.
+export default function TrelloBoardPicker({ accounts = [], boardPrefs, onChangeBoardPrefs, cacheBoards = [], theme }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [availableBoards, setAvailableBoards] = useState(null);
+  const [failedConnectionIds, setFailedConnectionIds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -34,6 +51,7 @@ export default function TrelloBoardPicker({ boardPrefs, onChangeBoardPrefs, cach
       .then((data) => {
         if (cancelled) return;
         setAvailableBoards(data?.boards || []);
+        setFailedConnectionIds(data?.failedConnectionIds || []);
       })
       .catch((err) => {
         console.warn('Ritmo trello boards fetch failed', err);
@@ -46,16 +64,103 @@ export default function TrelloBoardPicker({ boardPrefs, onChangeBoardPrefs, cach
     return () => { cancelled = true; };
   }, [expanded, availableBoards]);
 
-  const updateBoardPref = (boardId, patch) => {
-    const current = getBoardPref(boardPrefs, boardId);
+  const boardsByConnection = useMemo(() => {
+    const map = new Map();
+    for (const board of (availableBoards || [])) {
+      const list = map.get(board.connectionId) || [];
+      list.push(board);
+      map.set(board.connectionId, list);
+    }
+    return map;
+  }, [availableBoards]);
+
+  const updateBoardPref = (board, patch) => {
+    const current = getBoardPref(boardPrefs, board.id);
     onChangeBoardPrefs((prev) => ({
       ...prev,
       boards: {
         ...(prev?.boards || {}),
-        [boardId]: { ...current, ...patch },
+        [board.id]: { ...current, connectionId: board.connectionId, ...patch },
       },
     }));
   };
+
+  const renderBoard = (board) => {
+    const pref = getBoardPref(boardPrefs, board.id);
+    const cached = cacheBoards.find((b) => b.id === board.id);
+    return (
+      <li key={board.id} className="space-y-1">
+        <label className={`flex items-center gap-2 text-sm ${theme.textSecondary}`}>
+          <input
+            type="checkbox"
+            checked={pref.include}
+            onChange={(e) => updateBoardPref(board, { include: e.target.checked })}
+            className="w-3.5 h-3.5 shrink-0"
+          />
+          <span className="truncate">{board.name}</span>
+        </label>
+
+        {pref.include && (
+          <div className="pl-5 space-y-1">
+            {cached ? (
+              <>
+                <select
+                  value={pref.alwaysListId || ''}
+                  onChange={(e) => updateBoardPref(board, { alwaysListId: e.target.value || null })}
+                  aria-label={t('planner.trello.alwaysListAria', { name: board.name })}
+                  className={`text-xs px-1.5 py-1 ${theme.input} rounded`}
+                >
+                  <option value="">{t('planner.trello.alwaysListNone')}</option>
+                  {(cached.lists || []).map((list) => (
+                    <option key={list.id} value={list.id}>{list.name}</option>
+                  ))}
+                </select>
+                <p className={`text-[11px] ${theme.textMuted}`}>
+                  {(cached.lists || [])
+                    .map((list) => `${list.name} (${(cached.cards || []).filter((c) => c.idList === list.id).length})`)
+                    .join(' · ')}
+                </p>
+              </>
+            ) : (
+              <p className={`text-[11px] ${theme.textMuted}`}>{t('planner.trello.cardsLoading')}</p>
+            )}
+          </div>
+        )}
+      </li>
+    );
+  };
+
+  // Eén account-sectie: zijn borden (indien gelukt) plus, als dit account in
+  // `failedConnectionIds` staat, een foutregel — nooit stilletjes niets tonen
+  // voor een account waarvan het ophalen mislukte (AC8). `null` wanneer er
+  // voor dit account niets te tonen valt (geen borden, geen fout): dat
+  // account laat dan gewoon geen sectie achter, zoals vandaag.
+  const renderAccountSection = (account, showHeading) => {
+    const accountBoards = boardsByConnection.get(account.connectionId) || [];
+    const failed = failedConnectionIds.includes(account.connectionId);
+    if (accountBoards.length === 0 && !failed) return null;
+    return (
+      <div key={account.connectionId} className="space-y-2">
+        {showHeading && (
+          <p className={`text-xs font-semibold ${theme.textMuted}`}>
+            {t('planner.trello.accountHeading', { name: account.label || t('connections.providers.trello') })}
+          </p>
+        )}
+        {failed && (
+          <p className="text-xs text-red-500">{t('planner.trello.fetchError')}</p>
+        )}
+        {accountBoards.length > 0 && (
+          <ul className="space-y-2">
+            {accountBoards.map(renderBoard)}
+          </ul>
+        )}
+      </div>
+    );
+  };
+
+  const accountSections = accounts.length > 0
+    ? accounts.map((account) => renderAccountSection(account, accounts.length > 1)).filter(Boolean)
+    : [];
 
   return (
     <div className={`pt-2 border-t ${theme.border} space-y-2`}>
@@ -79,55 +184,10 @@ export default function TrelloBoardPicker({ boardPrefs, onChangeBoardPrefs, cach
           <p className="text-xs text-red-500">
             {ERROR_KEYS[error] ? t(ERROR_KEYS[error]) : t('planner.trello.fetchError')}
           </p>
-        ) : (availableBoards || []).length === 0 ? (
+        ) : accountSections.length === 0 ? (
           <p className={`text-xs ${theme.textMuted}`}>{t('planner.trello.empty')}</p>
         ) : (
-          <ul className="space-y-2">
-            {availableBoards.map((board) => {
-              const pref = getBoardPref(boardPrefs, board.id);
-              const cached = cacheBoards.find((b) => b.id === board.id);
-              return (
-                <li key={board.id} className="space-y-1">
-                  <label className={`flex items-center gap-2 text-sm ${theme.textSecondary}`}>
-                    <input
-                      type="checkbox"
-                      checked={pref.include}
-                      onChange={(e) => updateBoardPref(board.id, { include: e.target.checked })}
-                      className="w-3.5 h-3.5 shrink-0"
-                    />
-                    <span className="truncate">{board.name}</span>
-                  </label>
-
-                  {pref.include && (
-                    <div className="pl-5 space-y-1">
-                      {cached ? (
-                        <>
-                          <select
-                            value={pref.alwaysListId || ''}
-                            onChange={(e) => updateBoardPref(board.id, { alwaysListId: e.target.value || null })}
-                            aria-label={t('planner.trello.alwaysListAria', { name: board.name })}
-                            className={`text-xs px-1.5 py-1 ${theme.input} rounded`}
-                          >
-                            <option value="">{t('planner.trello.alwaysListNone')}</option>
-                            {(cached.lists || []).map((list) => (
-                              <option key={list.id} value={list.id}>{list.name}</option>
-                            ))}
-                          </select>
-                          <p className={`text-[11px] ${theme.textMuted}`}>
-                            {(cached.lists || [])
-                              .map((list) => `${list.name} (${(cached.cards || []).filter((c) => c.idList === list.id).length})`)
-                              .join(' · ')}
-                          </p>
-                        </>
-                      ) : (
-                        <p className={`text-[11px] ${theme.textMuted}`}>{t('planner.trello.cardsLoading')}</p>
-                      )}
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+          <div className="space-y-3">{accountSections}</div>
         )
       )}
     </div>

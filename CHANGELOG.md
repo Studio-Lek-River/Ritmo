@@ -1,3 +1,249 @@
+## [0.98.2](https://github.com/Studio-Lek-River/Ritmo/compare/v0.98.1...v0.98.2) (2026-07-28)
+
+
+### Bug Fixes
+
+* **pwa:** haal een nieuwe versie al binnen tijdens het opstarten ([9d719d6](https://github.com/Studio-Lek-River/Ritmo/commit/9d719d63a79b2785c31028edad911af55b5d715d))
+* **splash:** voorkom stapelende timers op het openingsscherm ([68bf0ab](https://github.com/Studio-Lek-River/Ritmo/commit/68bf0ab6f255f4f7c99b014880d9eb4bee7f0bdf))
+
+## [0.98.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.98.0...v0.98.1) (2026-07-28)
+
+
+### Bug Fixes
+
+* **modules:** herstel het aanpassen van hoeveelheden op de drink- en calorieënkaart ([6d147d7](https://github.com/Studio-Lek-River/Ritmo/commit/6d147d7a0db44394e87178a185a3fc01e72e72f9))
+
+# [0.98.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.97.0...v0.98.0) (2026-07-27)
+
+
+### Features
+
+* **connections:** toon het aantal opgeruimde blokken tijdens verbreken ([cbb2bd6](https://github.com/Studio-Lek-River/Ritmo/commit/cbb2bd61f3925737993240e239e1bd38a51128d1))
+* **connections:** vraag bij verbreken van Outlook om de Ritmo-blokken op te ruimen ([ebd82b4](https://github.com/Studio-Lek-River/Ritmo/commit/ebd82b43b874525a51cceb2b5c29acc330988212)), closes [#160](https://github.com/Studio-Lek-River/Ritmo/issues/160)
+
+# [0.97.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.96.0...v0.97.0) (2026-07-27)
+
+
+### Features
+
+* **outlook:** ruim alle Ritmo-blokken in één actie op ([6d48e1d](https://github.com/Studio-Lek-River/Ritmo/commit/6d48e1d9c6df4981a7c014a62428d16fd3616095)), closes [#155](https://github.com/Studio-Lek-River/Ritmo/issues/155)
+
+# [0.96.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.95.0...v0.96.0) (2026-07-27)
+
+
+### Features
+
+* **outlook:** werk bestaande agendablokken bij in plaats van ze opnieuw aan te maken ([7e0867d](https://github.com/Studio-Lek-River/Ritmo/commit/7e0867dbeeec18091175f3c207a028b037107144))
+
+# [0.95.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.94.0...v0.95.0) (2026-07-27)
+
+
+### Bug Fixes
+
+* **planner:** stop het wegschrijven van de week bij een rate-limit ([c6914a5](https://github.com/Studio-Lek-River/Ritmo/commit/c6914a577394c36bb029abdde41b8dd9f6f3fdb7))
+
+
+### Features
+
+* **outlook:** kom na opnieuw koppelen terug in de planner ([6032962](https://github.com/Studio-Lek-River/Ritmo/commit/6032962cda18cee2817118d0c5c8902e6e4123b4))
+* **planner:** zet de hele week in één klik in de agenda ([deb614f](https://github.com/Studio-Lek-River/Ritmo/commit/deb614f668b637122639d56e38b125fa8dba2817)), closes [#153](https://github.com/Studio-Lek-River/Ritmo/issues/153)
+
+# [0.94.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.93.0...v0.94.0) (2026-07-27)
+
+
+### Bug Fixes
+
+* **planner:** corrigeer het label van automatisch inplannen ([d33320c](https://github.com/Studio-Lek-River/Ritmo/commit/d33320cd834a66856136f0d412696516936f4b9f))
+* **planner:** neem routines uit de takenpool mee bij het indelen van de dag ([7c3e823](https://github.com/Studio-Lek-River/Ritmo/commit/7c3e823e78cce35baf15086ada70902b48223331))
+
+
+### Features
+
+* **planner:** meld wanneer er niets in te delen valt ([fd58073](https://github.com/Studio-Lek-River/Ritmo/commit/fd58073da43853d1b2cf0a64d123cf3577b9b619))
+
+# [0.93.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.92.0...v0.93.0) (2026-07-27)
+
+
+### Features
+
+* **outlook:** schrijf de dagplanning naar Outlook via "Zet in agenda" ([9436961](https://github.com/Studio-Lek-River/Ritmo/commit/9436961b37773b7dc8722771639a958a638683ad)), closes [#41](https://github.com/Studio-Lek-River/Ritmo/issues/41)
+* **outlook:** vraag Calendars.ReadWrite en deel de write-keten voor write.js ([2173498](https://github.com/Studio-Lek-River/Ritmo/commit/2173498aa061b7ecdc5471f5fcfb46a083fe44e1))
+
+# [0.92.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.91.0...v0.92.0) (2026-07-27)
+
+
+### Bug Fixes
+
+* **planner:** voorkom onvertaalde fallback-redenen bij de server-provider ([fb1c1bc](https://github.com/Studio-Lek-River/Ritmo/commit/fb1c1bc7ec4b73d8358224094ce2b493087f71b6))
+
+
+### Features
+
+* **planner:** koppel "deel mijn dag in" aan de provider-keuze ([45680ba](https://github.com/Studio-Lek-River/Ritmo/commit/45680bad1957f0f54b5bf943c1d63c56dc2e2f69))
+* **planner:** voeg planner-provider-abstractie en server-seam toe ([370ccbb](https://github.com/Studio-Lek-River/Ritmo/commit/370ccbbe50297de811de566e49786042d3f0e8d4))
+
+# [0.91.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.90.0...v0.91.0) (2026-07-27)
+
+
+### Bug Fixes
+
+* **connections:** controleer eerst op een bestaande member-id-rij vóór het claimen van een legacy Trello-rij ([d82a1bb](https://github.com/Studio-Lek-River/Ritmo/commit/d82a1bbab2a94d64539da6f216af11bc6ded9822))
+* **connections:** meld een falend Trello-account ook bij een deels geslaagde fetch ([f626aad](https://github.com/Studio-Lek-River/Ritmo/commit/f626aad6b69a9d3ee915450d1b69574b8a78668f))
+
+
+### Features
+
+* **connections:** meerdere Trello-accounts naast elkaar koppelen ([43a45b1](https://github.com/Studio-Lek-River/Ritmo/commit/43a45b1ca35daccb6c0aef8fa654d1f772fb6adb)), closes [#120](https://github.com/Studio-Lek-River/Ritmo/issues/120)
+
+# [0.90.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.89.1...v0.90.0) (2026-07-27)
+
+
+### Features
+
+* **planner:** geef dagdata en toggle-handlers door voor module-routines ([c10423c](https://github.com/Studio-Lek-River/Ritmo/commit/c10423cae6d29723ed0f888b190df4a0707058ea))
+* **planner:** laat module-items en -blokken meedoen als derde bron in de dagtijdlijn ([b05d2de](https://github.com/Studio-Lek-River/Ritmo/commit/b05d2de068754724575b5d843d4a266524d5c908))
+* **planner:** laat module-routines meeslepen en meedoen aan "deel mijn dag in" ([84306c7](https://github.com/Studio-Lek-River/Ritmo/commit/84306c7fc6d95e15da7fdfbdcea77dd84682ad68))
+* **planner:** schakelaar "meenemen in de dagplanning" in de module-instellingen ([6316721](https://github.com/Studio-Lek-River/Ritmo/commit/63167212a45376a6ab645291f70a2c4e15d1b050)), closes [#122](https://github.com/Studio-Lek-River/Ritmo/issues/122)
+
+## [0.89.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.89.0...v0.89.1) (2026-07-27)
+
+
+### Bug Fixes
+
+* **nutrition:** productmaat in de voedingsuitleg berekenen in plaats van hardcoderen ([18f59af](https://github.com/Studio-Lek-River/Ritmo/commit/18f59af47b8998834fa643b8c1f28b4a96084f16))
+* **settings:** tandwiel opent weer de tabs na het starten van de rondleiding ([18a85d7](https://github.com/Studio-Lek-River/Ritmo/commit/18a85d70ba2a61c03000e35e36a48d5292f284a1)), closes [#152](https://github.com/Studio-Lek-River/Ritmo/issues/152)
+
+# [0.89.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.88.0...v0.89.0) (2026-07-27)
+
+
+### Features
+
+* **nutrition:** uitleg van product naar maaltijd met voorbeeld ([c9b5f3a](https://github.com/Studio-Lek-River/Ritmo/commit/c9b5f3ad435970838fb1fcfa76845e6efef00311)), closes [#150](https://github.com/Studio-Lek-River/Ritmo/issues/150)
+
+# [0.88.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.87.1...v0.88.0) (2026-07-27)
+
+
+### Features
+
+* **nutrition:** drink- en calorieënteller samenvoegen tot één kaart ([7940a4d](https://github.com/Studio-Lek-River/Ritmo/commit/7940a4d56483f806cc439ea6c133803f5e19ebab)), closes [#151](https://github.com/Studio-Lek-River/Ritmo/issues/151)
+
+## [0.87.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.87.0...v0.87.1) (2026-07-27)
+
+
+### Bug Fixes
+
+* **household:** punt als decimaalteken bij het invoeren van bedragen ([3213845](https://github.com/Studio-Lek-River/Ritmo/commit/321384583a055d73779754d1a9cc7c57a4ff792f)), closes [#114](https://github.com/Studio-Lek-River/Ritmo/issues/114)
+
+# [0.87.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.86.0...v0.87.0) (2026-07-27)
+
+
+### Bug Fixes
+
+* **nutrition:** macro-velden in het productformulier uitlijnen ([7b94338](https://github.com/Studio-Lek-River/Ritmo/commit/7b94338c8ed1a88db3d56ac951fbad51b4ce49e0))
+
+
+### Features
+
+* **insight:** gemiddelde macro's per dag op de calorieënkaart ([8b628fa](https://github.com/Studio-Lek-River/Ritmo/commit/8b628fabc0bed1ff7a614b454a3788352fe5b97d)), closes [#148](https://github.com/Studio-Lek-River/Ritmo/issues/148)
+* **nutrition:** eiwitten, koolhydraten en vetten in het datamodel ([945fc1a](https://github.com/Studio-Lek-River/Ritmo/commit/945fc1a7c5e94c228e4f849ee3567ad5b75c6484))
+* **nutrition:** macro's invoeren en berekend zien in de samenstellers ([5831c7d](https://github.com/Studio-Lek-River/Ritmo/commit/5831c7dfa323328e89bb4d74ec4a08606a66eac4))
+
+# [0.86.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.85.0...v0.86.0) (2026-07-27)
+
+
+### Features
+
+* **nutrition:** porties en maaltijden in het datamodel ([877f34c](https://github.com/Studio-Lek-River/Ritmo/commit/877f34c9516fe75b4287bbc890dfc1126927fb00))
+* **nutrition:** porties en maaltijden samenstellen en loggen ([20f9d66](https://github.com/Studio-Lek-River/Ritmo/commit/20f9d665985fc289ade98d8c0cc6c3cbc596c07c)), closes [#147](https://github.com/Studio-Lek-River/Ritmo/issues/147)
+
+# [0.85.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.84.0...v0.85.0) (2026-07-26)
+
+
+### Features
+
+* **instellingen:** voedingsbibliotheek beheren via een eigen tab in Instellingen ([1417ec2](https://github.com/Studio-Lek-River/Ritmo/commit/1417ec233bd907538d6a7383edf472677fbad8f3)), closes [#146](https://github.com/Studio-Lek-River/Ritmo/issues/146)
+
+# [0.84.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.83.0...v0.84.0) (2026-07-26)
+
+
+### Bug Fixes
+
+* **sync:** lege dag overschrijft niet langer de gelogde taken uit de cloud ([1a110ff](https://github.com/Studio-Lek-River/Ritmo/commit/1a110fff75972a14ccda36343b56387cec3bb287))
+* **sync:** opnieuw ophalen bij terugkeer naar het tabblad en na-ophaal herladen ([d7fe711](https://github.com/Studio-Lek-River/Ritmo/commit/d7fe711d5c61ef81656f5d6e07b8323d32e82edd)), closes [#145](https://github.com/Studio-Lek-River/Ritmo/issues/145)
+
+
+### Features
+
+* **sync:** ophaal-poort die lokale schrijfacties laat wachten op de cloud ([1a97dec](https://github.com/Studio-Lek-River/Ritmo/commit/1a97dec47cbff0b67ca096009444c04981ee9c1b))
+
+# [0.83.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.82.0...v0.83.0) (2026-07-26)
+
+
+### Bug Fixes
+
+* **investments:** decimale bedragen blijven behouden bij inline bewerken ([14501a7](https://github.com/Studio-Lek-River/Ritmo/commit/14501a7d4ce3b3f05b855a575fa66fb552ff224f))
+* **investments:** koersdeel-splitsing rondt af als formatEuro, niet als Math.round ([3eddfec](https://github.com/Studio-Lek-River/Ritmo/commit/3eddfec0ad28c21feb9ecda189dd840d1ef90d63))
+* **investments:** sluitpost-afronding en geneste ternaries in koersdeel-splitsing ([633ab26](https://github.com/Studio-Lek-River/Ritmo/commit/633ab266f41c561a2c98e22b122f93be9ea46e53))
+
+
+### Features
+
+* **investments:** aantal en koers per meting ([bfbcafc](https://github.com/Studio-Lek-River/Ritmo/commit/bfbcafc4e7c07fdd528e77211092abb6f8561225))
+* **investments:** koersgrafiek met euro- of indexschaal ([05744ce](https://github.com/Studio-Lek-River/Ritmo/commit/05744ce2eccdb8cc61ed02cd25df9ea857f59cc5))
+* **investments:** koerswinst gescheiden van inleg ([ca30b1d](https://github.com/Studio-Lek-River/Ritmo/commit/ca30b1dfbc0610db5144eb37e890b272609b1a1b)), closes [#115](https://github.com/Studio-Lek-River/Ritmo/issues/115)
+
+# [0.82.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.81.0...v0.82.0) (2026-07-26)
+
+
+### Bug Fixes
+
+* **nutrition:** gepaarde voedingsregels krijgen hetzelfde tijdstempel ([83bd359](https://github.com/Studio-Lek-River/Ritmo/commit/83bd359ffd06fa0c6398769056f767dcfd2313c7))
+* **nutrition:** meervoud voor het aantal porties op een gelogde maaltijd ([12334e5](https://github.com/Studio-Lek-River/Ritmo/commit/12334e55d7df39ae2d8ec933fa10794b6c708aea))
+* **ui:** toast kapt zijn eigen boodschap niet meer af ([277ea88](https://github.com/Studio-Lek-River/Ritmo/commit/277ea88d3b4420433841c2b07b697a7df241679a))
+
+
+### Features
+
+* **nutrition:** drankjes tellen mee in de gekoppelde Drinken-teller ([4bdb532](https://github.com/Studio-Lek-River/Ritmo/commit/4bdb532d086b11674bb01af24da7cf2572624933)), closes [#143](https://github.com/Studio-Lek-River/Ritmo/issues/143)
+
+# [0.81.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.80.0...v0.81.0) (2026-07-26)
+
+
+### Features
+
+* **nutrition:** i18n-keys voor maaltijden-UI ([2abe9e1](https://github.com/Studio-Lek-River/Ritmo/commit/2abe9e1030b08807c4307baca6da02672e4b1ed6)), closes [#142](https://github.com/Studio-Lek-River/Ritmo/issues/142)
+* **nutrition:** maaltijden aanmaken en beheren via nieuwe tab ([676e1e3](https://github.com/Studio-Lek-River/Ritmo/commit/676e1e329cf6d02cfbbc9c46fcaa1ef03bf0b43a))
+* **nutrition:** recepten als sjabloon van meerdere ingrediënten ([e93a90e](https://github.com/Studio-Lek-River/Ritmo/commit/e93a90e0e1e8ddbcb337f53a6c7fe4e406636c29))
+* **nutrition:** recepten in één klik loggen vanaf de dagkaart ([764ea54](https://github.com/Studio-Lek-River/Ritmo/commit/764ea54e172844d29942c9a76a75bfd46a728f64))
+
+# [0.80.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.79.0...v0.80.0) (2026-07-26)
+
+
+### Bug Fixes
+
+* **nutrition:** verwijderdialoog vermeldt dat gelogde maaltijden blijven staan ([b3f58ee](https://github.com/Studio-Lek-River/Ritmo/commit/b3f58ee1bed42d4ddb54c9d4b495e19fdb1925b8))
+
+
+### Features
+
+* **nutrition:** log losse voedingsmiddelen met automatische kcal-berekening ([f9a3ad4](https://github.com/Studio-Lek-River/Ritmo/commit/f9a3ad4b7a873adb8fe6cbc44b0f33a562ac900e)), closes [#143](https://github.com/Studio-Lek-River/Ritmo/issues/143) [#141](https://github.com/Studio-Lek-River/Ritmo/issues/141)
+
+# [0.79.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.78.1...v0.79.0) (2026-07-26)
+
+
+### Features
+
+* **nutrition:** voeg opslag, sync en backup toe voor voedingsbibliotheek ([1edb072](https://github.com/Studio-Lek-River/Ritmo/commit/1edb072b4084164e931d1add2d0c9444ede56c47))
+* **nutrition:** voeg voedingsbibliotheek-beheer toe aan de counter-editor ([9141010](https://github.com/Studio-Lek-River/Ritmo/commit/91410105b374731b22e5d14b710771c9854548bf))
+* **nutrition:** voeg voedingsbibliotheek-domein en provider toe ([db25b2c](https://github.com/Studio-Lek-River/Ritmo/commit/db25b2c2e50162940e034fb9abf19953b01138b2))
+
+## [0.78.1](https://github.com/Studio-Lek-River/Ritmo/compare/v0.78.0...v0.78.1) (2026-07-24)
+
+
+### Bug Fixes
+
+* **sync:** mergesettings-blob bij push/pull i.p.v. overschrijven ([a07abfb](https://github.com/Studio-Lek-River/Ritmo/commit/a07abfb4797b90ff172d192a75356a7c18099193))
+
 # [0.78.0](https://github.com/Studio-Lek-River/Ritmo/compare/v0.77.0...v0.78.0) (2026-07-22)
 
 

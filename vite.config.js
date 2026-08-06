@@ -10,7 +10,11 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' in plaats van 'autoUpdate': een nieuwe service worker blijft
+      // wachten tot wij hem activeren. Zo herlaadt Ritmo alleen tijdens het
+      // openingsscherm (zie src/utils/swUpdate.js) en nooit midden in een sessie,
+      // waar dat de invoer van de gebruiker zou weggooien.
+      registerType: 'prompt',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       workbox: {
         // De serverless functions onder /api zijn geen onderdeel van de SPA. De

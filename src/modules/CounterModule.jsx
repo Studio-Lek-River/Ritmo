@@ -1,9 +1,13 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { Sparkles, AlertCircle, Trash2, Settings } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Sparkles, AlertCircle, Settings } from 'lucide-react';
 import { formatAmount } from '../utils/format';
 import ReminderBanner from '../components/ReminderBanner';
 import CounterDisplay from '../components/CounterDisplay';
+import CounterEntryRow from './CounterEntryRow';
+import CounterNutritionPanel from './CounterNutritionPanel';
+import CounterDrinkSection from './CounterDrinkSection';
 import { getColorClasses } from '../utils/colors';
+import { nutritionEnabled } from '../utils/nutrition';
 import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 import { useUndoToast } from '../hooks/useUndoToast';
 
@@ -14,12 +18,25 @@ export default function CounterModule({
   weekDates,
   history,
   today,
+  // Al opgeloste drinkteller ({ id, name }) of null als er geen koppeling is
+  // (#143). Bewust géén modulelijst: het paneel hoeft alleen te weten of en
+  // waarheen de ml gaan.
+  drinkTarget = null,
+  // Volledig bundel van de gekoppelde drinkteller (#151), of null zonder
+  // koppeling: { module, name, data, onAddEntry, onRemoveEntry,
+  // onSetEntryAmount }, al gebonden aan drinkModule.id door App.jsx. Anders
+  // dan drinkTarget (alleen id/naam, voor het loggen vanuit de bibliotheek)
+  // draagt dit bundel genoeg om de drinkteller ín deze kaart te renderen —
+  // zonder deze prop rendert CounterModule exact zoals voorheen.
+  drink = null,
   editable = true,
   onIncrementCounter,
   onResetCounter,
   onAddEntry,
   onRemoveEntry,
   onSetEntryAmount,
+  onLogNutrition,
+  onSetEntryQuantity,
   onDismissReminder,
   onEdit,
   theme,
@@ -146,11 +163,15 @@ export default function CounterModule({
       useEntries={useEntries}
       data={data}
       today={today}
+      drinkTarget={drinkTarget}
+      drink={drink}
       editable={editable}
       onIncrementCounter={onIncrementCounter}
       onAddEntry={onAddEntry}
       onRemoveEntry={onRemoveEntry}
       onSetEntryAmount={onSetEntryAmount}
+      onLogNutrition={onLogNutrition}
+      onSetEntryQuantity={onSetEntryQuantity}
       onDismissReminder={onDismissReminder}
       onEdit={onEdit}
       theme={theme}
@@ -173,32 +194,35 @@ function CounterUI({
   useEntries,
   data,
   today,
+  drinkTarget = null,
+  drink = null,
   editable = true,
   onIncrementCounter,
   onAddEntry,
   onRemoveEntry,
   onSetEntryAmount,
+  onLogNutrition,
+  onSetEntryQuantity,
   onDismissReminder,
   onEdit,
   theme,
   darkMode,
 }) {
   const { t } = useTranslation();
-  const showUndoToast = useUndoToast();
   const name = resolveModuleName(mod, t);
   const initialCategory = categoriesEnabled && categories.length ? categories[0] : null;
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [manualAmount, setManualAmount] = useState('');
   const [manualCategory, setManualCategory] = useState(initialCategory);
-  const [editingEntryId, setEditingEntryId] = useState(null);
-  const [entryDraft, setEntryDraft] = useState('');
-  // Escape/blur-guard geleend van TaskListPanel (V04, #127): Escape sluit de
-  // input terwijl hij focus heeft, en sommige browsers vuren daarna alsnog
-  // een blur op de al wegrenderende node. editSessionRef volgt de actieve
-  // bewerk-sessie buiten React-state om zodat een late blur na Escape wordt
-  // genegeerd in plaats van alsnog op te slaan.
-  const justCancelledEntryRef = useRef(false);
-  const editEntrySessionRef = useRef(null);
+  // #151: eenheid van het handmatige invoerveld op een samengevoegde kaart
+  // (kcal/ml); standaard kcal, zoals de spec vraagt. Betekenisloos zonder
+  // `drink` (dan bestaat de select niet en blijft dit ongebruikt).
+  const [manualUnit, setManualUnit] = useState('kcal');
+  // Categoriekeuze van de gekoppelde drinkteller, apart van de categorieën
+  // van deze module zelf — stuurt zowel de presets in CounterDrinkSection als
+  // een handmatige ml-invoer hieronder.
+  const drinkCategories = drink?.module?.categoriesEnabled ? (drink.module.categories || []) : [];
+  const [drinkCategory, setDrinkCategory] = useState(drinkCategories.length ? drinkCategories[0] : null);
 
   const pct = dailyGoal > 0 ? Math.min(100, (total / dailyGoal) * 100) : 0;
   const reachedGoal = dailyGoal > 0 && total >= dailyGoal;
@@ -222,40 +246,16 @@ function CounterUI({
   const submitManual = () => {
     const parsed = parseFloat(manualAmount);
     if (!parsed || parsed <= 0) return;
-    handleAdd(parsed, manualCategory);
-    setManualAmount('');
-  };
-
-  // V10 (#133): verwijderen met undo-toast; het { entry, undo } paar komt van
-  // removeCounterEntry in App.jsx.
-  const handleRemoveEntry = (entryId) => {
-    const result = onRemoveEntry?.(entryId);
-    showUndoToast(t('toast.counterEntryDeleted'), () => result?.undo?.());
-  };
-
-  const startEditEntry = (entry) => {
-    if (!editable) return;
-    justCancelledEntryRef.current = false;
-    editEntrySessionRef.current = entry.id;
-    setEditingEntryId(entry.id);
-    setEntryDraft(String(entry.amount));
-  };
-  const commitEditEntry = (entryId) => {
-    if (justCancelledEntryRef.current) {
-      justCancelledEntryRef.current = false;
-      return;
+    // #151: op een samengevoegde kaart bepaalt de eenheid-select welke
+    // teller de invoer ontvangt — ml gaat naar de drinkteller (dezelfde
+    // onAddEntry als de presets in CounterDrinkSection), kcal blijft het
+    // bestaande pad.
+    if (drink && manualUnit === 'ml') {
+      drink.onAddEntry(parsed, drinkCategory);
+    } else {
+      handleAdd(parsed, manualCategory);
     }
-    if (editEntrySessionRef.current !== entryId) return;
-    editEntrySessionRef.current = null;
-    const parsed = parseFloat(entryDraft);
-    if (parsed > 0) onSetEntryAmount?.(entryId, parsed);
-    setEditingEntryId(null);
-  };
-  const cancelEditEntry = () => {
-    justCancelledEntryRef.current = true;
-    editEntrySessionRef.current = null;
-    setEditingEntryId(null);
-    setEntryDraft('');
+    setManualAmount('');
   };
 
   const goalLabel = dailyGoal > 0
@@ -272,6 +272,31 @@ function CounterUI({
   } else {
     goalTextClass = darkMode ? `text-${mod.color}-300` : `text-${mod.color}-600`;
   }
+
+  // #151: zonder `drink` blijft dit exact de oude regel-lijst (entries van
+  // deze module, elk met de eigen handlers) — de bron van de "geen
+  // gedragswijziging zonder drink-prop"-garantie. Mét `drink` voegt een
+  // gesorteerde samenvoeging de ml-regels van de gekoppelde drinkteller toe.
+  // De ml-kant van een gekoppelde voedingsregel (`linkedTo.moduleId ===
+  // mod.id`) blijft buiten de lijst: die is al zichtbaar als suffix op zijn
+  // kcal-regel (CounterEntryRow, showDrinkSuffix) en zou anders dubbel tellen.
+  const ownRows = entries.map(entry => ({
+    entry, rowMod: mod, rowUnit: unit,
+    onRemoveEntry, onSetAmount: onSetEntryAmount, onSetQuantity: onSetEntryQuantity,
+    showDrinkSuffix: !!drink,
+  }));
+  const drinkRows = drink
+    ? (drink.data?.entries || [])
+      .filter(entry => entry.linkedTo?.moduleId !== mod.id)
+      .map(entry => ({
+        entry, rowMod: drink.module, rowUnit: drink.module.unit || 'ml',
+        onRemoveEntry: drink.onRemoveEntry, onSetAmount: drink.onSetEntryAmount, onSetQuantity: undefined,
+        showDrinkSuffix: false,
+      }))
+    : [];
+  const rows = drink
+    ? [...ownRows, ...drinkRows].sort((a, b) => (a.entry.time || '').localeCompare(b.entry.time || ''))
+    : ownRows;
 
   return (
     <div className={`${theme.card} rounded-2xl p-5 shadow-sm mb-4`}>
@@ -320,6 +345,17 @@ function CounterUI({
         )}
       </div>
 
+      {drink && (
+        <CounterDrinkSection
+          drink={drink}
+          activeCategory={drinkCategory}
+          onCategoryChange={setDrinkCategory}
+          editable={editable}
+          theme={theme}
+          darkMode={darkMode}
+        />
+      )}
+
       {showReminder && (
         <ReminderBanner
           message={t('modules.counterCategoryHint')}
@@ -351,6 +387,15 @@ function CounterUI({
         </div>
       )}
 
+      {nutritionEnabled(mod) && editable && useEntries && (
+        <CounterNutritionPanel
+          colorKey={mod.color}
+          drinkTarget={drinkTarget}
+          theme={theme}
+          onLog={(log) => onLogNutrition?.(log, activeCategory)}
+        />
+      )}
+
       {presets.length > 0 && (
         <div className={`grid gap-2 mb-3 ${presets.length <= 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
           {presets.map((amount, i) => (
@@ -377,6 +422,17 @@ function CounterUI({
             placeholder={t('modules.counterAmountPlaceholder', { unit })}
             className={`flex-1 min-w-0 px-3 py-2 ${theme.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
           />
+          {drink && (
+            <select
+              value={manualUnit}
+              onChange={(e) => setManualUnit(e.target.value)}
+              aria-label={t('nutrition.drink.unitSelectAria')}
+              className={`px-2 py-2 ${theme.input} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
+            >
+              <option value="kcal">{t('modules.units.kcal')}</option>
+              <option value="ml">{t('modules.units.ml')}</option>
+            </select>
+          )}
           {categoriesEnabled && categories.length > 0 && (
             <select
               value={manualCategory ?? ''}
@@ -398,52 +454,22 @@ function CounterUI({
         </div>
       )}
 
-      {useEntries && entries.length > 0 && (
+      {useEntries && rows.length > 0 && (
         <div className={`pt-3 mt-2 border-t ${theme.border} space-y-1`}>
-          {[...entries].reverse().map(entry => (
-            <div
-              key={entry.id}
-              className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${theme.cardSecondary} text-sm`}
-            >
-              {editingEntryId === entry.id ? (
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  autoFocus
-                  value={entryDraft}
-                  onChange={(e) => setEntryDraft(e.target.value)}
-                  onBlur={() => commitEditEntry(entry.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') commitEditEntry(entry.id);
-                    if (e.key === 'Escape') cancelEditEntry();
-                  }}
-                  aria-label={t('modules.counterEntryEditAria')}
-                  className={`w-20 min-w-0 px-2 py-1 text-sm ${theme.input} rounded focus:outline-none focus:ring-2 focus:ring-${mod.color}-300`}
-                />
-              ) : (
-                <span
-                  onClick={() => startEditEntry(entry)}
-                  className={`font-medium ${theme.textSecondary} ${editable ? 'cursor-text' : ''}`}
-                >
-                  {formatAmount(entry.amount, unit)}
-                </span>
-              )}
-              {entry.category && (
-                <span className={`px-2 py-0.5 rounded-full text-xs ${darkMode ? `bg-${mod.color}-900/40 text-${mod.color}-300` : `bg-${mod.color}-100 text-${mod.color}-700`}`}>
-                  {entry.category}
-                </span>
-              )}
-              <span className={`text-xs ${theme.textMuted} ml-auto`}>{entry.time}</span>
-              {editable && (
-                <button
-                  onClick={() => handleRemoveEntry(entry.id)}
-                  aria-label={t('common.delete')}
-                  className={`p-1 rounded ${theme.hover} ${theme.textMuted} hover:text-red-500 transition`}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
+          {[...rows].reverse().map(row => (
+            <CounterEntryRow
+              key={row.entry.id}
+              entry={row.entry}
+              unit={row.rowUnit}
+              mod={row.rowMod}
+              editable={editable}
+              onRemoveEntry={row.onRemoveEntry}
+              onSetAmount={row.onSetAmount}
+              onSetQuantity={row.onSetQuantity}
+              showDrinkSuffix={row.showDrinkSuffix}
+              theme={theme}
+              darkMode={darkMode}
+            />
           ))}
         </div>
       )}

@@ -4,6 +4,11 @@
 // geeft een `authorizeUrl` terug met een HMAC-ondertekende `state` (CSRF).
 // Draait server-side met de service-role-key; die komt nooit in de
 // browser-bundel terecht. Zie docs/slices/S07-outlook-lezen.md.
+//
+// S12a (deel A): een optionele `returnTo` in de request-body reist mee in de
+// state, zodat de gebruiker na "Opnieuw koppelen" terugkomt in de Planner op
+// de dag waarvoor hij wilde wegschrijven. Zonder `returnTo` (de Verbinden-
+// knop in Instellingen) verandert er niets aan het bestaande gedrag.
 import {
   getBearerToken,
   getServiceClient,
@@ -43,6 +48,8 @@ export default async function handler(req, res) {
   }
 
   const accountId = userData.user.id;
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const returnTo = typeof body.returnTo === 'string' ? body.returnTo : undefined;
 
   try {
     const { error: ensureError } = await ensureConnectionRow(supabase, accountId, 'outlook');
@@ -51,7 +58,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Kon koppeling niet voorbereiden', code: 'unexpected' });
     }
 
-    const state = signOAuthState({ accountId });
+    const state = signOAuthState({ accountId, returnTo });
     const params = new URLSearchParams({
       client_id: process.env.MS_CLIENT_ID,
       redirect_uri: process.env.MS_OAUTH_REDIRECT_URI,

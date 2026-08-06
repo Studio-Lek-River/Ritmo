@@ -3,10 +3,20 @@
 // checkbox-lijst; lijsten + kaarten komen pas via cards.js zodra een bord is
 // aangevinkt (opt-in, zie AC5 in de slice-spec). Nooit de rauwe Trello-payload
 // doorgeven, altijd expliciet mappen.
+//
+// #120: fant uit over ÁLLE verbonden Trello-rijen van dit account
+// (`listConnectedRows`, inclusief een eventuele legacy-rij met
+// `external_account IS NULL` — een koppeling van vóór deze slice blijft zo
+// werken zonder opnieuw te koppelen), elk bord opgehaald met het token van
+// zijn eigen account. Een bord dat onder twee accounts zichtbaar is
+// verschijnt één keer (dedupe op board-id, eerste connectie wint), zodat
+// hetzelfde bord nooit twee keer in de planner belandt. 502 alleen als álle
+// accounts falen — zelfde vorm als de per-bord-afhandeling in cards.js.
 import {
   getBearerToken,
   getServiceClient,
   missingTrelloEnv,
+  listConnectedRows,
   requireTrelloConnection,
   classifyTrelloStatus,
   isTrelloRateLimited,
@@ -44,36 +54,73 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { connection, token, error } = await requireTrelloConnection(supabase, accountId);
-    if (error) {
-      const status = error === 'not_connected' ? 409 : 500;
-      return res.status(status).json({ error: 'Trello is niet gekoppeld', code: error });
-    }
-    void connection;
-
-    const params = new URLSearchParams({
-      filter: 'open',
-      fields: 'id,name,shortUrl',
-      lists: 'none',
-      key: process.env.TRELLO_API_KEY,
-      token,
-    });
-    const boardsResponse = await fetch(`${TRELLO_API_BASE}/members/me/boards?${params.toString()}`);
-
-    if (!boardsResponse.ok) {
-      const errText = await boardsResponse.text().catch(() => '');
-      console.error('connections/trello/boards upstream failed', boardsResponse.status, errText);
-      return res.status(502).json({ error: 'Kon Trello-borden niet ophalen', code: classifyTrelloStatus(boardsResponse.status) });
+    const { connections: rows, error: listError } = await listConnectedRows(supabase, accountId, 'trello');
+    if (listError) {
+      console.error('connections/trello/boards list failed', listError);
+      return res.status(500).json({ error: 'Kon Trello-koppelingen niet ophalen', code: 'unexpected' });
     }
 
-    const raw = await boardsResponse.json().catch(() => []);
-    const boards = (Array.isArray(raw) ? raw : []).map((board) => ({
-      id: board.id,
-      name: board.name || '',
-      url: board.shortUrl || '',
-    }));
+    if (rows.length === 0) {
+      return res.status(409).json({ error: 'Trello is niet gekoppeld', code: 'not_connected' });
+    }
 
-    return res.status(200).json({ boards });
+    // Eén regel per verbonden account (naam voor de bord-kiezer), ongeacht of
+    // het ophalen van zijn borden hierna lukt — zo blijft de account-groep
+    // zichtbaar in de UI ook wanneer dit account tijdelijk faalt (AC8).
+    const accounts = rows.map((row) => ({ connectionId: row.id, label: row.label || '' }));
+    const boardsById = new Map();
+    const failedConnectionIds = [];
+    let lastFailureStatus = null;
+
+    for (const row of rows) {
+      const { token, error } = await requireTrelloConnection(supabase, accountId, row.id);
+      if (error) {
+        failedConnectionIds.push(row.id);
+        continue;
+      }
+
+      const params = new URLSearchParams({
+        filter: 'open',
+        fields: 'id,name,shortUrl',
+        lists: 'none',
+        key: process.env.TRELLO_API_KEY,
+        token,
+      });
+
+      try {
+        const boardsResponse = await fetch(`${TRELLO_API_BASE}/members/me/boards?${params.toString()}`);
+        if (!boardsResponse.ok) {
+          const errText = await boardsResponse.text().catch(() => '');
+          console.warn('connections/trello/boards upstream failed', row.id, boardsResponse.status, errText);
+          failedConnectionIds.push(row.id);
+          lastFailureStatus = boardsResponse.status;
+          continue;
+        }
+
+        const raw = await boardsResponse.json().catch(() => []);
+        for (const board of (Array.isArray(raw) ? raw : [])) {
+          // Dedupe op board-id: hetzelfde bord onder twee accounts mag nooit
+          // twee keer in de kiezer/planner belanden (AC7). De eerste
+          // connectie die het bord levert "wint".
+          if (boardsById.has(board.id)) continue;
+          boardsById.set(board.id, {
+            id: board.id,
+            name: board.name || '',
+            url: board.shortUrl || '',
+            connectionId: row.id,
+          });
+        }
+      } catch (err) {
+        console.warn('connections/trello/boards fetch failed', row.id, err);
+        failedConnectionIds.push(row.id);
+      }
+    }
+
+    if (failedConnectionIds.length === rows.length) {
+      return res.status(502).json({ error: 'Kon Trello-borden niet ophalen', code: classifyTrelloStatus(lastFailureStatus) });
+    }
+
+    return res.status(200).json({ accounts, boards: Array.from(boardsById.values()), failedConnectionIds });
   } catch (err) {
     console.error('connections/trello/boards error', err);
     return res.status(500).json({ error: 'Onverwachte fout', code: 'unexpected' });

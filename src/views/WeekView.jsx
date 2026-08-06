@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { useTranslation } from '../i18n/useTranslation';
+import { useTranslation, resolveModuleName } from '../i18n/useTranslation';
 import { COLOR_OPTIONS, getColorClasses, getColorHex } from '../utils/colors';
 import { SOURCE_ICONS, getSourcePref } from '../utils/sourcePrefs';
 import { buildDayTimeline, DEFAULT_BLOCK_MINUTES } from '../utils/dayTimeline';
@@ -118,6 +118,8 @@ export default function WeekView({
   onSelectDate,
   onToggleTask,
   onToggleProjectSubgoal,
+  onToggleModuleItem,
+  onToggleModuleBlock,
   onMoveItem,
   pendingPlan,
   onAcceptPendingItem,
@@ -148,10 +150,14 @@ export default function WeekView({
       const raw = buildDayTimeline({
         modules,
         customTasks: day.customTasks,
+        moduleData: day.moduleData,
+        resolveName: mod => resolveModuleName(mod, t),
         referenceDate: day.date,
         handlers: {
           onToggleTask: (id) => onToggleTask(day.dateKey, id),
           onToggleProjectSubgoal,
+          onToggleModuleItem: (moduleId, itemId) => onToggleModuleItem(day.dateKey, moduleId, itemId),
+          onToggleModuleBlock: (moduleId) => onToggleModuleBlock(day.dateKey, moduleId),
         },
       });
       // Een nog niet gematerialiseerde recurring-instantie mag je nog niet
@@ -161,7 +167,7 @@ export default function WeekView({
       ));
     });
     return map;
-  }, [weekDays, modules, onToggleTask, onToggleProjectSubgoal]);
+  }, [weekDays, modules, onToggleTask, onToggleProjectSubgoal, onToggleModuleItem, onToggleModuleBlock, t]);
 
   // Gememoiseerd omdat `agendaColumns` hieronder erop indexeert: de
   // Dag-stand filtert en levert dus elke render een nieuwe array-identiteit,
@@ -546,31 +552,53 @@ function WeekNav({ weekStart, weekOffset, onWeekOffsetChange, theme, t }) {
 // is: toont de bulk-"alles overnemen" (alleen propose, zie S05-spec — concept
 // blijft per-blok "vastzetten") en een generieke "alles weggooien"-uitgang
 // voor beide standen (principe 2: nooit vastzitten aan een voorstel).
+// S11: `pendingPlan` draagt sinds deze slice ook `explanation`/`providerUsed`/
+// `fallbackFrom`/`fallbackReason` (van `planWithProvider`). Bij de stille
+// default (heuristic, geen fallback) blijft dit exact de balk van vóór S11
+// (AC2: geen extra ruis) — `providerNotice`/`explanation` zijn dan allebei
+// `null` en de extra regel rendert niet.
 function PendingPlanBar({ pendingPlan, onAcceptAllPending, onDiscardAllPending, theme, t }) {
   const isConcept = pendingPlan.mode === 'concept';
+  const providerNotice = pendingPlan.fallbackFrom
+    ? t('planner.provider.fallbackNotice', {
+        provider: t(`planner.provider.names.${pendingPlan.fallbackFrom}`),
+        reason: t(`planner.provider.reasons.${pendingPlan.fallbackReason}`),
+      })
+    : (pendingPlan.providerUsed && pendingPlan.providerUsed !== 'heuristic'
+      ? t('planner.provider.usedNotice', { provider: t(`planner.provider.names.${pendingPlan.providerUsed}`) })
+      : null);
+
   return (
-    <div className={`flex items-center justify-between gap-3 flex-wrap ${theme.cardSecondary} ${theme.radiusControl} ${theme.padRow}`}>
-      <span className={`text-xs ${theme.textMuted}`}>
-        {t(isConcept ? 'settings.planModeConcept' : 'settings.planModePropose')}
-      </span>
-      <div className="flex items-center gap-2">
-        {!isConcept && (
+    <div className={`flex flex-col gap-2 ${theme.cardSecondary} ${theme.radiusControl} ${theme.padRow}`}>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <span className={`text-xs ${theme.textMuted}`}>
+          {t(isConcept ? 'settings.planModeConcept' : 'settings.planModePropose')}
+        </span>
+        <div className="flex items-center gap-2">
+          {!isConcept && (
+            <button
+              type="button"
+              onClick={onAcceptAllPending}
+              className={`px-3 py-1.5 ${theme.radiusControl} text-xs font-medium transition ${theme.accentBg} shadow`}
+            >
+              {t('planner.actions.acceptAll')}
+            </button>
+          )}
           <button
             type="button"
-            onClick={onAcceptAllPending}
-            className={`px-3 py-1.5 ${theme.radiusControl} text-xs font-medium transition ${theme.accentBg} shadow`}
+            onClick={onDiscardAllPending}
+            className={`px-3 py-1.5 ${theme.radiusControl} text-xs font-medium transition ${theme.cardSecondary} ${theme.textMuted} ${theme.hover}`}
           >
-            {t('planner.actions.acceptAll')}
+            {t('planner.actions.discard')}
           </button>
-        )}
-        <button
-          type="button"
-          onClick={onDiscardAllPending}
-          className={`px-3 py-1.5 ${theme.radiusControl} text-xs font-medium transition ${theme.cardSecondary} ${theme.textMuted} ${theme.hover}`}
-        >
-          {t('planner.actions.discard')}
-        </button>
+        </div>
       </div>
+      {(providerNotice || pendingPlan.explanation) && (
+        <div className={`text-xs ${theme.textMuted} space-y-0.5`}>
+          {providerNotice && <p>{providerNotice}</p>}
+          {pendingPlan.explanation && <p>{t('planner.provider.explanation', { explanation: pendingPlan.explanation })}</p>}
+        </div>
+      )}
     </div>
   );
 }

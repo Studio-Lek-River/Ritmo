@@ -1,5 +1,6 @@
 // Pure helpers for the Household feature. No React, no storage.
 import { t, getLocale } from '../i18n/useTranslation';
+import { parseDecimalInput } from './numberInput';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -62,11 +63,10 @@ export function formatEuro(n) {
   return `€${withThousands},${decimals}`;
 }
 
+// Dunne wrapper om parseDecimalInput (#114): naam en 0-fallback blijven,
+// zodat de `> 0`-validaties elders in Huishouden ongewijzigd blijven.
 export function parseEuroInput(str) {
-  if (typeof str !== 'string') return Number(str) || 0;
-  const cleaned = str.replace(/[^\d,.\-]/g, '').replace(',', '.');
-  const n = parseFloat(cleaned);
-  return Number.isFinite(n) ? n : 0;
+  return parseDecimalInput(str) ?? 0;
 }
 
 export function monthKeyOf(date) {

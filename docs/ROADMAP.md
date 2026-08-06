@@ -58,8 +58,9 @@ De open slices lopen als één doorlopende reeks in bouwvolgorde. De volgende te
 | S10 | #39 | Todo | Vandaag-feed |
 | S10b | #121 | Todo | Aggregatie-cache via een scheduled functie |
 | S10c | #122 | Todo | Checklist-items planbaar in de dag |
-| S11 | #40 | Todo | Deel mijn dag in |
-| S12 | #41 | Todo | Outlook wegschrijven |
+| S11 | #40 | KLAAR | Deel mijn dag in |
+| S12 | #41 | IN UITVOERING | Outlook wegschrijven |
+| S12a | #153 | Todo | Agenda-write verfijningen |
 | S13 | #42 | Todo | Ritmo MCP-server (lezen) |
 | S14 | #43 | Todo | Uitvoer-context per bron |
 | S15 | #44 | Todo | MCP write-back (status + resultaat) |
@@ -121,6 +122,7 @@ Een lokale, offline versie van de planner die volledig op bestaande data draait,
 - **Doel:** kaarten uit meerdere Trello-borden en accounts als items.
 - **Oplevering:** Trello-koppeling voor meerdere accounts en borden, kaarten naar items, voortgang per bord of lijst.
 - **Afhankelijk van:** S02.
+- **Correctie:** de oplevering dekte bij het KLAAR-zetten van deze slice alleen meerdere borden, niet meerdere accounts (de S08-Poort-0-aanname "één Trello-account per gebruiker" stond nog in de code). #120 maakt "meerdere accounts" alsnog waar; zie dat issue voor de meervoudige Trello-koppeling.
 
 #### S09, GitHub lezen. #38
 - **Doel:** issues en hun voortgang als items.
@@ -145,17 +147,32 @@ Een lokale, offline versie van de planner die volledig op bestaande data draait,
 - **De crux:** `buildDayTimeline` leest alleen `tasks` en `projects`, en een checklist-item keert elke dag terug (status per dag in het `day:`-record) in plaats van één keer af te ronden.
 - **Afhankelijk van:** S10.
 
-#### S11, Deel mijn dag in. #40
+#### S11, Deel mijn dag in. #40. KLAAR
 - **Doel:** de planner die je taken rond je Outlook-afspraken indeelt, met een provider-pluggable AI-laag boven de deterministische heuristiek.
 - **Oplevering:** een planner-provider-abstractie met één contract, met daarachter: (a) de heuristiek uit S05 als default en universele fallback; (b) een lokale AI (bv. Ollama), client-side, desktop-only, opt-in; (c) een gedefinieerde server-provider-seam (patroon van `api/connections/outlook/events.js`) die de latere Ritmo AI invult voor desktop én mobiel, met de betaalde Claude-API met eigen key hooguit als interim. Plus de provider-keuze als device-lokale instelling met een duidelijke fallback-melding, en de planner-UI (indeling, uitleg, gebruikte provider). Nog geen write-back.
 - **Feitelijke correctie:** een claude.ai-abonnement dekt de Anthropic-API niet, dus geen gratis-via-abonnement; daarom local-first met de heuristiek als kosteloze default, en Ritmo AI (server-side, desktop+mobiel) als einddoel.
 - **Lokale voorloper:** de heuristische indeler uit S05 (`src/utils/planDay.js`) is de deterministische ruggengraat en fallback; S11 is de AI-laag daarbovenop. De planner-UI komt uit S03.
 - **Afhankelijk van:** S07 (Outlook lezen) en S10 (feed); bouwt voort op Fase A (S03–S06).
+- **Poort-0-beslissingen (bij goedkeuring van de spec vastgelegd):**
+  1. De AI bepaalt alleen volgorde en uitleg (`{ order, windowHints, explanation }`); `planDay.js` blijft de enige plaatser en blijft zelf ongewijzigd — een AI-antwoord kan dus per constructie geen overlappend of ongeldig blok opleveren.
+  2. De lokale Ollama-provider is in deze slice echt werkend opgeleverd (instelbare URL en model, timeout, foutafhandeling), niet doorgeschoven.
+  3. De server-seam is een echt endpoint (`api/plan.js`, POST-only, JWT-check, `501 not_configured` zonder AI-env) in plaats van alleen een client-side contract in commentaar.
 
-#### S12, Outlook wegschrijven. #41
-- **Doel:** de gegenereerde indeling naar Outlook schrijven.
+#### S12, Outlook wegschrijven. #41. IN UITVOERING
+- **Doel:** de dagplanning naar Outlook schrijven.
 - **Oplevering:** `Calendars.ReadWrite`, een aparte "Ritmo"-agenda die via Graph wordt aangemaakt, getagde en regenereerbare blokken, en een instelbare bestemming (Ritmo-agenda en/of hoofdagenda). De write is deterministisch via directe Graph-calls.
 - **Afhankelijk van:** S11.
+- **Poort-0-beslissingen (bij goedkeuring van de spec vastgelegd):**
+  1. Beide bestemmingen komen in deze slice. Omdat de hoofdagenda meedoet is een harde per-event tag verplicht (Graph extended property), zodat regenereren alléén Ritmo-blokken verwijdert en nooit een eigen afspraak van de gebruiker raakt. De zichtbare categorie "Ritmo" is puur cosmetisch en bepaalt nooit wat er verwijderd wordt.
+  2. Weggeschreven wordt de héle dagplanning van die dag, niet alleen de laatste indeler-run. Alleen dan is de write idempotent (agenda voor dag X == Ritmo voor dag X) en loopt de agenda niet uit de pas zodra je na het indelen nog iets versleept.
+  3. De trigger is een expliciete knop per dag; opnieuw klikken is regenereren. Er wordt nooit ongevraagd naar buiten geschreven.
+  4. Verbinden vraagt voortaan altijd `Calendars.ReadWrite`. Consent is per gebruiker, dus bestaande koppelingen blijven lezen op hun oude consent (de token-refresh gebruikt de opgeslagen scope, niet de constante) en krijgen bij de eerste schrijfpoging een "Opnieuw koppelen"-melding.
+- **Afgesplitst:** S12a (#153) voor de `returnTo` door de OAuth-state en week-in-één-klik; de overige oorspronkelijk genoemde verfijningen kregen bij het vaststellen van de S12a-scope elk een eigen issue: diff/PATCH i.p.v. delete+create (#154, KLAAR), de opruimknop "alle Ritmo-blokken" (#155, KLAAR), automatisch bijwerken (#156), twee-richtingsverkeer (#157, bouwt op #154), all-day en herhalingen (#158, geblokkeerd door het ontbrekende datamodel), en meerdere Outlook-accounts (#159). Uit #155 kwam daarna nog #160 (KLAAR): bij het verbreken van de koppeling vragen om de Ritmo-blokken op te ruimen — het laatste moment waarop dat nog kan, want zonder koppeling is er geen token meer.
+
+#### S12a, Agenda-write verfijningen. #153
+- **Doel:** twee verfijningen op de write-back uit S12: na "Opnieuw koppelen" terugkomen in de Planner op de dag waarvoor je wilde wegschrijven (een `returnTo` door de OAuth-state), en de hele zichtbare week in één klik wegschrijven in plaats van zeven keer klikken.
+- **Afhankelijk van:** S12.
+- **Afgesplitst:** de overige punten uit de oorspronkelijke S12a-issue-body kregen elk een eigen issue: diff/PATCH i.p.v. delete+create (#154), de opruimknop "alle Ritmo-blokken" (#155), automatisch bijwerken (#156), twee-richtingsverkeer (#157), all-day en herhalingen (#158), meerdere Outlook-accounts (#159).
 
 ### Fase D, Uitvoeren (Claude als uitvoerder). S13–S16
 

@@ -40,7 +40,10 @@ export default function BackupSection({ theme }) {
     try {
       const text = await readFileAsText(pendingFile);
       const result = await importData(text);
-      const message = `${t('backup.importSuccess')} ${t('backup.importDays').replace('{count}', String(result.daysRestored))}`;
+      const nutritionSuffix = result.nutritionRestored
+        ? ` ${t('backup.importNutrition', { count: result.nutritionRestored })}`
+        : '';
+      const message = `${t('backup.importSuccess')} ${t('backup.importDays').replace('{count}', String(result.daysRestored))}${nutritionSuffix}`;
       showToast({ message });
       setTimeout(() => window.location.reload(), 800);
     } catch (err) {

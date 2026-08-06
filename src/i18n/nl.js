@@ -174,6 +174,27 @@ export default {
       editMeasurementAria: 'Metingwaarde bewerken',
       deleteHoldingTitle: '"{name}" verwijderen?',
       deleteHoldingDesc: 'Dit verwijdert het aandeel en de {count} bijbehorende metingen.',
+      entryLabel: 'Hoe voer je metingen in?',
+      entryTotal: 'Totaalbedrag',
+      entryShares: 'Aantal × koers',
+      fieldShares: 'Aantal',
+      fieldPrice: 'Koers',
+      computedValue: 'Waarde: {value}',
+      sharesTimesPrice: '{shares} × {price}',
+      editSharesAria: 'Aantal bewerken',
+      editPriceAria: 'Koers bewerken',
+      chartViewLabel: 'Grafiekweergave',
+      chartTotal: 'Totale waarde',
+      chartPrice: 'Koers per stuk',
+      priceScaleAbs: 'Euro',
+      priceScaleIndexed: 'Index 100',
+      priceScaleHint: 'Index 100: elke lijn start op 100, ongeacht de werkelijke koers.',
+      priceIndexSkipped: '{n} overgeslagen wegens onbruikbare startkoers',
+      splitHeading: 'Waarvan:',
+      splitPriceLabel: 'koers {value}',
+      splitContributionLabel: 'inleg {value}',
+      splitUnknownLabel: 'niet toe te wijzen {value}',
+      splitHint: 'Koersdeel komt door prijsverandering, inlegdeel door bijkopen of verkopen.',
     },
     chores: {
       title: 'Klusjes',
@@ -363,6 +384,7 @@ export default {
       keepLocal: 'Behoud lokaal',
       itemSettings: 'Instellingen',
       itemDay: 'Dag van {date}',
+      itemNutrition: 'Voedingsbibliotheek',
     },
     error: {
       pullFailed: 'Kon cloud-data niet ophalen',
@@ -851,6 +873,21 @@ export default {
       desc: 'Vervang het vinkje door een teller (bijv. 0/3 sets).',
     },
 
+    // dagplanning (S10c)
+    optPlanInDay: {
+      title: 'Meenemen in de dagplanning',
+      desc: 'Toon deze module in de Planner, zodat je items kunt inplannen en aanvinken vanuit je dag.',
+    },
+    optPlanItem: {
+      title: 'Meenemen in de dagplanning',
+      desc: 'Zet uit om alleen dit item buiten de Planner te houden.',
+    },
+    planGranularity: {
+      label: 'Weergave in de Planner',
+      items: 'Los per item',
+      block: 'Als één blok',
+    },
+
     // checklist runtime
     checkAria: 'Afvinken',
     uncheckAria: 'Uitvinken',
@@ -864,6 +901,7 @@ export default {
     units: {
       minutes: 'minuten',
       ml: 'ml',
+      g: 'g',
       l: 'l',
       glas: 'glas',
       pages: "pagina's",
@@ -1087,6 +1125,216 @@ export default {
     addTaskPlaceholder: 'Voeg een taak toe...',
   },
 
+  // Voedingsbibliotheek (slice A): vastleggen van voedingsmiddelen. Loggen
+  // (hoeveelheid -> kcal in het dagtotaal) volgt in slice B.
+  nutrition: {
+    library: {
+      enabledLabel: 'Voedingsbibliotheek gebruiken',
+      settingsHint: 'Beheer je voedingsmiddelen en maaltijden via Instellingen → Voeding.',
+      title: 'Voedingsbibliotheek',
+      emptyTitle: 'Nog geen voedingsmiddelen',
+      emptyDesc: 'Leg vast hoeveel kcal een voedingsmiddel per 100 gram of milliliter bevat, zodat je het straks snel kunt loggen.',
+      addButton: 'Voedingsmiddel toevoegen',
+      itemPer100: '{kcal} kcal / 100 {unit}',
+      // #147: Product → Portie → Maaltijd. De receptentab (tabRecipes e.a.)
+      // is vervangen door tabPortions/tabMeals; recepten blijven wel in de
+      // opgeslagen data staan (zie normalizeNutritionLibrary), alleen niet
+      // meer in deze UI.
+      tabProducts: 'Producten',
+      tabPortions: 'Porties',
+      tabMeals: 'Maaltijden',
+      portionEmptyTitle: 'Nog geen porties',
+      portionEmptyDesc: 'Stel een portie samen uit meerdere producten, zodat je hem straks kunt gebruiken in een maaltijd.',
+      addPortionButton: 'Portie toevoegen',
+      mealEmptyTitle: 'Nog geen maaltijden',
+      mealEmptyDesc: 'Stel een maaltijd samen uit meerdere porties, zodat je hem straks in één klik kunt loggen.',
+      addMealButton: 'Maaltijd toevoegen',
+    },
+    item: {
+      addTitle: 'Voedingsmiddel toevoegen',
+      editTitle: 'Voedingsmiddel bewerken',
+      nameLabel: 'Naam',
+      namePlaceholder: 'bijv. Havermout',
+      unitLabel: 'Eenheid',
+      kcalLabel: 'Kcal per 100 {unit}',
+      kcalPlaceholder: 'bijv. 370',
+      // #148: drie optionele macro's naast kcal. "Optioneel" staat één keer in
+      // het sectielabel i.p.v. drie keer per veld: met de lange variant per
+      // veld wrapte elk label anders en liepen de drie invoervelden uit
+      // lijn. De veldnamen zelf komen uit nutrition.macros.* — dezelfde drie
+      // labels die de berekende macroregel gebruikt.
+      macrosSectionLabel: "Macro's per 100 {unit} (optioneel, in gram)",
+      proteinPlaceholder: 'bijv. 8',
+      carbsPlaceholder: 'bijv. 60',
+      fatPlaceholder: 'bijv. 6',
+      // Poort-0-aanvulling (#147): de maat is verplicht, dus geen
+      // "(optioneel)" meer — zonder een geldige "1 product = ..." blijft de
+      // opslaan-knop uit (AC11).
+      portionSectionLabel: '1 product = ...',
+      portionNamePlaceholder: 'bijv. snee',
+      portionAmountPlaceholder: '{unit}',
+      perProductLabel: '1 product = {kcal} kcal',
+      perProductRequiredHint: 'Vul een naam en een hoeveelheid in om de kcal per product te berekenen',
+      countsAsDrinkLabel: 'Telt ook mee als drinken',
+      deleteTitle: '{name} verwijderen?',
+      deleteDescription: 'Dit voedingsmiddel wordt uit de bibliotheek verwijderd. Al gelogde maaltijden blijven staan.',
+    },
+    // Portie (#147): een aantal producten samen, tussen product en maaltijd
+    // in. Zelfde formulierpatroon als het (voormalige) receptformulier, maar
+    // met een aantal producten i.p.v. ingrediënten in grammen.
+    portion: {
+      addTitle: 'Portie toevoegen',
+      editTitle: 'Portie bewerken',
+      nameLabel: 'Naam',
+      namePlaceholder: 'bijv. Broodje boterhamworst',
+      entriesLabel: 'Producten',
+      entryProductAria: 'Product',
+      missingProductOption: '(ontbrekend product)',
+      countPlaceholder: 'Aantal',
+      noProductSizeHint: 'geen maat',
+      addEntryButton: '+ Product toevoegen',
+      removeEntryAria: 'Product verwijderen',
+      totalLabel: 'Totaal: {kcal} kcal per portie',
+      unit: 'portie',
+      unitPlural: 'porties',
+      missingHint: '{count} product bestaat niet meer — niet meegeteld',
+      missingHintPlural: '{count} producten bestaan niet meer — niet meegeteld',
+      deleteTitle: '{name} verwijderen?',
+      deleteDescription: 'Deze portie wordt uit de bibliotheek verwijderd. Al gelogde maaltijden blijven staan.',
+    },
+    // Maaltijd (#147): een aantal porties samen — één laag hoger dan een
+    // portie, zelfde formulierpatroon.
+    meal: {
+      addTitle: 'Maaltijd toevoegen',
+      editTitle: 'Maaltijd bewerken',
+      nameLabel: 'Naam',
+      namePlaceholder: 'bijv. Ontbijt',
+      entriesLabel: 'Porties',
+      entryPortionAria: 'Portie',
+      missingPortionOption: '(ontbrekende portie)',
+      countPlaceholder: 'Aantal',
+      addEntryButton: '+ Portie toevoegen',
+      removeEntryAria: 'Portie verwijderen',
+      totalLabel: 'Totaal: {kcal} kcal per maaltijd',
+      unit: 'maaltijd',
+      unitPlural: 'maaltijden',
+      chipLabel: '{name} · {kcal} kcal',
+      missingHint: '{count} portie bestaat niet meer — niet meegeteld',
+      missingHintPlural: '{count} porties bestaan niet meer — niet meegeteld',
+      deleteTitle: '{name} verwijderen?',
+      deleteDescription: 'Deze maaltijd wordt uit de bibliotheek verwijderd. Al gelogde maaltijden blijven staan.',
+    },
+    // Macro-regel (#148): gedeeld door MacroSummary, gebruikt onder het
+    // kcal-totaal in de portie-/maaltijdsamensteller en op de Inzicht-kaart.
+    // Eén summary-key i.p.v. los concatenerende JSX, zodat ook de
+    // scheidingstekens uit i18n komen i.p.v. hardcoded tekst.
+    macros: {
+      proteinLabel: 'Eiwit',
+      carbsLabel: 'Koolhydraten',
+      fatLabel: 'Vet',
+      summary: '{proteinLabel} {protein} · {carbsLabel} {carbs} · {fatLabel} {fat}',
+    },
+    // Uitlegpagina "Van product naar maaltijd" (#150): geen enkel getal
+    // hierin — alle kcal/ml-bedragen komen berekend uit
+    // src/utils/nutritionExample.js binnen via t()-interpolatie. setupSteps
+    // en logSteps zijn arrays; scripts/check-i18n.mjs ziet arrays als blad,
+    // dus de lengte tussen nl/en wordt hier bewust handmatig gelijk gehouden.
+    guide: {
+      openButton: 'Hoe werkt dit?',
+      intro: 'Voeding werkt in Ritmo in drie lagen: een product, een portie en een maaltijd. Hieronder zie je hoe die in elkaar grijpen, met een doorgerekend voorbeeld dat je met één klik kunt overnemen.',
+      setupTitle: 'Eerst aanzetten',
+      setupSteps: [
+        'Open in Instellingen → Modules een teller met eenheid kcal en tik op bewerken.',
+        'Zet "Voedingsbibliotheek gebruiken" aan — deze optie verschijnt alleen bij een kcal-teller.',
+        'Koppel er optioneel een ml-teller aan, zodat drankjes automatisch meetellen voor je vochtdoel.',
+      ],
+      productTitle: '1. Product',
+      productBody: 'Een product is de basis: hoeveel kcal (en eventueel eiwit, koolhydraten en vet) er per 100 gram of 100 milliliter in zitten, plus hoeveel dat één stuk is.',
+      productSize: '1 {label} = {amount} {unit}',
+      portionTitle: '2. Portie',
+      portionBody: 'Een portie combineert een of meer producten met een aantal, bijvoorbeeld twee scheppen havermout plus een glas melk. Een portie mag ook uit precies één product bestaan.',
+      mealTitle: '3. Maaltijd',
+      mealBody: 'Een maaltijd combineert een of meer porties tot wat je in één keer logt, bijvoorbeeld een kom havermout plus een stuk fruit.',
+      entryLine: '{count}× {name} · {kcal} kcal',
+      exampleNote: 'Dit voorbeeld is alleen een illustratie — je bibliotheek verandert pas als je hieronder op de knop klikt.',
+      addButton: 'Zet dit voorbeeld in mijn bibliotheek',
+      addedButton: 'Voorbeeld staat in je bibliotheek',
+      addedToast: 'Voorbeeld toegevoegd aan je bibliotheek',
+      addHint: 'Je bibliotheek blijft leeg tot je zelf iets toevoegt. Eenmaal overgenomen kun je het voorbeeld gewoon bewerken of verwijderen, net als elk ander item.',
+      logTitle: 'Loggen',
+      logSteps: [
+        'Open de kcal-teller op je dagkaart en tik op loggen.',
+        'Zoek het product, de portie of de maaltijd op en kies hoeveel je ervan neemt.',
+        'Bevestig — het bedrag komt direct bij je dagtotaal.',
+      ],
+      editTitle: 'Hoeveelheid corrigeren',
+      editBody: 'Te veel of te weinig gelogd? Tik op de regel in je dag-log om de hoeveelheid aan te passen of de regel te verwijderen — het dagtotaal werkt automatisch bij.',
+      drinkTitle: 'Drinken telt mee',
+      drinkBody: 'Zet bij een ml-product "Telt ook mee als drinken" aan en koppel de kcal-teller aan een ml-teller. Bij het loggen krijg je dan zowel de kcal als de ml erbij.',
+      drinkExample: '{name} in "{portion}" telt voor {ml} ml mee — in de hele maaltijd "{meal}" is dat samen {mealMl} ml.',
+      macrosTitle: "Macro's",
+      macrosBody: "Vul optioneel eiwit, koolhydraten en vet per 100 gram of milliliter in bij een product. Ritmo telt ze automatisch op naar portie- en maaltijdniveau en toont ze onder het totaal.",
+      insightTitle: 'Terugkijken',
+      insightBody: "De inzicht-kaart van je kcal-teller laat per dag zien wat je gegeten hebt, inclusief de macro's — zo zie je in één oogopslag hoe je dag eruitzag.",
+      example: {
+        oatmealName: 'Havermout',
+        milkName: 'Halfvolle melk',
+        bananaName: 'Banaan',
+        scoopLabel: 'schep',
+        glassLabel: 'glas',
+        bananaLabel: 'banaan',
+        bowlName: 'Kom havermout',
+        fruitName: 'Stuk fruit',
+        breakfastName: 'Ontbijt',
+      },
+    },
+    // servingUnit/servingUnitPlural blijven bestaan als fallback voor
+    // gelogde regels van vóór #147 (kind: 'recipe', unit: 'serving') — die
+    // regels blijven ongewijzigd zichtbaar (AC6), ook al bestaat het
+    // receptformulier zelf niet meer.
+    recipe: {
+      servingUnit: 'portie',
+      servingUnitPlural: 'porties',
+    },
+    toast: {
+      itemDeleted: 'Voedingsmiddel verwijderd',
+      portionDeleted: 'Portie verwijderd',
+      mealDeleted: 'Maaltijd verwijderd',
+      pairDeleted: '{name} verwijderd — {kcal} kcal en {ml} ml',
+    },
+    log: {
+      title: 'Voeding loggen',
+      searchPlaceholder: 'Zoek een voedingsmiddel...',
+      addNew: '+ Nieuw voedingsmiddel',
+      amountLabel: 'Hoeveelheid ({unit})',
+      portionAmountLabel: 'Aantal porties',
+      mealAmountLabel: 'Aantal maaltijden',
+      preview: '≈ {kcal} kcal',
+      previewInvalid: 'Vul een geldige hoeveelheid in',
+      drinkPreview: '+ {ml} ml naar {name}',
+      confirm: 'Loggen',
+    },
+    entry: {
+      editQuantityAria: 'Hoeveelheid van invoer bewerken',
+      // #151: suffix op een kcal-regel die ook als drinken telt, bv.
+      // "122 kcal · 200 ml" — alleen op een samengevoegde kaart.
+      drinkSuffix: '· {ml} ml',
+    },
+    // Koppeling met een drinkteller (#143): drankjes uit de bibliotheek
+    // tellen ook mee in het vochtdoel.
+    drink: {
+      label: 'Telt drinken mee in',
+      none: 'Geen',
+      noCandidatesHint: 'Maak eerst een teller met eenheid ml om drankjes te laten meetellen.',
+      unavailableOption: 'Niet beschikbaar',
+      unavailableWarning: 'De gekoppelde teller staat uit of bestaat niet meer. Drankjes tellen nu alleen als calorieën; zet de teller weer aan en de koppeling werkt weer.',
+      // #151: de ml-balk op de samengevoegde kaart, en het toegankelijke
+      // label van de kcal/ml-eenheid-select bij handmatige invoer.
+      mergedLabel: '{name} · {value}',
+      unitSelectAria: 'Eenheid van het bedrag',
+    },
+  },
+
   tasks: {
     title: 'Taken',
     add: 'Taak toevoegen',
@@ -1100,6 +1348,7 @@ export default {
     tabStreaks: 'Streaks',
     tabRecurring: 'Terugkerend',
     tabTheme: 'Thema',
+    tabNutrition: 'Voeding',
     tabLanguage: 'Taal',
     tabAccount: 'Account',
     manageModules: 'Beheer modules',
@@ -1150,6 +1399,35 @@ export default {
     planModePropose: 'Alleen voorstellen',
     planModeConcept: 'Concept',
     planModeDirect: 'Direct inplannen',
+    planProvider: 'AI-provider',
+    planProviderHint: 'Wie "Deel mijn dag in" de volgorde laat bepalen: de gratis heuristiek (standaard), een lokale AI op dit apparaat, of de server-provider voor de latere Ritmo AI. Lukt het niet, dan valt Ritmo altijd terug op de heuristiek.',
+    planProviderHeuristic: 'Heuristiek (standaard)',
+    planProviderLocal: 'Lokale AI (Ollama)',
+    planProviderServer: 'Ritmo AI (server)',
+    planProviderLocalBaseUrl: 'Server-URL',
+    planProviderLocalModel: 'Model',
+    planProviderLocalHint: 'Draait op dit apparaat via Ollama (ollama serve). Een https-pagina die naar http://localhost verwijst vereist dat Ollama die origin toestaat (OLLAMA_ORIGINS); lukt dat niet, dan valt Ritmo terug op de heuristiek.',
+    calendarWrite: 'Agenda-bestemming',
+    calendarWriteHint: 'Waar "Zet in agenda" je dagplanning naartoe schrijft. Opnieuw klikken vervangt eerder weggeschreven blokken.',
+    calendarWriteRitmo: 'Aparte "Ritmo"-agenda',
+    calendarWriteRitmoHint: 'Maakt (of hergebruikt) een agenda genaamd "Ritmo" in Outlook; je eigen agenda blijft ongemoeid.',
+    calendarWritePrimary: 'Je hoofdagenda',
+    calendarWritePrimaryHint: 'Schrijft ook naar je gewone Outlook-agenda. Ritmo-blokken zijn gemarkeerd en veilig te regenereren zonder je eigen afspraken te raken.',
+    calendarWritePrivacyHint: 'Titels van je taken gaan hierbij naar Microsoft.',
+    calendarCleanup: 'Alle Ritmo-blokken opruimen',
+    calendarCleanupHint: 'Verwijdert in één keer alle Ritmo-blokken uit je Outlook-agenda\'s, ongeacht datum en ongeacht welke bestemming hierboven aanstaat. Je eigen afspraken blijven staan; de "Ritmo"-agenda zelf blijft ook bestaan.',
+    calendarCleanupButton: 'Ritmo-blokken opruimen',
+    calendarCleanupScanning: 'Blokken tellen…',
+    calendarCleanupBusy: '{deleted} verwijderd…',
+    calendarCleanupConfirmTitle: 'Alle Ritmo-blokken verwijderen?',
+    calendarCleanupConfirmBody: 'Dit verwijdert {count} Ritmo-blok(ken) uit je Outlook-agenda\'s. Dit kan niet ongedaan worden gemaakt. Je eigen afspraken blijven staan.',
+    calendarCleanupConfirmBodyAtLeast: 'Dit verwijdert minstens {count} Ritmo-blok(ken) uit je Outlook-agenda\'s (mogelijk meer). Dit kan niet ongedaan worden gemaakt. Je eigen afspraken blijven staan.',
+    calendarCleanupConfirm: 'Verwijderen',
+    calendarCleanupNone: 'Geen Ritmo-blokken gevonden.',
+    calendarCleanupDone: '{deleted} Ritmo-blok(ken) verwijderd.',
+    calendarCleanupPartial: '{deleted} verwijderd, {failed} mislukt. Probeer het later opnieuw.',
+    calendarCleanupMore: 'Er zijn nog meer Ritmo-blokken. Klik opnieuw om de rest op te ruimen.',
+    calendarCleanupFailed: 'Opruimen is mislukt.',
     effects: 'Effecten',
     goldenBorder: 'Gouden rand bij voltooide dagen',
     goldenBorderHint: 'Animatie rond dagen waarop alles afgevinkt is.',
@@ -1350,6 +1628,9 @@ export default {
     tourDesc: 'Stel de basis van gezondheidsmodus stap voor stap in',
     install: 'App op beginscherm zetten',
     installDesc: 'Open Ritmo sneller, vanaf jouw startscherm',
+    // #150: help-lijst-item voor de uitlegpagina "Van product naar maaltijd".
+    nutrition: 'Van product naar maaltijd',
+    nutritionDesc: 'Zie hoe voeding in drie lagen werkt, met een voorbeeld',
     feedback: 'Feedback geven',
     feedbackDesc: 'Probleem melden of een idee delen',
     version: 'Ritmo v{version}',
@@ -1537,6 +1818,7 @@ export default {
   splash: {
     loading: 'Een momentje...',
     tagline: 'Jouw dag, jouw ritme.',
+    updating: 'Nieuwe versie wordt geïnstalleerd…',
     version: 'v{version}',
   },
 
@@ -1554,6 +1836,7 @@ export default {
     importCancel: 'Annuleer',
     importSuccess: 'Back-up teruggezet.',
     importDays: '{count} dagen hersteld.',
+    importNutrition: '{count} voedingsmiddelen hersteld.',
     importErrorParse: 'Dit bestand is geen geldige JSON.',
     importErrorNotRitmo: 'Dit lijkt geen Ritmo-back-up te zijn.',
     importErrorVersion: 'Deze back-up is van een nieuwere versie van Ritmo.',
@@ -1579,6 +1862,9 @@ export default {
       summary: 'Gemiddeld {avg}, doel gehaald op {hits} van {total} dagen',
       summaryNoGoal: 'Gemiddeld {avg} per dag',
       goalLabel: 'doel {value}',
+      // #148: alleen voor een calorieënmodule met voedingsbibliotheek
+      // (nutritionEnabled), en alleen als er macro-data is.
+      macrosLabel: 'Gemiddeld per dag: {macros}',
     },
     checklist: {
       summary: 'Gemiddeld {avg}% voltooid over {days} dagen',
@@ -1657,21 +1943,49 @@ export default {
       losseTaak: 'Losse taak',
       projecttaak: 'Projecttaak',
       agenda: 'Agenda',
+      routine: 'Routine',
     },
   },
 
   planner: {
     actions: {
       shareDay: 'Deel mijn dag in',
+      sharingDay: 'Dag indelen…',
       undoPlan: 'Indeling terugdraaien',
       acceptAll: 'Alles overnemen',
       accept: 'Overnemen',
       discard: 'Weggooien',
       confirm: 'Vastzetten',
+      writeToCalendar: 'Zet in agenda',
+      writingToCalendar: 'Agenda bijwerken…',
+      writeWeekToCalendar: 'Zet hele week in agenda',
+      writingWeekToCalendar: 'Week bijwerken… ({current}/{total})',
     },
     toast: {
       planned: 'Je dag is ingedeeld.',
       planUndone: 'De indeling is teruggedraaid.',
+      nothingToPlan: 'Er stond niets klaar om in te delen — alles heeft al een tijd.',
+      noRoom: 'Geen vrije ruimte gevonden om iets in te delen.',
+    },
+    provider: {
+      names: {
+        heuristic: 'de heuristiek',
+        local: 'de lokale AI',
+        server: 'Ritmo AI',
+      },
+      reasons: {
+        not_configured: 'nog niet geconfigureerd',
+        network: 'geen verbinding',
+        timeout: 'geen antwoord binnen de tijd',
+        invalid_response: 'ongeldig antwoord',
+        desktop_only: 'alleen beschikbaar op desktop',
+        unauthenticated: 'niet ingelogd of sessie verlopen',
+        server_config: 'server niet geconfigureerd',
+        unknown: 'onbekende fout',
+      },
+      usedNotice: 'Ingedeeld met {provider}.',
+      fallbackNotice: 'Teruggevallen op de heuristiek: {provider} was niet beschikbaar ({reason}).',
+      explanation: 'Toelichting: {explanation}',
     },
     week: {
       viewDag: 'Dag',
@@ -1690,6 +2004,7 @@ export default {
       groups: {
         losseTaak: 'Losse taken',
         projecttaak: 'Projecttaken',
+        routine: 'Routines',
       },
       openInSource: 'Openen in {provider}',
       hideItem: 'Verbergen',
@@ -1720,6 +2035,24 @@ export default {
       loading: '{provider} laden…',
       fetchFailed: '{provider} ophalen is mislukt.',
     },
+    calendar: {
+      lastWritten: 'Agenda bijgewerkt om {time}',
+      neverWritten: 'Agenda nog niet bijgewerkt',
+      reconnect: 'Opnieuw koppelen',
+      toast: {
+        written: 'De agenda is bijgewerkt.',
+        cleared: 'De agenda is leeggemaakt.',
+        partial: 'Niet alles kon worden weggeschreven ({failed} blok(ken) mislukt).',
+        failed: 'Wegschrijven naar de agenda is mislukt.',
+        weekWritten: 'De hele week is in de agenda gezet.',
+        weekPartial: 'De week is weggeschreven, maar {failed} dag(en) ging(en) niet helemaal goed.',
+      },
+      confirmWeek: {
+        title: 'Hele week in de agenda zetten?',
+        description: '{dayCount} dagen, {blockCount} blok(ken), naar: {destinations}. Dagen zonder planning worden in de agenda leeggemaakt.',
+        confirm: 'Zet week in agenda',
+      },
+    },
     trello: {
       boardsTitle: 'Trello-borden',
       loadingBoards: 'Borden laden…',
@@ -1728,6 +2061,7 @@ export default {
       alwaysListAria: 'Altijd-lijst voor {name}',
       alwaysListNone: 'Geen altijd-lijst',
       cardsLoading: 'Kaarten laden…',
+      accountHeading: 'Account: {name}',
     },
     github: {
       reposTitle: 'GitHub-repo\'s',
@@ -1744,7 +2078,7 @@ export default {
       none: 'Geen voorkeur',
     },
     autoPlan: {
-      label: 'Automatisch inplannen (later beschikbaar)',
+      label: 'Automatisch inplannen',
       short: 'Auto',
     },
     deepWork: {
@@ -1807,6 +2141,7 @@ export default {
     intro: 'Verbind externe bronnen zodat hun items in Ritmo verschijnen.',
     connect: 'Verbinden',
     disconnect: 'Verbreken',
+    addAccount: 'Account toevoegen',
     providers: {
       outlook: 'Outlook',
       trello: 'Trello',
@@ -1830,6 +2165,8 @@ export default {
       msError: 'Microsoft gaf een onverwachte fout terug. Probeer het later opnieuw.',
       tokenRefreshFailed: 'Vernieuwen van de Outlook-koppeling is mislukt. Verbind opnieuw.',
       notConnected: 'Deze koppeling is niet (meer) actief. Verbind opnieuw.',
+      scopeUpgradeRequired: 'Outlook moet opnieuw gekoppeld worden om te kunnen schrijven. Verbind opnieuw en geef toestemming voor schrijftoegang.',
+      tagUnsupported: 'Outlook ondersteunt het markeren van Ritmo-blokken niet op dit account. Neem contact op met support.',
       trelloAuth: 'Trello heeft dit token geweigerd of ingetrokken. Verbind opnieuw.',
       trelloRateLimit: 'Trello limiteert dit moment de aanvragen. Probeer het straks opnieuw.',
       trelloError: 'Trello gaf een onverwachte fout terug. Probeer het later opnieuw.',
@@ -1844,6 +2181,17 @@ export default {
       outlookConnected: 'Outlook is verbonden.',
       trelloConnected: 'Trello is verbonden als {username}.',
       githubConnected: 'GitHub is verbonden als {login}.',
+      outlookDisconnectedCleaned: 'Outlook is verbroken en de Ritmo-blokken zijn opgeruimd.',
+    },
+    disconnectCleanup: {
+      title: 'Ritmo-blokken opruimen vóór het verbreken?',
+      body: 'Ritmo vond {count} Ritmo-blok(ken) in je Outlook-agenda. Ruim ze eerst op, of verbreek meteen — dan blijven de blokken definitief staan, want zonder koppeling kan Ritmo ze niet meer verwijderen.',
+      bodyAtLeast: 'Ritmo vond minstens {count} Ritmo-blok(ken) in je Outlook-agenda (mogelijk meer). Ruim ze eerst op, of verbreek meteen — dan blijven de blokken definitief staan, want zonder koppeling kan Ritmo ze niet meer verwijderen.',
+      bodyUnknown: 'Ritmo kon niet nagaan of er nog Ritmo-blokken in je Outlook-agenda staan. Je kunt de koppeling toch verbreken, maar eventuele blokken kunnen daarna niet meer opgeruimd worden.',
+      confirmCleanup: 'Opruimen en verbreken',
+      confirmOnly: 'Alleen verbreken',
+      confirmAnyway: 'Toch verbreken',
+      scanning: 'Blokken tellen…',
     },
     trello: {
       title: 'Trello koppelen',

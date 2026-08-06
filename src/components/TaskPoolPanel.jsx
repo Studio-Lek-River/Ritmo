@@ -97,6 +97,7 @@ export default function TaskPoolPanel({
   const groups = [
     { kind: 'losseTaak', items: items.filter(i => i.kind === 'losseTaak') },
     { kind: 'projecttaak', items: items.filter(i => i.kind === 'projecttaak') },
+    { kind: 'routine', items: items.filter(i => i.kind === 'routine') },
   ].filter(g => g.items.length > 0);
 
   return (
@@ -207,8 +208,10 @@ function PoolItemCard({
   // de afgeleide data), maar een nog niet gematerialiseerde recurring-instantie
   // niet: materialiseren om enkel een duur te zetten zou een eager write zijn,
   // en de duur van het sjabloon aanpassen zou élke dag raken. Die houdt een
-  // statisch label, net als hij hier al geen `toggle` heeft.
-  const canEditDuration = !isVirtualTaskKey(item.key);
+  // statisch label, net als hij hier al geen `toggle` heeft. Een routine-item
+  // (S10c) heeft zijn duur in de module-instellingen, niet per dag — ook die
+  // toont dus alleen het statische label.
+  const canEditDuration = !isVirtualTaskKey(item.key) && item.kind !== 'routine';
   const durationLabel = t('planner.pool.durationMinutes', { min: item.duration ?? DEFAULT_BLOCK_MINUTES });
 
   return (
@@ -290,7 +293,7 @@ function PoolItemCard({
         </div>
 
         <div className="flex flex-wrap items-center gap-1">
-          {item.kind === 'projecttaak' && item.projectName && (
+          {(item.kind === 'projecttaak' || item.kind === 'routine') && item.projectName && (
             <span className={`text-[11px] r-chip ${c.pillBg} ${c.pillText} flex items-center gap-1`}>
               <span className={`w-1.5 h-1.5 rounded-full ${c.bar}`} />
               {item.projectName}

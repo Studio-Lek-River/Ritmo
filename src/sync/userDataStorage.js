@@ -10,6 +10,7 @@ import { onAuthChange, getCurrentUser } from './auth';
 import { enqueue, getQueue } from './syncQueue';
 import { flushQueue } from './flush';
 import { markSyncing, markSynced, markError, refreshPending } from './syncStatus';
+import { markPullReady, bumpRevision } from './pullState';
 import { mergeSyncedValue } from './mergeSettings';
 
 const store = createStore('ritmo-db', 'ritmo-store');
@@ -34,12 +35,16 @@ if (isSyncEnabled()) {
   getCurrentUser().then((u) => {
     currentUserId = u?.id ?? null;
     resolveAuthReady();
+    // Geen gebruiker: er komt geen ophaal, dus de poort mag meteen open.
+    if (!currentUserId) markPullReady();
   });
   onAuthChange((user) => {
     currentUserId = user?.id ?? null;
   });
 } else {
   resolveAuthReady();
+  // Sync staat uit: schrijfacties hebben nooit op een ophaal te wachten.
+  markPullReady();
 }
 
 export function isUserSyncKey(key) {
@@ -47,6 +52,7 @@ export function isUserSyncKey(key) {
   if (key === 'settings') return true;
   if (key.startsWith('day:')) return true;
   if (key.startsWith('household:')) return true;
+  if (key.startsWith('nutrition:')) return true;
   return false;
 }
 
@@ -156,6 +162,8 @@ async function listLocalSyncKeys() {
 
 export async function pullUserData(userId, resolveConflict) {
   if (!isSyncEnabled() || !userId) {
+    // Geen ophaal te verwachten: de poort mag niet op deze uitkomst blijven wachten.
+    markPullReady();
     return { pulled: 0, pushed: 0, conflicts: 0, error: null };
   }
 
@@ -169,6 +177,9 @@ export async function pullUserData(userId, resolveConflict) {
   if (error) {
     console.warn('Ritmo user_data pull failed', error);
     markError();
+    // Ook bij een mislukte ophaal is de eerste poging klaar; de poort mag
+    // open, anders blokkeren schrijfacties op een ophaal die nooit lukt.
+    markPullReady();
     return { pulled: 0, pushed: 0, conflicts: 0, error };
   }
 
@@ -178,6 +189,9 @@ export async function pullUserData(userId, resolveConflict) {
   const conflicts = [];
   let pulled = 0;
   let pushed = 0;
+  // Onthoudt de conflict-keuze buiten het if-blok hieronder, zodat we na
+  // afloop kunnen bepalen of er lokaal daadwerkelijk iets is opgelost.
+  let conflictChoice = null;
 
   for (const row of cloudRows) {
     const localValue = await idbGet(row.key, store);
@@ -251,6 +265,7 @@ export async function pullUserData(userId, resolveConflict) {
         await idbSet(CONFLICT_POLICY_KEY, 'cloud', store);
       }
     }
+    conflictChoice = choice;
 
     const resolutionNow = new Date().toISOString();
     for (const { key, cloud } of conflicts) {
@@ -288,6 +303,12 @@ export async function pullUserData(userId, resolveConflict) {
   flushQueue();
 
   markSynced();
+
+  // Herlaad-signaal voor lezers (App.jsx, useStoredState): alleen omhoog als
+  // deze ophaal lokaal daadwerkelijk iets heeft veranderd of opgelost.
+  const conflictsResolved = conflicts.length > 0 && !!conflictChoice;
+  if (pulled > 0 || conflictsResolved) bumpRevision();
+  markPullReady();
 
   return { pulled, pushed, conflicts: conflicts.length, error: null };
 }

@@ -54,6 +54,11 @@ export default function OAuthReturn({ onConnected }) {
 
     params.delete(provider);
     params.delete('reason');
+    // S12a (deel A): `returnTo` en `tab` zijn allebei al verwerkt vóór de
+    // eerste render (App.jsx's lazy useState-initializers) — hier alleen nog
+    // opruimen zodat een pagina-refresh ze niet opnieuw ziet (AC6).
+    params.delete('returnTo');
+    params.delete('tab');
     const query = params.toString();
     const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
     window.history.replaceState(null, '', nextUrl);

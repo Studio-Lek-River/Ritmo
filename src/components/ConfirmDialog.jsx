@@ -7,9 +7,11 @@ export default function ConfirmDialog({
   description,
   confirmLabel,
   cancelLabel,
+  secondaryLabel,
   variant = 'default',
   onConfirm,
   onCancel,
+  onSecondary,
   theme,
 }) {
   const { t } = useTranslation();
@@ -43,7 +45,7 @@ export default function ConfirmDialog({
         {description && (
           <p className={`text-sm ${theme.textMuted} mb-5`}>{description}</p>
         )}
-        <div className="flex gap-2 justify-end">
+        <div className="flex flex-wrap gap-2 justify-end">
           <button
             type="button"
             onClick={onCancel}
@@ -51,6 +53,15 @@ export default function ConfirmDialog({
           >
             {cancelLabel || t('common.cancel')}
           </button>
+          {secondaryLabel && (
+            <button
+              type="button"
+              onClick={onSecondary}
+              className={`px-3 py-2 rounded-lg text-sm font-medium ${theme.cardSecondary} ${theme.textSecondary} transition`}
+            >
+              {secondaryLabel}
+            </button>
+          )}
           <button
             type="button"
             onClick={onConfirm}

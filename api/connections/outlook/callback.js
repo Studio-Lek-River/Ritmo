@@ -11,6 +11,7 @@ import {
   verifyOAuthState,
   MS_TOKEN_URL,
   OUTLOOK_SCOPES,
+  LEGACY_OUTLOOK_READ_SCOPES,
 } from './_shared.js';
 
 function redirectTo(res, params) {
@@ -19,12 +20,16 @@ function redirectTo(res, params) {
   res.end();
 }
 
-function redirectSuccess(res) {
-  redirectTo(res, { tab: 'account', outlook: 'connected' });
+// `returnTo` is optioneel (S12a, deel A): alleen aanwezig als de state hem
+// droeg. De Verbinden-knop in Instellingen geeft nooit een `returnTo` mee,
+// dus dat pad stuurt exact dezelfde query als voorheen (AC3). Site-relatief
+// en hardcoded (`/?...`), nooit een externe host.
+function redirectSuccess(res, returnTo) {
+  redirectTo(res, { tab: 'account', outlook: 'connected', ...(returnTo ? { returnTo } : {}) });
 }
 
-function redirectError(res, reason) {
-  redirectTo(res, { tab: 'account', outlook: 'error', reason });
+function redirectError(res, reason, returnTo) {
+  redirectTo(res, { tab: 'account', outlook: 'error', reason, ...(returnTo ? { returnTo } : {}) });
 }
 
 export default async function handler(req, res) {
@@ -43,18 +48,24 @@ export default async function handler(req, res) {
   const state = typeof query.state === 'string' ? query.state : null;
   const msError = typeof query.error === 'string' ? query.error : null;
 
+  // State eerst verifiëren, ook vóór de msError-check: zo reist een geldige
+  // `returnTo` mee naar élke foutmelding op dit pad (S12a, deel A — "ook op
+  // het foutpad, zodat je de foutmelding in context ziet"). Een ontbrekende
+  // of ongeldige state levert simpelweg geen `returnTo` op.
+  const statePayload = verifyOAuthState(state);
+  const returnTo = statePayload?.return_to;
+
   if (msError) {
     console.warn('connections/outlook/callback ms error', msError, query.error_description);
-    return redirectError(res, 'ms_auth');
+    return redirectError(res, 'ms_auth', returnTo);
   }
 
-  const statePayload = verifyOAuthState(state);
   if (!statePayload) {
-    return redirectError(res, 'invalid_state');
+    return redirectError(res, 'invalid_state', returnTo);
   }
 
   if (!code) {
-    return redirectError(res, 'ms_auth');
+    return redirectError(res, 'ms_auth', returnTo);
   }
 
   const supabase = getServiceClient();
@@ -70,7 +81,7 @@ export default async function handler(req, res) {
 
     if (fetchError || !connection) {
       console.error('connections/outlook/callback connection lookup failed', fetchError);
-      return redirectError(res, 'not_found');
+      return redirectError(res, 'not_found', returnTo);
     }
 
     const tokenBody = new URLSearchParams({
@@ -91,7 +102,7 @@ export default async function handler(req, res) {
 
     if (!tokenResponse.ok) {
       console.error('connections/outlook/callback token exchange failed', tokenResponse.status, tokenData);
-      return redirectError(res, tokenResponse.status === 429 ? 'ms_rate_limit' : 'ms_auth');
+      return redirectError(res, tokenResponse.status === 429 ? 'ms_rate_limit' : 'ms_auth', returnTo);
     }
 
     const nowSeconds = Math.floor(Date.now() / 1000);
@@ -99,7 +110,12 @@ export default async function handler(req, res) {
       access_token: tokenData.access_token,
       refresh_token: tokenData.refresh_token,
       expires_at: nowSeconds + (Number(tokenData.expires_in) || 0),
-      scope: tokenData.scope || OUTLOOK_SCOPES,
+      // Microsoft geeft de toegekende scope terug in `tokenData.scope`; alleen
+      // wanneer dat écht ontbreekt vallen we terug op de veilige kant
+      // (leesrechten), nooit stilzwijgend op de volledige `OUTLOOK_SCOPES` —
+      // een onbekende situatie mag nooit als "heeft schrijfrecht" geboekt
+      // worden (S12, de kritieke scope-regel).
+      scope: tokenData.scope || LEGACY_OUTLOOK_READ_SCOPES,
     });
 
     const { error: rpcError } = await supabase.rpc('connections_set_secret', {
@@ -109,12 +125,12 @@ export default async function handler(req, res) {
 
     if (rpcError) {
       console.error('connections/outlook/callback rpc failed', rpcError);
-      return redirectError(res, 'unexpected');
+      return redirectError(res, 'unexpected', returnTo);
     }
 
-    return redirectSuccess(res);
+    return redirectSuccess(res, returnTo);
   } catch (err) {
     console.error('connections/outlook/callback error', err);
-    return redirectError(res, 'unexpected');
+    return redirectError(res, 'unexpected', returnTo);
   }
 }

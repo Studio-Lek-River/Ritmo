@@ -84,18 +84,9 @@ AskUserQuestion:
   - Stoppen         → einde; de spec blijft als concept in het issue staan
 ```
 
-### Stap 5 — Uitvoering aanbieden
+### Stap 5 — Uitvoering
 
-Na goedkeuring:
-
-```
-AskUserQuestion:
-  "Zal ik het team de slice laten uitvoeren?"
-  - Ja, uitvoeren   → orkestreer het team (hieronder)
-  - Nee, later      → einde; jij start zelf wanneer je wilt
-```
-
-Bij "Ja": orkestreer sequentieel vanuit deze hoofdsessie (subagents starten zelf geen subagents).
+Goedkeuring bij Poort 1 ís de opdracht om uit te voeren. **Niet apart vragen** of het team mag starten — direct doorgaan. Orkestreer sequentieel vanuit deze hoofdsessie (subagents starten zelf geen subagents).
 
 Leg éérst het startpunt vast — reviewer en verifier hebben het nodig als scope, en op `main` is er geen branch-diff om het uit af te leiden:
 ```

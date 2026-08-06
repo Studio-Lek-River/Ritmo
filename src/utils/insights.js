@@ -6,6 +6,7 @@ import { fmtDateKey, parseDateKey, addDays } from './dates';
 import { isChecklistItemComplete } from './dayProgress';
 import { projectProgress, isOverdue } from './projects';
 import { summarizeSleep } from './sleep';
+import { MACRO_KEYS } from './nutrition';
 
 // 'Alles' wordt geclamp op deze waarde voor performance en grafiek-leesbaarheid.
 export const ALL_PERIOD_DAYS = 90;
@@ -64,6 +65,35 @@ export function aggregateCounter(mod, days) {
   const denom = days.length;
   const average = denom > 0 ? total / denom : 0;
   return { total, average, daysWithEntry, goalHitDays, totalDays: denom, goal, series };
+}
+
+// Gemiddelde macro's per dag (#148), naast aggregateCounter — die blijft
+// onaangeraakt zodat de kcal-aggregatie aantoonbaar niet verschuift (AC4/
+// AC7). Leest bewust uit de bevroren `entry.source.perUnit`, niet uit de
+// huidige bibliotheek: een latere correctie aan een product/portie/maaltijd
+// mag het macro-gemiddelde van een dag van weken geleden niet met
+// terugwerkende kracht veranderen (zelfde uitgangspunt als bij kcal).
+// Entries van vóór deze slice hebben geen macro's in `perUnit` en tellen dus
+// als 0 (AC5) i.p.v. te crashen.
+export function aggregateNutritionMacros(mod, days) {
+  const totals = { protein: 0, carbs: 0, fat: 0 };
+  for (const { dayData } of days) {
+    const entries = dayData?.moduleData?.[mod.id]?.entries || [];
+    for (const entry of entries) {
+      const quantity = entry.source?.quantity ?? 0;
+      for (const key of MACRO_KEYS) {
+        totals[key] += quantity * (entry.source?.perUnit?.[key] ?? 0);
+      }
+    }
+  }
+  const denom = days.length;
+  const averages = {};
+  let hasData = false;
+  for (const key of MACRO_KEYS) {
+    averages[key] = denom > 0 ? totals[key] / denom : 0;
+    if (totals[key] > 0) hasData = true;
+  }
+  return { averages, hasData };
 }
 
 // --- Checklist -------------------------------------------------------------

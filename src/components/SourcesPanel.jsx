@@ -4,7 +4,7 @@ import { useTranslation } from '../i18n/useTranslation';
 import { CONNECTION_PROVIDERS } from '../sync/connections';
 import { DEFAULT_SOURCE_PREFS, SOURCE_ICONS, getSourcePref } from '../utils/sourcePrefs';
 import { COLOR_OPTIONS, getColorClasses } from '../utils/colors';
-import { getLocale } from '../utils/dates';
+import { formatClockTime } from '../utils/dates';
 
 // Koppelingen-blok onder de takenpool (S07c/S07d): per provider uit
 // CONNECTION_PROVIDERS beheer je kleur + "meedoen in de planner". Een
@@ -49,7 +49,14 @@ export default function SourcesPanel({
           <SourceRow
             key={provider}
             provider={provider}
-            connection={connections.find(c => c.provider === provider)}
+            // Sinds #120 kan een provider (Trello) meer dan één rij hebben:
+            // een verbonden rij gaat altijd vóór, anders zou een tweede,
+            // nog niet verbonden rij deze regel onterecht als losgekoppeld
+            // tonen terwijl er al een werkende koppeling is.
+            connection={
+              connections.find(c => c.provider === provider && c.status === 'connected')
+              || connections.find(c => c.provider === provider)
+            }
             pref={getSourcePref(sourcePrefs, provider)}
             actions={sourceActions[provider]}
             onChange={(patch) => updatePref(provider, patch)}
@@ -63,20 +70,13 @@ export default function SourcesPanel({
   );
 }
 
-// "HH:MM" in de huidige locale, voor de "bijgewerkt om"-regel.
-function formatSyncTime(isoString) {
-  const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' });
-}
-
 function SourceRow({ provider, connection, pref, actions, onChange, onOpenConnections, theme, t }) {
   const status = connection?.status || 'disconnected';
   const isConnected = status === 'connected';
   const Icon = SOURCE_ICONS[provider];
   const c = getColorClasses(isConnected ? pref.color : undefined);
   const providerLabel = t(`connections.providers.${provider}`);
-  const syncedTime = actions?.lastSyncedAt ? formatSyncTime(actions.lastSyncedAt) : null;
+  const syncedTime = actions?.lastSyncedAt ? formatClockTime(actions.lastSyncedAt) : null;
 
   return (
     <div className={`${theme.cardSecondary} ${theme.radiusControl} ${theme.padRow} space-y-2 ${isConnected ? '' : 'opacity-60'}`}>
