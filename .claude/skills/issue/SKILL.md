@@ -1,6 +1,6 @@
 ---
 name: issue
-description: Neemt een GitHub-issue-nummer, haalt het issue op via de gh CLI, onderzoekt de inhoud tegen de codebase/ROADMAP/gelinkte issues, en schrijft een concept slice-spec als body van dat issue (het Poort 1-artefact). Na goedkeuring biedt de skill aan de implementer->reviewer->verifier-pijplijn te draaien. Gebruik met /issue <nummer>.
+description: Neemt een GitHub-issue-nummer, haalt het issue op via de gh CLI, onderzoekt de inhoud tegen de codebase, de milestone en gelinkte issues, en schrijft een concept slice-spec als body van dat issue (het Poort 1-artefact). Na goedkeuring biedt de skill aan de implementer->reviewer->verifier-pijplijn te draaien. Gebruik met /issue <nummer>.
 user-invocable: true
 allowed-tools:
   - Read
@@ -43,7 +43,8 @@ Argument: `$ARGUMENTS` (het issue-nummer, bv. `43`).
 
 Onderzoek gericht — geen tussentijdse permissie-pauzes:
 
-- **S-nummer.** Detecteer een S-nummer in de titel (bv. "S12, ..."). Zo ja → lees de bijbehorende sectie in `docs/ROADMAP.md`. Bestaat er nog een oude `docs/slices/S12-*.md` van vóór de issue-afspraak → lees hem als context, maar werk hem niet bij; de spec landt in het issue.
+- **Milestone.** Lees de milestone van het issue en zijn beschrijving (`gh issue view <n> --json milestone`, en `gh api repos/Studio-Lek-River/Ritmo/milestones`). Daar staat het thema en de bekende blokkades. Toets ook tegen de architectuurkeuzes in `.claude/docs/PROJECT_INSTRUCTIONS.md`.
+- **S-nummer.** Detecteer een S-nummer in de titel (bv. "S13, ..."). Bestaat er nog een oude `docs/slices/S13-*.md` van vóór de issue-afspraak → lees hem als context, maar werk hem niet bij; de spec landt in het issue.
 - **Gelinkte issues.** Volg referenties in de body (bv. parent `#33`) via `gh issue view <ref> --repo Studio-Lek-River/Ritmo --json title,body`.
 - **Codebase.** Zoek naar herbruikbare patronen die het issue raakt, bv.:
   - GitHub-interactie → het `GITHUB_TOKEN`-patroon in `api/feedback.js`
@@ -58,10 +59,10 @@ Onderzoek gericht — geen tussentijdse permissie-pauzes:
 
 Vul:
 
-- **Header:** `**Status:** concept — Poort 1` + verwijzing naar het parent-issue en de `docs/ROADMAP.md`-sectie.
+- **Header:** `**Status:** concept — Poort 1` + verwijzing naar het parent-issue en de milestone.
 - **Citaat:** de oorspronkelijke issue-body, zodat de aanleiding niet verdwijnt.
 - **Doel:** één of twee zinnen.
-- **Correcties:** klopt de ROADMAP-belofte niet, of is er een Poort-0-beslissing van Bas? Leg die expliciet vast, met de reden.
+- **Correcties:** klopt de oorspronkelijke belofte in de issue-body niet, of is er een Poort-0-beslissing van Bas? Leg die expliciet vast, met de reden.
 - **Scope:** "Wel in scope" en "Niet in scope (bewust)", met een issue-verwijzing bij alles wat je afsplitst.
 - **Aanpak:** geraakte bestanden + herbruikte helpers uit Stap 2 (geen volledige implementatie).
 - **Acceptatiecriteria:** toetsbaar geformuleerd (`AC1`, `AC2`, …), inclusief de vaste criteria:
@@ -70,7 +71,7 @@ Vul:
   - [ ] Nieuw gedrag is configureerbaar of uitschakelbaar (uitgangspunt "werkt voor de gebruiker"); bestaande data blijft veilig.
 - **Testchecklist:** wat Bas bij Poort 2 zelf naloopt.
 
-Blijkt tijdens de research dat het issue meer is dan één slice, of dat een deel een eigen beslissing van Bas vraagt: **maak er een apart issue voor** (`gh issue create`) en verwijs er vanuit de scope naar. Werk `docs/ROADMAP.md` bij als de tekst daar niet meer klopt; dat is een gewone `docs:`-commit.
+Blijkt tijdens de research dat het issue meer is dan één slice, of dat een deel een eigen beslissing van Bas vraagt: **maak er een apart issue voor** (`gh issue create --milestone "<passende milestone>"`) en verwijs er vanuit de scope naar. Geef het afgesplitste issue `geblokkeerd` mee als er eerst een beslissing van Bas moet vallen, maar géén `prio:N`-label — de volgorde is een keuze van Bas.
 
 ### Stap 4 — Poort 1
 

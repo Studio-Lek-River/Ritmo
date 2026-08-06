@@ -62,11 +62,34 @@ Elke commit landt rechtstreeks op `main` en verschijnt als aparte regel in de ge
 - `BREAKING CHANGE` is van toepassing: altijd actief melden.
 - Type en beschrijving zijn duidelijk: geen extra toelichting — commit direct, geen ruis.
 
+## De werkvoorraad staat in GitHub
+
+**GitHub is de enige bron van waarheid voor het wat, de volgorde en de status.** Er is geen roadmap-bestand in de repo; `docs/ROADMAP.md` en `docs/PLAN.md` zijn opgeheven omdat ze structureel achterliepen op de code. Het einddoel en de vastgelegde architectuurkeuzes staan in `.claude/docs/PROJECT_INSTRUCTIONS.md`.
+
+- **Milestones** groeperen het werk per thema, met het doel en de bekende blokkades in de milestone-beschrijving.
+- **`prio:N`-labels** bepalen de bouwvolgorde, over alle milestones heen. Eén issue per nummer.
+- **`geblokkeerd`** betekent: er moet eerst een beslissing van Bas vallen. Niet oppakken.
+- Een issue zonder `prio:N` bestaat wel, maar staat niet in de actieve werkvoorraad.
+
+De volgende taak is het **laagste nog bestaande prio-nummer** zonder `geblokkeerd`. Bij het sluiten van een issue wordt er niet hernummerd, dus een gat in de reeks is normaal:
+
+```sh
+gh issue list --state open --json number,title,labels --jq '
+  [.[] | {n: .number, t: .title,
+          p: ([.labels[].name | select(startswith("prio:")) | ltrimstr("prio:") | tonumber] | first),
+          blocked: ([.labels[].name] | index("geblokkeerd") != null)}]
+  | map(select(.p != null and .blocked == false)) | sort_by(.p) | .[0]'
+```
+
+Nieuw werk krijgt een issue in de juiste milestone. Een `prio:N`-label geef ik er niet zelf aan: de volgorde is een keuze van Bas.
+
 ## Werkwijze: team en poorten
 
-Grote changes lopen via de werkwijze in docs/PLAN.md, opgeknipt in kleine slices. Het wat, de volgorde en de status staan in docs/ROADMAP.md (leidend).
+Grote changes lopen niet in één keer, maar opgeknipt in kleine, afgeronde slices.
 
-**Elke slice is een GitHub-issue.** Het issue is de spec en de bron van waarheid, niet een bestand in de repo. Een nieuwe slice krijgt dus een issue in `Studio-Lek-River/Ritmo` (of, als het issue er al is, wordt de spec de body ervan) — er komen geen nieuwe bestanden in `docs/slices/`. Die map blijft staan als historie van de slices die vóór deze afspraak zijn geschreven; ernaar verwijzen mag, eraan toevoegen niet.
+**Elke slice is een GitHub-issue.** Het issue is de spec en de bron van waarheid, niet een bestand in de repo. Een nieuwe slice krijgt dus een issue in `Studio-Lek-River/Ritmo` (of, als het issue er al is, wordt de spec de body ervan), meestal geschreven via de `/issue`-skill — er komen geen nieuwe bestanden in `docs/slices/`. Die map blijft staan als historie van de slices die vóór deze afspraak zijn geschreven; ernaar verwijzen mag, eraan toevoegen niet.
+
+Waartegen getoetst wordt staat in `.claude/docs/PROJECT_INSTRUCTIONS.md`: de vijf Ritmo-uitgangspunten, de tweetaligheidsregel en de vastgelegde architectuurkeuzes. Schrijf die criteria niet elders opnieuw uit.
 
 Per slice gelden vijf rollen en twee poorten:
 

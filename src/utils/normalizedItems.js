@@ -1,5 +1,6 @@
-// Genormaliseerde items-laag (S02, zie docs/ROADMAP.md §S02). Pure functie die
-// bestaande `tasks`- en `projects`-modules mapt naar het ROADMAP-item-shape:
+// Genormaliseerde items-laag (S02, issue #35). Pure functie die bestaande
+// `tasks`- en `projects`-modules mapt naar het vastgelegde item-shape
+// (.claude/docs/PROJECT_INSTRUCTIONS.md, "Vastgelegde architectuurkeuzes"):
 // { source, account, project, projectKey, title, status, due, priority, progress, url }.
 // Voegt geen nieuw module-type toe: een module krijgt optioneel een
 // `source: { provider, connectionId, account }`-veld wanneer hij aan een
