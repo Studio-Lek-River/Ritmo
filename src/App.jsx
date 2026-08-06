@@ -82,6 +82,7 @@ import { useUndoToast } from './hooks/useUndoToast';
 import Toast from './components/Toast';
 import { formatAmount, formatDuration } from './utils/format';
 import { MODULE_PRESETS } from './utils/presets';
+import { getTypeOptions, COUNTER_UNITS } from './utils/moduleSchema';
 import { genId } from './utils/genId';
 import { moveById, reorderById } from './utils/reorder';
 import { applyModulePreset } from './utils/applyModulePreset';
@@ -4009,22 +4010,6 @@ const DEFAULT_SLEEP_GOALS = {
   sunday:    { bed: '23:00', wake: '07:30' },
 };
 
-function getTypeOptions(t) {
-  return [
-    { id: 'checklist', label: t('modules.types.checklist'), desc: t('modules.types.checklistDesc') },
-    { id: 'choice', label: t('modules.types.choice'), desc: t('modules.types.choiceDesc') },
-    { id: 'counter', label: t('modules.types.counter'), desc: t('modules.types.counterDesc') },
-    { id: 'tasks', label: t('modules.types.tasks'), desc: t('modules.types.tasksDesc') },
-    { id: 'projects', label: t('modules.types.projects'), desc: t('modules.types.projectsDesc') },
-    { id: 'sleep', label: t('modules.types.sleep'), desc: t('modules.types.sleepDesc') },
-    { id: 'collection', label: t('modules.types.collection'), desc: t('modules.types.collectionDesc') },
-    { id: 'measurements', label: t('modules.types.measurements'), desc: t('modules.types.measurementsDesc') },
-    { id: 'medication', label: t('modules.types.medication'), desc: t('modules.types.medicationDesc') },
-    { id: 'bodymap', label: t('modules.types.bodymap'), desc: t('modules.types.bodymapDesc') },
-    { id: 'injectionSchedule', label: t('modules.types.injectionSchedule'), desc: t('modules.types.injectionScheduleDesc') },
-  ];
-}
-
 function CollectionTagGroupsEditor({ tagGroups, items, onUpdateGroups, theme }) {
   const { t } = useTranslation();
   const showUndoToast = useUndoToast();
@@ -4716,14 +4701,9 @@ function ModuleEditor({ module: mod, modules, onSave, onCancel, onDelete, onRest
                     onChange={(e) => updateUnit(e.target.value)}
                     className={`w-full px-3 py-2 ${theme.input} rounded-lg text-sm`}
                   >
-                    <option value="minutes">{t('modules.units.minutes')}</option>
-                    <option value="ml">{t('modules.units.ml')}</option>
-                    <option value="l">{t('modules.units.l')}</option>
-                    <option value="glas">{t('modules.units.glas')}</option>
-                    <option value="pages">{t('modules.units.pages')}</option>
-                    <option value="km">{t('modules.units.km')}</option>
-                    <option value="kcal">{t('modules.units.kcal')}</option>
-                    <option value="reps">{t('modules.units.reps')}</option>
+                    {COUNTER_UNITS.map(u => (
+                      <option key={u} value={u}>{t('modules.units.' + u)}</option>
+                    ))}
                   </select>
                 </div>
 

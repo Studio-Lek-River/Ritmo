@@ -11,7 +11,7 @@ import { applyModulePreset } from './applyModulePreset';
 import { genId } from './genId';
 import { createSubject } from './createSubject';
 import { createItem } from './collections';
-import { emptyDefaultsForType } from './emptyModule';
+import { emptyDefaultsForType } from './moduleSchema';
 import { getOnboardingPresets } from './onboardingPresets';
 import { getModulePresets } from './presets';
 
