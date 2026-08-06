@@ -1,8 +1,11 @@
 # Ritmo — projectinstructies en uitgangspunten
 
-Dit is de **canonieke bron** voor de Ritmo-uitgangspunten, de module-shape en de storage-API.
-Instructiebestanden (`CLAUDE.md`, `docs/PLAN.md`, de agents en skills) verwijzen hiernaartoe;
-schrijf de uitgangspunten niet elders opnieuw uit.
+Dit is de **canonieke bron** voor de Ritmo-uitgangspunten, de module-shape, de storage-API,
+het einddoel en de vastgelegde architectuurkeuzes. Instructiebestanden (`CLAUDE.md`, de agents
+en skills) verwijzen hiernaartoe; schrijf de uitgangspunten niet elders opnieuw uit.
+
+Wat er te doen staat en in welke volgorde, staat **niet** hier maar in GitHub: milestones plus
+`prio:N`-labels op de issues. Zie `CLAUDE.md`, "De werkvoorraad staat in GitHub".
 
 ## De Ritmo-uitgangspunten
 
@@ -76,3 +79,55 @@ Een aparte, technisch afgedwongen harde regel (geen uitgangspunt):
 anders en de `.husky/pre-commit`-hook blokkeert de commit. Geen hardcoded UI-tekst; elke nieuwe
 UI-string krijgt een key in beide bestanden. Datum-formattering via Intl / de bestaande `getLocale()`,
 niet via een hardcoded locale-ternary.
+
+## Het einddoel
+
+Ritmo is een **integrale planner**: één geïntegreerd toegangspunt waar je inlogt en op al je
+apparaten ziet wat je kunt of moet doen, met voortgang per project of kaartje of vak. De bronnen
+(GitHub-issues, Trello-kaarten, Outlook-afspraken, huishoudtaken, schoolvakken) komen
+genormaliseerd samen in één lijst. Je kunt vragen "deel mijn dag in", waarna Ritmo je taken rond
+je Outlook-afspraken plant en die indeling terugschrijft naar de agenda's die jij kiest.
+
+Daarna wordt Ritmo je **one-stop-shop voor productiviteit**, waar Claude een kaartje niet alleen
+inplant maar ook uitvoert. Vanuit één plek pak je een GitHub-issue, een Trello-kaartje, een
+mod-wijziging of een afspraak op, en Claude doet het werk met zijn eigen gereedschap.
+
+## Vastgelegde architectuurkeuzes
+
+Beslissingen die eerder zijn genomen en waar elke nieuwe slice tegen getoetst wordt. Wijk hier
+niet van af zonder het expliciet met Bas te bespreken.
+
+- **Frontend:** Ritmo uitbreiden als het enige toegangspunt.
+- **Backend:** Supabase (Postgres, auth, RLS) plus de bestaande serverless `api/`-laag voor
+  server-side tokens. Geen aparte backend.
+- **Lagen:** lokaal (standaard, offline) naar account (opt-in sync) naar koppelingen (onder het
+  account).
+- **Huishoudens:** deelbaar, eigenaar plus leden, join via invite-token.
+- **Sync:** last-write-wins op `updated_at`, achter de `window.storage`-abstractie. De UI verandert
+  niet mee.
+- **Externe bron is geen nieuw module-type:** een bestaande `tasks`- of `projects`-module plus een
+  `source`-binding (`{ provider, connectionId, ... }`). Volgt uit uitgangspunt 3 (hergebruik).
+- **Genormaliseerd item:** `source`, `account` of `household`, `project`, `title`, `status`, `due`,
+  `priority`, `progress`, `url`. Alle bronnen mappen hierop; voortgang per project is een
+  aggregatie over `(source, project)`. Zie `src/utils/normalizedItems.js`.
+- **Outlook:** eigen Azure-app die persoonlijke Microsoft-accounts ondersteunt, OAuth-authority
+  `consumers`, plus `offline_access`. Authority `consumers` is verplicht voor een persoonlijk
+  account, anders sneuvelt de refresh-token na een uur. Lezen (`Calendars.Read`) en schrijven
+  (`Calendars.ReadWrite`) zijn bewust in twee stappen gebouwd.
+- **Planner:** de planner plant rond de Outlook-afspraken via een provider-pluggable AI-laag boven
+  de deterministische heuristiek (`src/utils/planDay.js`). Providers: een lokale AI (client-side,
+  desktop-only, opt-in), een server-side provider voor desktop én mobiel (de latere Ritmo AI;
+  `api/plan.js` is de seam en geeft tot die tijd `501 not_configured`), en de heuristiek als
+  universele, kosteloze default en fallback. De AI bepaalt alleen volgorde en uitleg
+  (`{ order, windowHints, explanation }`); `planDay.js` blijft de enige plaatser. De write-back
+  naar de agenda is deterministisch via directe Graph-calls, nooit via de LLM.
+- **Agenda-write:** een harde per-event tag (Graph extended property) bepaalt wat er bij
+  regenereren verwijderd wordt, nooit de zichtbare categorie "Ritmo". Weggeschreven wordt de héle
+  dagplanning van die dag, zodat de write idempotent is. De trigger is altijd een expliciete klik;
+  er wordt nooit ongevraagd naar buiten geschreven.
+- **Claude als uitvoerder (MCP-first):** de koppeling tussen Ritmo en Claude loopt via een
+  Ritmo-eigen MCP-server bovenop het genormaliseerde items-model. Claude leest en muteert items via
+  MCP; het echte werk (code en mods, issues, research) draait in Claude's eigen runtime, niet in de
+  PWA. Write-back is deterministisch en standaard achter een bevestiging. Autonome of geplande
+  uitvoering is een optionele laag (Claude Agent SDK) bovenop dezelfde MCP-surface, opt-in per
+  bron. Een deep-link kan als lichte start-knop dienen, maar is niet de ruggengraat.
